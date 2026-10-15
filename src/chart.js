@@ -116,7 +116,7 @@ export function generateChart(song, opts = {}) {
     notes: out,
     backing,
     lanes,
-    length: Math.max(...out.map(n => n.time + n.duration)),
+    length: out.reduce((m, n) => Math.max(m, n.time + n.duration), 0),
     bpm: song.bpm,
     beatLen,
     firstBeat, // beat-grid offset so ticks stay aligned with the song's beats

@@ -356,15 +356,22 @@ function renderList() {
       spriteHTML(SPRITES[e.category] || SPRITES.custom, 2) +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(best)}` : ''}</span>`;
-    b.addEventListener('focus', () => selectSong(e.id, false));
-    b.addEventListener('click', ev => {
-      if (selectedId !== e.id) selectSong(e.id, false);
-      else if (ev.detail === 0) playSelected(); // keyboard / gamepad confirm; mouse uses double-click
-    });
-    b.addEventListener('dblclick', playSelected);
     box.appendChild(b);
   }
   markSelected();
+}
+// One delegated set of row handlers instead of three listeners per row (the list is rebuilt on every view change).
+{
+  const box = $('song-list');
+  const rowId = ev => { const r = ev.target.closest && ev.target.closest('.song-row'); return r ? r.dataset.id : null; };
+  box.addEventListener('focusin', ev => { const id = rowId(ev); if (id) selectSong(id, false); });
+  box.addEventListener('click', ev => {
+    const id = rowId(ev);
+    if (!id) return;
+    if (selectedId !== id) selectSong(id, false);
+    else if (ev.detail === 0) playSelected(); // keyboard / gamepad confirm; mouse uses double-click
+  });
+  box.addEventListener('dblclick', ev => { if (rowId(ev)) playSelected(); });
 }
 function markSelected() {
   for (const b of $('song-list').children) {
