@@ -6,9 +6,9 @@ const CELL = 4;      // CSS px per LCD cell
 const TICK_MS = 100; // sim speed
 
 export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp, rng = Math.random, dev = '' }) {
-  const sched = createScheduler({ rng, ...(dev ? { minGap: 2, maxGap: 4 } : {}) });
+  const sched = createScheduler({ rng, ...(dev && dev !== 'debug' ? { minGap: 2, maxGap: 4 } : {}) });
   const ctx = canvas.getContext('2d');
-  let timer = 0, raf = 0, status = null, sim = null, last = 0, acc = 0, gridW = 0, gridH = 0, statusOn = false;
+  let timer = 0, due = 0, remaining = 0, raf = 0, status = null, sim = null, last = 0, acc = 0, gridW = 0, gridH = 0, statusOn = false;
 
   const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const allowed = () => enabled() && !reduced() && !document.hidden;
@@ -23,7 +23,12 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
   }
   function cancel() {
     if (timer) clearTimeout(timer);
-    timer = 0;
+    timer = 0; remaining = 0;
+    stopActive();
+  }
+  // Leaving the cameo screens (or hiding the tab) stops a running cameo but keeps the countdown for when we return.
+  function pause() {
+    if (timer) { clearTimeout(timer); timer = 0; remaining = Math.max(0, due - performance.now()); }
     stopActive();
   }
   function finish() { stopActive(); arm(); }
@@ -79,22 +84,28 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
   }
 
   function arm() {
-    if (timer || sim || dev === 'debug') return; // debug mode: cameos only play when triggered by hand
+    if (timer || sim) return;
     if (!allowed() || !['title', 'select', 'options'].includes(getState())) return;
-    timer = setTimeout(spawn, sched.gap() * 1000);
+    const ms = remaining || sched.gap() * 1000;
+    remaining = 0;
+    due = performance.now() + ms;
+    timer = setTimeout(spawn, ms);
   }
 
   // Called after every screen change: cancel instantly when leaving the places cameos may appear.
   function sync() {
-    if (!allowed() || !['title', 'select', 'options'].includes(getState())) cancel();
+    if (!allowed() || !['title', 'select', 'options'].includes(getState())) pause();
     else arm();
   }
 
-  document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); else sync(); });
-  window.addEventListener('resize', () => { if (sim || timer) { cancel(); sync(); } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); else sync(); });
+  window.addEventListener('resize', () => { if (sim || timer) { pause(); sync(); } });
 
   return {
     sync, cancel,
+    // Debug panel: seconds until the next scheduled cameo, 'playing' while one runs, or null when none is armed.
+    nextIn: () => sim ? 'playing' : timer ? Math.max(0, (due - performance.now()) / 1000) : remaining ? remaining / 1000 : null,
+    paused: () => !timer && !sim && remaining > 0,
     // Debug panel: play one cameo right now, whatever screen is showing.
     play(id) {
       cancel();

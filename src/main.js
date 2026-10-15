@@ -146,6 +146,13 @@ if (new URLSearchParams(location.search).get('cameo') === 'debug') {
   add('imei', showImei);
   add('wipe', startWipe);
   add('konami', konamiReward);
+  const next = document.createElement('div');
+  panel.insertBefore(next, panel.children[1]);
+  const showNext = () => {
+    const n = cameo.nextIn();
+    next.textContent = 'next: ' + (n === null ? '—' : n === 'playing' ? 'playing' : Math.ceil(n) + ' s' + (cameo.paused() ? ' (paused)' : ''));
+  };
+  showNext(); setInterval(showNext, 250);
   document.body.appendChild(panel);
 }
 const konami = createSequenceMatcher(KONAMI);
@@ -171,6 +178,7 @@ function hideGag() {
   if ($('gag')) $('gag').style.pointerEvents = '';
   wipe.cancel();
   if ($('gag')) $('gag').hidden = true;
+  if ($('gag-link')) $('gag-link').hidden = true;
 }
 function showGag(title, text, bar = -1, segments = 0) {
   $('gag').hidden = false;
@@ -186,7 +194,9 @@ function hideGagIfWipe() { if (gagTick) hideGag(); }
 function showImei() {
   hideGag();
   showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION);
-  gagTimer = setTimeout(hideGag, 6000);
+  $('gag-link').hidden = false;
+  $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
+  gagTimer = setTimeout(hideGag, 8000);
 }
 function startWipe() {
   hideGag();
