@@ -9,6 +9,8 @@ export function focusables(root) {
 }
 
 const center = r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+// Checkboxes are tiny and sit at the row's left edge; score them by their whole row so they stay reachable.
+const rectOf = el => (el.type === 'checkbox' && el.closest('label') || el).getBoundingClientRect();
 
 // Focus the nearest control in `dir` ('up'|'down'|'left'|'right'). Returns true when focus moved.
 export function move(root, dir) {
@@ -19,11 +21,11 @@ export function move(root, dir) {
     (root.querySelector('[data-default]:not([disabled])') || items[0]).focus();
     return true;
   }
-  const c = center(cur.getBoundingClientRect());
+  const c = center(rectOf(cur));
   let best = null, bestScore = Infinity;
   for (const el of items) {
     if (el === cur) continue;
-    const p = center(el.getBoundingClientRect());
+    const p = center(rectOf(el));
     const dx = p.x - c.x, dy = p.y - c.y;
     let main, cross;
     if (dir === 'down') { main = dy; cross = Math.abs(dx); }

@@ -366,8 +366,19 @@ function download(name, text, type = 'text/plain') {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 async function copyText(text, el, label) {
-  try { await navigator.clipboard.writeText(text); el.textContent = label + ' copied!'; }
-  catch { el.textContent = 'Copy this: ' + text; }
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch { /* insecure context or denied: try legacy copy */ }
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    const prev = document.activeElement;
+    document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+    if (prev && prev.focus) prev.focus();
+  }
+  el.textContent = ok ? label + ' copied to clipboard!' : "Couldn't access the clipboard";
 }
 // Select + remember the saved song; persists nothing else.
 function afterSongsChanged(select) {
