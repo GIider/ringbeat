@@ -36,7 +36,7 @@ Everything visual is made here, no external fonts or images:
 
 - `src/pixelfont.js` — hand-drawn 5×7 LCD font (ASCII + UI symbols). `scripts/build-font.mjs` compiles it to
   TrueType (`assets/fonts/rb-pixel.ttf` + a bold cut); text is crisp at multiples of 10 px.
-- `assets/phone.svg`, `assets/phone-side.svg` — the phone shells; the LCD and key hit areas are DOM laid over them.
+- `assets/phone.svg` — the phone shells; the LCD and key hit areas are DOM laid over them.
 - `src/pixelart.js` — 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
 - `src/cover.js` — per-song 72×28 "picture message" art, generated from the song id.
 

@@ -31,7 +31,7 @@ const ctx = new Proxy({}, {
   set: (t, k, v) => { t[k] = v; return true; },
 });
 globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {}, devicePixelRatio: 1 };
-const canvas = { getContext: () => ctx, clientWidth: 800, clientHeight: 600, width: 0, height: 0, getBoundingClientRect: () => ({ left: 0 }) };
+const canvas = { getContext: () => ctx, clientWidth: 330, clientHeight: 300, width: 0, height: 0, getBoundingClientRect: () => ({ left: 0 }) };
 const { Renderer } = await import('../src/render.js');
 const { Synth } = await import('../src/synth.js');
 

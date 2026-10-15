@@ -25,28 +25,10 @@
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 body { background: radial-gradient(ellipse at 50% 40%, #1a2416 0%, var(--room) 70%); color: var(--ink);
   font-family: var(--font); font-size: var(--fs); -webkit-font-smoothing: none; font-smooth: never; }
-body[data-mode="play"], body[data-mode="pause"] { background: var(--night); }
 button { font: inherit; color: inherit; }
 
-/* ---------- play area ---------- */
-#stage-wrap { position: fixed; top: 0; bottom: 0; left: 0; width: 100vw; z-index: 1; visibility: hidden; opacity: 0;
-  transition: opacity .35s, visibility 0s .35s; }
-body[data-mode="play"] #stage-wrap, body[data-mode="pause"] #stage-wrap { visibility: visible; opacity: 1; transition: opacity .35s .15s; }
-#stage { width: 100%; height: 100%; display: block; touch-action: none; transition: filter .3s; }
-body[data-mode="pause"] #stage { filter: brightness(.55) saturate(.7); }
-
-/* ---------- side phone ---------- */
-#phone-side { position: fixed; left: 0; top: 0; height: 100vh; width: 24vh; z-index: 2;
-  background: url(assets/phone-side.svg) center / 100% 100% no-repeat; transform: translateX(-105%);
-  transition: transform .5s var(--ease); }
-body[data-mode="play"]:not(.narrow-play) #phone-side, body[data-mode="pause"]:not(.narrow-play) #phone-side { transform: none; }
-.side-lcd { position: absolute; left: 10%; top: 16.8%; width: 78.33%; height: 56.4%; border-radius: 1.2vh;
-  background: linear-gradient(#0e1a0c, #0b150a); color: var(--green); padding: 2.2vh 1vh; overflow: hidden; white-space: nowrap;
-  box-shadow: inset 0 0 1.4vh #000c; text-shadow: 0 0 6px #9fd06755; }
-.side-lcd .spr { margin-bottom: 4.5vh; }
-.side-lcd .cap { color: #8bbb5a; }
-.side-pct { font-weight: 700; font-size: 40px; text-align: right; margin: 4px 0 10px; }
-.side-left { text-align: right; }
+/* ---------- play area: the 8-bit canvas lives on the LCD ---------- */
+#stage { display: block; margin: 0 auto; image-rendering: pixelated; touch-action: none; }
 
 /* ---------- the phone ---------- */
 #phone { position: fixed; z-index: 3; left: 50%; top: 2vh; width: 440px; height: 880px;
@@ -185,18 +167,11 @@ textarea::placeholder { color: var(--ink-dim); }
 .top li { margin: 1px 0; }
 
 /* ---------- now playing ---------- */
-.np { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; overflow: hidden; }
-.np-title { font-weight: 700; font-size: calc(var(--fs) * 1.5); line-height: 1.1; max-width: 100%; overflow: hidden;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-top: 6px; }
-.np-sub { color: var(--ink-dim); font-size: calc(var(--fs) * 1.5); }
-.np-art { margin: auto 0; }
-.np:has(.np-caption:not([hidden])) .np-art { display: none; }  /* tutorial text needs the room */
-.np-caption { text-align: left; border: var(--u) solid var(--ink); padding: 4px 6px; margin: 4px 0; width: 100%; }
-.np-caption b, .tut-caption b { display: block; }
-.np-caption .step, .tut-caption .step { color: var(--ink-dim); margin-top: 4px; }
-.np-bar { width: 100%; height: 18px; border: var(--u) solid var(--ink); padding: 2px; margin-top: 6px; border-radius: 6px; }
-.np-bar > div { height: 100%; width: 0; background: var(--ink); border-radius: 3px; }
-.np-time { align-self: flex-end; font-size: calc(var(--fs) * 1.5); margin: 4px 0 6px; }
+.np { padding: 0; overflow: hidden; }
+.np-caption { position: absolute; left: 6px; right: 6px; top: 4px; z-index: 2; text-align: left; background: var(--lcd);
+  border: var(--u) solid var(--ink); padding: 4px 6px; pointer-events: none; }
+.np-caption b { display: block; }
+.np-caption .step { color: var(--ink-dim); margin-top: 4px; }
 
 /* ---------- results ---------- */
 .r-top { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 2px 0 4px; }
@@ -229,7 +204,7 @@ td + td { text-align: right; font-weight: 700; }
 .tut-caption { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 6; width: min(92vw, 460px);
   background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 4px 4px 0 #0008; padding: 8px 12px;
   pointer-events: none; }
-body:not(.narrow-play) .tut-caption { display: none; }
+#tut-caption, .tut-caption { display: none; }
 
 /* ---------- pop-ups ---------- */
 .toast { position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: min(90vw, 320px);
@@ -239,7 +214,7 @@ body:not(.narrow-play) .tut-caption { display: none; }
 
 .pause-btn { position: fixed; top: 10px; left: 10px; z-index: 5; min-height: 40px; padding: 4px 12px; cursor: pointer;
   background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 3px 3px 0 #0008; }
-body:not(.narrow-play) .pause-btn { display: none; }
+body:not(.compact) .pause-btn { display: none; }
 
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);
@@ -254,6 +229,6 @@ body.legend-on[data-mode="menu"] .legend { opacity: .85; visibility: visible; }
 .using-pad .nudge button:focus, textarea:focus-visible { box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
-  #phone, #phone-side, #stage-wrap { transition: none !important; }
+  #phone { transition: none !important; }
   .boot-logo, .boot-art, .blink { animation: none; }
 }

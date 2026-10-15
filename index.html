@@ -11,20 +11,6 @@
   <link rel="preload" href="src/difficulty.json" as="fetch" crossorigin>
 </head>
 <body data-mode="menu">
-  <!-- Play area: the highway canvas between the side phone and the front phone -->
-  <div id="stage-wrap"><canvas id="stage"></canvas></div>
-
-  <!-- Second phone peeking in from the left during play (mini-LCD shows progress) -->
-  <div id="phone-side" aria-hidden="true">
-    <div class="side-lcd">
-      <i id="side-signal" class="spr"></i>
-      <div class="cap">PROGRESS</div>
-      <div id="side-pct" class="side-pct">0%</div>
-      <div id="side-time">0:00 / 0:00</div>
-      <div id="side-left" class="side-left">-0:00</div>
-    </div>
-  </div>
-
   <!-- Keyboard legend beside the phone (wide screens, menus only) -->
   <aside id="legend" class="legend" aria-label="Keys">
     <b>Keys</b>
@@ -40,7 +26,7 @@
     <p>Gamepad, touch and the phone's own keys work too.</p>
   </aside>
 
-  <div id="phone">
+  <div id="phone" class="no-anim">
     <div id="lcd" class="lcd">
       <div class="statusbar" aria-hidden="true">
         <i id="st-signal" class="spr"></i>
@@ -169,12 +155,8 @@
 
         <!-- Now playing (shown in the phone while the highway runs) -->
         <section id="nowplaying" class="screen np" data-title="" data-soft-left="Options" data-soft-right="Back">
-          <div id="np-title" class="np-title"></div>
-          <div id="np-sub" class="np-sub">RTTTL</div>
-          <i id="np-art" class="spr np-art"></i>
+          <canvas id="stage" aria-label="Playfield"></canvas>
           <div id="np-caption" class="np-caption" hidden></div>
-          <div class="np-bar"><div id="np-fill"></div></div>
-          <div id="np-time" class="np-time">0:00 / 0:00</div>
         </section>
 
         <!-- Results -->

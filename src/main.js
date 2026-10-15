@@ -443,8 +443,7 @@ function startRun(r) {
   renderer.scrollTime = settings.scrollTime;
   renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
   renderer.resetState();
-  $('np-title').textContent = renderer.title;
-  $('np-sub').textContent = r.tutorial ? 'TUTORIAL' : r.training ? `TRAINING ${Math.round(r.training.speed * 100)}%` : 'RTTTL';
+  screens.nowplaying.dataset.title = renderer.title;
   recent.fill(1); recentN = 0;
   phoneCache.key = '';
   input.setLanes(chart.lanes);
@@ -1014,25 +1013,19 @@ function onKey(e) {
 
 // ---- phone layout: where the phone, the side phone and the highway sit in the current mode ----
 let mode = '';
-let artScale = 3;
 function setMode() {
   const over = (game.active || demoRun) && (state === 'paused' || (state === 'settings' && settingsFrom === 'paused'));
   const m = inPlay() ? 'play' : over ? 'pause' : 'menu';
   if (m === mode) return;
   if (m === 'menu') phoneIdle();
   mode = document.body.dataset.mode = m;
-  layout(true);
 }
 function layout(animate = false) {
   const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
   const compact = vw < 600 || vh < 520;
-  const narrowPlay = compact || vw < 900 || vw / vh < 1.2;
   body.classList.toggle('compact', compact);
-  body.classList.toggle('narrow-play', narrowPlay);
-  const wideGame = (mode === 'play' || mode === 'pause') && !narrowPlay;
   let x, y, w, h;
-  if (wideGame) { h = vh * 1.08; w = h / 2; x = vw - w + vh * 0.04; y = -vh * 0.01; }
-  else if (compact) { x = 0; y = 0; w = vw; h = vh; }
+  if (compact) { x = 0; y = 0; w = vw; h = vh; }
   else {
     // Whole phone when it fits; on short screens grow it so the LCD stays roomy and let the keypad run off the bottom
     // (the navigation keys, ~68% down, stay on screen).
@@ -1040,17 +1033,12 @@ function layout(animate = false) {
     w = h / 2; x = (vw - w) / 2; y = Math.max(vh * 0.02, (vh - h) / 2);
   }
   ph.classList.toggle('no-anim', !animate);
-  ph.classList.toggle('off', mode === 'play' && narrowPlay);
   Object.assign(ph.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
-  // Pixel text stays on whole device pixels: 2 or 3 CSS px per font pixel.
+  // Pixel text stays on whole device pixels: 2 or 3 CSS px per font pixel. The play canvas uses the same grid.
   const lcdW = compact ? vw : w * 0.745, fs = lcdW >= 470 ? 30 : 20;
   ph.style.setProperty('--fs', fs + 'px');
   ph.style.setProperty('--u', fs / 10 + 'px');
-  artScale = Math.max(3, Math.min(6, Math.floor(lcdW / 85)));
-  phoneCache.key = '';
-  const sw = $('stage-wrap').style;
-  if (wideGame) { const left = vh * 0.235; sw.left = left + 'px'; sw.width = Math.max(0, x + w * 0.06 - left) + 'px'; }
-  else { sw.left = '0px'; sw.width = vw + 'px'; }
+  renderer.setPixelScale(fs / 10);
   const lg = $('legend');
   body.classList.toggle('legend-on', !compact && x >= 290);
   lg.style.left = Math.max(16, x - 270) + 'px';
@@ -1065,28 +1053,18 @@ function phoneIdle() {
 }
 // Live phone displays while a song runs: progress, time, signal (recent hit quality) and battery (time left).
 const phoneCache = { key: '' };
-const mmss = sec => formatLength(Math.floor(Math.max(0, sec)));
 function updatePhones(g, t) {
   const len = g.chart.length, p = Math.max(0, Math.min(1, t / len));
   const n = Math.min(recentN, recent.length) || 1;
   let q = 0; for (let i = 0; i < n; i++) q += recent[i];
   const sig = recentN ? Math.round(5 * q / n) : 5;
   const bat = Math.max(0, Math.ceil(4 * (1 - p) - 1e-6));
-  const art = t > 0 ? Math.floor(t / g.chart.beatLen) % 2 : 0;
-  const pct = Math.floor(p * 100), sec = Math.floor(Math.max(0, t));
-  const key = pct + '|' + sec + '|' + sig + '|' + bat + '|' + art;
+  const pct = Math.floor(p * 100);
+  const key = pct + '|' + sig + '|' + bat;
   if (key === phoneCache.key) return;
   phoneCache.key = key;
-  const time = mmss(t) + ' / ' + mmss(len);
-  $('np-fill').style.width = pct + '%';
-  $('np-time').textContent = time;
-  $('side-pct').textContent = pct + '%';
-  $('side-time').textContent = mmss(t) + '/' + mmss(len);
-  $('side-left').textContent = '-' + mmss(len - t);
   setSprite($('st-signal'), signal(sig), 2);
-  setSprite($('side-signal'), signal(sig), 3);
   setSprite($('st-battery'), battery(bat), 2);
-  setSprite($('np-art'), ringing(art), artScale);
 }
 
 // ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|settings ----
@@ -1123,8 +1101,7 @@ function demo(kind) {
     run = { entry: e, diff: settings.difficulty, training: null };
     renderer.title = e.title;
     renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
-    $('np-title').textContent = e.title;
-    $('np-sub').textContent = 'RTTTL';
+    screens.nowplaying.dataset.title = e.title;
     demoRun = { g, T };
     if (kind === 'pause') { state = 'paused'; show('paused'); } else setState('playing', null);
     input.enabled = false;
@@ -1194,6 +1171,7 @@ try {
 wire();
 phoneIdle();
 setMode();
+layout(); // place the phone before the first paint, without the slide
 // Row heights change once the pixel font arrives: re-centre the cursor row then.
 if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
 const demoKind = new URLSearchParams(location.search).get('demo');
