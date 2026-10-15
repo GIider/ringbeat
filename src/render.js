@@ -140,7 +140,6 @@ export class Renderer {
     this.vi = 0; this.lastCombo = 0;
     this.rings.forEach(r => r.t = -10); this.labels.forEach(l => l.t = -10); this.banners.forEach(b => b.t = -10);
     this._dispScore = 0; this._shownScore = -1;
-    this._halfDone = this._lastTenDone = false;
   }
 
   _banner(text, now) {
@@ -388,7 +387,6 @@ export class Renderer {
 
   _hud(game, t, now) {
     const c = this.c, W = this.w, H = this.h;
-    const total = game.chart.notes.length;
     const p = Math.max(0, Math.min(1, t / game.chart.length));
 
     // Score counts up in steps toward the real value; strings are rebuilt only when the integer changes.
@@ -403,9 +401,6 @@ export class Renderer {
       if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) this._banner(cmb + ' COMBO', now);
       this.lastCombo = cmb;
     }
-    const left = game.notesLeft;
-    if (!this._halfDone && p >= 0.5) { this._halfDone = true; this._banner('HALFWAY', now); }
-    if (!this._lastTenDone && total > 20 && left <= 10 && left > 0) { this._lastTenDone = true; this._banner('LAST 10', now); }
 
     // Row 1: score + grade/accuracy. Row 2: FC/AP or training label + combo.
     this._text(c, this._scoreTxt, 3, 1, INK, true);
@@ -428,8 +423,6 @@ export class Renderer {
       this._box(c, b.text, bx, Math.round(H * 0.4));
     }
 
-    // Count-in
-    if (t < 0 && this.resumeCount <= 0) this._box(c, String(Math.ceil(-t)), bx, Math.round(H * 0.4), 3);
     // Resume countdown (song time is frozen while this shows)
     if (this.resumeCount > 0) {
       this._box(c, 'GET READY', bx, Math.round(H * 0.3));
