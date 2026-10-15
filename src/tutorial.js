@@ -6,47 +6,36 @@ const BPM = 100;
 const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch per lane
 
 // notes: [beat, lane, durationInBeats, extras?]; holds are >= 1 beat (0.6 s at 100 BPM, above HOLD_MIN_SEC)
-// extras: { roll: n } mash roll of n ticks (an eighth apart), { accent, power, phrase } phrase markers,
-//         { slide: id, idx } member of a slide chain (follow-ups are forgiving),
+// extras: { roll: n } mash roll of n ticks (an eighth apart), { slide: id, idx } member of a slide chain (follow-ups are forgiving),
 //         { double: lane } adds a partner tap in that lane at the same time.
 export const STAGES = [
   {
     id: 'tap', title: 'Tap notes',
-    text: 'A note falls toward the glowing line. Press its lane key just as it touches the line.',
+    text: 'Press the lane key as the note touches the line.',
     notes: [[0, 0, 0.25], [2, 1, 0.25], [4, 2, 0.25], [6, 3, 0.25]],
     maxMiss: 0,
   },
   {
     id: 'timing', title: 'Timing',
-    text: 'The closer to the line, the better: PERFECT, GREAT, GOOD. Too early or late is a MISS. The meter at the bottom shows if you are early (left) or late (right).',
+    text: 'Closer to the line scores higher: PERFECT, GREAT, GOOD. Too early or late is a MISS.',
     notes: [[0, 1, 0.25], [1, 2, 0.25], [2, 0, 0.25], [3, 3, 0.25], [4, 1, 0.25], [5, 2, 0.25], [6, 0, 0.25], [7, 3, 0.25]],
     maxMiss: 0, minGreatPct: 50,
   },
   {
     id: 'hold', title: 'Hold notes',
-    text: 'Long notes have a tail. Press and HOLD the key until the tail reaches the line, then release.',
+    text: 'Long notes have a tail. HOLD the key until the tail reaches the line, then release.',
     notes: [[0, 0, 2], [3, 3, 2], [6, 1, 3]],
     maxMiss: 0,
   },
   {
     id: 'roll', title: 'Roll notes',
-    text: 'A string of fast repeats is a ROLL: a bar of ticks in one lane. Mash that key quickly while the bar passes the line — you do not need to hit every tick.',
+    text: 'A ROLL is a bar of fast ticks. Mash the key while it passes the line.',
     notes: [[0, 1, 0, { roll: 8 }], [5, 2, 0, { roll: 8 }], [10, 0, 0, { roll: 10 }]],
     maxMiss: 0,
   },
   {
-    id: 'phrase', title: 'Phrases & power',
-    text: 'A rest splits the music into phrases. The first note after a rest has a ▲ and scores double. A note marked + is a power note: hit them all in a phrase for a x1.5 score burst. A phrase without a miss earns a bonus.',
-    notes: [
-      [0, 0, 0.5, { phrase: 0 }], [1, 1, 0.5, { phrase: 0 }], [2, 3, 0.5, { phrase: 0, power: true }],
-      [5, 1, 0.5, { phrase: 1, accent: true }], [6, 2, 0.5, { phrase: 1 }], [7, 3, 0.5, { phrase: 1, power: true }],
-      [10, 0, 0.5, { phrase: 2, accent: true }], [11, 2, 0.5, { phrase: 2 }], [12, 3, 0.5, { phrase: 2, power: true }],
-    ],
-    maxMiss: 0,
-  },
-  {
     id: 'slide', title: 'Slides',
-    text: 'Notes joined by a dotted line are a SLIDE. Hit the first one on time, then sweep along the line — the rest forgive being a little early or late.',
+    text: 'Notes joined by a dotted line are a SLIDE. Hit the first on time, then sweep along.',
     notes: [
       [0, 0, 0.5, { slide: 1, idx: 0 }], [0.5, 1, 0.5, { slide: 1, idx: 1 }], [1, 2, 0.5, { slide: 1, idx: 2 }], [1.5, 3, 0.5, { slide: 1, idx: 3 }],
       [4, 3, 0.5, { slide: 2, idx: 0 }], [4.5, 2, 0.5, { slide: 2, idx: 1 }], [5, 1, 0.5, { slide: 2, idx: 2 }],
@@ -56,14 +45,14 @@ export const STAGES = [
   },
   {
     id: 'double', title: 'Double notes',
-    text: 'Two notes joined by a bridge fall together. Press both keys at the same time. Each is judged on its own.',
+    text: 'Notes joined by a bridge fall together. Press both keys at once.',
     notes: [[0, 1, 0.5, { double: 0 }], [2, 2, 0.5, { double: 1 }], [4, 3, 0.5, { double: 2 }], [6, 0, 0.5],
       [7, 2, 0.5, { double: 1 }], [9, 3, 0.5, { double: 2 }]],
     maxMiss: 0,
   },
   {
     id: 'mix', title: 'Combo',
-    text: 'Chain hits to build a combo — every 10 raises your score multiplier. A miss resets it. Esc / Start pauses, R restarts.',
+    text: 'Chain hits to build a combo: every 10 raises your multiplier. A miss resets it.',
     notes: [[0, 0, 0.5], [1, 1, 0.5], [2, 2, 0.5], [3, 3, 2], [5.5, 2, 0.5], [6.5, 1, 0.5], [7.5, 0, 2],
       [10, 1, 0.5], [11, 2, 0.5], [12, 3, 0.5], [13, 0, 0.5], [14, 1, 2]],
     maxMiss: 0,
@@ -78,7 +67,6 @@ export function buildStageChart(stage) {
       id: 0, lane, midi: LANE_MIDI[lane],
       time: beat * beatLen, duration: dur * beatLen,
       isHold: dur >= 1, hit: false, judged: false,
-      phrase: x.phrase || 0, accent: !!x.accent, power: !!x.power,
     };
     if (x.slide !== undefined) { n.slide = x.slide; n.slideIdx = x.idx; }
     if (x.roll) {
@@ -91,7 +79,7 @@ export function buildStageChart(stage) {
     notes.push(n);
     if (x.double !== undefined) {
       n.chordLane = x.double;
-      notes.push({ ...n, id: 0, lane: x.double, midi: LANE_MIDI[x.double], chordLane: lane, accent: false, power: false });
+      notes.push({ ...n, id: 0, lane: x.double, midi: LANE_MIDI[x.double], chordLane: lane });
     }
   }
   notes.sort((a, b) => a.time - b.time || a.lane - b.lane);

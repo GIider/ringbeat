@@ -983,9 +983,8 @@ function nextSong() {
 function controlsHTML() {
   const keys = KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ');
   const pad = [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ');
-  return `<p>Notes fall down four lanes. Hit each one as it reaches the glowing line.</p>` +
-    `<p>Keyboard: ${keys}<br>Gamepad: ${pad} (or d-pad)<br>Touch: tap and hold the lanes</p>` +
-    `<p>There are two note types — <b>taps</b> and <b>holds</b>. This takes about a minute.</p>`;
+  return `<p>Hit each note as it reaches the glowing line.</p>` +
+    `<p>Keys: ${keys}<br>Pad: ${pad}<br>Touch: tap the lanes</p>`;
 }
 function tutProgress(done, current) {
   const n = STAGES.length;
@@ -998,7 +997,7 @@ function openTutorial() {
   $('btn-tut-skip').hidden = false;
   $('tut-title').textContent = 'Welcome to Ringbeat';
   $('tut-body').innerHTML = controlsHTML() +
-    `<p>${STAGES.length} short lessons. Pass each one to move on.</p>`;
+    `<p>${STAGES.length} short lessons.</p>`;
   tutProgress(0, -1);
   run = { tutorial: { stage: -1 } };
   setState('tutorial', 'tutorial');
@@ -1030,9 +1029,8 @@ function tutorialOutro() {
   game.stop();
   $('tut-title').textContent = "You're ready!";
   $('tut-body').innerHTML =
-    `<p>Hit every note for a <b>Full Combo</b>, all Perfect for an <b>All Perfect</b>.</p>` +
-    `<p><b>Training</b> (on the difficulty screen) slows songs down and loops sections.</p>` +
-    `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
+    `<p>Hit every note for a <b>Full Combo</b>.</p>` +
+    `<p>Early or late? Try <b>Settings → Calibrate</b>.</p>`;
   $('btn-tut-go').textContent = 'Pick a song';
   $('btn-tut-skip').hidden = true;
   tutProgress(STAGES.length, -1);
@@ -1040,7 +1038,7 @@ function tutorialOutro() {
   setState('tutorial', 'tutorial');
 }
 function showCaption(i) {
-  $('np-caption').textContent = `Lesson ${i + 1}/${STAGES.length} · ${goalText(STAGES[i])}`;
+  $('np-caption').textContent = `${i + 1}/${STAGES.length} · ${goalText(STAGES[i])}`;
 }
 function tutorialStageDone(r) {
   const i = run.tutorial.stage;

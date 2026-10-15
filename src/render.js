@@ -387,11 +387,9 @@ export class Renderer {
         c.clearRect(x, y + NOTE_H - 1, 1, 1); c.clearRect(x + bw - 1, y + NOTE_H - 1, 1, 1);
         const cx = x + (bw >> 1), cy = y + (NOTE_H >> 1);
         c.fillStyle = PAPER;
-        if (nt.power) { c.fillRect(cx - 1, cy, 3, 1); c.fillRect(cx, cy - 1, 1, 3); }  // power notes: plus sign
-        else if (nt.isHold) c.fillRect(cx, cy, 1, 1);                                  // hold heads have a centre dot
+        if (nt.isHold) c.fillRect(cx, cy, 1, 1); // hold heads have a centre dot
         c.fillStyle = INK;
-        if (nt.accent) { c.fillRect(cx - 1, y - 3, 3, 1); c.fillRect(cx, y - 4, 1, 1); } // accent: caret above the head
-        if (nt.chordLane === nt.lane + 1) c.fillRect(x + bw, cy, lw - bw, 1);            // double: bridge to the right lane
+        if (nt.chordLane === nt.lane + 1) c.fillRect(x + bw, cy, lw - bw, 1); // double: bridge to the right lane
       }
     }
 
@@ -456,7 +454,7 @@ export class Renderer {
 
     // Milestone banners over the highway
     const bx = Math.round(this.x0 + this.laneW * this.lanes / 2);
-    // Simultaneous banners (e.g. POWER + PHRASE) stack upward, newest at the base position.
+    // Simultaneous banners (e.g. two combo milestones) stack upward, newest at the base position.
     let slot = 0;
     const live = this.banners.filter(b => { const age = now - b.t; return age >= 0 && age <= 1.2; });
     live.sort((a, b) => b.t - a.t);

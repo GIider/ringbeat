@@ -34,11 +34,6 @@ title ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
   Also derived from the RTTTL text, no authoring needed:
   - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
     lasting ≥ 0.2 s is a short hold.
-  - **Phrases:** a rest of ≥ 1 beat ends a phrase (so does 16 beats without one). The first note after a rest is an
-    **accent** (caret above the head) and scores ×2. A phrase finished with no miss pays **+200** (`PHRASE +200`; not
-    in songs with a single phrase).
-  - **Power notes** (plus sign in the head): phrase peaks at or above the song's 85th pitch percentile. Hitting all of a
-    phrase's power notes with no miss starts a ×1.5 score burst for 4 s (`POWER x1.5`).
   - **Rolls:** a legato run of ≥ 4 same-pitch notes, each starting within 0.26 s of the last, becomes one roll in a
     single lane: a dotted rail with a bar per tick. Mash the lane between the first tick (window opens 135 ms early) and
     50 ms after the last. Each press scores 10 × multiplier; one judgement at the end by presses ÷ goal
@@ -55,6 +50,7 @@ title ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
 - **Accuracy:** Perfect 1, Great ⅔, Good ⅓, Miss 0 (averaged over all judged notes; a dropped hold counts a miss).
 - **Grade:** S ≥ 95 %, A ≥ 90 %, B ≥ 80 %, C ≥ 70 %, D below.
 - **Full combo (FC):** no misses in the run (a dropped hold is a miss). **All perfect (AP):** FC and every note Perfect.
+  Stray presses break FC, except taps before the first note's hit window opens (warm-up).
   During play the HUD shows `FULL COMBO` / `ALL PERFECT` while the streak is alive; it disappears at the first miss.
 - There is no fail state.
 

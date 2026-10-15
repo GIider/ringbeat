@@ -6,9 +6,6 @@ export const LANE_MODE = 'quantile'; // 'quantile' | 'contour' (no UI yet)
 const HOLD_TAIL_GAP = 0.05;         // keep a hold's tail this far from the next note in its lane
 const MIN_HOLD_SEC = 0.15;          // a hold shortened below this becomes a tap
 export const SHORT_HOLD_SEC = 0.2;  // dotted-then-short notes at least this long become short holds
-export const PHRASE_REST_BEATS = 1; // a rest this long (in beats) ends a phrase
-const PHRASE_MAX_BEATS = 16;        // ...and so does running this long without one (4 bars of 4/4)
-const POWER_PERCENTILE = 0.85;      // power notes: phrase peaks at or above this pitch percentile
 const LEAP_SEMITONES = 7;           // double notes: a leap at least this big (Hard only)
 const DOUBLE_GAP_SEC = 0.1;         // keep the partner lane free this long around a double
 export const SLIDE_MIN_NOTES = 3;  // stepwise runs (1-2 semitones, one direction) this long become slides
@@ -66,27 +63,17 @@ export function generateChart(song, opts = {}) {
   const pitched = song.notes.filter(n => !n.isRest);
   const firstBeat = pitched[0].startBeat; // chart time 0 == first sounding note
 
-  // Phrases are split by rests of PHRASE_REST_BEATS or more. A dotted note followed by a much shorter one
-  // (dotted quarter -> eighth) is a long-short rhythm, which may become a short hold.
-  let notes = [], phrase = 0, restBeats = 0, phraseBeat = 0;
-  const restPhrases = new Set(); // phrases that start right after a rest (these get the accent)
+  // A dotted note followed by a much shorter one (dotted quarter -> eighth) is a long-short rhythm,
+  // which may become a short hold.
+  let notes = [];
   song.notes.forEach((n, i) => {
-    if (n.isRest) { restBeats += n.durBeat; return; }
-    if (notes.length) {
-      const afterRest = restBeats >= PHRASE_REST_BEATS;
-      if (afterRest || n.startBeat - phraseBeat >= PHRASE_MAX_BEATS) {
-        phrase++; phraseBeat = n.startBeat;
-        if (afterRest) restPhrases.add(phrase);
-      }
-    }
-    restBeats = 0;
+    if (n.isRest) return;
     const next = song.notes[i + 1];
     notes.push({
       time: (n.startBeat - firstBeat) * beatLen,
       duration: n.durBeat * beatLen,
       midi: n.midi,
       onBeat: Number.isInteger(n.startBeat),
-      phrase,
       dottedShort: !!(n.dotted && next && !next.isRest && next.durBeat <= n.durBeat / 3 + 1e-9),
     });
   });
@@ -181,23 +168,6 @@ export function generateChart(song, opts = {}) {
     }
   }
 
-  // Phrase accents (first note after a long rest) and power notes (phrase peaks in the top pitch band).
-  const sortedMidi = midis.slice().sort((a, b) => a - b);
-  const powerMin = sortedMidi[Math.min(sortedMidi.length - 1, Math.floor(sortedMidi.length * POWER_PERCENTILE))];
-  const phraseMin = new Map(), seenPhrase = new Set();
-  for (const n of kept) phraseMin.set(n.phrase, Math.min(phraseMin.get(n.phrase) ?? Infinity, n.midi));
-  const accent = kept.map(n => {
-    const first = !seenPhrase.has(n.phrase) && restPhrases.has(n.phrase);
-    seenPhrase.add(n.phrase);
-    return first;
-  });
-  const power = kept.map((n, i) => {
-    const prev = kept[i - 1], next = kept[i + 1];
-    return n.midi >= powerMin && n.midi > phraseMin.get(n.phrase) &&
-      (!prev || prev.phrase !== n.phrase || n.midi > prev.midi) &&
-      (!next || next.phrase !== n.phrase || n.midi >= next.midi);
-  });
-
   const nextInLane = new Array(lanes).fill(null);
   const out = new Array(kept.length);
   for (let i = kept.length - 1; i >= 0; i--) { // backwards so we know the next note in each lane
@@ -210,8 +180,7 @@ export function generateChart(song, opts = {}) {
       if (duration < (long ? MIN_HOLD_SEC : SHORT_HOLD_SEC)) { isHold = false; duration = n.duration; }
     }
     nextInLane[lane] = n.time;
-    out[i] = { id: i, time: n.time, duration, lane, midi: n.midi, isHold, hit: false, judged: false,
-      phrase: n.phrase, accent: accent[i], power: power[i] };
+    out[i] = { id: i, time: n.time, duration, lane, midi: n.midi, isHold, hit: false, judged: false };
     if (slideOf[i]) Object.assign(out[i], slideOf[i]);
     if (n.ticks) Object.assign(out[i], { isRoll: true, ticks: n.ticks, goal: n.goal, rollHits: 0 });
   }
@@ -231,7 +200,7 @@ export function generateChart(song, opts = {}) {
       const lane = [n.lane - 1, n.lane + 1].find(free);
       if (lane === undefined) continue;
       const partner = { id: 0, time: n.time, duration: Math.min(n.duration, 0.5), lane, midi: n.midi - 12,
-        isHold: false, hit: false, judged: false, phrase: n.phrase, accent: false, power: false };
+        isHold: false, hit: false, judged: false };
       n.chordLane = lane; // renderer draws a bridge; each note is still judged on its own
       partner.chordLane = n.lane;
       byLane[lane].push(partner);

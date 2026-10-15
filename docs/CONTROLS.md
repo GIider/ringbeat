@@ -51,7 +51,7 @@ Menus:
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
 
 ## Tutorial
-Shown automatically the first time you start the game (skipped for players who already picked a song). Four short lessons teach taps, timing, holds and combo. Each lesson opens with a text card that waits for you to confirm, shows "Lesson n of N" progress, and only unlocks the next lesson once you meet its goal (no misses, plus an accuracy target on some). Replay it from Settings → Replay tutorial.
+Shown automatically the first time you start the game (skipped for players who already picked a song). Seven short lessons teach taps, timing, holds, rolls, slides, doubles and combo. Each lesson opens with a text card that waits for you to confirm, shows "Lesson n of N" progress, and only unlocks the next lesson once you meet its goal (no misses, plus an accuracy target on some). Replay it from Settings → Replay tutorial.
 
 ## Song select hints
 The song list shows each song's note count for the selected difficulty, and a hint line under it lists

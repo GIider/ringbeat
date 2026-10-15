@@ -4,10 +4,6 @@ export const WINDOWS = { perfect: 0.045, great: 0.09, good: 0.135 }; // seconds,
 export const HOLD_RELEASE_FORGIVE = 0.15; // releasing this close to the tail end still completes the hold
 export const HOLD_BONUS = 100;
 export const POINTS = { perfect: 300, great: 200, good: 100 };
-export const ACCENT_MULT = 2;       // first note after a long rest scores double
-export const PHRASE_BONUS = 200;    // a phrase played without a miss
-export const POWER_MULT = 1.5;      // score multiplier burst after all of a phrase's power notes are hit
-export const POWER_SEC = 4;
 export const SLIDE_WINDOW = 0.18;   // slide follow-up notes (not the first) accept presses this far off
 export const ROLL_TICK_POINTS = 10;  // per press inside a roll, times the multiplier
 export const ROLL_GRADES = [[0.8, 'perfect'], [0.6, 'great'], [0.4, 'good']]; // share of the roll's goal -> judgement
@@ -47,15 +43,7 @@ export class Game {
       this.byLane[n.lane].push(n);
     }
     this.backingPtr = 0;
-    // Per-phrase bookkeeping for the phrase bonus and power bursts.
-    this.phrases = new Map();
-    for (const n of chart.notes) {
-      let ph = this.phrases.get(n.phrase);
-      if (!ph) this.phrases.set(n.phrase, ph = { left: 0, missed: false, powerLeft: 0, powerMissed: false });
-      ph.left++;
-      if (n.power) ph.powerLeft++;
-    }
-    this.now = 0; this.burstUntil = -1; this.phrasesClean = 0;
+    this.now = 0;
     this.holds = new Array(chart.lanes).fill(null);
     this.pendingRelease = new Array(chart.lanes).fill(false);
     this.score = 0; this.combo = 0; this.maxCombo = 0;
@@ -83,8 +71,7 @@ export class Game {
   // True while no note has been missed and no stray press made (the "full combo" streak is alive).
   get fcAlive() { return this.judgedCount > 0 && this.counts.miss === 0 && this.strays === 0; }
   get apAlive() { return this.fcAlive && this.counts.great + this.counts.good === 0; }
-  get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1) * (this.burst ? POWER_MULT : 1); }
-  get burst() { return this.now < this.burstUntil; }
+  get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1); }
 
   // ---- ticks (backing pulse, including the lead-in count-in, only when enabled) ----
   _startScheduler() {
@@ -136,7 +123,10 @@ export class Game {
     }
     if (roll && rollAbs <= bestAbs) { this._rollHit(roll); return; }
     if (!best) { // ghost tap: no score effect, but breaks FC until the last note is played
-      if (this.notesLeft > 0) { this.strays++; this.combo = 0; }
+      // Warm-up taps before the first note can be reached are ignored.
+      const first = this.chart.notes[0];
+      const early = this.judgedCount === 0 && first && t < first.time - SLIDE_WINDOW;
+      if (this.notesLeft > 0 && !early) { this.strays++; this.combo = 0; }
       return;
     }
     const j = bestAbs <= WINDOWS.perfect ? 'perfect' : bestAbs <= WINDOWS.great ? 'great' : 'good'; // slides: wide hits are Good
@@ -152,7 +142,6 @@ export class Game {
       best.voice = this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: remaining, releasable: true });
     } else {
       this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: best.duration });
-      this._finish(best, true);
     }
   }
 
@@ -206,7 +195,7 @@ export class Game {
     const share = n.rollHits / n.goal;
     const grade = ROLL_GRADES.find(([min]) => share >= min);
     n.done = true;
-    if (grade) { this._judge(n, grade[1]); this._finish(n, true); }
+    if (grade) this._judge(n, grade[1]);
     else this._miss(n, true);
   }
 
@@ -216,7 +205,7 @@ export class Game {
     this.counts[j]++;
     this.judgedCount++;
     this.accSum += ACCURACY_WEIGHT[j];
-    this.score += Math.round(POINTS[j] * this.multiplier * (n.accent ? ACCENT_MULT : 1));
+    this.score += Math.round(POINTS[j] * this.multiplier);
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     this.fx.judge(n.lane, j);
@@ -229,36 +218,18 @@ export class Game {
     this.combo = 0;
     this.synth.playMiss(n.midi);
     this.fx.judge(n.lane, 'miss');
-    this._finish(n, false);
-  }
-
-  // A note is finished once it is tapped, released or lost. Settles the phrase bonus and power bursts.
-  _finish(n, ok) {
-    const ph = this.phrases.get(n.phrase);
-    if (!ph) return;
-    if (!ok) { ph.missed = true; if (n.power) ph.powerMissed = true; }
-    if (n.power && --ph.powerLeft === 0 && !ph.powerMissed) {
-      this.burstUntil = this.now + POWER_SEC;
-      if (this.fx.banner) this.fx.banner('POWER x' + POWER_MULT);
-    }
-    if (--ph.left === 0 && !ph.missed && this.phrases.size > 1) {
-      this.score += PHRASE_BONUS;
-      this.phrasesClean++;
-      if (this.fx.banner) this.fx.banner('PHRASE +' + PHRASE_BONUS);
-    }
   }
 
   _completeHold(n) {
     n.holding = false; n.done = true;
     this.holds[n.lane] = null;
     this.score += Math.round(HOLD_BONUS * this.multiplier);
-    this._finish(n, true);
   }
 
   _breakHold(n) {
     n.holding = false; n.broken = true;
     this.holds[n.lane] = null;
-    this._miss(n, false); // also finishes the note
+    this._miss(n, false);
   }
 
   // ---- pause / restart ----
@@ -301,7 +272,6 @@ export class Game {
       accuracy: this.accuracy, grade: this.grade,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
       deltas: this.deltas.slice(),
-      phrasesClean: this.phrasesClean, phrases: this.phrases.size,
     };
   }
 }

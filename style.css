@@ -176,7 +176,7 @@ textarea::placeholder { color: var(--ink-dim); }
 
 /* ---------- now playing ---------- */
 .np { padding: 0; overflow: hidden; }
-.np-caption { position: absolute; left: 6px; right: 6px; top: 4px; z-index: 2; text-align: left; background: var(--lcd);
+.np-caption { position: absolute; left: 6px; right: 6px; top: calc(var(--u) * 21); z-index: 2; text-align: left; background: var(--lcd);
   border: var(--u) solid var(--ink); padding: 4px 6px; pointer-events: none; }
 .np-caption b { display: block; }
 .np-caption .step { color: var(--ink-dim); margin-top: 4px; }
@@ -225,7 +225,7 @@ td + td { text-align: right; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .pad { transform: none; } }
 
 /* ---------- tutorial ---------- */
-#tut-body p { margin: 6px 0; }
+#tut-body p { margin: 4px 0; }
 #tut-body b { font-weight: 700; }
 .tut-progress { letter-spacing: 1px; margin: 2px 0 6px; color: var(--ink-dim); }
 
