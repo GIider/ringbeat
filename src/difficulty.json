@@ -1,11 +1,11 @@
 {
  "ode": {
   "easy": {
-   "rating": 4,
+   "rating": 3.7,
    "fc": {
     "L1": 0,
-    "L2": 0.27,
-    "L3": 0.73,
+    "L2": 0.4,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -191,29 +191,29 @@
    "fc": {
     "L1": 0,
     "L2": 0.17,
-    "L3": 0.7,
+    "L3": 0.67,
     "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "holds"
+   ]
+  },
+  "normal": {
+   "rating": 4.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0.17,
+    "L3": 0.67,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "holds",
     "left lane"
-   ]
-  },
-  "normal": {
-   "rating": 4.6,
-   "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.6,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "speed",
-    "holds"
    ]
   },
   "hard": {
@@ -234,33 +234,33 @@
  },
  "jingle": {
   "easy": {
-   "rating": 4,
+   "rating": 3.8,
    "fc": {
     "L1": 0,
-    "L2": 0.23,
-    "L3": 0.73,
+    "L2": 0.37,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "late"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
-   "rating": 4,
+   "rating": 3.8,
    "fc": {
     "L1": 0,
-    "L2": 0.3,
-    "L3": 0.73,
+    "L2": 0.37,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "late"
+    "right lane",
+    "left lane"
    ]
   },
   "hard": {
@@ -281,11 +281,11 @@
  },
  "saints": {
   "easy": {
-   "rating": 4.7,
+   "rating": 4.4,
    "fc": {
     "L1": 0,
-    "L2": 0.03,
-    "L3": 0.53,
+    "L2": 0.13,
+    "L3": 0.63,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
@@ -375,17 +375,17 @@
  },
  "greensleeves": {
   "easy": {
-   "rating": 4.4,
+   "rating": 3.5,
    "fc": {
-    "L1": 0,
-    "L2": 0.07,
-    "L3": 0.63,
+    "L1": 0.03,
+    "L2": 0.43,
+    "L3": 0.83,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
+    "left lane",
     "right lane"
    ]
   },
@@ -422,18 +422,18 @@
  },
  "beethoven5": {
   "easy": {
-   "rating": 3.3,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.1,
-    "L2": 0.53,
-    "L3": 0.83,
+    "L1": 0.3,
+    "L2": 0.83,
+    "L3": 0.97,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -469,18 +469,18 @@
  },
  "entertainer": {
   "easy": {
-   "rating": 3.5,
+   "rating": 3.1,
    "fc": {
-    "L1": 0.03,
-    "L2": 0.43,
-    "L3": 0.83,
+    "L1": 0.1,
+    "L2": 0.6,
+    "L3": 0.9,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -516,25 +516,10 @@
  },
  "turkish": {
   "easy": {
-   "rating": 1.8,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.6,
-    "L2": 0.9,
-    "L3": 0.97,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "left lane",
-    "right lane"
-   ]
-  },
-  "normal": {
-   "rating": 2.1,
-   "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
+    "L1": 0.33,
+    "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
     "L5": 1,
@@ -543,6 +528,21 @@
    "tags": [
     "right lane",
     "left lane"
+   ]
+  },
+  "normal": {
+   "rating": 3,
+   "fc": {
+    "L1": 0.17,
+    "L2": 0.63,
+    "L3": 0.9,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
    ]
   },
   "hard": {
@@ -562,10 +562,10 @@
  },
  "elise": {
   "easy": {
-   "rating": 1.9,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.53,
-    "L2": 0.87,
+    "L1": 0.3,
+    "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
     "L5": 1,
@@ -577,18 +577,18 @@
    ]
   },
   "normal": {
-   "rating": 2.1,
+   "rating": 3.3,
    "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
-    "L3": 0.97,
+    "L1": 0.07,
+    "L2": 0.53,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "hard": {
@@ -624,11 +624,11 @@
    ]
   },
   "normal": {
-   "rating": 3.8,
+   "rating": 3.5,
    "fc": {
-    "L1": 0,
-    "L2": 0.37,
-    "L3": 0.77,
+    "L1": 0.1,
+    "L2": 0.47,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -651,53 +651,6 @@
    "tags": [
     "right lane",
     "late"
-   ]
-  }
- },
- "sprint": {
-  "easy": {
-   "rating": 1.5,
-   "fc": {
-    "L1": 0.8,
-    "L2": 0.93,
-    "L3": 0.97,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "right lane",
-    "left lane"
-   ]
-  },
-  "normal": {
-   "rating": 3.4,
-   "fc": {
-    "L1": 0,
-    "L2": 0.57,
-    "L3": 0.83,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "speed",
-    "late"
-   ]
-  },
-  "hard": {
-   "rating": 6,
-   "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0,
-    "L4": 0.67,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "speed",
-    "chords"
    ]
   }
  },
@@ -797,18 +750,18 @@
  },
  "seven": {
   "easy": {
-   "rating": 3.5,
+   "rating": 2.5,
    "fc": {
-    "L1": 0.1,
-    "L2": 0.5,
-    "L3": 0.8,
+    "L1": 0.3,
+    "L2": 0.8,
+    "L3": 0.93,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "late"
+    "right lane",
+    "holds"
    ]
   },
   "normal": {
@@ -844,32 +797,32 @@
  },
  "takeonme": {
   "easy": {
-   "rating": 1.5,
+   "rating": 2.8,
    "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
-    "L3": 0.97,
+    "L1": 0.23,
+    "L2": 0.73,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "late"
    ]
   },
   "normal": {
-   "rating": 3.8,
+   "rating": 3.2,
    "fc": {
-    "L1": 0,
-    "L2": 0.37,
-    "L3": 0.8,
-    "L4": 0.97,
+    "L1": 0.1,
+    "L2": 0.6,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "late",
     "right lane"
    ]
   },
@@ -891,32 +844,32 @@
  },
  "axelf": {
   "easy": {
-   "rating": 3.1,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.17,
-    "L2": 0.6,
+    "L1": 0.13,
+    "L2": 0.57,
     "L3": 0.87,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "late"
    ]
   },
   "normal": {
-   "rating": 4.4,
+   "rating": 3.7,
    "fc": {
     "L1": 0,
-    "L2": 0,
-    "L3": 0.8,
+    "L2": 0.43,
+    "L3": 0.77,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "right lane",
     "late"
    ]
   },
@@ -938,9 +891,9 @@
  },
  "panther": {
   "easy": {
-   "rating": 2.8,
+   "rating": 2.3,
    "fc": {
-    "L1": 0,
+    "L1": 0.3,
     "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
@@ -948,22 +901,22 @@
     "L6": 1
    },
    "tags": [
-    "speed",
-    "left lane"
+    "left lane",
+    "right lane"
    ]
   },
   "normal": {
-   "rating": 3.5,
+   "rating": 2.3,
    "fc": {
-    "L1": 0,
-    "L2": 0.5,
-    "L3": 0.87,
+    "L1": 0.33,
+    "L2": 0.83,
+    "L3": 0.97,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "right lane",
     "late"
    ]
   },
@@ -985,33 +938,33 @@
  },
  "imperial": {
   "easy": {
-   "rating": 3.9,
+   "rating": 3.5,
    "fc": {
-    "L1": 0.03,
-    "L2": 0.33,
-    "L3": 0.73,
+    "L1": 0.1,
+    "L2": 0.47,
+    "L3": 0.77,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "holds",
-    "left lane"
+    "late"
    ]
   },
   "normal": {
-   "rating": 4.4,
+   "rating": 3.5,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.73,
+    "L1": 0.1,
+    "L2": 0.47,
+    "L3": 0.77,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "holds"
+    "holds",
+    "late"
    ]
   },
   "hard": {
@@ -1032,11 +985,11 @@
  },
  "tetris": {
   "easy": {
-   "rating": 3.5,
+   "rating": 3.7,
    "fc": {
-    "L1": 0.03,
-    "L2": 0.47,
-    "L3": 0.87,
+    "L1": 0,
+    "L2": 0.4,
+    "L3": 0.83,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -1079,11 +1032,11 @@
  },
  "mario": {
   "easy": {
-   "rating": 1.5,
+   "rating": 2.8,
    "fc": {
-    "L1": 0.8,
-    "L2": 0.93,
-    "L3": 0.97,
+    "L1": 0.23,
+    "L2": 0.7,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -1094,18 +1047,18 @@
    ]
   },
   "normal": {
-   "rating": 4.4,
+   "rating": 3.2,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.73,
+    "L1": 0.1,
+    "L2": 0.6,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "left lane"
+    "left lane",
+    "late"
    ]
   },
   "hard": {
@@ -1126,18 +1079,18 @@
  },
  "zelda": {
   "easy": {
-   "rating": 3.3,
+   "rating": 3.5,
    "fc": {
-    "L1": 0.13,
-    "L2": 0.6,
+    "L1": 0.1,
+    "L2": 0.5,
     "L3": 0.77,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "right lane"
+    "left lane",
+    "late"
    ]
   },
   "normal": {
@@ -1173,10 +1126,10 @@
  },
  "pacman": {
   "easy": {
-   "rating": 2.1,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
+    "L1": 0.3,
+    "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
     "L5": 1,
@@ -1188,18 +1141,18 @@
    ]
   },
   "normal": {
-   "rating": 2.8,
+   "rating": 3.4,
    "fc": {
-    "L1": 0.23,
-    "L2": 0.73,
+    "L1": 0.1,
+    "L2": 0.47,
     "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "left lane"
+    "left lane",
+    "late"
    ]
   },
   "hard": {
@@ -1220,9 +1173,9 @@
  },
  "storms": {
   "easy": {
-   "rating": 3,
+   "rating": 3.1,
    "fc": {
-    "L1": 0.23,
+    "L1": 0.17,
     "L2": 0.57,
     "L3": 0.87,
     "L4": 1,
@@ -1230,8 +1183,8 @@
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -1267,17 +1220,18 @@
  },
  "megalovania": {
   "easy": {
-   "rating": 1.8,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.6,
-    "L2": 0.9,
-    "L3": 0.97,
+    "L1": 0.1,
+    "L2": 0.57,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "late"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -1308,6 +1262,382 @@
    "tags": [
     "speed",
     "right lane"
+   ]
+  }
+ },
+ "doom": {
+  "easy": {
+   "rating": 3.8,
+   "fc": {
+    "L1": 0,
+    "L2": 0.3,
+    "L3": 0.87,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 5.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.23,
+    "L4": 0.9,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  },
+  "hard": {
+   "rating": 5.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.23,
+    "L4": 0.9,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  }
+ },
+ "smbunder": {
+  "easy": {
+   "rating": 2.2,
+   "fc": {
+    "L1": 0.4,
+    "L2": 0.83,
+    "L3": 0.97,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 2.7,
+   "fc": {
+    "L1": 0.27,
+    "L2": 0.73,
+    "L3": 0.9,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "right lane"
+   ]
+  }
+ },
+ "marble": {
+  "easy": {
+   "rating": 3.8,
+   "fc": {
+    "L1": 0,
+    "L2": 0.33,
+    "L3": 0.83,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  },
+  "normal": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.27,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  },
+  "hard": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.27,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  }
+ },
+ "ducktales": {
+  "easy": {
+   "rating": 3,
+   "fc": {
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 3.6,
+   "fc": {
+    "L1": 0.03,
+    "L2": 0.4,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "late",
+    "right lane"
+   ]
+  },
+  "hard": {
+   "rating": 4.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.8,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "late"
+   ]
+  }
+ },
+ "vampirekiller": {
+  "easy": {
+   "rating": 3.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0.4,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  },
+  "normal": {
+   "rating": 3.8,
+   "fc": {
+    "L1": 0,
+    "L2": 0.3,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.9,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.5,
+    "L4": 0.93,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "right lane"
+   ]
+  }
+ },
+ "smw": {
+  "easy": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.23,
+    "L3": 0.77,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  },
+  "normal": {
+   "rating": 4.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.63,
+    "L4": 0.93,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  },
+  "hard": {
+   "rating": 4.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.63,
+    "L4": 0.93,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  }
+ },
+ "bubble": {
+  "easy": {
+   "rating": 3.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0.37,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 4.4,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.73,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  },
+  "hard": {
+   "rating": 4.4,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.73,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
+   ]
+  }
+ },
+ "guile": {
+  "easy": {
+   "rating": 2.9,
+   "fc": {
+    "L1": 0.23,
+    "L2": 0.67,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  },
+  "normal": {
+   "rating": 3.1,
+   "fc": {
+    "L1": 0.17,
+    "L2": 0.6,
+    "L3": 0.87,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.3,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "left lane"
    ]
   }
  },
@@ -1407,18 +1737,18 @@
  },
  "nachtmusik": {
   "easy": {
-   "rating": 2.2,
+   "rating": 2.5,
    "fc": {
-    "L1": 0.4,
-    "L2": 0.83,
-    "L3": 0.97,
+    "L1": 0.27,
+    "L2": 0.8,
+    "L3": 0.93,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "right lane",
-    "late"
+    "left lane"
    ]
   },
   "normal": {
@@ -1469,18 +1799,18 @@
    ]
   },
   "normal": {
-   "rating": 2.7,
+   "rating": 3.6,
    "fc": {
-    "L1": 0.27,
-    "L2": 0.73,
-    "L3": 0.9,
+    "L1": 0.1,
+    "L2": 0.33,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "late"
+    "late",
+    "speed"
    ]
   },
   "hard": {
@@ -1500,18 +1830,18 @@
  },
  "nokia": {
   "easy": {
-   "rating": 3.9,
+   "rating": 3.5,
    "fc": {
     "L1": 0,
-    "L2": 0.3,
-    "L3": 0.8,
+    "L2": 0.5,
+    "L3": 0.83,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "left lane"
+    "left lane",
+    "right lane"
    ]
   },
   "normal": {
@@ -1547,30 +1877,33 @@
  },
  "popcorn": {
   "easy": {
-   "rating": 1.5,
+   "rating": 3,
    "fc": {
-    "L1": 0.8,
-    "L2": 0.93,
-    "L3": 0.97,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": []
-  },
-  "normal": {
-   "rating": 1.5,
-   "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
-    "L3": 0.97,
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "left lane",
-    "right lane"
+    "late"
+   ]
+  },
+  "normal": {
+   "rating": 3,
+   "fc": {
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.87,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
    ]
   },
   "hard": {
@@ -1591,17 +1924,17 @@
  },
  "mission": {
   "easy": {
-   "rating": 2.8,
+   "rating": 3.5,
    "fc": {
-    "L1": 0.3,
-    "L2": 0.7,
+    "L1": 0,
+    "L2": 0.5,
     "L3": 0.83,
-    "L4": 0.97,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
+    "left lane",
     "right lane"
    ]
   },
@@ -1638,32 +1971,32 @@
  },
  "bond": {
   "easy": {
-   "rating": 2.1,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.57,
-    "L2": 0.87,
-    "L3": 0.9,
-    "L4": 0.97,
+    "L1": 0.13,
+    "L2": 0.53,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "right lane",
-    "holds"
+    "left lane"
    ]
   },
   "normal": {
-   "rating": 4.3,
+   "rating": 3.4,
    "fc": {
-    "L1": 0,
-    "L2": 0.13,
-    "L3": 0.73,
-    "L4": 0.97,
+    "L1": 0.07,
+    "L2": 0.5,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "right lane",
     "left lane"
    ]
   },
@@ -1685,33 +2018,33 @@
  },
  "starwars": {
   "easy": {
-   "rating": 3.2,
+   "rating": 3.3,
    "fc": {
-    "L1": 0.2,
-    "L2": 0.63,
-    "L3": 0.77,
-    "L4": 0.97,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "holds",
-    "left lane"
-   ]
-  },
-  "normal": {
-   "rating": 3.9,
-   "fc": {
-    "L1": 0,
-    "L2": 0.33,
-    "L3": 0.73,
+    "L1": 0.13,
+    "L2": 0.53,
+    "L3": 0.83,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "holds"
+    "holds",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 2.9,
+   "fc": {
+    "L1": 0.23,
+    "L2": 0.67,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
    ]
   },
   "hard": {
@@ -1732,18 +2065,18 @@
  },
  "indiana": {
   "easy": {
-   "rating": 3,
+   "rating": 3.9,
    "fc": {
-    "L1": 0.2,
-    "L2": 0.6,
-    "L3": 0.9,
+    "L1": 0,
+    "L2": 0.33,
+    "L3": 0.77,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -1779,33 +2112,33 @@
  },
  "simpsons": {
   "easy": {
-   "rating": 3.4,
+   "rating": 3,
    "fc": {
-    "L1": 0,
-    "L2": 0.63,
-    "L3": 0.8,
+    "L1": 0.2,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "left lane",
     "right lane"
    ]
   },
   "normal": {
-   "rating": 4.1,
+   "rating": 3,
    "fc": {
-    "L1": 0,
-    "L2": 0.27,
-    "L3": 0.7,
+    "L1": 0.2,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "left lane"
+    "right lane",
+    "late"
    ]
   },
   "hard": {
@@ -1826,18 +2159,18 @@
  },
  "looney": {
   "easy": {
-   "rating": 2.1,
+   "rating": 3,
    "fc": {
-    "L1": 0.57,
-    "L2": 0.87,
-    "L3": 0.9,
-    "L4": 0.97,
+    "L1": 0.13,
+    "L2": 0.67,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "holds"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -1873,18 +2206,18 @@
  },
  "finalcountdown": {
   "easy": {
-   "rating": 4.1,
+   "rating": 3.4,
    "fc": {
-    "L1": 0,
-    "L2": 0.27,
-    "L3": 0.73,
-    "L4": 0.93,
+    "L1": 0.1,
+    "L2": 0.43,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -1920,31 +2253,33 @@
  },
  "bumblebee": {
   "easy": {
-   "rating": 1.2,
+   "rating": 2.7,
    "fc": {
-    "L1": 0.87,
-    "L2": 1,
-    "L3": 1,
+    "L1": 0.27,
+    "L2": 0.73,
+    "L3": 0.9,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
+    "right lane",
     "late"
    ]
   },
   "normal": {
-   "rating": 1.2,
+   "rating": 3.8,
    "fc": {
-    "L1": 0.87,
-    "L2": 1,
-    "L3": 1,
+    "L1": 0,
+    "L2": 0.37,
+    "L3": 0.77,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "late"
+    "left lane",
+    "right lane"
    ]
   },
   "hard": {
@@ -1962,17 +2297,17 @@
  },
  "dasboot": {
   "easy": {
-   "rating": 3.5,
+   "rating": 3.1,
    "fc": {
-    "L1": 0.07,
-    "L2": 0.47,
+    "L1": 0.17,
+    "L2": 0.63,
     "L3": 0.83,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
+    "left lane",
     "right lane"
    ]
   },
@@ -2009,17 +2344,16 @@
  },
  "macarena": {
   "easy": {
-   "rating": 2.3,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.37,
-    "L2": 0.83,
-    "L3": 0.97,
+    "L1": 0.1,
+    "L2": 0.57,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
     "late"
    ]
   },
@@ -2056,33 +2390,33 @@
  },
  "scatman": {
   "easy": {
-   "rating": 2.4,
+   "rating": 3.6,
    "fc": {
-    "L1": 0.4,
-    "L2": 0.8,
-    "L3": 0.9,
-    "L4": 0.97,
+    "L1": 0,
+    "L2": 0.43,
+    "L3": 0.83,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "late"
+    "late",
+    "left lane"
    ]
   },
   "normal": {
-   "rating": 4.3,
+   "rating": 3.8,
    "fc": {
     "L1": 0,
-    "L2": 0,
-    "L3": 0.87,
-    "L4": 0.97,
+    "L2": 0.3,
+    "L3": 0.83,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "right lane",
-    "speed"
+    "late"
    ]
   },
   "hard": {
@@ -2103,33 +2437,33 @@
  },
  "wannabe": {
   "easy": {
-   "rating": 2.2,
+   "rating": 3,
    "fc": {
-    "L1": 0.43,
-    "L2": 0.83,
-    "L3": 0.93,
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "left lane"
+    "left lane",
+    "right lane"
    ]
   },
   "normal": {
-   "rating": 4.7,
+   "rating": 3.8,
    "fc": {
     "L1": 0,
-    "L2": 0,
-    "L3": 0.6,
-    "L4": 0.97,
+    "L2": 0.3,
+    "L3": 0.83,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "late"
+    "left lane",
+    "right lane"
    ]
   },
   "hard": {
@@ -2197,12 +2531,12 @@
  },
  "eurovision": {
   "easy": {
-   "rating": 4.3,
+   "rating": 4.4,
    "fc": {
     "L1": 0,
-    "L2": 0.23,
-    "L3": 0.63,
-    "L4": 0.93,
+    "L2": 0.13,
+    "L3": 0.67,
+    "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
@@ -2244,18 +2578,18 @@
  },
  "ententanz": {
   "easy": {
-   "rating": 2.1,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
-    "L3": 0.97,
+    "L1": 0.1,
+    "L2": 0.6,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "left lane"
+    "left lane",
+    "right lane"
    ]
   },
   "normal": {
@@ -2291,32 +2625,32 @@
  },
  "toccata": {
   "easy": {
-   "rating": 2.5,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.33,
-    "L2": 0.8,
-    "L3": 0.9,
-    "L4": 0.97,
+    "L1": 0.37,
+    "L2": 0.83,
+    "L3": 0.93,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
-   "rating": 2.9,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.3,
-    "L2": 0.67,
-    "L3": 0.8,
-    "L4": 0.97,
+    "L1": 0.37,
+    "L2": 0.83,
+    "L3": 0.97,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
+    "left lane",
     "right lane"
    ]
   },
@@ -2338,18 +2672,18 @@
  },
  "bolero": {
   "easy": {
-   "rating": 3.7,
+   "rating": 4.2,
    "fc": {
     "L1": 0,
-    "L2": 0.43,
-    "L3": 0.83,
-    "L4": 0.97,
+    "L2": 0.2,
+    "L3": 0.73,
+    "L4": 0.93,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "right lane",
-    "holds"
+    "left lane"
    ]
   },
   "normal": {
@@ -2385,24 +2719,24 @@
  },
  "atb": {
   "easy": {
-   "rating": 3,
+   "rating": 2.7,
    "fc": {
-    "L1": 0.17,
-    "L2": 0.6,
+    "L1": 0.27,
+    "L2": 0.73,
     "L3": 0.9,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "left lane"
+    "left lane",
+    "late"
    ]
   },
   "normal": {
-   "rating": 3.4,
+   "rating": 3.3,
    "fc": {
-    "L1": 0,
+    "L1": 0.07,
     "L2": 0.53,
     "L3": 0.87,
     "L4": 1,
@@ -2410,8 +2744,8 @@
     "L6": 1
    },
    "tags": [
-    "speed",
-    "late"
+    "late",
+    "left lane"
    ]
   },
   "hard": {
@@ -2573,10 +2907,10 @@
  },
  "bella": {
   "easy": {
-   "rating": 2.7,
+   "rating": 2.9,
    "fc": {
-    "L1": 0.27,
-    "L2": 0.73,
+    "L1": 0.23,
+    "L2": 0.67,
     "L3": 0.87,
     "L4": 1,
     "L5": 1,
@@ -2620,18 +2954,18 @@
  },
  "sandstorm": {
   "easy": {
-   "rating": 1.8,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.6,
-    "L2": 0.9,
-    "L3": 0.97,
+    "L1": 0.1,
+    "L2": 0.6,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "late"
    ]
   },
   "normal": {
@@ -2667,10 +3001,10 @@
  },
  "cottoneye": {
   "easy": {
-   "rating": 1.5,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
+    "L1": 0.3,
+    "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
     "L5": 1,
@@ -2682,18 +3016,18 @@
    ]
   },
   "normal": {
-   "rating": 4.7,
+   "rating": 2.7,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.7,
-    "L4": 0.87,
+    "L1": 0.27,
+    "L2": 0.7,
+    "L3": 0.9,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
-    "left lane"
+    "left lane",
+    "late"
    ]
   },
   "hard": {
@@ -2761,18 +3095,18 @@
  },
  "bluedabadee": {
   "easy": {
-   "rating": 3.7,
+   "rating": 3.5,
    "fc": {
     "L1": 0,
-    "L2": 0.4,
+    "L2": 0.47,
     "L3": 0.83,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -2808,26 +3142,26 @@
  },
  "mambo5": {
   "easy": {
-   "rating": 2.1,
+   "rating": 3.2,
    "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
-    "L3": 0.97,
+    "L1": 0.1,
+    "L2": 0.57,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "left lane",
-    "right lane"
+    "late"
    ]
   },
   "normal": {
-   "rating": 3.5,
+   "rating": 3.7,
    "fc": {
     "L1": 0,
-    "L2": 0.47,
-    "L3": 0.83,
+    "L2": 0.43,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -2901,18 +3235,18 @@
  },
  "boomboom": {
   "easy": {
-   "rating": 3.2,
+   "rating": 3.8,
    "fc": {
-    "L1": 0.13,
-    "L2": 0.53,
-    "L3": 0.87,
+    "L1": 0,
+    "L2": 0.33,
+    "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "left lane",
-    "holds"
+    "right lane"
    ]
   },
   "normal": {
@@ -2948,10 +3282,10 @@
  },
  "dragostea": {
   "easy": {
-   "rating": 3.9,
+   "rating": 3.7,
    "fc": {
     "L1": 0,
-    "L2": 0.3,
+    "L2": 0.43,
     "L3": 0.8,
     "L4": 1,
     "L5": 1,
@@ -2959,7 +3293,7 @@
    },
    "tags": [
     "left lane",
-    "speed"
+    "right lane"
    ]
   },
   "normal": {
@@ -2995,17 +3329,17 @@
  },
  "rhythmnight": {
   "easy": {
-   "rating": 3,
+   "rating": 3.1,
    "fc": {
-    "L1": 0.23,
-    "L2": 0.63,
-    "L3": 0.83,
+    "L1": 0.13,
+    "L2": 0.57,
+    "L3": 0.9,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
+    "right lane",
     "left lane"
    ]
   },
@@ -3020,8 +3354,8 @@
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "holds"
+    "left lane",
+    "right lane"
    ]
   },
   "hard": {
@@ -3042,18 +3376,18 @@
  },
  "lambada": {
   "easy": {
-   "rating": 4,
+   "rating": 4.2,
    "fc": {
     "L1": 0,
-    "L2": 0.23,
-    "L3": 0.8,
-    "L4": 0.97,
+    "L2": 0.2,
+    "L3": 0.73,
+    "L4": 0.93,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "right lane",
-    "holds"
+    "left lane",
+    "right lane"
    ]
   },
   "normal": {
@@ -3089,31 +3423,32 @@
  },
  "thesign": {
   "easy": {
-   "rating": 1.8,
+   "rating": 2.3,
    "fc": {
-    "L1": 0.6,
-    "L2": 0.9,
+    "L1": 0.33,
+    "L2": 0.83,
     "L3": 0.97,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
+    "left lane",
     "late"
    ]
   },
   "normal": {
-   "rating": 4.2,
+   "rating": 2.5,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.87,
+    "L1": 0.27,
+    "L2": 0.8,
+    "L3": 0.93,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "right lane",
     "left lane"
    ]
   },
@@ -3135,18 +3470,18 @@
  },
  "luftballons": {
   "easy": {
-   "rating": 1.5,
+   "rating": 3,
    "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
-    "L3": 0.97,
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -3182,12 +3517,12 @@
  },
  "majortom": {
   "easy": {
-   "rating": 4.6,
+   "rating": 4.4,
    "fc": {
     "L1": 0,
-    "L2": 0.07,
-    "L3": 0.57,
-    "L4": 0.97,
+    "L2": 0.13,
+    "L3": 0.63,
+    "L4": 0.93,
     "L5": 1,
     "L6": 1
    },
@@ -3229,17 +3564,17 @@
  },
  "amadeus": {
   "easy": {
-   "rating": 3.7,
+   "rating": 3.9,
    "fc": {
-    "L1": 0.03,
-    "L2": 0.4,
+    "L1": 0,
+    "L2": 0.3,
     "L3": 0.8,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
+    "late",
     "right lane"
    ]
   },
@@ -3276,32 +3611,32 @@
  },
  "foreveryoung": {
   "easy": {
-   "rating": 1.5,
+   "rating": 2.8,
    "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
-    "L3": 0.97,
+    "L1": 0.23,
+    "L2": 0.73,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
     "right lane",
-    "left lane"
+    "late"
    ]
   },
   "normal": {
-   "rating": 4.6,
+   "rating": 3,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.63,
-    "L4": 0.97,
+    "L1": 0.17,
+    "L2": 0.67,
+    "L3": 0.87,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "right lane",
     "late"
    ]
   },
@@ -3370,18 +3705,18 @@
  },
  "tourdefrance": {
   "easy": {
-   "rating": 3.7,
+   "rating": 3.2,
    "fc": {
-    "L1": 0,
-    "L2": 0.4,
-    "L3": 0.8,
+    "L1": 0.13,
+    "L2": 0.57,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "left lane",
-    "right lane"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
@@ -3412,6 +3747,288 @@
    "tags": [
     "left lane",
     "right lane"
+   ]
+  }
+ },
+ "sweetdreams": {
+  "easy": {
+   "rating": 4.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.6,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "holds",
+    "left lane"
+   ]
+  },
+  "normal": {
+   "rating": 4.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.6,
+    "L4": 0.93,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  },
+  "hard": {
+   "rating": 4.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.6,
+    "L4": 0.93,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  }
+ },
+ "bluemonday": {
+  "easy": {
+   "rating": 3.7,
+   "fc": {
+    "L1": 0,
+    "L2": 0.4,
+    "L3": 0.83,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.23,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.2,
+   "fc": {
+    "L1": 0,
+    "L2": 0.17,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  }
+ },
+ "jeanny": {
+  "easy": {
+   "rating": 3.9,
+   "fc": {
+    "L1": 0,
+    "L2": 0.23,
+    "L3": 0.83,
+    "L4": 0.97,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "left lane"
+   ]
+  },
+  "normal": {
+   "rating": 4.1,
+   "fc": {
+    "L1": 0,
+    "L2": 0.2,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.1,
+   "fc": {
+    "L1": 0,
+    "L2": 0.2,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  }
+ },
+ "roboter": {
+  "easy": {
+   "rating": 2.1,
+   "fc": {
+    "L1": 0.43,
+    "L2": 0.87,
+    "L3": 0.97,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 2.3,
+   "fc": {
+    "L1": 0.33,
+    "L2": 0.83,
+    "L3": 0.97,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 2.8,
+   "fc": {
+    "L1": 0,
+    "L2": 0.83,
+    "L3": 0.97,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "speed"
+   ]
+  }
+ },
+ "neonlights": {
+  "easy": {
+   "rating": 2.5,
+   "fc": {
+    "L1": 0.27,
+    "L2": 0.8,
+    "L3": 0.93,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 2.5,
+   "fc": {
+    "L1": 0.27,
+    "L2": 0.8,
+    "L3": 0.93,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "left lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4.4,
+   "fc": {
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.73,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "speed",
+    "late"
+   ]
+  }
+ },
+ "riddle": {
+  "easy": {
+   "rating": 3.2,
+   "fc": {
+    "L1": 0.1,
+    "L2": 0.57,
+    "L3": 0.87,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "late",
+    "right lane"
+   ]
+  },
+  "normal": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.27,
+    "L3": 0.77,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
+   ]
+  },
+  "hard": {
+   "rating": 4,
+   "fc": {
+    "L1": 0,
+    "L2": 0.27,
+    "L3": 0.77,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "right lane",
+    "late"
    ]
   }
  },
@@ -3464,18 +4081,18 @@
  },
  "biene": {
   "easy": {
-   "rating": 4.2,
+   "rating": 4,
    "fc": {
     "L1": 0,
     "L2": 0.27,
-    "L3": 0.67,
-    "L4": 0.93,
+    "L3": 0.73,
+    "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "left lane"
+    "right lane",
+    "holds"
    ]
   },
   "normal": {
@@ -3511,33 +4128,33 @@
  },
  "smurfs": {
   "easy": {
-   "rating": 1.5,
+   "rating": 2.8,
    "fc": {
-    "L1": 0.77,
-    "L2": 0.93,
-    "L3": 0.97,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "left lane",
-    "right lane"
-   ]
-  },
-  "normal": {
-   "rating": 3.6,
-   "fc": {
-    "L1": 0,
-    "L2": 0.43,
+    "L1": 0.23,
+    "L2": 0.7,
     "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "left lane",
     "late"
+   ]
+  },
+  "normal": {
+   "rating": 2.8,
+   "fc": {
+    "L1": 0.23,
+    "L2": 0.7,
+    "L3": 0.87,
+    "L4": 1,
+    "L5": 1,
+    "L6": 1
+   },
+   "tags": [
+    "late",
+    "right lane"
    ]
   },
   "hard": {
@@ -3558,11 +4175,11 @@
  },
  "dancingqueen": {
   "easy": {
-   "rating": 2.1,
+   "rating": 3,
    "fc": {
-    "L1": 0.47,
-    "L2": 0.87,
-    "L3": 0.97,
+    "L1": 0.13,
+    "L2": 0.67,
+    "L3": 0.87,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -3605,16 +4222,17 @@
  },
  "waterloo": {
   "easy": {
-   "rating": 1.2,
+   "rating": 2.7,
    "fc": {
-    "L1": 0.87,
-    "L2": 1,
-    "L3": 1,
+    "L1": 0.27,
+    "L2": 0.73,
+    "L3": 0.9,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
+    "right lane",
     "late"
    ]
   },
@@ -3698,18 +4316,18 @@
  },
  "africa": {
   "easy": {
-   "rating": 3.5,
+   "rating": 4,
    "fc": {
-    "L1": 0.13,
-    "L2": 0.5,
-    "L3": 0.77,
+    "L1": 0,
+    "L2": 0.27,
+    "L3": 0.73,
     "L4": 0.97,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "holds",
-    "left lane"
+    "right lane",
+    "holds"
    ]
   },
   "normal": {
@@ -3745,31 +4363,32 @@
  },
  "joyride": {
   "easy": {
-   "rating": 1.2,
+   "rating": 2.1,
    "fc": {
-    "L1": 0.87,
-    "L2": 1,
-    "L3": 1,
+    "L1": 0.47,
+    "L2": 0.87,
+    "L3": 0.97,
     "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "late"
+    "right lane",
+    "left lane"
    ]
   },
   "normal": {
-   "rating": 4.4,
+   "rating": 2.2,
    "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.77,
-    "L4": 0.97,
+    "L1": 0.4,
+    "L2": 0.83,
+    "L3": 0.97,
+    "L4": 1,
     "L5": 1,
     "L6": 1
    },
    "tags": [
-    "speed",
+    "left lane",
     "right lane"
    ]
   },
@@ -3885,11 +4504,11 @@
  },
  "elise-full": {
   "easy": {
-   "rating": 2.9,
+   "rating": 4.6,
    "fc": {
-    "L1": 0.23,
-    "L2": 0.67,
-    "L3": 0.87,
+    "L1": 0,
+    "L2": 0,
+    "L3": 0.63,
     "L4": 1,
     "L5": 1,
     "L6": 1
@@ -4256,53 +4875,6 @@
    "tags": [
     "holds",
     "right lane"
-   ]
-  }
- },
- "sprint-long": {
-  "easy": {
-   "rating": 1.8,
-   "fc": {
-    "L1": 0.67,
-    "L2": 0.9,
-    "L3": 0.93,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "right lane",
-    "left lane"
-   ]
-  },
-  "normal": {
-   "rating": 4.9,
-   "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0.37,
-    "L4": 1,
-    "L5": 1,
-    "L6": 1
-   },
-   "tags": [
-    "left lane",
-    "late"
-   ]
-  },
-  "hard": {
-   "rating": 7.1,
-   "fc": {
-    "L1": 0,
-    "L2": 0,
-    "L3": 0,
-    "L4": 0.07,
-    "L5": 0.9,
-    "L6": 1
-   },
-   "tags": [
-    "left lane",
-    "speed"
    ]
   }
  }

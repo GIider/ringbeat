@@ -1,4 +1,4 @@
-// Built-in songs: classical and folk melodies, well-known themes and hits, plus the original "Scale Sprint" stress test (filed under Video Games), as RTTTL.
+// Built-in songs: classical and folk melodies, well-known themes and hits, as RTTTL.
 // Pop/TV/film themes belong to their respective rights holders; these are short fan transcriptions for a rhythm game.
 // `category` groups songs in the song-select tabs (see CATEGORIES); `tag` is a short composer/game/artist label.
 export const CATEGORIES = [
@@ -25,7 +25,6 @@ export const SONGS = [
   { id: 'turkish', category: 'classical', title: 'Turkish March', tag: 'Mozart', rtttl: 'Turkish March:d=16,o=5,b=140:b,a,g#,a,4c6,d6,c6,b,c6,4e6,f6,e6,d#6,e6,b6,a6,g#6,a6,b6,a6,g#6,a6,4c7,8a6,4c7' },
   { id: 'elise', category: 'classical', title: 'Fur Elise', tag: 'Beethoven', rtttl: 'Fur Elise:d=16,o=6,b=130:e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,g#5,b5,8c6,p,e5,e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,c6,b5,4a5' },
   { id: 'mountain', category: 'classical', title: 'Mountain King', tag: 'Grieg', rtttl: 'Mountain King:d=8,o=5,b=150:e,f#,g,a,b,g,4b,a#,f#,4a#,a,e,4a,e,f#,g,a,b,g,b,e6,d6,b,g,b,4d6' },
-  { id: 'sprint', category: 'videogame', title: 'Scale Sprint', tag: 'Original', rtttl: 'Scale Sprint:d=16,o=5,b=160:c,d,e,f,g,a,b,c6,d6,e6,f6,g6,8e6,8c6,8g,8e,g,a,b,c6,b,a,g,f,e,d,c,d,e,8g,8c6,d6,c6,b,a,g,f,e,d,8c,8e,8g,8c6,4e6,8d6,8b,8g,8d,4c' },
   { id: 'cancan', category: 'classical', title: 'Can-Can', tag: 'Offenbach', rtttl: 'Can-Can:d=8,o=5,b=150:4c6,4g,4g,4a,4g,4p,4c6,4g,4g,4a,4g,4p,4c6,4g,4a,4b,2c6,4g,4g,4f,4e,2c' },
   { id: 'smoke', category: 'pop', title: 'Smoke on the Water', tag: 'Deep Purple', rtttl: 'Smoke:d=4,o=4,b=112:8e,8g,4a,8e,8g,4a#,4a,8e,8g,4a,4g,2e' },
   { id: 'seven', category: 'pop', title: 'Seven Nation Army', tag: 'The White Stripes', rtttl: 'Seven Nation:d=8,o=5,b=124:4e.,e,4g,e,4d,c,2b4,p,4e.,e,4g,e,4d,c,2b4' },
@@ -41,10 +40,12 @@ export const SONGS = [
   { id: 'megalovania', category: 'videogame', title: 'Megalovania', tag: 'Undertale', rtttl: 'Megalovania:d=16,o=5,b=120:d,d,8d6,8a,4p,g#,8p,8g,8f,d,f,g,c,c,8d6,8a,4p,g#,8p,8g,8f,d,f,g,b4,b4,8d6,8a,4p,g#,8p,8g,8f,d,f,g,a#4,a#4,8d6,8a,4p,g#,8p,8g,8f,d,f,g' },
   { id: 'doom', category: 'videogame', title: 'At Doom\'s Gate', tag: 'Doom', rtttl: 'doom:d=4,o=5,b=112:16e4,16e4,16e,16e4,16e4,16d,16e4,16e4,16c,16e4,16e4,16a#4,16e4,16e4,16b4,16c,16e4,16e4,16e,16e4,16e4,16d,16e4,16e4,16c,16e4,16e4,a#4,16p,16e4,16e4,16e,16e4,16e4,16d,16e4,16e4,16c,16e4,16e4,16a#4,16e4,16e4,16b4,16c,16e4,16e4,16e,16e4,16e4,16d,16e4,16e4,16c,16e4,16e4,a#4,16p,16a4,16a4,16a,16a4,16a4,16g,16a4,16a4,16f,16a4,16a4,16d#,16a4,16a4,16e,16f,16a4,16a4,16a,16a4,16a4,16g,16a4,16a4,16f,16a4,16a4,d#' },
   { id: 'smbunder', category: 'videogame', title: 'Super Mario Underground', tag: 'Super Mario Bros.', rtttl: 'smb_under:d=4,o=6,b=100:32c,32p,32c7,32p,32a5,32p,32a,32p,32a#5,32p,32a#,2p,32c,32p,32c7,32p,32a5,32p,32a,32p,32a#5,32p,32a#,2p,32f5,32p,32f,32p,32d5,32p,32d,32p,32d#5,32p,32d#,2p,32f5,32p,32f,32p,32d5,32p,32d,32p,32d#5,32p,32d#' },
-  { id: 'pokemon', category: 'videogame', title: 'Pokemon Theme', tag: 'Pokemon', rtttl: 'Pokemon:d=16,o=5,b=112:32p,f,a#,c6,c#6,c6,c#6,d#6,2f6,a#,c6,8c#6,8f6,8d#6,32c#.6,32d#.6,32c#.6,8c6,8g#.,f,a#,c6,c#6,c6,c#6,d#6,2f6,8a#,c#6,8f6,a,d#6,4g#6' },
   { id: 'marble', category: 'videogame', title: 'Marble Zone', tag: 'Sonic the Hedgehog', rtttl: 'Marblezo:d=4,o=6,b=125:8a5,8b5,8c5,8d5,8b5,8p,8b5,8a5,8b5,8p,8b5,8a5,8b5,8a5,8a5,8c5,g5,8a5,1f.5,8a5,8p,8a5,8g5,8a5,8p,8a5,8g5,a5,b5,f.5,1e5,8a5,8b5,8c5,8d5,8b5,8p,8b5,8a5,8b5,8p,8b5' },
   { id: 'ducktales', category: 'videogame', title: 'DuckTales Moon', tag: 'DuckTales', rtttl: 'ducktales:d=4,o=5,b=112:8e6,8e6,16p,16g6,8b6,g#6,p,8e6,8d6,8c6,8d6,8e6,8d6,8c6,8d6,8e6,8e6,16p,16g6,8b6,g#6,p,8e6,8d6,8c6,8d6,8e6,8d6,8c6,8g6,8e6,8e6' },
   { id: 'vampirekiller', category: 'videogame', title: 'Vampire Killer', tag: 'Castlevania', rtttl: 'cv_vk:d=4,o=5,b=100:8d5,32P,8a5,32P,32g#5,32P,32a5,32P,32g#5,32P,8f5,8P,32f6,32P,32d6,8P,32f5,32P,32d5,32P,32f6,8P,32f6,8P,32f6,8P,8d5,32P,8a5,32P,32g#5,32P,32a5,32P,32g#5,32P,32f5,4P,32f6,32P,32d6,8P,32f5,32P,32d5,32P,32f7,32P,32c7,32P,32g#6,32P,32f6,32P,32f5,32P,32d6,32P,32f6,32P,32g#6,32P,8c#5,32P,8e5,32P,16a#5,32P,8a5,32P,8f5,32P,16d5,32P,8c#5,32P,8e5,32P,16a#5,32P,16a5,32P,32d5,4P,8c#5,32P,8e5,32P,16a#5,32P,8a5,32P,8f5,32P,16d5,32P,8e5,32P,8g5,32P,16a#5,32P,8a5,32P,8b5,32P,16c#6,32P,32d6,32P,32d6,32P,32d5,32P,4d5' },
+  { id: 'smw', category: 'videogame', title: 'Super Mario World', tag: 'Super Mario World', rtttl: 'smwwd1:d=4,o=5,b=125:a,8f.,16c,16d,16f,16p,f,16d,16c,16p,16f,16p,16f,16p,8c6,8a.,g,16c,a,8f.,16c,16d,16f,16p,f,16d,16c,16p,16f,16p,16a#,16a,16g,2f,16p,8a.,8f.,8c,8a.,f,16g#,16f,16c,16p,8g#.,2g,8a.,8f.,8c,8a.,f,16g#,16f,8c,2c6' },
+  { id: 'bubble', category: 'videogame', title: 'Bubble Bobble', tag: 'Bubble Bobble', rtttl: 'Bubble Bobble:d=4,o=5,b=125:8a#6,8a6,8g.6,16f6,8a6,8g6,8f6,8d#6,8g6,8f6,16d#6,8d.6,f.6,16d6,16c6,8a#,8c6,8d6,8d#6,8c6,16d6,8d#.6,8f6,8f6,8g6,16a6,8g.6,8f6,8f6,8g6,8a6,8a#6,8a6,8g.6,16f6,8a6,8g6,8f6,8d#6,8g6,8f6,16d#6,8d.6,f.6,16d6,16c6,8a#,8c6,8d6,8d#6,8c6,16d6,8d#.6,8f6,8f6,8g6,16a6,8f.6,8a#.6' },
+  { id: 'guile', category: 'videogame', title: 'Guile Stage', tag: 'Street Fighter II', rtttl: 'Guile:d=4,o=5,b=125:8c#6,16c#6,8b,16b,2c#6,16c#6,8b,8c#6,16c#6,8b,16b,2c#6,16c#6,8b,16c#6,8b,8c#6,8b,8f#6,16f#6,8e6,8d#6,8b' },
   { id: 'canon', category: 'classical', title: 'Canon in D', tag: 'Pachelbel', rtttl: 'Canon:d=4,o=5,b=100:2f#,2e,2d,2c#,2b4,2a4,2b4,2c#,8d,8f#,8a,8a,8g,8b,8a,8f#,8d,8d,8f#,8a,8a,8b,8c#6,8a,2f#,2e,2d' },
   { id: 'moonlight', category: 'classical', title: 'Moonlight Sonata', tag: 'Beethoven', rtttl: 'Moonlight:d=8,o=4,b=66:g#,c#5,e5,g#,c#5,e5,g#,c#5,e5,g#,c#5,e5,a,c#5,e5,a,c#5,e5,f#,a,c#5,f#,a,c#5,g#,b,d#5,g#,b,d#5' },
   { id: 'nachtmusik', category: 'classical', title: 'Eine kleine Nachtmusik', tag: 'Mozart', rtttl: 'Nachtmusik:d=8,o=5,b=140:g,4p,d,4p,g,4p,d,4p,g,d,g,b,4d6,4p,c6,4p,a,c6,a,f#,4d,4p' },
@@ -177,11 +178,6 @@ const GRACE_V = '8d,g.,8b,g,b,2a,8g,2e,8d,8d,g.,8b,g,b,2a,d6.,8b,d6,b,g,2d,8d,g.
 const LULLABY_A = 'e,e,2g,e,e,2g,e,g,c6,b,a,a,2g,d,e,f,d,d,e,f,d,f,b,a,g,c6,2c6';
 const LULLABY_B = 'e,g,c6,b,a,a,g,e,g,c6,b,a,a,g,e,g,c6,b,c6,d6,2c6,d,e,f,d,f,b,a,g,c6,2c6';
 
-const SPRINT_INTRO = 'c,d,e,f,g,a,b,c6,d6,e6,f6,g6,8e6,8c6,8g,8e,g,a,b,c6,b,a,g,f,e,d,c,d,e,8g,8c6,d6,c6,b,a,g,f,e,d,8c,8e,8g,8c6,4e6,8d6,8b,8g,8d,4c,4p';
-const SPRINT_VERSE = '8c,8e,8g,8e,8c,8e,8g,8e,8d,8f,8a,8f,8d,8f,8a,8f,8e,8g,8b,8g,8e,8g,8b,8g,8f,8a,8c6,8a,8g,8b,8d6,8b,4p';
-const SPRINT_CHORUS = 'c6,e6,g6,e6,c6,e6,g6,e6,d6,f6,a6,f6,d6,f6,a6,f6,e6,g6,c7,g6,e6,g6,c7,g6,8d7,8b6,8g6,8d6,4c7,4p';
-const SPRINT_BRIDGE = 'a,c6,e6,c6,a,c6,e6,c6,g,b,d6,b,g,b,d6,b,f,a,c6,a,f,a,c6,a,8g,8b,8d6,8g6,4g6,4p';
-const SPRINT_OUTRO = 'c,d,e,f,g,a,b,c6,d6,e6,f6,g6,a6,b6,c7,b6,a6,g6,f6,e6,d6,c6,b,a,g,f,e,d,2c';
 
 export const FULL_SONGS = [
   { id: 'ode-full', category: 'classical', title: 'Ode to Joy (Full)', tag: 'Beethoven',
@@ -204,7 +200,5 @@ export const FULL_SONGS = [
     rtttl: rt('Grace Full', 4, 5, 90, GRACE_V, GRACE_V, [GRACE_V, 2], [GRACE_V, 12, 1], '1g') },
   { id: 'lullaby-full', category: 'classical', title: 'Lullaby (Full)', tag: 'Brahms',
     rtttl: rt('Lullaby Full', 4, 5, 110, LULLABY_A, LULLABY_B, [LULLABY_A, 0, 2], [LULLABY_B, 12], [LULLABY_A, 12], '1c6') },
-  { id: 'sprint-long', category: 'videogame', title: 'Scale Sprint: Marathon', tag: 'Original',
-    rtttl: rt('Sprint Marathon', 16, 5, 150, SPRINT_INTRO, SPRINT_VERSE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_BRIDGE, SPRINT_VERSE, [SPRINT_CHORUS, 2], [SPRINT_CHORUS, 2], SPRINT_BRIDGE, SPRINT_BRIDGE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_OUTRO) },
 ];
 SONGS.push(...FULL_SONGS);
