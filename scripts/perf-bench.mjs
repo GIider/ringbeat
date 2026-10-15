@@ -37,9 +37,10 @@ const { Synth } = await import('../src/synth.js');
 
 // Counts audio-graph nodes created per playNote (fake context).
 let audioNodes = 0;
-const node = () => { audioNodes++; return { connect: n => n, disconnect() {}, start() {}, stop() {}, gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {}, value: 0 }, frequency: {}, detune: {} }; };
+const node = () => { audioNodes++; return { connect: n => n, disconnect() {}, start() {}, stop() {}, gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {}, value: 0 }, frequency: {}, detune: {}, Q: {} }; };
 const fakeCtx = { currentTime: 0, createOscillator: node, createGain: node, createBiquadFilter: node };
-const synthFx = new Synth(); synthFx.ctx = fakeCtx; synthFx.bus = node();
+const synthFx = new Synth(); synthFx.ctx = fakeCtx; synthFx.bus = node(); synthFx.voice = 'smooth';
+const buzzFx = new Synth(); buzzFx.ctx = fakeCtx; buzzFx.bus = node(); buzzFx.voice = 'buzzer';
 
 function renderFixture() {
   const r = new Renderer(canvas);
@@ -66,6 +67,7 @@ const cases = [
   ['render.draw (1 frame)', () => { rf.r.draw(rf.g, rf.t); }],
   ['render.drawIdle (settled)', () => { rf.r.drawIdle(); }],
   ['synth.playNote x8 (plain)', () => { for (let i = 0; i < 8; i++) synthFx.playNote({ midi: 60 + i, when: 0, duration: 0.2 }); }],
+  ['synth.playNote x8 (buzzer)', () => { for (let i = 0; i < 8; i++) buzzFx.playNote({ midi: 60 + i, when: 0, duration: 0.2 }); }],
 ];
 
 // ---- harness ----

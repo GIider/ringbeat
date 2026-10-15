@@ -5,11 +5,13 @@ const freqOf = m => FREQ[m] || 440 * 2 ** ((m - 69) / 12);
 const disconnectAll = function () { for (const n of this) { try { n.disconnect(); } catch {} } };
 
 const ATTACK = 0.005, DECAY = 0.06, SUSTAIN = 0.5, RELEASE = 0.08, PEAK = 0.22;
+const BUZZ = 0.13; // buzzer level: a bare square is loud, keep it near the smooth voice's sustain
 
 export class Synth {
   constructor() {
     this.ctx = null;
     this.volume = 0.7;
+    this.voice = 'buzzer'; // 'buzzer' (phone piezo) | 'smooth' (two detuned squares with a soft envelope)
   }
 
   // Call from a user gesture. Creates the context once, and resumes it if suspended.
@@ -62,7 +64,66 @@ export class Synth {
 
   // Instrument voice. Auto-ends at when+duration; release() can cut it earlier (hold notes).
   // Omit duration (Infinity) to sustain until release().
-  playNote({ midi, when, duration = Infinity, releasable = false }) {
+  playNote(opts) {
+    return this.voice === 'buzzer' ? this._buzz(opts) : this._smooth(opts);
+  }
+
+  // Piezo buzzer: one square wave, hard on/off, band-limited and peaked around the piezo's resonance.
+  _buzz({ midi, when, duration = Infinity }) {
+    const ctx = this.ctx;
+    const t = Math.max(when, ctx.currentTime);
+    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = freqOf(midi);
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 320;
+    const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 3000; pk.Q.value = 1.2; pk.gain.value = 6;
+    const env = ctx.createGain();
+    o.connect(hp).connect(pk).connect(env).connect(this.bus);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(BUZZ, t + 0.002);
+    o.start(t);
+    this._cleanup(o, [o, hp, pk, env]);
+    let ended = false;
+    const end = at => {
+      at = Math.max(at, t + 0.004);
+      env.gain.cancelScheduledValues(at);
+      env.gain.setValueAtTime(BUZZ, at);
+      env.gain.linearRampToValueAtTime(0, at + 0.008);
+      try { o.stop(at + 0.02); } catch {}
+    };
+    if (Number.isFinite(duration)) end(t + Math.max(0.01, duration - 0.008)); // tiny gap so repeated notes re-articulate
+    return {
+      release(at = ctx.currentTime) {
+        if (ended) return;
+        ended = true;
+        if (Number.isFinite(duration)) at = Math.min(at, t + duration);
+        end(at);
+      },
+    };
+  }
+
+  // Menu key beep.
+  keyClick() {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 1760;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05, t + 0.002);
+    g.gain.setValueAtTime(0.05, t + 0.025);
+    g.gain.linearRampToValueAtTime(0, t + 0.03);
+    o.connect(g).connect(this.bus);
+    o.start(t); o.stop(t + 0.04);
+    this._cleanup(o, [o, g]);
+  }
+
+  // Short power-on melody.
+  jingle() {
+    const ctx = this.ensure(), t0 = ctx.currentTime + 0.05;
+    [[72, 0, 0.1], [76, 0.11, 0.1], [79, 0.22, 0.1], [84, 0.33, 0.28]].forEach(([midi, at, d]) =>
+      this.playNote({ midi, when: t0 + at, duration: d }));
+  }
+
+  _smooth({ midi, when, duration = Infinity, releasable = false }) {
     const ctx = this.ctx;
     const t = Math.max(when, ctx.currentTime);
     const freq = freqOf(midi);

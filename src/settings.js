@@ -12,6 +12,7 @@ function load() {
 const raw = load();
 export const settings = {
   volume: num(raw.volume, 0, 1, 0.7),
+  voice: raw.voice === 'smooth' ? 'smooth' : 'buzzer',
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
   backing: raw.backing !== false,
   preview: raw.preview !== false,

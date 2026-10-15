@@ -1,7 +1,10 @@
 # Ringbeat
 
-A browser rhythm game whose charts are generated automatically from RTTTL (Nokia ringtone) text.
-All sound is synthesized with the Web Audio API. No assets, no dependencies, no build step.
+A browser rhythm game whose charts are generated automatically from RTTTL (Nokia ringtone) text, dressed up as a
+late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the phone steps aside so the
+highway can run next to its "now playing" screen.
+All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). No dependencies, no build step;
+the few assets (pixel font, phone artwork) are made in-repo — see below.
 
 ## Run
 
@@ -11,19 +14,36 @@ ES modules need an HTTP server (opening `index.html` via `file://` won't work). 
 npm start            # http://localhost:8000 (also prints LAN URLs)
 npm start -- 9000    # custom port (or PORT=9000 npm start)
 npm run bench        # re-measure song difficulty with bots -> src/difficulty.json
+npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in src/pixelfont.js
 ```
 
-Tests: `npm test` (node), plus `tests/rtttl.test.html` and `tests/smoke.html` in a browser (title shows PASS/FAIL).
+Screenshot states for development: `index.html?demo=play` (also `pause`, `select`, `options`, `info`, `results`,
+`settings`) loads the Nokia Tune and freezes a frame at ~10 %.
+
+Tests: `npm test` (node: core logic, font builder, sprites), plus `tests/rtttl.test.html` and `tests/smoke.html` in a
+browser (title shows PASS/FAIL).
 
 ## Features
 
 Song select with 53 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
 full combo / all perfect indicators · training mode (speed 50–150 %, A–B loop, timing display) ·
-keyboard, touch and gamepad (rebindable) · latency calibration.
+keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·
+buzzer or smooth instrument voice.
+
+## Assets
+
+Everything visual is made here, no external fonts or images:
+
+- `src/pixelfont.js` — hand-drawn 5×7 LCD font (ASCII + UI symbols). `scripts/build-font.mjs` compiles it to
+  TrueType (`assets/fonts/rb-pixel.ttf` + a bold cut); text is crisp at multiples of 10 px.
+- `assets/phone.svg`, `assets/phone-side.svg` — the phone shells; the LCD and key hit areas are DOM laid over them.
+- `src/pixelart.js` — 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
+- `src/cover.js` — per-song 72×28 "picture message" art, generated from the song id.
 
 ## Controls
 
 `D F J K` (4 lanes) · `F J K` (easy) · tap lanes on touch · gamepad d-pad/face buttons/shoulders · `Esc` pause · `R` restart.
+Menus: arrows, `Enter`, `Esc`/`Backspace`, `O` options — or click the phone's soft keys and keypad.
 Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.md). Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## RTTTL format notes

@@ -1,5 +1,6 @@
 // Bootstrap, screen state machine, wiring.
-// States: title -> select <-> (custom | settings <-> calibration | training) -> countin -> playing <-> paused -> results -> select
+// States: title -> select <-> (options | info | custom | settings <-> calibration | training) -> countin -> playing <-> paused -> results -> select
+// Every menu is a <section> inside the phone's LCD; during play the phone moves aside and shows "now playing".
 
 import { generateChart } from './chart.js';
 import { sliceChart, scaleChart } from './practice.js';
@@ -17,7 +18,8 @@ import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
 import * as nav from './nav.js';
-import { coverURL } from './cover.js';
+import { coverRows } from './cover.js';
+import { SPRITES, spriteHTML, setSprite, signal, battery, ringing } from './pixelart.js';
 import { perf } from './perf.js';
 import { createHud, copyReport } from './perfhud.js';
 
@@ -26,10 +28,18 @@ const $ = id => document.getElementById(id);
 // ---- core objects ----
 const synth = new Synth();
 synth.volume = settings.volume;
+synth.voice = settings.voice;
 const game = new Game(synth);
 const renderer = new Renderer($('stage'));
 renderer.scrollTime = settings.scrollTime;
-game.fx = renderer.fx;
+// Rolling quality of the last judgements drives the phones' signal bars.
+const QUALITY = { perfect: 1, great: 0.8, good: 0.5, miss: 0 };
+const recent = new Float32Array(16);
+let recentN = 0;
+game.fx = {
+  press: renderer.fx.press,
+  judge: (lane, j) => { renderer.fx.judge(lane, j); recent[recentN++ % recent.length] = QUALITY[j]; },
+};
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
 input.onPress = (lane, t) => { lastDevice = 'kbd'; game.press(lane, t); };
 input.onRelease = (lane, t) => game.release(lane, t);
@@ -41,21 +51,53 @@ const pad = new Pad();
 let state = 'title';
 let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
-  title: $('title'), select: $('select'), custom: $('custom'), settings: $('settings'),
-  training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'), calibration: $('calib'),
+  title: $('title'), select: $('select'), options: $('options'), info: $('song-info'), custom: $('custom'),
+  settings: $('settings'), training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
+  calibration: $('calib'), nowplaying: $('nowplaying'),
 };
+const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
 function show(name) {
+  name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
-  $('btn-pause').hidden = !(state === 'countin' || state === 'playing' || state === 'resuming');
-  if (name !== 'select' && name !== 'custom') stopPreview();
-  $('tut-caption').hidden = !(run && run.tutorial && (state === 'countin' || state === 'playing' || state === 'resuming' || state === 'paused'));
+  $('btn-pause').hidden = !inPlay();
+  if (name !== 'select' && name !== 'custom' && name !== 'options' && name !== 'info') stopPreview();
+  const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
+  $('tut-caption').hidden = !tut;
+  $('np-caption').hidden = !tut;
   const el = screens[name];
-  if (el) requestAnimationFrame(() => { if (!el.contains(document.activeElement)) focusDefault(el); });
+  if (el) {
+    refreshChrome(el);
+    paintRanges(el);
+    if (inPlay()) { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }
+    else requestAnimationFrame(() => { if (!el.contains(document.activeElement)) focusDefault(el); });
+  }
+  setMode();
 }
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
+// Status bar title + soft-key labels come from the visible screen's data attributes.
+function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
+  if (!el) return;
+  $('st-title').textContent = el.dataset.title || '';
+  $('soft-left').textContent = el.dataset.softLeft || '';
+  $('soft-right').textContent = el.dataset.softRight || '';
+}
+// Sliders paint their filled segments from --p.
+function paintRange(el) {
+  const min = +el.min || 0, max = +el.max || 100;
+  el.style.setProperty('--p', ((el.value - min) / (max - min) * 100).toFixed(1) + '%');
+}
+function paintRanges(root) { root.querySelectorAll('input[type=range]').forEach(paintRange); }
 function focusDefault(el) {
   const d = el.querySelector('[data-default]:not([disabled])') || nav.focusables(el)[0];
-  if (d && !el.hidden) d.focus({ preventScroll: true });
+  if (d && !el.hidden) { d.focus({ preventScroll: true }); light(d); }
+}
+// The highlighted list item follows focus but stays lit while focus is elsewhere (e.g. on a phone key).
+let lit = null;
+function light(el) {
+  const item = el && el.closest && el.closest('.menu > *');
+  if (!item || item === lit) return;
+  if (lit) lit.classList.remove('hl');
+  lit = item; lit.classList.add('hl');
 }
 const activeScreen = () => screens[state === 'countin' || state === 'playing' || state === 'resuming' ? '' : state];
 
@@ -63,6 +105,12 @@ let toastTimer = 0;
 function toast(msg, ms = 2200) {
   const t = $('toast');
   t.textContent = msg; t.hidden = false;
+  // Pop up in the middle of the phone's LCD when it is on screen, else at the bottom of the viewport.
+  const r = $('phone').classList.contains('off') ? null : $('lcd').getBoundingClientRect();
+  const onLcd = !!(r && r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1);
+  t.classList.toggle('on-lcd', onLcd);
+  t.style.left = onLcd ? r.left + r.width / 2 + 'px' : '';
+  t.style.top = onLcd ? r.top + r.height / 2 + 'px' : '';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
@@ -88,7 +136,7 @@ function stopPreview() {
   clearTimeout(previewTimer); clearTimeout(autoPreviewTimer);
   previewTimer = autoPreviewTimer = null;
   if (synth.ctx) synth.stopAll();
-  $('btn-preview').textContent = '▶ Preview';
+  $('btn-preview').textContent = 'Preview';
   $('btn-custom-preview').textContent = 'Preview';
 }
 function startPreview(entry, maxSec = Infinity) {
@@ -103,8 +151,8 @@ function startPreview(entry, maxSec = Infinity) {
     synth.playNote({ midi: n.midi, when: t0 + n.startBeat * beat, duration: n.durBeat * beat * 0.92 });
     end = Math.max(end, n.startBeat + n.durBeat);
   }
-  $('btn-preview').textContent = '■ Stop';
-  $('btn-custom-preview').textContent = 'Stop';
+  $('btn-preview').textContent = 'Stop preview';
+  $('btn-custom-preview').textContent = 'Stop preview';
   previewTimer = setTimeout(stopPreview, (end * beat + 0.4) * 1000);
 }
 function togglePreview(entry) {
@@ -112,9 +160,8 @@ function togglePreview(entry) {
 }
 
 // ---- song select screen ----
-const gradeClass = g => (g === 'S' || g === 'A' || g === 'D') ? 'g-' + g : '';
 function badgeHTML(run) {
-  return run && run.ap ? ' <span class="badge ap">AP</span>' : run && run.fc ? ' <span class="badge">FC</span>' : '';
+  return run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '';
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
@@ -134,24 +181,18 @@ function categoryTabs() {
 function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
-  const box = $('cat-tabs');
-  box.textContent = '';
-  for (const t of tabs) {
-    const b = document.createElement('button');
-    b.dataset.cat = t.id;
-    b.classList.toggle('sel', t.id === settings.view.category);
-    b.textContent = `${t.label} ${t.count}`;
-    b.onclick = () => setCategory(t.id);
-    box.appendChild(b);
-  }
+  const t = tabs.find(x => x.id === settings.view.category);
+  $('view-cat').textContent = `Category: ${t.label} (${t.count})`;
+  const sort = SORTS.find(x => x.id === settings.view.sort), filter = FILTERS.find(x => x.id === settings.view.filter);
+  $('sel-sub').textContent = `${t.label} · ${sort.label}${filter.id === 'all' ? '' : ' · ' + filter.label}`;
 }
 function setCategory(id) {
   settings.view.category = id; save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
-  renderCategories();
   renderList();
   renderDetail();
+  if (state === 'select') focusCurrentRow();
 }
 function cycleCategory(step) {
   const tabs = categoryTabs().filter(t => t.count > 0);
@@ -180,11 +221,9 @@ function renderList() {
     const rec = scores.get(e.id, settings.difficulty);
     const best = rec && rec.best;
     b.innerHTML =
-      `<img class="th" src="${coverURL(e.id)}" alt="">` +
+      spriteHTML(SPRITES[e.category] || SPRITES.custom, 2) +
       `<span class="t">${esc(e.title)}</span>` +
-      `<span class="m">${esc(e.tag)}${e.tag ? ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)}</span>` +
-      `<span class="r" title="Difficulty ${ratingOf(e, settings.difficulty).toFixed(1)} / 10">${starsText(ratingOf(e, settings.difficulty))}<span class="num">${ratingOf(e, settings.difficulty).toFixed(1)}</span></span>` +
-      `<span class="b">${best ? `<span class="${gradeClass(best.grade)}">${esc(best.grade)}</span>${badgeHTML(best)}` : ''}</span>`;
+      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(best)}` : ''}</span>`;
     b.addEventListener('focus', () => selectSong(e.id, false));
     b.addEventListener('click', ev => {
       if (selectedId !== e.id) selectSong(e.id, false);
@@ -196,14 +235,18 @@ function renderList() {
   markSelected();
 }
 function markSelected() {
-  for (const b of $('song-list').children) b.classList.toggle('cur', b.dataset.id === selectedId);
+  for (const b of $('song-list').children) {
+    const on = b.dataset.id === selectedId;
+    b.classList.toggle('cur', on);
+    b.setAttribute('aria-selected', String(on));
+  }
 }
 
 function renderDetail() {
   const e = selectedEntry();
   if (!e) return;
   const d = settings.difficulty;
-  $('d-cover').src = coverURL(e.id);
+  setSprite($('d-cover'), coverRows(e.id, e.category), 3);
   $('d-title').textContent = e.title;
   $('d-meta').textContent = `${e.tag ? e.tag + ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes`;
   $('d-stars').innerHTML = starsText(ratingOf(e, d)) +
@@ -211,9 +254,13 @@ function renderDetail() {
     (e.tags[d] && e.tags[d].length ? ` <span class="hint">Tricky: ${esc(e.tags[d].join(', '))}</span>` : '');
   const rec = scores.get(e.id, d);
   $('d-best').innerHTML = rec
-    ? `<b>${rec.best.score}</b> · <span class="${gradeClass(rec.best.grade)}">${esc(rec.best.grade)}</span> · ` +
+    ? `<b>${rec.best.score}</b> · <b>${esc(rec.best.grade)}</b> · ` +
       `${rec.best.accuracy.toFixed(1)}% · ${rec.best.maxCombo}x${badgeHTML(rec.best)}`
     : '<span class="hint">No plays yet</span>';
+  $('sel-info').innerHTML =
+    `<div>${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b>` +
+    (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
+    `<div>${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   const top = $('d-top');
   top.textContent = '';
   for (const r of (rec ? rec.top : [])) {
@@ -240,7 +287,7 @@ function selectSong(id, scroll = true) {
   renderDetail();
   if (scroll) {
     const row = Array.from($('song-list').children).find(b => b.dataset.id === id);
-    if (row) row.scrollIntoView({ block: 'nearest' });
+    if (row) revealRow(row);
   }
   if (changed) {
     stopPreview();
@@ -254,6 +301,7 @@ function setDifficulty(d) {
   settings.difficulty = d; save();
   renderList();
   renderDetail();
+  if (state === 'select') focusCurrentRow();
 }
 function setView(key, list) {
   settings.view[key] = nextOf(list, settings.view[key]);
@@ -262,6 +310,7 @@ function setView(key, list) {
   if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
   renderList();
   renderDetail();
+  if (state === 'select') focusCurrentRow();
 }
 function cycleDifficulty(step) {
   const order = ['easy', 'normal', 'hard'];
@@ -269,13 +318,26 @@ function cycleDifficulty(step) {
   if (order[i] !== settings.difficulty) setDifficulty(order[i]);
 }
 
+function focusCurrentRow() {
+  requestAnimationFrame(() => { // look the row up late: the list may have been re-rendered or the selection moved
+    if (state !== 'select') return;
+    const row = Array.from($('song-list').children).find(b => b.dataset.id === selectedId);
+    if (row) { revealRow(row); row.focus({ preventScroll: true }); }
+  });
+}
+// Keep the cursor row inside the list viewport (centred when it had to jump), without scrolling the page.
+function revealRow(row) {
+  const list = $('song-list'), lr = list.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
+}
 function openSelect() {
   renderList();
   renderDetail();
   setState('select', 'select');
-  const row = Array.from($('song-list').children).find(b => b.dataset.id === selectedId);
-  if (row) requestAnimationFrame(() => { row.scrollIntoView({ block: 'nearest' }); row.focus({ preventScroll: true }); });
+  focusCurrentRow();
 }
+function openOptions() { renderCategories(); setState('options', 'options'); }
+function openInfo() { renderDetail(); setState('info', 'info'); }
 
 // ---- custom song screen ----
 const area = $('rtttl');
@@ -313,8 +375,11 @@ function setTrainingMode(on) {
   const b = $('btn-train-mode');
   b.classList.toggle('sel', on);
   b.setAttribute('aria-pressed', String(on));
-  $('btn-play').textContent = on ? '▶ Train' : '▶ Play';
-  document.querySelector('.select-title').textContent = on ? 'Select Song to Train' : 'Select Song';
+  b.textContent = 'Training: ' + (on ? 'On' : 'Off');
+  $('btn-play').textContent = $('btn-info-play').textContent = on ? 'Train' : 'Play';
+  screens.info.dataset.softLeft = on ? 'Train' : 'Play';
+  screens.select.dataset.title = on ? 'Training' : 'Ringing tones';
+  refreshChrome();
 }
 
 // ---- training options ----
@@ -378,6 +443,10 @@ function startRun(r) {
   renderer.scrollTime = settings.scrollTime;
   renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
   renderer.resetState();
+  $('np-title').textContent = renderer.title;
+  $('np-sub').textContent = r.tutorial ? 'TUTORIAL' : r.training ? `TRAINING ${Math.round(r.training.speed * 100)}%` : 'RTTTL';
+  recent.fill(1); recentN = 0;
+  phoneCache.key = '';
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
   if (r.tutorial) showCaption(r.tutorial.stage);
@@ -471,7 +540,7 @@ game.onFinish = r => {
     startRun(run);
     return;
   }
-  $('r-heading').textContent = training ? 'Practice' : 'Results';
+  $('r-heading').textContent = screens.results.dataset.title = training ? 'Practice' : 'Results';
   $('r-song').textContent = run ? `${run.entry.title} · ${run.diff}` +
     (training && training.speed !== 1 ? ` · ${Math.round(training.speed * 100)}%` : '') : '';
   $('r-score').textContent = r.score;
@@ -514,7 +583,7 @@ function nextSong() {
 function controlsHTML() {
   const keys = KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ');
   const pad = [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ');
-  return `<p>Notes fall down four lanes. Hit each one as it reaches the white line.</p>` +
+  return `<p>Notes fall down four lanes. Hit each one as it reaches the glowing line.</p>` +
     `<p>Keyboard: ${keys}<br>Gamepad: ${pad} (or d-pad)<br>Touch: tap and hold the lanes</p>` +
     `<p>There are two note types — <b>taps</b> and <b>holds</b>. This takes about a minute.</p>`;
 }
@@ -531,7 +600,7 @@ function tutorialOutro() {
   $('tut-title').textContent = "You're ready!";
   $('tut-body').innerHTML =
     `<p>Hit every note for a <b>Full Combo</b>, all Perfect for an <b>All Perfect</b>.</p>` +
-    `<p><b>Training</b> (toggle next to the difficulties) slows songs down and loops sections.</p>` +
+    `<p><b>Training</b> (in Options) slows songs down and loops sections.</p>` +
     `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
   $('btn-tut-go').textContent = 'Pick a song';
   $('btn-tut-skip').hidden = true;
@@ -540,7 +609,8 @@ function tutorialOutro() {
 }
 function showCaption(i) {
   const st = STAGES[i];
-  $('tut-caption').innerHTML = `<b>${esc(st.title)}</b>${esc(st.text)}<div class="step">Step ${i + 1} of ${STAGES.length}</div>`;
+  $('tut-caption').innerHTML = $('np-caption').innerHTML =
+    `<b>${esc(st.title)}</b>${esc(st.text)}<div class="step">Step ${i + 1} of ${STAGES.length}</div>`;
 }
 function tutorialStageDone(r) {
   const i = run.tutorial.stage;
@@ -687,7 +757,9 @@ function releasePad(index, ts) {
 
 function back() {
   switch (state) {
-    case 'select': break;
+    case 'title': break;
+    case 'select': stopPreview(); setState('title', 'title'); break;
+    case 'options': case 'info': openSelect(); break;
     case 'tutorial': finishTutorial(); break;
     case 'settings': closeSettings(); break;
     case 'custom': case 'training': openSelect(); break;
@@ -706,25 +778,57 @@ function menuButton(index) {
       if (root) nav.confirm(root);
       break;
     case BTN.B: back(); break;
+    case BTN.X: if (state === 'select') openOptions(); break;
     case BTN.LB: if (state === 'select') cycleDifficulty(-1); break;
     case BTN.RB: if (state === 'select') cycleDifficulty(1); break;
     case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
-    case BTN.X: if (state === 'select') setView('filter', FILTERS); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
     case BTN.RT: if (state === 'select') cycleCategory(1); break;
   }
 }
 pad.onNav = dir => {
-  const root = activeScreen();
-  if (!root || state === 'title') return;
   usePad();
   if (capturingSlot >= 0) return;
-  if (!nav.adjust(document.activeElement, dir)) nav.move(root, dir);
+  navigate(dir);
 };
+// Shared by arrow keys, d-pad and the phone keypad (2/4/6/8).
+function navigate(dir) {
+  const root = activeScreen();
+  if (!root || state === 'title') return;
+  if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleDifficulty(dir === 'left' ? -1 : 1); return; }
+  if (!nav.adjust(document.activeElement, dir)) nav.move(root, dir);
+}
+
+// ---- phone keys & soft keys ----
+function softLeft() {
+  switch (state) {
+    case 'title': startFromTitle(); break;
+    case 'select': openOptions(); break;
+    case 'info': playSelected(); break;
+    case 'countin': case 'playing': case 'resuming': pauseGame(); break;
+    default: { const root = activeScreen(); if (root) nav.confirm(root); }
+  }
+}
+function phoneKey(key) {
+  if (!inPlay()) synth.keyClick();
+  if (state === 'title') { startFromTitle(); return; }
+  if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
+  switch (key) {
+    case 'softL': softLeft(); break;
+    case 'softR': back(); break;
+    case 'ok': case '5': if (inPlay()) pauseGame(); else { const root = activeScreen(); if (root) nav.confirm(root); } break;
+    case '2': navigate('up'); break;
+    case '8': navigate('down'); break;
+    case '4': navigate('left'); break;
+    case '6': navigate('right'); break;
+  }
+}
 
 // ---- wiring ----
+let booted = false;
 function startFromTitle() {
   synth.ensure();
+  if (!booted) { booted = true; synth.jingle(); }
   if (!settings.tutorialDone) openTutorial(); else openSelect();
 }
 
@@ -737,6 +841,15 @@ function wire() {
   $('scroll-val').textContent = sc.value + 's';
   bk.onchange = () => { settings.backing = bk.checked; game.backing = settings.backing; save(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
+  const voiceLabel = () => { $('set-voice').textContent = 'Tone: ' + (settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth'); };
+  voiceLabel();
+  $('set-voice').onclick = () => {
+    settings.voice = synth.voice = settings.voice === 'buzzer' ? 'smooth' : 'buzzer';
+    save(); voiceLabel();
+    synth.ensure();
+    synth.playNote({ midi: 76, when: synth.ctx.currentTime + 0.02, duration: 0.12 });
+  };
+  document.addEventListener('input', e => { if (e.target.type === 'range') paintRange(e.target); });
   $('btn-calibrate').onclick = startCalibration;
   $('btn-settings').onclick = () => openSettings();
   $('btn-pause-settings').onclick = () => openSettings('paused');
@@ -765,6 +878,9 @@ function wire() {
   for (const b of $('diff-seg').children) b.onclick = () => setDifficulty(b.dataset.diff);
   $('view-sort').onclick = () => setView('sort', SORTS);
   $('view-filter').onclick = () => setView('filter', FILTERS);
+  $('view-cat').onclick = () => cycleCategory(1);
+  $('btn-info').onclick = openInfo;
+  $('btn-info-play').onclick = playSelected;
   $('btn-play').onclick = playSelected;
   $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
   $('btn-preview').onclick = () => togglePreview(selectedEntry());
@@ -818,6 +934,17 @@ function wire() {
   $('calib-done').onclick = leaveCalibration;
   $('calib-again').onclick = startCalibration;
 
+  // phone keys + soft-key labels (pointerdown, and never steal focus from the list)
+  for (const k of document.querySelectorAll('#phone .k')) {
+    k.addEventListener('pointerdown', e => { e.preventDefault(); phoneKey(k.dataset.key); });
+    k.addEventListener('click', e => { if (e.detail === 0) phoneKey(k.dataset.key); }); // keyboard-less AT activation
+  }
+  $('soft-left').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
+  $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softR'); });
+  setSprite($('boot-art'), ringing(0), 3);
+  document.addEventListener('focusin', e => light(e.target));
+  window.addEventListener('resize', layout);
+
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') { useMouse(); lastDevice = 'kbd'; } });
   window.addEventListener('keydown', onKey);
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
@@ -847,13 +974,18 @@ function onKey(e) {
   }
   if (e.code === 'F3') { e.preventDefault(); setPerf(!perf.enabled); return; }
   if (e.code === 'F4' && perf.enabled) { e.preventDefault(); copyReport(perf); return; }
-  if (e.code === 'Escape') {
+  const menu = !inPlay() && state !== 'calibration';
+  if (e.code === 'Escape' || (e.code === 'Backspace' && !typing)) {
+    e.preventDefault();
+    if (menu) synth.keyClick();
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
   }
+  if (state === 'select' && !typing && e.code === 'KeyO') { e.preventDefault(); synth.keyClick(); openOptions(); return; }
+  if (menu && !e.repeat && (e.code === 'Enter' || e.code === 'Space') && !typing) synth.keyClick();
   if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'resuming', 'paused', 'results'].includes(state)) { restartRun(); return; }
   if (state === 'calibration' && !e.repeat) {
     if (tag === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return;
@@ -867,7 +999,127 @@ function onKey(e) {
     if (range && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; // native slider handling
     e.preventDefault();
     lastDevice = 'kbd';
-    nav.move(root, dirs[e.code]);
+    synth.keyClick();
+    navigate(dirs[e.code]);
+  }
+}
+
+// ---- phone layout: where the phone, the side phone and the highway sit in the current mode ----
+let mode = '';
+let artScale = 3;
+function setMode() {
+  const over = (game.active || demoRun) && (state === 'paused' || (state === 'settings' && settingsFrom === 'paused'));
+  const m = inPlay() ? 'play' : over ? 'pause' : 'menu';
+  if (m === mode) return;
+  if (m === 'menu') phoneIdle();
+  mode = document.body.dataset.mode = m;
+  layout(true);
+}
+function layout(animate = false) {
+  const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
+  const compact = vw < 600 || vh < 520;
+  const narrowPlay = compact || vw < 900 || vw / vh < 1.2;
+  body.classList.toggle('compact', compact);
+  body.classList.toggle('narrow-play', narrowPlay);
+  const wideGame = (mode === 'play' || mode === 'pause') && !narrowPlay;
+  let x, y, w, h;
+  if (wideGame) { h = vh * 1.08; w = h / 2; x = vw - w + vh * 0.04; y = -vh * 0.01; }
+  else if (compact) { x = 0; y = 0; w = vw; h = vh; }
+  else {
+    // Whole phone when it fits; on short screens grow it so the LCD stays roomy and let the keypad run off the bottom
+    // (the navigation keys, ~68% down, stay on screen).
+    h = Math.min(1100, Math.max(vh * 0.96, Math.min((vh * 0.98 - 6) / 0.685, 940)));
+    w = h / 2; x = (vw - w) / 2; y = Math.max(vh * 0.02, (vh - h) / 2);
+  }
+  ph.classList.toggle('no-anim', !animate);
+  ph.classList.toggle('off', mode === 'play' && narrowPlay);
+  Object.assign(ph.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+  // Pixel text stays on whole device pixels: 2 or 3 CSS px per font pixel.
+  const lcdW = compact ? vw : w * 0.745, fs = lcdW >= 470 ? 30 : 20;
+  ph.style.setProperty('--fs', fs + 'px');
+  ph.style.setProperty('--u', fs / 10 + 'px');
+  artScale = Math.max(3, Math.min(6, Math.floor(lcdW / 85)));
+  phoneCache.key = '';
+  const sw = $('stage-wrap').style;
+  if (wideGame) { const left = vh * 0.235; sw.left = left + 'px'; sw.width = Math.max(0, x + w * 0.06 - left) + 'px'; }
+  else { sw.left = '0px'; sw.width = vw + 'px'; }
+  const lg = $('legend');
+  body.classList.toggle('legend-on', !compact && x >= 290);
+  lg.style.left = Math.max(16, x - 270) + 'px';
+  if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
+  if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
+}
+
+// Idle phone: full signal and battery.
+function phoneIdle() {
+  setSprite($('st-signal'), signal(5), 2);
+  setSprite($('st-battery'), battery(4), 2);
+}
+// Live phone displays while a song runs: progress, time, signal (recent hit quality) and battery (time left).
+const phoneCache = { key: '' };
+const mmss = sec => formatLength(Math.floor(Math.max(0, sec)));
+function updatePhones(g, t) {
+  const len = g.chart.length, p = Math.max(0, Math.min(1, t / len));
+  const n = Math.min(recentN, recent.length) || 1;
+  let q = 0; for (let i = 0; i < n; i++) q += recent[i];
+  const sig = recentN ? Math.round(5 * q / n) : 5;
+  const bat = Math.max(0, Math.ceil(4 * (1 - p) - 1e-6));
+  const art = t > 0 ? Math.floor(t / g.chart.beatLen) % 2 : 0;
+  const pct = Math.floor(p * 100), sec = Math.floor(Math.max(0, t));
+  const key = pct + '|' + sec + '|' + sig + '|' + bat + '|' + art;
+  if (key === phoneCache.key) return;
+  phoneCache.key = key;
+  const time = mmss(t) + ' / ' + mmss(len);
+  $('np-fill').style.width = pct + '%';
+  $('np-time').textContent = time;
+  $('side-pct').textContent = pct + '%';
+  $('side-time').textContent = mmss(t) + '/' + mmss(len);
+  $('side-left').textContent = '-' + mmss(len - t);
+  setSprite($('st-signal'), signal(sig), 2);
+  setSprite($('side-signal'), signal(sig), 3);
+  setSprite($('st-battery'), battery(bat), 2);
+  setSprite($('np-art'), ringing(art), artScale);
+}
+
+// ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|settings ----
+let demoRun = null;
+function demo(kind) {
+  settings.tutorialDone = true;
+  selectedId = entryById('nokia') ? 'nokia' : selectedId;
+  openSelect();
+  if (kind === 'options') openOptions();
+  else if (kind === 'info') openInfo();
+  else if (kind === 'settings') openSettings();
+  else if (kind === 'results') {
+    run = { entry: selectedEntry(), diff: settings.difficulty, training: null };
+    game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A',
+      fc: false, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
+  } else if (kind === 'play' || kind === 'pause') {
+    const e = selectedEntry();
+    const chart = generateChart(e.song, { difficulty: settings.difficulty });
+    const ctx = { currentTime: 0, suspend() {}, resume() {} };
+    const g = new Game({ ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} });
+    g.fx = game.fx;
+    g.start(chart, { leadIn: 0, backing: false });
+    clearInterval(g.timer);
+    const T = chart.length * 0.09 + 0.3;
+    const ev = [];
+    for (const n of chart.notes) {
+      const end = n.time + (n.isHold ? n.duration : 0.05);
+      if (end < T - 0.15) ev.push([n.time + 0.004, 1, n.lane], [end, 0, n.lane]);
+    }
+    ev.sort((a, b) => a[0] - b[0]);
+    for (const [t, down, lane] of ev) { ctx.currentTime = t; g.update(t); if (down) g.press(lane, t); else g.release(lane, t); }
+    ctx.currentTime = T;
+    g.update(T);
+    run = { entry: e, diff: settings.difficulty, training: null };
+    renderer.title = e.title;
+    renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
+    $('np-title').textContent = e.title;
+    $('np-sub').textContent = 'RTTTL';
+    demoRun = { g, T };
+    if (kind === 'pause') { state = 'paused'; show('paused'); } else setState('playing', null);
+    input.enabled = false;
   }
 }
 
@@ -901,6 +1153,7 @@ function frame() {
     return;
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
+  if (demoRun) { renderer.draw(demoRun.g, demoRun.T); updatePhones(demoRun.g, demoRun.T); return; }
   if (!game.active) {
     perf.begin('drawIdle');
     renderer.drawIdle();
@@ -921,6 +1174,7 @@ function frame() {
   perf.begin('draw');
   renderer.draw(game, t);
   perf.end('draw');
+  updatePhones(game, t);
 }
 
 // Bot-measured difficulty (optional: falls back to the density heuristic if missing).
@@ -930,8 +1184,14 @@ try {
 } catch { /* offline / file missing */ }
 
 wire();
+phoneIdle();
+setMode();
+// Row heights change once the pixel font arrives: re-centre the cursor row then.
+if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
+const demoKind = new URLSearchParams(location.search).get('demo');
+if (demoKind) demo(demoKind);
 let perfOn = /[?&]perf\b/.test(location.search);
 try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
 if (perfOn) setPerf(true);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, settings, perf }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, settings, perf, get state() { return state; } }; // debug/test hook (tests/smoke.html)

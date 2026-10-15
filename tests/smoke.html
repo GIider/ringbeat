@@ -16,9 +16,12 @@ f.addEventListener('load', async () => {
   w.addEventListener('error', e => errors.push(e.message));
   w.addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
   const vis = id => !$(id).hidden;
+  const hookOf = () => w.__ringbeat;
   const key = (code, type = 'keydown') => w.dispatchEvent(new w.KeyboardEvent(type, { code, key: code, bubbles: true }));
   try {
-    await sleep(300);
+    for (let i = 0; i < 100 && !w.__ringbeat; i++) await sleep(50); // module + difficulty.json loaded
+    await sleep(100);
+    w.__ringbeat.settings.tutorialDone = true;
     log(vis('title') && !vis('select'), 'title screen visible');
     key('Space'); await sleep(100);
     log(vis('select') && !vis('title'), 'any key -> song select');
@@ -31,7 +34,28 @@ f.addEventListener('load', async () => {
     rows2[3].click(); rows2[3].focus(); await sleep(50);
     log($('d-title').textContent === rows2[3].querySelector('.t').textContent, 'click selects song');
     key('ArrowDown'); await sleep(50);
-    log(d.activeElement === rows2[4], 'arrow down moves focus');
+    const desc = el => el ? (el.id || el.className) + ':' + (el.textContent || '').slice(0, 20) : 'none';
+    log(d.activeElement === rows2[4], 'arrow down moves focus', desc(d.activeElement) + ' vs ' + desc(rows2[4]) + ' idx=' + [...rows2].indexOf(d.activeElement));
+    const phoneKey = k => d.querySelector(`#phone .k[data-key="${k}"]`).dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    phoneKey('8'); await sleep(50);
+    log(d.activeElement === rows2[5], 'keypad 8 moves down');
+    key('ArrowRight'); await sleep(50);
+    log(d.querySelector('#diff-seg .sel').dataset.diff === 'hard' && vis('select'), 'right arrow on hard stays hard');
+    key('ArrowLeft'); await sleep(80);
+    log(d.querySelector('#diff-seg .sel').dataset.diff === 'normal', 'left arrow lowers difficulty');
+    log(d.activeElement && d.activeElement.classList.contains('cur'), 'cursor row keeps focus after difficulty change');
+    log($('soft-left').textContent === 'Options' && $('st-title').textContent === 'Ringing tones', 'soft keys + status title');
+    phoneKey('softL'); await sleep(80);
+    log(vis('options') && $('soft-left').textContent === 'Select', 'left soft key opens Options');
+    $('btn-info').click(); await sleep(50);
+    log(vis('song-info') && $('d-title').textContent.length > 0, 'details screen');
+    key('Backspace'); await sleep(80);
+    log(vis('select'), 'Backspace -> back to select');
+    const v0 = $('set-voice').textContent;
+    $('set-voice').click();
+    log($('set-voice').textContent !== v0 && hookOf().settings.voice === (v0.includes('Buzzer') ? 'smooth' : 'buzzer'), 'tone toggle: ' + $('set-voice').textContent);
+    $('set-voice').click();
+    log(d.body.dataset.mode === 'menu', 'menu mode');
 
     $('btn-settings').click(); await sleep(50);
     log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'settings + 4 bindings');
@@ -57,23 +81,28 @@ f.addEventListener('load', async () => {
     $('btn-train-start').click(); await sleep(200);
     log(['title','select','custom','settings','training','results','pause','calib'].every(s => !vis(s)), 'in game (all screens hidden)');
     log(!$('btn-pause').hidden, 'pause button shown');
+    log(vis('nowplaying') && d.body.dataset.mode === 'play', 'now playing in the phone, play mode');
     key('Escape'); await sleep(150);
     log(vis('pause') && !$('btn-pause-options').hidden, 'paused shows training options');
+    log(d.body.dataset.mode === 'pause', 'pause mode');
     key('Escape'); await sleep(200); // resume needs a real user gesture for the AudioContext; not asserted here
     $('btn-pause').click(); await sleep(100);
     $('btn-quit').click(); await sleep(100);
     log(vis('select'), 'quit -> select');
+    $('btn-train-mode').click(); // training mode off again
+    log($('btn-train-mode').getAttribute('aria-pressed') === 'false' && $('btn-play').textContent === 'Play', 'training mode off');
     $('btn-play').click(); await sleep(150);
     log(!vis('select') && !vis('results'), 'normal play starts');
     key('KeyR'); await sleep(150);
     log(!vis('select'), 'R restarts');
     // fake a finished run to exercise results / highscores / FC banner
     const rb = w.__ringbeat;
+    log(!!rb.game, 'debug hook');
     const fake = (score, extra = {}) => ({ score, maxCombo: 8, counts: { perfect: 8, great: 0, good: 0, miss: 0 }, accuracy: 100, grade: 'S',
       fc: true, ap: true, deltas: [-0.02, 0.01, 0.03, 0, 0.01, -0.01, 0.02, 0, 0.005, 0.01], ...extra });
     rb.scores.clear();
     rb.game.onFinish(fake(1234)); await sleep(100);
-    log(vis('results'), 'results shown');
+    log(vis('results'), 'results shown', 'state=' + rb.state + ' visible=' + [...d.querySelectorAll('.screen')].filter(x => !x.hidden).map(x => x.id));
     log($('r-banner').textContent === 'ALL PERFECT' && !$('r-banner').hidden, 'ALL PERFECT banner');
     log($('r-best').textContent.includes('NEW BEST'), 'new best flagged: ' + $('r-best').textContent);
     log($('r-hist').children.length === 9, 'timing histogram');

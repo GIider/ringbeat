@@ -7,7 +7,7 @@ const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch p
 export const STAGES = [
   {
     id: 'tap', title: 'Tap notes',
-    text: 'A note falls toward the white line. Press its lane key just as it touches the line.',
+    text: 'A note falls toward the glowing line. Press its lane key just as it touches the line.',
     notes: [[0, 0, 0.25], [2, 1, 0.25], [4, 2, 0.25], [6, 3, 0.25]],
     maxMiss: 1,
   },

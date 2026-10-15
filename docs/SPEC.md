@@ -1,27 +1,30 @@
 # Ringbeat — product spec (MVP)
 
 Ringbeat is a browser rhythm game. Charts are generated automatically from RTTTL (Nokia ringtone) text;
-all sound is synthesized with Web Audio. No assets, no runtime dependencies, no build step.
+all sound is synthesized with Web Audio. The whole UI is an old candybar phone: menus are Nokia-style lists on its
+green LCD (status bar, inverted highlight, two soft keys), the play screen puts the highway between a side phone
+(progress) and the front phone (now playing). Self-made assets only, no runtime dependencies, no build step.
 
 ## Screens & flow
 
 ```
 title ─▶ select ─▶ play ─▶ results ─▶ select
             │  ▲      ▲ │
-            │  │      │ └─ pause ─▶ resume | restart | training options | select
-            ├──▶ custom (paste / share link)
-            ├──▶ settings ─▶ calibration
-            └──▶ Training toggle + song ─▶ training options ─▶ play (practice)
+            │  │      │ └─ pause ─▶ resume | restart | settings | training options | select
+            └──▶ Options ─┬─▶ details ─▶ play
+                          ├─▶ custom tone (paste / share link)
+                          ├─▶ settings ─▶ calibration
+                          └─▶ Training: On + song ─▶ training options ─▶ play (practice)
 ```
 
 | Screen | Purpose |
 |---|---|
-| Title | "Press any key". Satisfies the browser's audio-gesture requirement. |
-| Song select | 53 built-in songs (11 of them full-length, 1–2 min, public-domain or original) in 5 categories (Classical, Pop & Film, Video Games, Folk & Kids, Originals; tabs above the list, RT or `[` / `]` cycles) + the user's Custom song. Per-row BPM, length, best grade, FC/AP badge. Detail pane: difficulty stars + bot rating (1-10) and weakness tags, best run, top 5. Sort (default / easiest / hardest / title / BPM) and filter (all / unplayed / no FC for the selected difficulty) buttons; gamepad LT cycles sort, X cycles filter. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. |
+| Title | Boot screen, "Press any key" (plays a short power-on jingle). Satisfies the browser's audio-gesture requirement. |
+| Song select | 53 built-in songs (11 of them full-length, 1–2 min, public-domain or original) in 5 categories (Classical, Pop & Film, Video Games, Folk & Kids, Originals; Options → Category, RT or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Easy Normal Hard ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Options (left soft key, `O`, gamepad X): Play/Train, Details (picture-message art, rating and weakness tags, best run, top 5), Preview, Training mode, Category, Sort (default / easiest / hardest / title / BPM / length; gamepad LT), Show (all / unplayed / no FC), Custom tone, Settings. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. |
 | Custom | Paste RTTTL, live validation, preview, play, copy share link (`#s=<base64url>`). |
-| Settings | Volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, reset highscores. |
+| Settings | Tone (buzzer / smooth), volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, replay tutorial, reset highscores. |
 | Training | Speed 50–150 %, optional A–B loop, then play. |
-| Play | Highway canvas flanked by side panels (title, progress column, score, accuracy + live grade, combo with multiplier, notes left, judgement mix) that collapse to a top strip + bottom progress bar on narrow screens; FC/AP streak badge, timing meter, milestone banners. |
+| Play | Highway canvas with a HUD column (score, accuracy + live grade, combo with multiplier, notes-left box, timing meter, judgement mix), between the side phone (signal bars = recent hit quality, progress %, time) and the front phone's now-playing LCD (title, ringing animation, progress bar, battery = time left; soft keys pause). Narrow screens: full-screen canvas with a top strip + bottom progress bar. FC/AP streak line, milestone banners. |
 | Results | Grade, score, FULL COMBO / ALL PERFECT banner, NEW BEST / rank, judgement counts, timing histogram, average offset. Retry / Next song / Menu. |
 
 ## Gameplay

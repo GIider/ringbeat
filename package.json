@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Browser rhythm game with charts generated from RTTTL ringtones",
+  "description": "Browser rhythm game with charts generated from RTTTL ringtones, dressed as an old phone",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "node --test tests/core.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "bench": "node scripts/bench.mjs",
-    "perf": "node scripts/perf-bench.mjs"
+    "perf": "node scripts/perf-bench.mjs",
+    "font": "node scripts/build-font.mjs"
   }
 }

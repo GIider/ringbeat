@@ -4,208 +4,266 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>Ringbeat</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <link rel="preload" href="assets/fonts/rb-pixel.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/fonts/rb-pixel-bold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="src/difficulty.json" as="fetch" crossorigin>
 </head>
-<body>
-  <canvas id="stage"></canvas>
-  <button id="btn-pause" class="pause-btn" hidden aria-label="Pause">❚❚</button>
-  <div id="toast" class="toast" hidden role="status"></div>
+<body data-mode="menu">
+  <!-- Play area: the highway canvas between the side phone and the front phone -->
+  <div id="stage-wrap"><canvas id="stage"></canvas></div>
 
-  <!-- Title -->
-  <section id="title" class="screen">
-    <div class="panel center">
-      <h1>RINGBEAT</h1>
-      <p class="sub">Ringtones, but make it a rhythm game.</p>
-      <button id="btn-start" class="primary" data-default>Press any key to start</button>
-      <p class="hint">Keyboard · touch · gamepad</p>
+  <!-- Second phone peeking in from the left during play (mini-LCD shows progress) -->
+  <div id="phone-side" aria-hidden="true">
+    <div class="side-lcd">
+      <i id="side-signal" class="spr"></i>
+      <div class="cap">PROGRESS</div>
+      <div id="side-pct" class="side-pct">0%</div>
+      <div id="side-time">0:00 / 0:00</div>
+      <div id="side-left" class="side-left">-0:00</div>
     </div>
-  </section>
+  </div>
 
-  <!-- Song select -->
-  <section id="select" class="screen" hidden>
-    <div class="select-wrap">
-      <header class="select-head">
-        <h2 class="select-title">Select Song</h2>
-        <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
-          <button data-diff="easy">Easy</button>
-          <button data-diff="normal">Normal</button>
-          <button data-diff="hard">Hard</button>
-        </div>
-        <button id="view-sort" class="tab">Sort: Default</button>
-        <button id="view-filter" class="tab">Show: All</button>
-        <button id="btn-train-mode" class="tab" aria-pressed="false">Training</button>
-        <button id="btn-settings" class="tab">Settings</button>
-      </header>
-      <div id="cat-tabs" class="seg cats" role="group" aria-label="Category"></div>
-      <div class="select-body">
-        <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
-        <aside class="detail">
-          <img id="d-cover" class="hero" alt="">
+  <!-- Keyboard legend beside the phone (wide screens, menus only) -->
+  <aside id="legend" class="legend" aria-label="Keys">
+    <b>Keys</b>
+    <div><kbd>↑</kbd><kbd>↓</kbd> move</div>
+    <div><kbd>←</kbd><kbd>→</kbd> difficulty, sliders</div>
+    <div><kbd>Enter</kbd> select</div>
+    <div><kbd>O</kbd> options</div>
+    <div><kbd>Esc</kbd> back · pause</div>
+    <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> play</div>
+    <div><kbd>R</kbd> restart</div>
+    <p>Gamepad, touch and the phone's own keys work too.</p>
+  </aside>
+
+  <div id="phone">
+    <div id="lcd" class="lcd">
+      <div class="statusbar" aria-hidden="true">
+        <i id="st-signal" class="spr"></i>
+        <span id="st-title" class="st-title"></span>
+        <i id="st-battery" class="spr"></i>
+      </div>
+      <div class="screens">
+
+        <!-- Title / boot -->
+        <section id="title" class="screen boot" data-title="" data-soft-left="Start" data-soft-right="">
+          <div class="boot-logo">RINGBEAT</div>
+          <i id="boot-art" class="spr boot-art"></i>
+          <p class="blink">Press any key</p>
+          <button id="btn-start" class="sr" data-default>Start</button>
+          <p class="hint">Ringtones, but make it a rhythm game.</p>
+        </section>
+
+        <!-- Song select: "Ringing tones" -->
+        <section id="select" class="screen" data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
+          <div class="sel-head">
+            <span class="arrow" aria-hidden="true">◄</span>
+            <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
+              <button data-diff="easy" tabindex="-1">Easy</button>
+              <button data-diff="normal" tabindex="-1">Normal</button>
+              <button data-diff="hard" tabindex="-1">Hard</button>
+            </div>
+            <span class="arrow" aria-hidden="true">►</span>
+          </div>
+          <div id="sel-sub" class="sel-sub"></div>
+          <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
+          <div id="sel-info" class="sel-info" aria-live="polite"></div>
+        </section>
+
+        <!-- Options for the selected song -->
+        <section id="options" class="screen" data-title="Options" data-soft-left="Select" data-soft-right="Back">
+          <div class="menu">
+            <button id="btn-play" data-default>Play</button>
+            <button id="btn-info">Details</button>
+            <button id="btn-preview">Preview</button>
+            <button id="btn-train-mode" aria-pressed="false">Training: Off</button>
+            <button id="view-cat">Category: All</button>
+            <button id="view-sort">Sort: Default</button>
+            <button id="view-filter">Show: All</button>
+            <button id="btn-custom">Custom tone…</button>
+            <button id="btn-settings">Settings</button>
+          </div>
+        </section>
+
+        <!-- Song details -->
+        <section id="song-info" class="screen" data-title="Details" data-soft-left="Play" data-soft-right="Back">
           <h2 id="d-title"></h2>
+          <i id="d-cover" class="spr cover"></i>
           <div id="d-meta" class="hint"></div>
           <div id="d-stars" class="stars"></div>
           <div class="lbl">Best</div>
           <div id="d-best" class="d-best"></div>
           <div class="lbl">Top runs</div>
           <ol id="d-top" class="top"></ol>
-          <div class="actions">
-            <button id="btn-play" class="primary" data-default>▶ Play</button>
-            <button id="btn-preview">▶ Preview</button>
-            <button id="btn-custom">Custom…</button>
+          <div class="menu">
+            <button id="btn-info-play" data-default>Play</button>
           </div>
-        </aside>
-      </div>
-      <p class="hint keys"><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> tap lanes · gamepad d-pad / face buttons · Esc pause · R restart</p>
-    </div>
-  </section>
+        </section>
 
-  <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
-  <section id="tutorial" class="screen" hidden>
-    <div class="panel">
-      <h2 id="tut-title">Welcome to Ringbeat</h2>
-      <div id="tut-body"></div>
-      <div class="row">
-        <button id="btn-tut-go" class="primary" data-default>Start tutorial</button>
-        <button id="btn-tut-skip">Skip</button>
+        <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
+        <section id="tutorial" class="screen" data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
+          <h2 id="tut-title">Welcome to Ringbeat</h2>
+          <div id="tut-body"></div>
+          <div class="menu">
+            <button id="btn-tut-go" data-default>Start tutorial</button>
+            <button id="btn-tut-skip">Skip</button>
+          </div>
+        </section>
+
+        <!-- Custom song -->
+        <section id="custom" class="screen" data-title="Custom tone" data-soft-left="Select" data-soft-right="Back">
+          <label class="lbl" for="rtttl">Paste RTTTL</label>
+          <textarea id="rtttl" rows="4" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
+          <div id="status" class="status"></div>
+          <div class="menu">
+            <button id="btn-custom-play">Play</button>
+            <button id="btn-custom-preview">Preview</button>
+            <button id="btn-share">Copy share link</button>
+            <button id="btn-custom-back">Back</button>
+          </div>
+          <div id="share-msg" class="hint"></div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="screen" data-title="Settings" data-soft-left="Select" data-soft-right="Back">
+          <div class="menu">
+            <button id="set-voice">Tone: Buzzer</button>
+            <label class="item">Volume <input id="volume" type="range" min="0" max="100" step="10"></label>
+            <label class="item">Scroll time <span id="scroll-val"></span>
+              <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
+            <label class="item check"><input id="backing" type="checkbox"> Backing pulse</label>
+            <label class="item check"><input id="pref-preview" type="checkbox"> Song preview</label>
+            <button id="btn-calibrate" class="menu-only">Latency: <b id="menu-offset">0 ms</b></button>
+          </div>
+          <div class="lbl">Controller</div>
+          <div id="pad-status" class="hint"></div>
+          <div id="bind-grid" class="menu bind-grid"></div>
+          <div class="menu">
+            <button id="btn-bind-reset">Reset buttons</button>
+            <button id="btn-tutorial" class="menu-only">Replay tutorial</button>
+            <button id="btn-reset-scores" class="menu-only">Reset highscores</button>
+            <button id="btn-settings-back">Back</button>
+          </div>
+        </section>
+
+        <!-- Training options -->
+        <section id="training" class="screen" data-title="Training" data-soft-left="Select" data-soft-right="Back">
+          <div id="t-song" class="sub"></div>
+          <div class="menu">
+            <label class="item">Speed <b id="t-speed-val"></b>
+              <input id="t-speed" type="range" min="50" max="150" step="10"></label>
+            <label class="item check"><input id="t-loop" type="checkbox"> Loop section</label>
+            <label class="item">Loop start <b id="t-a-val"></b>
+              <input id="t-a" type="range" min="0" max="90" step="5"></label>
+            <label class="item">Loop end <b id="t-b-val"></b>
+              <input id="t-b" type="range" min="10" max="100" step="5"></label>
+            <button id="btn-train-start" data-default>▶ Start</button>
+            <button id="btn-train-back">Back</button>
+          </div>
+          <p class="hint">Practice runs are never saved. Pitch stays the same at any speed.</p>
+        </section>
+
+        <!-- Now playing (shown in the phone while the highway runs) -->
+        <section id="nowplaying" class="screen np" data-title="" data-soft-left="Options" data-soft-right="Back">
+          <div id="np-title" class="np-title"></div>
+          <div id="np-sub" class="np-sub">RTTTL</div>
+          <i id="np-art" class="spr np-art"></i>
+          <div id="np-caption" class="np-caption" hidden></div>
+          <div class="np-bar"><div id="np-fill"></div></div>
+          <div id="np-time" class="np-time">0:00 / 0:00</div>
+        </section>
+
+        <!-- Results -->
+        <section id="results" class="screen" data-title="Results" data-soft-left="Select" data-soft-right="Back">
+          <h2 id="r-heading" class="sr">Results</h2>
+          <div id="r-song" class="hint center"></div>
+          <div class="r-top">
+            <div id="r-grade" class="grade">S</div>
+            <div>
+              <div class="big" id="r-score">0</div>
+              <div id="r-banner" class="banner" hidden></div>
+              <div id="r-best" class="newbest" hidden></div>
+            </div>
+          </div>
+          <table>
+            <tr><td>Accuracy</td><td id="r-acc"></td></tr>
+            <tr><td>Max combo</td><td id="r-combo"></td></tr>
+            <tr><td>Perfect</td><td id="r-p"></td></tr>
+            <tr><td>Great</td><td id="r-g"></td></tr>
+            <tr><td>Good</td><td id="r-o"></td></tr>
+            <tr><td>Miss</td><td id="r-m"></td></tr>
+          </table>
+          <div class="hist-label hint">Early ◄ timing ► Late</div>
+          <div id="r-hist" class="hist"></div>
+          <div id="r-offset" class="hint"></div>
+          <div class="menu">
+            <button id="btn-retry" data-default>Retry</button>
+            <button id="btn-next">Next song</button>
+            <button id="btn-menu">Song select</button>
+          </div>
+        </section>
+
+        <!-- Pause -->
+        <section id="pause" class="screen" data-title="Paused" data-soft-left="Select" data-soft-right="Back">
+          <div class="menu">
+            <button id="btn-resume" data-default>Resume</button>
+            <button id="btn-restart">Restart</button>
+            <button id="btn-pause-settings">Settings</button>
+            <button id="btn-pause-options" hidden>Training options</button>
+            <button id="btn-quit">Song select</button>
+            <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
+          </div>
+        </section>
+
+        <!-- Calibration -->
+        <section id="calib" class="screen" data-title="Latency" data-soft-left="Select" data-soft-right="Back">
+          <p id="calib-msg" class="hint"></p>
+          <div id="calib-pad" class="pad" role="button" aria-label="Tap here">TAP</div>
+          <div class="hint center" id="calib-count">0 taps</div>
+          <div class="nudge">
+            <button id="nudge-minus">−5</button>
+            <b id="calib-offset">0 ms</b>
+            <button id="nudge-plus">+5</button>
+          </div>
+          <div class="menu">
+            <button id="calib-done" data-default>Done</button>
+            <button id="calib-again">Again</button>
+            <button id="calib-reset">Reset</button>
+          </div>
+        </section>
+
+      </div>
+      <div class="softbar">
+        <button id="soft-left" tabindex="-1"></button>
+        <button id="soft-right" tabindex="-1"></button>
       </div>
     </div>
-  </section>
+
+    <!-- The phone's keys (hit areas over the artwork) -->
+    <div class="keys" aria-label="Phone keys">
+      <button class="k k-soft" style="--x:60;--y:502;--w:86;--h:92" data-key="softL" tabindex="-1" aria-label="Left soft key"></button>
+      <button class="k k-navi" style="--x:156;--y:506;--w:128;--h:52" data-key="ok" tabindex="-1" aria-label="Select"></button>
+      <button class="k k-soft" style="--x:294;--y:502;--w:86;--h:92" data-key="softR" tabindex="-1" aria-label="Back"></button>
+      <button class="k" style="--x:64;--y:616" data-key="1" tabindex="-1" aria-label="1"></button>
+      <button class="k" style="--x:172;--y:610" data-key="2" tabindex="-1" aria-label="2 (up)"></button>
+      <button class="k" style="--x:280;--y:616" data-key="3" tabindex="-1" aria-label="3"></button>
+      <button class="k" style="--x:64;--y:674" data-key="4" tabindex="-1" aria-label="4 (left)"></button>
+      <button class="k" style="--x:172;--y:668" data-key="5" tabindex="-1" aria-label="5 (select)"></button>
+      <button class="k" style="--x:280;--y:674" data-key="6" tabindex="-1" aria-label="6 (right)"></button>
+      <button class="k" style="--x:64;--y:732" data-key="7" tabindex="-1" aria-label="7"></button>
+      <button class="k" style="--x:172;--y:726" data-key="8" tabindex="-1" aria-label="8 (down)"></button>
+      <button class="k" style="--x:280;--y:732" data-key="9" tabindex="-1" aria-label="9"></button>
+      <button class="k" style="--x:64;--y:790" data-key="*" tabindex="-1" aria-label="Star"></button>
+      <button class="k" style="--x:172;--y:784" data-key="0" tabindex="-1" aria-label="0"></button>
+      <button class="k" style="--x:280;--y:790" data-key="#" tabindex="-1" aria-label="Hash"></button>
+    </div>
+  </div>
+
+  <button id="btn-pause" class="pause-btn" hidden aria-label="Pause">❚❚</button>
   <div id="tut-caption" class="tut-caption" hidden aria-live="polite"></div>
-
-  <!-- Custom song -->
-  <section id="custom" class="screen" hidden>
-    <div class="panel">
-      <h2>Custom song</h2>
-      <label class="lbl" for="rtttl">Paste RTTTL</label>
-      <textarea id="rtttl" rows="4" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
-      <div id="status" class="status"></div>
-      <div class="row">
-        <button id="btn-custom-play" class="primary">▶ Play</button>
-        <button id="btn-custom-preview">Preview</button>
-        <button id="btn-share">Copy share link</button>
-        <button id="btn-custom-back">Back</button>
-      </div>
-      <div id="share-msg" class="hint"></div>
-    </div>
-  </section>
-
-  <!-- Settings -->
-  <section id="settings" class="screen" hidden>
-    <div class="panel">
-      <h2>Settings</h2>
-      <div class="grid">
-        <label>Volume <input id="volume" type="range" min="0" max="100" step="5"></label>
-        <label>Scroll time <span id="scroll-val"></span>
-          <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
-        <label class="check"><input id="backing" type="checkbox"> Backing pulse</label>
-        <label class="check"><input id="pref-preview" type="checkbox"> Song preview</label>
-      </div>
-      <div class="row menu-only">
-        <span>Latency offset: <b id="menu-offset">0 ms</b></span>
-        <button id="btn-calibrate">Calibrate</button>
-      </div>
-
-      <div class="lbl">Controller</div>
-      <div id="pad-status" class="hint"></div>
-      <div id="bind-grid" class="bind-grid"></div>
-      <div class="row">
-        <button id="btn-bind-reset">Reset buttons</button>
-      </div>
-
-      <div class="lbl">Data</div>
-      <div class="row">
-        <button id="btn-tutorial" class="menu-only">Replay tutorial</button>
-        <button id="btn-reset-scores" class="menu-only">Reset highscores</button>
-        <button id="btn-settings-back" class="primary">Back</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Training options -->
-  <section id="training" class="screen" hidden>
-    <div class="panel">
-      <h2>Training</h2>
-      <div id="t-song" class="sub"></div>
-      <div class="grid">
-        <label>Speed <b id="t-speed-val"></b>
-          <input id="t-speed" type="range" min="50" max="150" step="10"></label>
-        <label class="check"><input id="t-loop" type="checkbox"> Loop section</label>
-        <label>Loop start <b id="t-a-val"></b>
-          <input id="t-a" type="range" min="0" max="90" step="5"></label>
-        <label>Loop end <b id="t-b-val"></b>
-          <input id="t-b" type="range" min="10" max="100" step="5"></label>
-      </div>
-      <p class="hint">Practice runs are never saved to highscores. Pitch stays the same at any speed.</p>
-      <div class="row">
-        <button id="btn-train-start" class="primary" data-default>▶ Start</button>
-        <button id="btn-train-back">Back</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Results -->
-  <section id="results" class="screen overlay" hidden>
-    <div class="panel small">
-      <h2 id="r-heading">Results</h2>
-      <div id="r-song" class="hint"></div>
-      <div id="r-grade" class="grade">S</div>
-      <div id="r-banner" class="banner" hidden></div>
-      <div class="big" id="r-score">0</div>
-      <div id="r-best" class="newbest" hidden></div>
-      <table>
-        <tr><td>Accuracy</td><td id="r-acc"></td></tr>
-        <tr><td>Max combo</td><td id="r-combo"></td></tr>
-        <tr><td>Perfect</td><td id="r-p"></td></tr>
-        <tr><td>Great</td><td id="r-g"></td></tr>
-        <tr><td>Good</td><td id="r-o"></td></tr>
-        <tr><td>Miss</td><td id="r-m"></td></tr>
-      </table>
-      <div class="hist-label hint">Early ◂ timing ▸ Late</div>
-      <div id="r-hist" class="hist"></div>
-      <div id="r-offset" class="hint"></div>
-      <div class="row">
-        <button id="btn-retry" class="primary" data-default>Retry</button>
-        <button id="btn-next">Next song</button>
-        <button id="btn-menu">Menu</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Pause -->
-  <section id="pause" class="screen overlay" hidden>
-    <div class="panel small">
-      <h2>Paused</h2>
-      <div class="row">
-        <button id="btn-resume" class="primary" data-default>Resume</button>
-        <button id="btn-restart">Restart</button>
-        <button id="btn-pause-settings">Settings</button>
-        <button id="btn-pause-options" hidden>Training options</button>
-        <button id="btn-quit">Song select</button>
-        <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Calibration -->
-  <section id="calib" class="screen" hidden>
-    <div class="panel small">
-      <h2>Calibrate</h2>
-      <p id="calib-msg" class="hint"></p>
-      <div id="calib-pad" class="pad" role="button" aria-label="Tap here">TAP</div>
-      <div class="hint" id="calib-count">0 taps</div>
-      <div class="row">
-        <button id="nudge-minus">−5 ms</button>
-        <b id="calib-offset">0 ms</b>
-        <button id="nudge-plus">+5 ms</button>
-      </div>
-      <div class="row">
-        <button id="calib-reset">Reset</button>
-        <button id="calib-again">Again</button>
-        <button id="calib-done" class="primary">Done</button>
-      </div>
-    </div>
-  </section>
+  <div id="toast" class="toast" hidden role="status"></div>
 
   <script type="module" src="src/main.js"></script>
 </body>

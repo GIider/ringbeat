@@ -1,43 +1,64 @@
-// Procedural cover art: a small sunset/night scene derived from the song id, returned as an SVG data-URI.
+// Procedural song art as a 72x28 1-bit "picture message": a night scene (moon, stars, hills or a skyline)
+// with the song's category motif enlarged in front. Derived from the song id; returned as sprite rows (see pixelart.js).
 import { hashString } from './library.js';
+import { SPRITES, compose } from './pixelart.js';
 
-const PALETTES = [
-  ['#2b1055', '#d53369', '#ffb347'], // sunset
-  ['#0f2027', '#2c5364', '#6dd5ed'], // dusk sea
-  ['#1a0b3b', '#5b2a86', '#ff6ec7'], // neon violet
-  ['#0b3d2e', '#1f8a5b', '#b6f36a'], // forest
-  ['#101a4a', '#3a6ea5', '#ffe66d'], // night sky
-  ['#3b0d2a', '#c0392b', '#ffd23f'], // ember
-];
+export const COVER_W = 72, COVER_H = 28;
 
 function rng(seed) {
   let s = parseInt(seed, 36) || 1;
   return () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) + 374761393 | 0) >>> 0) / 4294967296;
 }
 
+const scale2 = rows => rows.flatMap(r => { const w = r.replace(/./g, c => c + c); return [w, w]; });
+
 const cache = new Map();
-export function coverURL(id) {
-  if (cache.has(id)) return cache.get(id);
+export function coverRows(id, category = '') {
+  const key = id + '|' + category;
+  if (cache.has(key)) return cache.get(key);
   const r = rng(hashString(id));
-  const [a, b, c] = PALETTES[Math.floor(r() * PALETTES.length)];
-  const sx = 40 + r() * 120, sy = 30 + r() * 25, sr = 14 + r() * 12;
-  let stars = '';
-  for (let i = 0; i < 14; i++) {
-    stars += `<circle cx="${(r() * 200).toFixed(0)}" cy="${(r() * 60).toFixed(0)}" r="${(0.6 + r() * 1.1).toFixed(1)}" fill="#fff" opacity="${(0.4 + r() * 0.5).toFixed(2)}"/>`;
+  const W = COVER_W, H = COVER_H;
+  const px = Array.from({ length: H }, () => Array(W).fill('.'));
+  const set = (x, y) => { if (x >= 0 && y >= 0 && x < W && y < H) px[y][x] = '#'; };
+  // stars
+  for (let i = 0; i < 16; i++) set(Math.floor(r() * W), Math.floor(r() * 12));
+  // moon: full or crescent
+  const mx = 6 + Math.floor(r() * 56), my = 5 + Math.floor(r() * 3), mr = 3 + Math.floor(r() * 2), cres = r() < 0.5;
+  for (let y = -mr; y <= mr; y++) for (let x = -mr; x <= mr; x++) {
+    if (x * x + y * y > mr * mr + 1) continue;
+    if (cres && (x + 2) * (x + 2) + (y - 1) * (y - 1) <= mr * mr) continue;
+    set(mx + x, my + y);
   }
-  const layer = (base, amp, fill) => {
-    let d = `M0 90 L0 ${base}`;
-    for (let x = 0; x <= 200; x += 20) d += ` L${x} ${(base - r() * amp).toFixed(0)}`;
-    return `<path d="${d} L200 90 Z" fill="${fill}"/>`;
-  };
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 90" preserveAspectRatio="xMidYMid slice">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/>` +
-    `<stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient></defs>` +
-    `<rect width="200" height="90" fill="url(#g)"/>${stars}` +
-    `<circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="${sr.toFixed(0)}" fill="${c}" opacity=".9"/>` +
-    layer(62, 18, '#1b1440') + layer(74, 14, '#0e0b24') + `</svg>`;
-  const url = 'data:image/svg+xml,' + encodeURIComponent(svg);
-  cache.set(id, url);
-  return url;
+  // ground: rolling hills or a city skyline
+  if (r() < 0.5) {
+    const a = 2 + r() * 3, f = 0.08 + r() * 0.1, ph = r() * 6;
+    for (let x = 0; x < W; x++) {
+      const top = Math.round(H - 7 - a * Math.sin(x * f + ph));
+      for (let y = top; y < H; y++) if (y === top || (x + y) % 2 === 0) set(x, y);
+    }
+  } else {
+    for (let x = 0; x < W;) {
+      const w = 4 + Math.floor(r() * 6), h = 6 + Math.floor(r() * 10);
+      for (let dx = 0; dx < w && x + dx < W; dx++) {
+        for (let y = H - h; y < H; y++) {
+          const edge = dx === 0 || dx === w - 1 || y === H - h;
+          const lit = dx % 2 === 1 && y % 3 === 0 && r() < 0.6;
+          if (edge || lit) set(x + dx, y);
+        }
+      }
+      x += w + Math.floor(r() * 2);
+    }
+  }
+  let rows = px.map(row => row.join(''));
+  const motif = SPRITES[category];
+  if (motif) {
+    // clear a halo, then stamp the motif at 2x
+    const big = scale2(motif), ox = r() < 0.5 ? 6 : W - big[0].length - 6, oy = H - big.length - 3;
+    rows = rows.map((row, y) => row.split('').map((c, x) =>
+      (x >= ox - 2 && x < ox + big[0].length + 2 && y >= oy - 2 && y < oy + big.length + 2) ? '.' : c).join(''));
+    rows = compose(W, H, [[rows, 0, 0], [big, ox, oy]]);
+  }
+  cache.set(key, rows);
+  return rows;
 }
+

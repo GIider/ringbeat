@@ -5,13 +5,21 @@
 |---|---|
 | Lanes (4) | `D` `F` `J` `K` |
 | Lanes (Easy, 3) | `F` `J` `K` |
-| Menu navigation | Arrow keys (spatial focus), `Enter`/`Space` activate, `Tab` also works |
-| Back / pause / resume | `Esc` |
+| Menu navigation | `↑` `↓` (spatial focus), `Enter`/`Space` activate, `Tab` also works |
+| Difficulty (song select) | `←` `→` |
+| Options (song select) | `O` |
+| Category (song select) | `[` `]` |
+| Back / pause / resume | `Esc` or `Backspace` |
 | Restart (play, pause, results) | `R` |
 | Sliders | `←` `→` |
 
+## Phone keys (mouse / touch)
+The drawn phone's keys work: left soft key (green call key) = the left label on the LCD (Options / Select / Play…),
+right soft key (red end key) = Back, the centre key or `5` = select, `2` `8` `4` `6` = up / down / left / right.
+The soft-key labels on the LCD are tappable too. During play, either soft key or the centre key pauses.
+
 ## Touch
-Tap and hold the lane columns (multi-touch). On-screen ❚❚ pauses. Menus are plain buttons.
+Tap and hold the lane columns (multi-touch). On small screens the on-screen ❚❚ pauses. Menu items are plain buttons.
 
 ## Gamepad (Standard Gamepad API)
 Gameplay — defaults, each lane has several buttons:
@@ -37,6 +45,7 @@ Menus:
 | Back | B |
 | Difficulty − / + (song select) | LB / RB |
 | Toggle Training mode (song select) | Y |
+| Options (song select) | X |
 | Next category (song select) | RT (keyboard: `[` / `]`) |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
