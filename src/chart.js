@@ -59,17 +59,23 @@ export function generateChart(song, opts = {}) {
   }));
 
   // Difficulty filter
+  // Rejected notes are not playable but still sound: the game auto-plays them as backing notes.
+  const backing = [];
   notes = notes.filter(n => {
-    if (n.duration < diff.minDur) return false;
-    if (diff.beatsOrHoldsOnly && !n.onBeat && n.duration < HOLD_MIN_SEC) return false;
-    return true;
+    const ok = n.duration >= diff.minDur && !(diff.beatsOrHoldsOnly && !n.onBeat && n.duration < HOLD_MIN_SEC);
+    if (!ok) backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+    return ok;
   });
   // Safety rule against unplayable bursts
   const kept = [];
   for (const n of notes) {
-    if (kept.length && n.time - kept[kept.length - 1].time < MIN_GAP_SEC) continue;
+    if (kept.length && n.time - kept[kept.length - 1].time < MIN_GAP_SEC) {
+      backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+      continue;
+    }
     kept.push(n);
   }
+  backing.sort((a, b) => a.time - b.time);
   if (!kept.length) throw new Error('No playable notes at this difficulty');
 
   // Lanes are computed from the *remaining* notes so they stay balanced.
@@ -91,6 +97,7 @@ export function generateChart(song, opts = {}) {
   }
   return {
     notes: out,
+    backing,
     lanes,
     length: Math.max(...out.map(n => n.time + n.duration)),
     bpm: song.bpm,

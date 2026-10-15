@@ -217,3 +217,12 @@ test('scores: fc/ap flags are sticky per difficulty', () => {
   assert.equal(createScores(st).get('x', 'hard').fc, true); // persisted
   assert.equal(s.get('x', 'easy'), null);
 });
+
+test('chart: every pitched note is either playable or backing', () => {
+  const song = parseRTTTL(SONGS[0].rtttl);
+  const total = song.notes.filter(n => !n.isRest).length;
+  for (const d of DIFFICULTIES) {
+    const c = generateChart(song, { difficulty: d });
+    assert.equal(c.notes.length + c.backing.length, total, d);
+  }
+});

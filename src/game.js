@@ -36,6 +36,7 @@ export class Game {
       n.judgement = null; n.voice = null;
       this.byLane[n.lane].push(n);
     }
+    this.backingPtr = 0;
     this.holds = new Array(chart.lanes).fill(null);
     this.pendingRelease = new Array(chart.lanes).fill(false);
     this.score = 0; this.combo = 0; this.maxCombo = 0;
@@ -81,6 +82,12 @@ export class Game {
         this.synth.tick({ when: t, accent: ((this.nextBeat % 4) + 4) % 4 === 0 });
       }
       this.nextBeat++;
+    }
+    // Auto-play notes that were filtered out of the playable chart so the song sounds complete.
+    const bk = c.backing || [];
+    while (this.backingPtr < bk.length && this.songStart + bk[this.backingPtr].time < horizon) {
+      const b = bk[this.backingPtr++], when = this.songStart + b.time;
+      if (when >= ctx.currentTime - 0.005) this.synth.playNote({ midi: b.midi, when, duration: b.duration });
     }
   }
 
