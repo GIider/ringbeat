@@ -28,7 +28,7 @@ Chromium via Playwright (`npm install`, then once `npx playwright install chromi
 
 ## Features
 
-Song select with 104 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
+Song select with 153 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
 full combo / all perfect indicators · training mode (speed 50–150 %, A–B loop, timing display) ·
 keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·
 buzzer or smooth instrument voice.
@@ -55,6 +55,8 @@ Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.
 
 - Defaults `d` (duration), `o` (octave 4–7), `b` (BPM); any may be missing (fallback d=4, o=6, b=63).
 - Note: `[duration][note][#][.][octave][.]` — a dot is accepted after the note letter or after the octave.
+  The dot always follows the note: dotted quarter C is `4c.` (or `4c5.`), never `4.c` — a dot in front of the note is
+  an unknown token and the note is skipped (listed as a warning).
 - `p` is a pause. Octave 4 means C4 = MIDI 60 (middle C); A4 = 440 Hz.
 - Whitespace and case are ignored; unknown tokens are skipped and listed as warnings.
 
