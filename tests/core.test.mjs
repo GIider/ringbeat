@@ -128,6 +128,14 @@ test('game: a single miss breaks FC', () => {
   assert.equal(result.ap, false);
 });
 
+test('game: notesLeft counts down to zero, dropped holds do not go negative', () => {
+  const { g, n } = playChart(0);
+  assert.equal(g.notesLeft, 0);
+  const miss = playChart(3);
+  assert.equal(miss.g.notesLeft, 0);
+  assert.ok(miss.n > 0);
+});
+
 test('gamepad: bindings sanitize, lane folding', () => {
   assert.deepEqual(sanitizeBindings(null), DEFAULT_BINDINGS);
   assert.deepEqual(sanitizeBindings({ 0: 'x', 1: [99], 2: [1, 2], 3: [] })[2], [1, 2]);

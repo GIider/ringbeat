@@ -42,6 +42,7 @@ export class Game {
     this.score = 0; this.combo = 0; this.maxCombo = 0;
     this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
     this.judgedCount = 0;
+    this.notesLeft = chart.notes.length; // notes not yet judged (a dropped hold does not add to this)
     this.accSum = 0;
     this.deltas = [];         // signed hit offsets in seconds (+ = late), in hit order
     // Beat grid: tick n sits at songStart + (n - firstBeat) * beatLen
@@ -159,6 +160,7 @@ export class Game {
 
   _judge(n, j) {
     n.judged = true; n.judgement = j;
+    this.notesLeft--;
     this.counts[j]++;
     this.judgedCount++;
     this.accSum += ACCURACY_WEIGHT[j];
@@ -169,7 +171,7 @@ export class Game {
   }
 
   _miss(n, headMissed) {
-    if (headMissed) { n.judged = true; n.judgement = 'miss'; }
+    if (headMissed) { n.judged = true; n.judgement = 'miss'; this.notesLeft--; }
     this.counts.miss++;
     this.judgedCount++;
     this.combo = 0;

@@ -21,6 +21,10 @@ const F = {
   resume: `bold 96px ${FONT}`, ready: `bold 20px ${FONT}`,
 };
 const GLOW_H = 220;
+const GRADE_COLORS = { S: '#ffe14d', A: '#4dffb0', B: '#4dc8ff', C: '#ffa94d', D: '#ff4d6d' };
+const PANEL_MIN = 190;     // min side-panel width (px) before falling back to the compact layout
+const BANNER_POOL = 3;
+const mmss = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 const HIT_Y = 0.85;       // hit line, fraction of canvas height
 const RING_POOL = 12, LABEL_POOL = 8;
@@ -53,8 +57,13 @@ export class Renderer {
     this.ringI = 0; this.labelI = 0;
     this.vi = 0;
     this.lastCombo = 0; this.pulseT = -10;
+    this.banners = Array.from({ length: BANNER_POOL }, () => ({ t: -10, text: '', color: '#fff' }));
+    this.bannerI = 0;
+    this.mode = 'compact';
+    this.resetState();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => this.resize());
     // fx hooks handed to the game
     this.fx = {
       press: lane => { this.flash[lane] = performance.now() / 1000; },
@@ -86,12 +95,35 @@ export class Renderer {
     this._layout();
   }
 
-  resetState() { this.vi = 0; this.lastCombo = 0; this.rings.forEach(r => r.t = -10); this.labels.forEach(l => l.t = -10); }
+  resetState() {
+    this.vi = 0; this.lastCombo = 0;
+    this.rings.forEach(r => r.t = -10); this.labels.forEach(l => l.t = -10); this.banners.forEach(b => b.t = -10);
+    this._dispScore = 0; this._shownScore = -1; this._lastNow = 0;
+    this._halfDone = this._lastTenDone = false; this._lastMilestone = 0;
+  }
+
+  _banner(text, color, now) {
+    const b = this.banners[this.bannerI++ % BANNER_POOL];
+    b.t = now; b.text = text; b.color = color;
+  }
 
   _layout() {
     this.laneW = Math.min(this.w / this.lanes, 120);
     this.x0 = (this.w - this.laneW * this.lanes) / 2;
     this.hitY = this.h * HIT_Y;
+    // Wide screens get a panel on each side of the highway; narrow ones a slim strip on top.
+    this.mode = this.x0 >= PANEL_MIN ? 'wide' : 'compact';
+    this.panelW = this.x0;
+    this.rx = this.x0 + this.laneW * this.lanes; // left edge of the right panel
+    const k = Math.min(1, Math.max(0.7, this.h / 720));
+    const pf = Math.max(24, Math.min(44, Math.floor((this.panelW - 36) / 7 / 0.62)));
+    this.fp = {
+      score: `bold ${pf}px ${FONT}`, combo: `bold ${Math.round(72 * k)}px ${FONT}`,
+      left: `bold ${Math.round(40 * k)}px ${FONT}`, title: `bold 20px ${FONT}`,
+      grade: `bold 36px ${FONT}`, lbl: `bold 11px ${FONT}`, small: `12px ${FONT}`,
+      cs: `bold 28px ${FONT}`, ss: `bold 26px ${FONT}`,
+    };
+    this._titleLines = null;
     // One glow gradient per lane, drawn at origin (translated into place per use).
     const colors = LANE_COLORS[this.lanes] || LANE_COLORS[4];
     this.glow = colors.slice(0, this.lanes).map(col => {
@@ -134,6 +166,21 @@ export class Renderer {
     for (let i = 0; i < n; i++) {
       if (this.keyLabels[i]) c.fillText(this.keyLabels[i], x0 + (i + 0.5) * lw, hitY + 30);
     }
+    if (this.mode === 'wide') this._paintPanels(c);
+  }
+
+  // Static side-panel chrome: backgrounds, dividers and captions that never change.
+  _paintPanels(c) {
+    const H = this.h, pw = this.panelW, rx = this.rx, p = 20, f = this.fp;
+    c.fillStyle = '#0e0e22'; c.fillRect(0, 0, pw, H); c.fillRect(rx, 0, pw, H);
+    c.fillStyle = C.sep; c.fillRect(pw - 2, 0, 2, H); c.fillRect(rx, 0, 2, H);
+    c.font = f.lbl; c.fillStyle = C.dim; c.textAlign = 'left'; c.textBaseline = 'top';
+    c.fillText('SCORE', rx + p, 20);
+    c.fillText('ACCURACY', rx + p, 112);
+    c.fillText('NOTES LEFT', rx + p, H * 0.64);
+    c.fillText('JUDGEMENTS', rx + p, H - 70);
+    c.textAlign = 'right';
+    c.fillText('PROGRESS', this.x0 - 28, Math.round(H * 0.3) - 20);
   }
 
   // Map a client X to a lane (used by pointer input).
@@ -239,55 +286,153 @@ export class Renderer {
     this._hud(game, t, now);
   }
 
-  _hud(game, t, now) {
-    const c = this.c, W = this.w, H = this.h;
-    // Progress bar
-    const p = Math.max(0, Math.min(1, t / game.chart.length));
-    c.fillStyle = C.sep; c.fillRect(0, 0, W, 4);
-    c.fillStyle = '#3be8d0'; c.fillRect(0, 0, W * p, 4);
+  _mixBar(c, game, x, y, w, h) {
+    c.fillStyle = C.sep; c.fillRect(x, y, w, h);
+    const n = game.judgedCount;
+    if (!n) return;
+    const keys = ['perfect', 'great', 'good', 'miss'];
+    let cx = x;
+    for (const k of keys) {
+      const sw = w * game.counts[k] / n;
+      if (sw <= 0) continue;
+      c.fillStyle = JUDGE_COLORS[k]; c.fillRect(cx, y, sw, h);
+      cx += sw;
+    }
+  }
 
-    c.textBaseline = 'top';
-    c.fillStyle = C.text; c.textAlign = 'center'; c.font = F.title;
-    c.fillText(this.title, W / 2, 14);
-    if (game.score !== this._score) { this._score = game.score; this._scoreTxt = String(game.score).padStart(7, '0'); }
+  _titleFit(maxW) {
+    if (this._titleLines && this._titleKey === this.title + '|' + maxW) return this._titleLines;
+    this._titleKey = this.title + '|' + maxW;
+    const c = this.c, words = String(this.title).split(' '), lines = [''];
+    c.font = this.fp.title;
+    for (const w of words) {
+      const cur = lines[lines.length - 1], test = cur ? cur + ' ' + w : w;
+      if (!cur || typeof c.measureText !== 'function' || c.measureText(test).width <= maxW) lines[lines.length - 1] = test;
+      else if (lines.length < 3) lines.push(w);
+      else lines[2] = test;
+    }
+    return (this._titleLines = lines);
+  }
+
+  _hud(game, t, now) {
+    const c = this.c, W = this.w, H = this.h, f = this.fp, wide = this.mode === 'wide';
+    const total = game.chart.notes.length;
+    const p = Math.max(0, Math.min(1, t / game.chart.length));
+    const dt = Math.min(0.1, Math.max(0, now - (this._lastNow || now)));
+    this._lastNow = now;
+
+    // Score counts up toward the real value; strings are rebuilt only when the integer changes.
+    this._dispScore += (game.score - this._dispScore) * Math.min(1, dt * 14);
+    if (Math.abs(game.score - this._dispScore) < 1) this._dispScore = game.score;
+    const shown = Math.round(this._dispScore);
+    if (shown !== this._shownScore) { this._shownScore = shown; this._scoreTxt = String(shown).padStart(7, '0'); }
     const acc = game.accuracy;
     if (acc !== this._acc) { this._acc = acc; this._accTxt = acc.toFixed(1) + '%'; }
-    c.textAlign = 'right'; c.font = F.score;
-    c.fillText(this._scoreTxt, W - 12, 40);
-    c.font = F.acc; c.fillStyle = C.dim;
-    c.fillText(this._accTxt, W - 12, 66);
+    const left = game.notesLeft;
+    if (left !== this._left) { this._left = left; this._leftTxt = String(left); this._totTxt = '/ ' + total; }
+    const cmb = game.combo;
+    if (cmb !== this.lastCombo) {
+      if (cmb > this.lastCombo) {
+        this.pulseT = now;
+        if (cmb >= 50 && cmb % 50 === 0) this._banner(cmb + ' COMBO', '#ffe14d', now);
+      }
+      this.lastCombo = cmb;
+    }
+    if (!this._halfDone && p >= 0.5) { this._halfDone = true; this._banner('HALFWAY', '#3be8d0', now); }
+    if (!this._lastTenDone && total > 20 && left <= 10 && left > 0) { this._lastTenDone = true; this._banner('LAST 10 NOTES', '#ff4d8d', now); }
+    const tier = cmb >= 100 ? '#ff4d8d' : cmb >= 50 ? '#ffe14d' : cmb >= 25 ? '#3be8d0' : C.text;
+    const s = this.reduced ? 1 : 1 + Math.max(0, 1 - (now - this.pulseT) / 0.12) * 0.3;
 
-    // Combo with punch on increments
-    if (game.combo !== this.lastCombo) {
-      if (game.combo > this.lastCombo) this.pulseT = now;
-      this.lastCombo = game.combo;
-    }
-    if (game.combo > 1) {
-      const age = now - this.pulseT;
-      const s = this.reduced ? 1 : 1 + Math.max(0, 1 - age / 0.12) * 0.35;
-      c.save();
-      c.translate(W / 2, H * 0.3);
-      c.scale(s, s);
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.globalAlpha = 0.9;
-      c.fillStyle = C.text; c.font = F.combo;
-      c.fillText(String(game.combo), 0, 0);
-      c.font = F.comboLbl; c.fillStyle = C.dim;
-      c.fillText('COMBO', 0, 30);
-      c.restore();
+    c.textBaseline = 'top';
+    if (wide) {
+      const pw = this.panelW, rx = this.rx, pad = 20;
+      // Left: title, streak badge, training label, vertical progress column
+      c.textAlign = 'left'; c.fillStyle = C.text; c.font = f.title;
+      const lines = this._titleFit(pw - pad * 2);
+      for (let i = 0; i < lines.length; i++) c.fillText(lines[i], pad, 56 + i * 24);
+      let y = 56 + lines.length * 24 + 8;
+      if (this.trainingLabel) { c.fillStyle = C.dim; c.font = f.lbl; c.fillText(this.trainingLabel, pad, y); y += 18; }
+      if (game.fcAlive && game.judgedCount >= 5) {
+        c.font = F.title; c.fillStyle = game.apAlive ? '#ffe14d' : '#3be8d0';
+        c.fillText(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO', pad, y);
+      }
+      // Progress rail hugs the lane edge so it can be read while watching the notes
+      const bw = 12, bx = this.x0 - 8 - bw, top = 16, bot = H - 16, bh = bot - top, tx = bx - 12;
+      c.fillStyle = C.sep; c.fillRect(bx, top, bw, bh);
+      c.fillStyle = '#3be8d0'; c.fillRect(bx, bot - bh * p, bw, bh * p);
+      c.fillStyle = C.line;
+      for (let q = 1; q < 4; q++) c.fillRect(bx - 3, top + bh * q / 4 - 1, bw + 6, 2);
+      const ty = Math.round(H * 0.3);
+      c.textAlign = 'right';
+      c.font = f.cs; c.fillStyle = C.text;
+      c.fillText(Math.round(p * 100) + '%', tx, ty);
+      c.font = f.small; c.fillStyle = C.dim;
+      c.fillText(mmss(Math.max(0, t)) + ' / ' + mmss(game.chart.length), tx, ty + 34);
+      c.fillText('-' + mmss(Math.max(0, game.chart.length - t)), tx, ty + 54);
+      c.textAlign = 'left';
+
+      // Right: score, accuracy + grade, combo, notes left, judgement mix
+      const rp = rx + pad;
+      c.fillStyle = C.text; c.font = f.score; c.fillText(this._scoreTxt, rp, 36);
+      c.font = f.cs; c.fillText(this._accTxt, rp, 128);
+      c.font = f.grade; c.fillStyle = GRADE_COLORS[game.grade];
+      c.textAlign = 'right'; c.fillText(game.grade, rx + pw - pad, 120);
+      c.textAlign = 'left';
+      if (cmb > 1) {
+        c.save();
+        c.translate(rp, H * 0.34 + 40); c.scale(s, s);
+        c.fillStyle = tier; c.font = f.combo; c.textBaseline = 'middle';
+        c.fillText(String(cmb), 0, 0);
+        c.restore();
+        c.textBaseline = 'top';
+        c.font = f.lbl; c.fillStyle = C.dim;
+        c.fillText('COMBO  x' + game.multiplier.toFixed(1), rp, H * 0.34 + 84);
+      }
+      c.fillStyle = C.text; c.font = f.left; c.fillText(this._leftTxt, rp, H * 0.64 + 18);
+      c.font = f.small; c.fillStyle = C.dim;
+      c.fillText(this._totTxt, rp, H * 0.64 + 18 + Math.round(f.left.match(/\d+/)[0]) + 6);
+      this._mixBar(c, game, rp, H - 50, pw - pad * 2, 12);
+    } else {
+      // Compact: slim strip on top, progress bar along the bottom edge
+      c.fillStyle = 'rgba(11,11,26,0.78)'; c.fillRect(0, 0, W, 64);
+      c.textAlign = 'center'; c.fillStyle = C.text; c.font = F.title;
+      c.fillText(this.title, W / 2, 10);
+      c.textAlign = 'right'; c.font = f.cs; c.fillText(this._scoreTxt, W - 12, 8);
+      c.font = F.acc; c.fillStyle = C.dim;
+      c.fillText(this._accTxt + '  ' + game.grade, W - 12, 40);
+      c.textAlign = 'left';
+      c.font = F.title; c.fillStyle = C.text;
+      c.fillText(this._leftTxt + ' ' + this._totTxt, 56, 40);
+      if (this.trainingLabel) { c.fillStyle = C.dim; c.font = F.comboLbl; c.fillText(this.trainingLabel, 56, 12); }
+      if (game.fcAlive && game.judgedCount >= 5) {
+        c.font = F.comboLbl; c.fillStyle = game.apAlive ? '#ffe14d' : '#3be8d0';
+        c.fillText(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO', 56, 26);
+      }
+      c.fillStyle = C.sep; c.fillRect(0, H - 10, W, 10);
+      c.fillStyle = '#3be8d0'; c.fillRect(0, H - 10, W * p, 10);
+      if (cmb > 1) {
+        c.save();
+        c.translate(W / 2, H * 0.3); c.scale(s, s);
+        c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 0.9;
+        c.fillStyle = tier; c.font = F.combo;
+        c.fillText(String(cmb), 0, 0);
+        c.font = F.comboLbl; c.fillStyle = C.dim;
+        c.fillText('COMBO', 0, 30);
+        c.restore();
+      }
     }
 
-    // Full-combo streak badge (disappears at the first miss) and training label
-    c.textAlign = 'left'; c.textBaseline = 'top';
-    if (this.trainingLabel) {
-      c.fillStyle = C.dim; c.font = F.comboLbl;
-      c.fillText(this.trainingLabel, 12, 48);
+    // Milestone banners over the highway
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    const bx = this.x0 + this.laneW * this.lanes / 2;
+    for (const b of this.banners) {
+      const age = now - b.t;
+      if (age > 1.4 || age < 0) continue;
+      c.globalAlpha = Math.min(1, (1.4 - age) / 0.5);
+      c.fillStyle = b.color; c.font = f.ss;
+      c.fillText(b.text, bx, H * 0.45 - (this.reduced ? 0 : age * 20));
     }
-    if (game.fcAlive && game.judgedCount >= 5) {
-      c.font = F.title;
-      c.fillStyle = game.apAlive ? '#ffe14d' : '#3be8d0';
-      c.fillText(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO', 12, 66);
-    }
+    c.globalAlpha = 1;
 
     // Timing meter: recent hit offsets (left = early, right = late)
     const mw = Math.min(220, W * 0.6), mx = W / 2, my = this.hitY + 52;

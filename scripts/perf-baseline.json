@@ -1,73 +1,88 @@
 {
  "rtttl.parse (all songs)": {
-  "iters": 410,
-  "mean": 0.4882,
-  "p50": 0.4685,
-  "p95": 0.5308,
-  "opsPerSec": 2048.3243
+  "iters": 418,
+  "mean": 0.479,
+  "p50": 0.4607,
+  "p95": 0.5208,
+  "opsPerSec": 2087.6304
  },
  "chart.generate easy (all songs)": {
-  "iters": 907,
-  "mean": 0.2206,
-  "p50": 0.1882,
-  "p95": 0.4793,
-  "opsPerSec": 4533.6038
+  "iters": 904,
+  "mean": 0.2214,
+  "p50": 0.1856,
+  "p95": 0.4794,
+  "opsPerSec": 4517.4074
  },
  "chart.generate normal (all songs)": {
-  "iters": 867,
-  "mean": 0.231,
-  "p50": 0.2224,
-  "p95": 0.2746,
-  "opsPerSec": 4329.3495
+  "iters": 873,
+  "mean": 0.2292,
+  "p50": 0.2214,
+  "p95": 0.2701,
+  "opsPerSec": 4362.121
  },
  "chart.generate hard (all songs)": {
-  "iters": 759,
-  "mean": 0.2636,
-  "p50": 0.2501,
-  "p95": 0.325,
-  "opsPerSec": 3793.2015
+  "iters": 757,
+  "mean": 0.2643,
+  "p50": 0.2513,
+  "p95": 0.3255,
+  "opsPerSec": 3783.0613
  },
  "library.build": {
-  "iters": 147,
-  "mean": 1.3691,
-  "p50": 1.3128,
-  "p95": 1.5812,
-  "opsPerSec": 730.3851
+  "iters": 141,
+  "mean": 1.4231,
+  "p50": 1.3247,
+  "p95": 1.7129,
+  "opsPerSec": 702.7133
  },
  "practice.slice+scale (all)": {
-  "iters": 2340,
-  "mean": 0.0855,
-  "p50": 0.0807,
-  "p95": 0.1009,
-  "opsPerSec": 11697.4005
+  "iters": 2300,
+  "mean": 0.087,
+  "p50": 0.0806,
+  "p95": 0.1289,
+  "opsPerSec": 11498.3062
  },
  "game.simulate (longest, 1 bot run)": {
-  "iters": 1385,
-  "mean": 0.1444,
-  "p50": 0.1027,
-  "p95": 0.2292,
-  "opsPerSec": 6924.6243
+  "iters": 1341,
+  "mean": 0.1492,
+  "p50": 0.105,
+  "p95": 0.2246,
+  "opsPerSec": 6702.399
  },
  "listview.applyView (all sorts)": {
-  "iters": 5234,
-  "mean": 0.0382,
-  "p50": 0.0364,
-  "p95": 0.0409,
-  "opsPerSec": 26165.9084
+  "iters": 5174,
+  "mean": 0.0387,
+  "p50": 0.037,
+  "p95": 0.0412,
+  "opsPerSec": 25867.6494
  },
  "share.encode+decode": {
-  "iters": 31280,
-  "mean": 0.0064,
-  "p50": 0.006,
-  "p95": 0.0084,
-  "opsPerSec": 156396.2684
+  "iters": 32649,
+  "mean": 0.0061,
+  "p50": 0.0057,
+  "p95": 0.0081,
+  "opsPerSec": 163241.0308
  },
  "render.draw (1 frame)": {
-  "iters": 33968,
+  "iters": 33702,
   "mean": 0.0059,
   "p50": 0.0055,
-  "p95": 0.0081,
-  "opsPerSec": 169836.3562,
-  "callsPerFrame": 144
+  "p95": 0.0075,
+  "opsPerSec": 168509.0816,
+  "callsPerFrame": 147
+ },
+ "render.drawIdle (settled)": {
+  "iters": 6835145,
+  "mean": 0,
+  "p50": 0,
+  "p95": 0,
+  "opsPerSec": 34175722.6047,
+  "callsPerFrame": 0
+ },
+ "synth.playNote x8 (plain)": {
+  "iters": 149106,
+  "mean": 0.0013,
+  "p50": 0.0011,
+  "p95": 0.0018,
+  "opsPerSec": 745237.1181
  }
 }

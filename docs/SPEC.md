@@ -21,7 +21,7 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
 | Custom | Paste RTTTL, live validation, preview, play, copy share link (`#s=<base64url>`). |
 | Settings | Volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, reset highscores. |
 | Training | Speed 50–150 %, optional A–B loop, then play. |
-| Play | Highway canvas, score, accuracy, combo, FC/AP streak badge, timing meter. |
+| Play | Highway canvas flanked by side panels (title, progress column, score, accuracy + live grade, combo with multiplier, notes left, judgement mix) that collapse to a top strip + bottom progress bar on narrow screens; FC/AP streak badge, timing meter, milestone banners. |
 | Results | Grade, score, FULL COMBO / ALL PERFECT banner, NEW BEST / rank, judgement counts, timing histogram, average offset. Retry / Next song / Menu. |
 
 ## Gameplay
