@@ -122,6 +122,7 @@ textarea::placeholder { color: var(--ink-dim); }
 /* ---------- title / boot ---------- */
 .boot { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
 .boot-logo { font-weight: 700; font-size: calc(var(--fs) * 2); letter-spacing: 2px; animation: boot-in .9s steps(6) both; }
+.boot-version { font-size: calc(var(--fs) * .7); opacity: .6; margin: 0; }
 .boot-art { margin: 6px 0; animation: boot-in .9s .25s steps(6) both; }
 .blink { font-weight: 700; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { visibility: hidden; } }
@@ -254,3 +255,17 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
   .boot-logo, .boot-art, .blink { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
 }
+
+/* ---------- composer ---------- */
+#comp-edit { outline: none; }
+.comp-notes { display: flex; flex-wrap: wrap; gap: 2px 4px; min-height: 3.6em; margin: 4px 0; align-content: flex-start; }
+.comp-notes span { padding: 0 3px; border: var(--u) solid transparent; }
+.comp-notes span.cur { border-color: var(--ink); }
+.comp-notes span.rest { color: var(--ink-dim); }
+.comp-notes span.caret { padding: 0; border: 0; border-left: calc(var(--u) * 2) solid var(--ink); height: 1.1em; align-self: center; }
+.comp-move { margin: 4px 0; }
+.comp-move button { border-color: var(--ink); }
+.comp-help { font-size: 0.8em; }
+#comp-menu input[type=text] { width: 100%; box-sizing: border-box; background: none; border: var(--u) solid var(--ink); color: inherit; font: inherit; padding: 2px 4px; }
+/* Same box for both cursor buttons regardless of glyph width in the pixel font. */
+.comp-move button { box-sizing: border-box; width: 3em; min-width: 3em; height: 1.8em; padding: 0; text-align: center; line-height: 1; }

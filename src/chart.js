@@ -6,9 +6,12 @@ export const LANE_MODE = 'quantile'; // 'quantile' | 'contour' (no UI yet)
 const HOLD_TAIL_GAP = 0.05;         // keep a hold's tail this far from the next note in its lane
 const MIN_HOLD_SEC = 0.15;          // a hold shortened below this becomes a tap
 
+const MIN_KEPT = 30;                // below this many playable notes, thin by spacing instead
+const MIN_KEPT_FRAC = 0.25;         // ...or below this share of the song's pitched notes
+
 const DIFFICULTY = {
-  easy:   { lanes: 3, minDur: 0.18, beatsOrHoldsOnly: true },
-  normal: { lanes: 4, minDur: 0.12 },
+  easy:   { lanes: 3, minDur: 0.18, minGap: 0.35, beatsOrHoldsOnly: true },
+  normal: { lanes: 4, minDur: 0.12, minGap: 0.20 },
   hard:   { lanes: 4, minDur: 0 },
 };
 
@@ -61,11 +64,25 @@ export function generateChart(song, opts = {}) {
   // Difficulty filter
   // Rejected notes are not playable but still sound: the game auto-plays them as backing notes.
   const backing = [];
+  const all = notes;
   notes = notes.filter(n => {
     const ok = n.duration >= diff.minDur && !(diff.beatsOrHoldsOnly && !n.onBeat && n.duration < HOLD_MIN_SEC);
     if (!ok) backing.push({ time: n.time, duration: n.duration, midi: n.midi });
     return ok;
   });
+  // Fast songs (mostly 16ths) would lose nearly everything to the duration cutoff.
+  // Fall back to thinning by spacing, and collapse immediate same-pitch repeats.
+  if (diff.minGap && notes.length < Math.max(MIN_KEPT, all.length * MIN_KEPT_FRAC)) {
+    backing.length = 0;
+    notes = [];
+    for (const n of all) {
+      const last = notes[notes.length - 1];
+      const dup = last && last.midi === n.midi && n.time - last.time < diff.minGap;
+      if (last && (n.time - last.time < diff.minGap || dup)) {
+        backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+      } else notes.push(n);
+    }
+  }
   // Safety rule against unplayable bursts
   const kept = [];
   for (const n of notes) {

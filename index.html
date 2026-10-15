@@ -50,6 +50,7 @@
           <div class="boot-logo">RINGBEAT</div>
           <i id="boot-art" class="spr boot-art"></i>
           <p class="blink">Press any key</p>
+          <p id="boot-version" class="boot-version"></p>
           <button id="btn-start" class="sr" data-default>Start</button>
         </section>
 
@@ -79,7 +80,7 @@
             <button id="view-cat">Category: All</button>
             <button id="view-sort">Sort: Default</button>
             <button id="view-filter">Show: All</button>
-            <button id="btn-custom">Custom tone…</button>
+            <button id="btn-custom">My songs…</button>
             <button id="btn-settings">Settings</button>
           </div>
         </section>
@@ -110,18 +111,89 @@
           </div>
         </section>
 
-        <!-- Custom song -->
-        <section id="custom" class="screen" data-title="Custom tone" data-soft-left="Select" data-soft-right="Back">
+        <!-- My songs -->
+        <section id="mysongs" class="screen" data-title="My songs" data-soft-left="Select" data-soft-right="Back">
+          <div id="ms-list" class="menu"></div>
+          <div class="menu">
+            <button id="ms-new" data-default>New song</button>
+            <button id="ms-paste">Paste RTTTL…</button>
+            <button id="ms-import">Import file…</button>
+            <button id="ms-export">Export all</button>
+            <button id="ms-back">Back</button>
+          </div>
+          <input id="ms-file" type="file" accept=".json,.rtttl,.txt,text/plain,application/json" hidden>
+          <div id="ms-msg" class="hint"></div>
+        </section>
+
+        <!-- One saved song -->
+        <section id="songmenu" class="screen" data-title="Song" data-soft-left="Select" data-soft-right="Back">
+          <h2 id="sm-title"></h2>
+          <div id="sm-meta" class="hint"></div>
+          <div class="menu">
+            <button id="sm-play" data-default>Play</button>
+            <button id="sm-preview">Preview</button>
+            <button id="sm-edit">Edit in composer</button>
+            <button id="sm-dup">Duplicate</button>
+            <button id="sm-file">Export file</button>
+            <button id="sm-copy">Copy RTTTL text</button>
+            <button id="sm-share">Copy share link</button>
+            <button id="sm-del">Delete</button>
+            <button id="sm-back">Back</button>
+          </div>
+          <div id="sm-msg" class="hint"></div>
+        </section>
+
+        <!-- Composer (Nokia-style note entry) -->
+        <section id="composer" class="screen" data-title="Composer" data-soft-left="Menu" data-soft-right="Clear">
+          <div id="comp-edit" tabindex="0" data-default>
+            <div id="comp-info" class="hint"></div>
+            <div id="comp-notes" class="comp-notes" aria-live="polite"></div>
+            <div id="comp-status" class="status"></div>
+            <div class="seg comp-move">
+              <button id="comp-left" aria-label="Cursor left">◀</button>
+              <button id="comp-right" aria-label="Cursor right">▶</button>
+            </div>
+            <div class="hint comp-help">1-7 notes · 0 rest · 8/9 length · * dot · # sharp · repeat key = octave · ▲▼ pitch</div>
+          </div>
+          <div id="comp-menu" class="menu" hidden>
+            <button id="comp-play">Play</button>
+            <button id="comp-preview">Preview</button>
+            <button id="comp-save">Save</button>
+            <label class="item">Name <input id="comp-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
+            <label class="item">Tempo <span id="comp-bpm-val"></span>
+              <input id="comp-bpm" type="range" min="40" max="250" step="5"></label>
+            <button id="comp-text">Edit as text</button>
+            <button id="comp-clear">Clear all</button>
+            <button id="comp-resume">Back to notes</button>
+            <button id="comp-exit">Exit</button>
+          </div>
+        </section>
+
+        <!-- Custom song as text (paste / type RTTTL) -->
+        <section id="custom" class="screen" data-title="RTTTL text" data-soft-left="Select" data-soft-right="Back">
           <label class="lbl" for="rtttl">Paste RTTTL</label>
-          <textarea id="rtttl" rows="4" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
+          <textarea id="rtttl" rows="3" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
           <div id="status" class="status"></div>
           <div class="menu">
+            <label class="item">Name <input id="custom-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
+            <button id="btn-custom-save">Save to My songs</button>
             <button id="btn-custom-play">Play</button>
             <button id="btn-custom-preview">Preview</button>
-            <button id="btn-share">Copy share link</button>
+            <button id="btn-custom-compose">Open in composer</button>
             <button id="btn-custom-back">Back</button>
           </div>
           <div id="share-msg" class="hint"></div>
+        </section>
+
+        <!-- Difficulty picker for custom songs -->
+        <section id="diffpick" class="screen" data-title="Difficulty" data-soft-left="Select" data-soft-right="Back">
+          <h2 id="dp-title"></h2>
+          <div class="menu">
+            <button id="dp-easy" data-diff="easy">Easy</button>
+            <button id="dp-normal" data-diff="normal">Normal</button>
+            <button id="dp-hard" data-diff="hard">Hard</button>
+            <button id="dp-back">Back</button>
+          </div>
         </section>
 
         <!-- Settings -->

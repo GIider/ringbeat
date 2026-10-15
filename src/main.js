@@ -15,11 +15,14 @@ import { buildLibrary, customEntry, formatLength, setMeasured } from './library.
 import { CATEGORIES } from './songs.js';
 import { SORTS, FILTERS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
+import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
+import * as comp from './composer.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
 import { SPRITES, spriteHTML, setSprite, signal, battery, ringing } from './pixelart.js';
+import { VERSION } from './version.js';
 import { perf } from './perf.js';
 import { createHud, copyReport } from './perfhud.js';
 
@@ -52,6 +55,7 @@ let state = 'title';
 let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
   title: $('title'), select: $('select'), options: $('options'), info: $('song-info'), custom: $('custom'),
+  mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
@@ -60,7 +64,7 @@ function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   $('btn-pause').hidden = !inPlay();
-  if (name !== 'select' && name !== 'custom' && name !== 'options' && name !== 'info') stopPreview();
+  if (!['select', 'custom', 'options', 'info', 'mysongs', 'songmenu', 'composer'].includes(name)) stopPreview();
   const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
   $('np-caption').hidden = !tut;
   const el = screens[name];
@@ -117,14 +121,21 @@ function toast(msg, ms = 2200) {
 
 // ---- library & selection ----
 let builtins = buildLibrary(); // rebuilt once difficulty.json has loaded
-let custom = null;       // library entry for the user's custom song, or null
+const mysongs = createMySongs();
+let customs = [];        // library entries for the player's saved songs ({...entry, uid})
 let selectedId = '';
 
-function setCustom(rtttl) {
-  custom = rtttl && rtttl.trim() ? customEntry(rtttl) : null;
-  if (custom) { settings.customRtttl = rtttl.slice(0, 4000); save(); }
+function refreshCustoms() {
+  const seen = new Set();
+  customs = [];
+  for (const s of mysongs.list()) {
+    const e = customEntry(s.rtttl);
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    customs.push({ ...e, title: s.name || e.title, uid: s.uid });
+  }
 }
-const entries = () => (custom ? [...builtins, custom] : builtins);
+const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter (for the current difficulty).
@@ -137,7 +148,7 @@ function stopPreview() {
   previewTimer = autoPreviewTimer = null;
   if (synth.ctx) synth.stopAll();
   $('btn-preview').textContent = 'Preview';
-  $('btn-custom-preview').textContent = 'Preview';
+  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Preview';
 }
 function startPreview(entry, maxSec = Infinity) {
   stopPreview();
@@ -152,7 +163,7 @@ function startPreview(entry, maxSec = Infinity) {
     end = Math.max(end, n.startBeat + n.durBeat);
   }
   $('btn-preview').textContent = 'Stop preview';
-  $('btn-custom-preview').textContent = 'Stop preview';
+  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Stop preview';
   previewTimer = setTimeout(stopPreview, (end * beat + 0.4) * 1000);
 }
 function togglePreview(entry) {
@@ -175,7 +186,7 @@ function starsText(rating) {
 function categoryTabs() {
   const all = entries();
   const tabs = [{ id: 'all', label: 'All' }, ...CATEGORIES];
-  if (custom) tabs.push({ id: 'custom', label: 'Custom' });
+  if (customs.length) tabs.push({ id: 'custom', label: 'Custom' });
   return tabs.map(t => ({ ...t, count: t.id === 'all' ? all.length : all.filter(e => e.category === t.id).length }));
 }
 function renderCategories() {
@@ -189,7 +200,7 @@ function renderCategories() {
 function setCategory(id) {
   settings.view.category = id; save();
   const keep = selectedEntry();
-  if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
+  if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
   renderList();
   renderDetail();
   if (state === 'select') focusCurrentRow();
@@ -307,7 +318,7 @@ function setView(key, list, step = 1) {
   settings.view[key] = (step < 0 ? prevOf : nextOf)(list, settings.view[key]);
   save();
   const keep = selectedEntry();
-  if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
+  if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
   renderList();
   renderDetail();
   if (state === 'select') focusCurrentRow();
@@ -339,8 +350,196 @@ function openSelect() {
 function openOptions() { renderCategories(); setState('options', 'options'); }
 function openInfo() { renderDetail(); setState('info', 'info'); }
 
-// ---- custom song screen ----
+// ---- my songs: library list, per-song menu, composer, text/paste screen ----
 const area = $('rtttl');
+const slug = n => (String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'song');
+const rtttlName = (text, name) => { const i = text.indexOf(':'); return i < 0 ? text : String(name).replace(/[:,]/g, ' ') + text.slice(i); };
+let curUid = '';           // song shown in the song menu
+const curSong = () => mysongs.get(curUid);
+const curEntry = () => customs.find(e => e.uid === curUid) || null;
+
+function download(name, text, type = 'text/plain') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function copyText(text, el, label) {
+  try { await navigator.clipboard.writeText(text); el.textContent = label + ' copied!'; }
+  catch { el.textContent = 'Copy this: ' + text; }
+}
+// Select + remember the saved song; persists nothing else.
+function afterSongsChanged(select) {
+  refreshCustoms();
+  const e = select && customs.find(c => c.uid === select.uid);
+  if (e) { selectedId = e.id; settings.lastSongId = e.id; save(); }
+}
+// Why a save failed, in words the player can act on.
+function saveProblem(text) {
+  const p = rtttlProblem(text);
+  if (p) return 'Cannot save: ' + p;
+  if (mysongs.isFull()) return `My songs is full (max ${MAX_SONGS}): delete a song first`;
+  return 'Cannot save: browser storage is unavailable';
+}
+function openMySongs(msg = '') {
+  const list = $('ms-list');
+  list.textContent = '';
+  for (const e of customs) {
+    const b = document.createElement('button');
+    b.dataset.uid = e.uid;
+    b.textContent = `${e.title} · ${e.notes.normal} notes · ${formatLength(e.length)}`;
+    list.append(b);
+  }
+  $('ms-msg').textContent = msg || (customs.length ? '' : 'No songs yet. Make one with New song.');
+  $('ms-new').disabled = $('ms-paste').disabled = mysongs.isFull();
+  $('ms-export').disabled = !customs.length;
+  setState('mysongs', 'mysongs');
+  const cur = customs.find(c => c.uid === curUid);
+  const b = cur && list.querySelector(`[data-uid="${cur.uid}"]`);
+  if (b) { b.focus({ preventScroll: true }); light(b); }
+}
+function openSongMenu(uid) {
+  curUid = uid;
+  const e = curEntry();
+  if (!e) { openMySongs(); return; }
+  $('sm-title').textContent = e.title;
+  $('sm-meta').textContent = `${e.bpm} BPM · ${e.notes.normal} notes · ${formatLength(e.length)}`;
+  $('sm-msg').textContent = '';
+  setState('songmenu', 'songmenu');
+}
+function importSharedText(text) {
+  const r = mysongs.importText(text);
+  refreshCustoms();
+  return r;
+}
+
+// -- difficulty picker (custom songs are played from the composer, song menu or text screen) --
+let dpBack = null;
+function askDifficulty(entry, ret, retLabel, goBack, uid) {
+  dpBack = goBack;
+  $('dp-title').textContent = entry.title;
+  for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
+    const d = b.dataset.diff, n = entry.notes[d] || 0;
+    b.textContent = d[0].toUpperCase() + d.slice(1) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)} · ${n} notes` : ' · no notes');
+    b.disabled = !n;
+    b.toggleAttribute('data-default', d === settings.difficulty && !!n);
+    b.onclick = () => {
+      settings.difficulty = d;
+      if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
+      save();
+      startRun({ entry, diff: d, training: null, ret, retLabel });
+    };
+  }
+  if (!$('diffpick').querySelector('[data-default]')) {
+    const f = $('diffpick').querySelector('[data-diff]:not([disabled])');
+    if (f) f.setAttribute('data-default', '');
+  }
+  setState('diffpick', 'diffpick');
+}
+
+// -- composer --
+let cs = null, csUid = '', csDirty = false, csMenu = false, csLast = 0;
+function compEntry() {
+  return cs && cs.notes.length ? customEntry(comp.toRTTTL(cs)) : null;
+}
+function renderComposer() {
+  const dur = cs.notes[cs.cursor - 1] ? cs.notes[cs.cursor - 1].dur : cs.pen.dur;
+  $('comp-info').textContent = `${cs.name || 'Untitled'} · ${cs.bpm} BPM · 1/${dur} · oct ${cs.pen.oct}${csDirty ? ' · *' : ''}`;
+  const box = $('comp-notes');
+  box.textContent = '';
+  const caret = () => { const c = document.createElement('span'); c.className = 'caret'; return c; };
+  const from = Math.max(0, cs.cursor - 14), to = Math.min(cs.notes.length, from + 28);
+  if (from > 0) { const m = document.createElement('span'); m.textContent = '…'; box.append(m); }
+  if (cs.cursor === from) box.append(caret());
+  for (let i = from; i < to; i++) {
+    const n = cs.notes[i], sp = document.createElement('span');
+    sp.textContent = (n.p === 'p' ? '–' : comp.noteLabel(n)) + (n.dotted ? '.' : '') + '/' + n.dur;
+    if (n.p === 'p') sp.className = 'rest';
+    if (i === cs.cursor - 1) sp.classList.add('cur');
+    box.append(sp);
+    if (i + 1 === cs.cursor) box.append(caret());
+  }
+  if (to < cs.notes.length) { const m = document.createElement('span'); m.textContent = '…'; box.append(m); }
+  const e = compEntry(), st = $('comp-status');
+  st.className = 'status ' + (e ? 'ok' : 'err');
+  st.textContent = e ? `${cs.notes.length} notes · ${formatLength(e.length)}` : cs.notes.length ? 'Needs a playable note' : 'Press 1-7 to enter notes';
+  $('comp-play').disabled = $('comp-preview').disabled = $('comp-save').disabled = !e;
+  $('comp-bpm').value = cs.bpm; $('comp-bpm-val').textContent = cs.bpm;
+  paintRange($('comp-bpm'));
+}
+function openComposer(text = '', uid = '') {
+  try { cs = text ? comp.fromRTTTL(text) : comp.create(); } catch { cs = comp.create(); toast('Could not read that song'); }
+  csUid = uid; csDirty = false; csMenu = false;
+  $('comp-name').value = cs.name;
+  $('comp-menu').hidden = true; $('comp-edit').hidden = false;
+  screens.composer.dataset.softLeft = 'Menu'; screens.composer.dataset.softRight = 'Del';
+  renderComposer();
+  setState('composer', 'composer');
+}
+function setCompMenu(open) {
+  csMenu = open;
+  $('comp-menu').hidden = !open; $('comp-edit').hidden = open;
+  screens.composer.dataset.softLeft = open ? 'Select' : 'Menu';
+  screens.composer.dataset.softRight = open ? 'Back' : 'Del';
+  refreshChrome(screens.composer);
+  renderComposer();
+  requestAnimationFrame(() => focusDefault(screens.composer));
+  if (open) { const d = $('comp-play'); if (!d.disabled) d.focus({ preventScroll: true }); }
+}
+function compSound() {
+  const n = cs.notes[cs.cursor - 1];
+  if (!n || n.p === 'p') return;
+  const ctx = synth.ensure();
+  synth.playNote({ midi: comp.midiOf(n), when: ctx.currentTime + 0.01, duration: 0.25 });
+}
+const LETTER_KEYS = { c: '1', d: '2', e: '3', f: '4', g: '5', a: '6', b: '7', p: '0' };
+// k: '0'-'7' notes, '8'/'9' length -/+, '*' dot, '#' sharp, left/right cursor, up/down pitch, del, add (controller)
+function compInput(k) {
+  if (LETTER_KEYS[k]) k = LETTER_KEYS[k];
+  if (previewTimer) stopPreview();
+  let changed = true, sound = true;
+  switch (k) {
+    case '8': comp.changeDur(cs, -1); break;
+    case '9': comp.changeDur(cs, 1); break;
+    case '*': changed = comp.toggleDot(cs); break;
+    case '#': changed = comp.toggleSharp(cs); break;
+    case 'left': comp.move(cs, -1); changed = false; break;
+    case 'right': comp.move(cs, 1); changed = false; break;
+    case 'up': changed = comp.stepPitch(cs, 1); break;
+    case 'down': changed = comp.stepPitch(cs, -1); break;
+    case 'del': changed = comp.backspace(cs); sound = false; break;
+    case 'add': changed = comp.addNote(cs); break;
+    case 'rest': changed = comp.addRest(cs); sound = false; break;
+    default:
+      if (/^[0-7]$/.test(k)) { changed = comp.pressNote(cs, k, performance.now()); sound = k !== '0'; }
+      else return;
+  }
+  if (changed) csDirty = true;
+  if (!changed && ['*', '#', 'up', 'down', 'add'].includes(k)) toast('Not possible here', 900);
+  if (changed && sound) compSound();
+  else if (k === 'left' || k === 'right') { const n = cs.notes[cs.cursor - 1]; if (n && n.p !== 'p') compSound(); }
+  renderComposer();
+}
+function saveComposer() {
+  cs.name = $('comp-name').value;
+  const text = comp.toRTTTL(cs);
+  if (!customEntry(text)) { toast('Add a note first'); return false; }
+  const s = csUid && mysongs.get(csUid) ? mysongs.update(csUid, { rtttl: text, name: cs.name || 'Untitled' }) : mysongs.add(cs.name || 'Untitled', text);
+  if (!s) { toast(saveProblem(text)); return false; }
+  csUid = s.uid; csDirty = false;
+  afterSongsChanged(s);
+  toast('Saved');
+  renderComposer();
+  return true;
+}
+function leaveComposer() {
+  stopPreview();
+  if (csUid) openSongMenu(csUid); else openMySongs();
+}
+
+// -- text / paste screen --
+let txtUid = '';
 function updateCustomStatus() {
   const st = $('status');
   const text = area.value.trim();
@@ -353,16 +552,13 @@ function updateCustomStatus() {
     const w = e.song.warnings;
     st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${e.notes.normal} notes` +
       (w.length ? ` · ⚠ ${w.slice(0, 3).join('; ')}${w.length > 3 ? ` (+${w.length - 3} more)` : ''}` : '');
-    setCustom(text);
-    selectedId = e.id;
-    settings.lastSongId = e.id; save();
   }
-  $('btn-custom-play').disabled = !e;
-  $('btn-custom-preview').disabled = !e;
-  $('btn-share').disabled = !e;
+  for (const id of ['btn-custom-save', 'btn-custom-play', 'btn-custom-preview', 'btn-custom-compose']) $(id).disabled = !e;
 }
-function openCustom() {
-  area.value = settings.customRtttl || '';
+function openCustom(text = '', uid = '') {
+  area.value = text; txtUid = uid;
+  const e0 = text ? customEntry(text) : null;
+  $('custom-name').value = e0 ? e0.song.name : '';
   $('share-msg').textContent = '';
   updateCustomStatus();
   setState('custom', 'custom');
@@ -415,7 +611,14 @@ function laneLabels(lanes) {
 }
 
 function startRun(r) {
+  // A melody can have no playable notes at the chosen difficulty (e.g. only very short notes on Easy):
+  // charts exist for every difficulty it can be played at, so use the nearest one that has notes.
+  if (r.entry && r.entry.notes && !r.entry.notes[r.diff]) {
+    const alt = ['normal', 'hard', 'easy'].find(d => r.entry.notes[d] > 0);
+    if (alt) { toast(`No notes on ${r.diff}: playing ${alt}`); r.diff = alt; }
+  }
   run = r;
+  for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = r.retLabel || 'Song select';
   stopPreview();
   let chart;
   try {
@@ -466,7 +669,13 @@ function leaveToSelect() {
   renderer.resumeCount = 0;
   game.stop();
   input.reset();
-  openSelect();
+  leaveRun();
+}
+// Custom songs played from the composer / song menu / text screen return there, everything else to song select.
+function leaveRun() {
+  const ret = run && run.ret;
+  run = ret ? null : run;
+  if (ret) ret(); else openSelect();
 }
 
 function pauseGame() {
@@ -584,7 +793,7 @@ function nextSong() {
   const e = list[(i + 1) % list.length];
   selectedId = e.id;
   settings.lastSongId = e.id; save();
-  startRun({ entry: e, diff: run ? run.diff : settings.difficulty, training: null });
+  startRun({ entry: e, diff: run ? run.diff : settings.difficulty, training: null, ret: run && run.ret, retLabel: run && run.retLabel });
 }
 
 // ---- tutorial ----
@@ -804,8 +1013,17 @@ function back() {
     case 'options': case 'info': openSelect(); break;
     case 'tutorial': finishTutorial(); break;
     case 'settings': closeSettings(); break;
-    case 'custom': case 'training': openSelect(); break;
-    case 'results': openSelect(); break;
+    case 'training': openSelect(); break;
+    case 'mysongs': openSelect(); break;
+    case 'diffpick': if (dpBack) dpBack(); else openSelect(); break;
+    case 'songmenu': openMySongs(); break;
+    case 'custom': if (txtUid) openSongMenu(txtUid); else openMySongs(); break;
+    case 'composer':
+      if (csMenu) setCompMenu(false);
+      else if (csDirty && compEntry()) { setCompMenu(true); toast('Unsaved: Save or Exit'); }
+      else leaveComposer();
+      break;
+    case 'results': leaveRun(); break;
     case 'paused': resumeGame(); break;
     case 'calibration': leaveCalibration(); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
@@ -817,13 +1035,17 @@ function menuButton(index) {
   switch (index) {
     case BTN.A: case BTN.START:
       if (state === 'title') { startFromTitle(); return; }
+      if (state === 'composer' && !csMenu) { if (index === BTN.A) compInput('add'); else setCompMenu(true); return; }
       if (root) nav.confirm(root);
       break;
     case BTN.B: back(); break;
-    case BTN.X: if (state === 'select') openOptions(); break;
-    case BTN.LB: if (state === 'select') cycleDifficulty(-1); else if (state === 'results') navigate('left'); break;
-    case BTN.RB: if (state === 'select') cycleDifficulty(1); else if (state === 'results') navigate('right'); break;
-    case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
+    case BTN.X:
+      if (state === 'select') openOptions();
+      else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
+      break;
+    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleDifficulty(-1); else if (state === 'results') navigate('left'); break;
+    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleDifficulty(1); else if (state === 'results') navigate('right'); break;
+    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'select') setTrainingMode(!trainingMode); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
     case BTN.RT: if (state === 'select') cycleCategory(1); break;
   }
@@ -837,6 +1059,7 @@ pad.onNav = dir => {
 function navigate(dir) {
   const root = activeScreen();
   if (!root || state === 'title') return;
+  if (state === 'composer' && !csMenu) { compInput(dir); return; }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleDifficulty(dir === 'left' ? -1 : 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     const p = resultsPage;
@@ -853,11 +1076,19 @@ function softLeft() {
     case 'title': startFromTitle(); break;
     case 'select': openOptions(); break;
     case 'info': playSelected(); break;
+    case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
   }
 }
 function phoneKey(key) {
+  if (state === 'composer' && !csMenu) {
+    if (key === 'softL') setCompMenu(true);
+    else if (key === 'softR') compInput('del');
+    else if (key === 'ok') { const e = compEntry(); if (e) togglePreview(e); }
+    else compInput(key);
+    return;
+  }
   if (!inPlay()) synth.keyClick();
   if (state === 'title') { startFromTitle(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
@@ -932,19 +1163,106 @@ function wire() {
   $('btn-play').onclick = playSelected;
   $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
   $('btn-preview').onclick = () => togglePreview(selectedEntry());
-  $('btn-custom').onclick = openCustom;
 
-  // custom
-  area.addEventListener('input', () => { stopPreview(); updateCustomStatus(); });
-  $('btn-custom-play').onclick = () => { const e = customEntry(area.value); if (e) startRun({ entry: e, diff: settings.difficulty, training: null }); };
-  $('btn-custom-preview').onclick = () => { const e = customEntry(area.value); if (e) togglePreview(e); };
-  $('btn-custom-back').onclick = openSelect;
-  $('btn-share').onclick = async () => {
-    const url = location.origin + location.pathname + encodeSong(area.value.trim());
-    try { history.replaceState(null, '', url); } catch { /* ignore */ }
-    try { await navigator.clipboard.writeText(url); $('share-msg').textContent = 'Link copied!'; }
-    catch { $('share-msg').textContent = 'Copy this: ' + url; }
+  // my songs
+  $('ms-new').onclick = () => openComposer();
+  $('ms-paste').onclick = () => openCustom();
+  $('ms-back').onclick = openSelect;
+  $('ms-list').onclick = e => { const b = e.target.closest('button'); if (b) openSongMenu(b.dataset.uid); };
+  $('ms-import').onclick = () => $('ms-file').click();
+  $('ms-file').onchange = async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    let r;
+    try {
+      const text = await f.text(), lines = splitRtttl(text);
+      if (text.trim()[0] !== '{' && text.trim()[0] !== '[' && lines.length === 1 && customEntry(lines[0])) {
+        openCustom(lines[0]); // one song: let the player name it before saving
+        toast('Name it, then Save');
+        return;
+      }
+      r = importSharedText(text);
+    } catch { r = { added: 0, skipped: 1 }; }
+    openMySongs(`Imported ${r.added}${r.skipped ? `, skipped ${r.skipped}` : ''}`);
   };
+  $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = 'Exported ' + mysongs.count() + ' songs'; };
+
+  // one song
+  $('sm-play').onclick = () => { const e = curEntry(); if (e) askDifficulty(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
+  $('sm-preview').onclick = () => { const e = curEntry(); if (e) togglePreview(e); };
+  $('sm-edit').onclick = () => { const s = curSong(); if (s) openComposer(s.rtttl, s.uid); };
+  $('sm-dup').onclick = () => {
+    const d = mysongs.duplicate(curUid);
+    if (!d) { toast(mysongs.isFull() ? `My songs is full (max ${MAX_SONGS})` : 'Could not duplicate: storage unavailable'); return; }
+    refreshCustoms(); openSongMenu(d.uid);
+  };
+  $('sm-file').onclick = () => { const s = curSong(); if (s) { download(slug(s.name) + '.rtttl', s.rtttl + '\n'); $('sm-msg').textContent = 'Saved ' + slug(s.name) + '.rtttl'; } };
+  $('sm-copy').onclick = () => { const s = curSong(); if (s) copyText(s.rtttl, $('sm-msg'), 'Text'); };
+  $('sm-share').onclick = async () => {
+    const s = curSong(); if (!s) return;
+    const url = location.origin + location.pathname + encodeSong(s.rtttl);
+    await copyText(url, $('sm-msg'), 'Link');
+  };
+  let delArmed = 0;
+  $('sm-del').onclick = () => {
+    if (Date.now() - delArmed > 4000) { delArmed = Date.now(); $('sm-del').textContent = 'Really delete?'; setTimeout(() => { $('sm-del').textContent = 'Delete'; }, 4000); return; }
+    delArmed = 0; $('sm-del').textContent = 'Delete';
+    mysongs.remove(curUid); curUid = '';
+    refreshCustoms();
+    if (!entryById(selectedId)) selectedId = (visible()[0] || builtins[0]).id;
+    openMySongs('Deleted');
+  };
+  $('sm-back').onclick = () => openMySongs();
+
+  // composer
+  $('comp-left').onclick = () => compInput('left');
+  $('comp-right').onclick = () => compInput('right');
+  $('comp-resume').onclick = () => setCompMenu(false);
+  $('comp-play').onclick = () => {
+    const e = compEntry();
+    if (!e) return;
+    stopPreview();
+    const toComposer = () => { setState('composer', 'composer'); setCompMenu(false); };
+    askDifficulty(e, toComposer, 'Composer', () => { setState('composer', 'composer'); setCompMenu(true); });
+  };
+  $('comp-preview').onclick = () => { const e = compEntry(); if (e) togglePreview(e); };
+  $('comp-save').onclick = saveComposer;
+  $('comp-name').addEventListener('input', () => { cs.name = $('comp-name').value; csDirty = true; renderComposer(); });
+  $('comp-bpm').addEventListener('input', () => { cs.bpm = +$('comp-bpm').value; csDirty = true; renderComposer(); });
+  $('comp-clear').onclick = () => { comp.clear(cs); csDirty = true; renderComposer(); toast('Cleared'); };
+  $('comp-text').onclick = () => { cs.name = $('comp-name').value; openCustom(comp.toRTTTL(cs), csUid); };
+  $('comp-exit').onclick = leaveComposer;
+
+  // text / paste
+  $('btn-custom').onclick = () => openMySongs();
+  area.addEventListener('input', () => {
+    stopPreview(); updateCustomStatus();
+    const e = customEntry(area.value);
+    if (e && document.activeElement === area) $('custom-name').value = e.song.name;
+  });
+  $('btn-custom-save').onclick = () => {
+    const text = area.value.trim();
+    const e = customEntry(text);
+    if (!e) return;
+    const name = $('custom-name').value.trim() || e.song.name || 'Untitled';
+    const named = rtttlName(text, name); // the name lives inside the RTTTL, so keep both in sync
+    const same = mysongs.list().find(x => x.rtttl === named);
+    const s = same || (txtUid && mysongs.get(txtUid) ? mysongs.update(txtUid, { rtttl: named, name }) : mysongs.add(name, named));
+    if (!s) { toast(saveProblem(named)); return; }
+    txtUid = s.uid; area.value = s.rtttl; afterSongsChanged(s);
+    toast(same ? 'Already in My songs' : 'Saved to My songs');
+    openSongMenu(s.uid);
+  };
+  $('btn-custom-play').onclick = () => {
+    const e = customEntry(area.value);
+    if (!e) return;
+    const toText = () => { setState('custom', 'custom'); updateCustomStatus(); };
+    askDifficulty(e, toText, 'RTTTL text', toText);
+  };
+  $('btn-custom-preview').onclick = () => { const e = customEntry(area.value); if (e) togglePreview(e); };
+  $('btn-custom-compose').onclick = () => { if (customEntry(area.value)) openComposer(area.value.trim(), txtUid); };
+  $('btn-custom-back').onclick = back;
 
   // training
   const t = settings.training;
@@ -1000,6 +1318,7 @@ function wire() {
   $('soft-left').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softR'); });
   setSprite($('boot-art'), ringing(0), 3);
+  $('boot-version').textContent = 'v' + VERSION;
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', layout);
 
@@ -1013,11 +1332,23 @@ function wire() {
 
   // Initial selection: share link > last played > first song
   const shared = decodeSong(location.hash);
-  if (shared && customEntry(shared)) { setCustom(shared); selectedId = custom.id; }
-  else {
-    setCustom(settings.customRtttl);
-    selectedId = entryById(settings.lastSongId) ? settings.lastSongId : builtins[0].id;
-  }
+  // The old single custom slot becomes the first saved song.
+  if (settings.customRtttl && !mysongs.count()) mysongs.add(settings.customRtttl.split(':')[0] || 'My song', settings.customRtttl);
+  if (settings.customRtttl) { settings.customRtttl = ''; save(); }
+  refreshCustoms();
+  const takeShared = text => {
+    if (!text || !customEntry(text)) return false;
+    const r = importSharedText(text);
+    const e = customs.find(c => c.rtttl === text.trim());
+    if (e) { selectedId = e.id; settings.lastSongId = e.id; save(); }
+    else if (!r.added) toast('My songs is full');
+    return !!e;
+  };
+  if (!takeShared(shared)) selectedId = entryById(settings.lastSongId) ? settings.lastSongId : builtins[0].id;
+  window.addEventListener('hashchange', () => {
+    const t = decodeSong(location.hash);
+    if (t && takeShared(t)) { toast('Shared song saved to My songs'); if (state === 'select') openSelect(); }
+  });
   showOffset();
   show('title');
 }
@@ -1033,6 +1364,34 @@ function onKey(e) {
   if (e.code === 'F3') { e.preventDefault(); setPerf(!perf.enabled); return; }
   if (e.code === 'F4' && perf.enabled) { e.preventDefault(); copyReport(perf); return; }
   const menu = !inPlay() && state !== 'calibration';
+  // RTTTL textarea: Enter leaves (Shift+Enter = newline); Up/Down leave from the first/last position.
+  if (tag === 'TEXTAREA' && !inPlay() && !e.shiftKey) {
+    const t = e.target, atStart = t.selectionStart === 0 && t.selectionEnd === 0,
+      atEnd = t.selectionStart === t.value.length && t.selectionEnd === t.value.length;
+    const dir = e.code === 'Enter' ? 'down' : e.code === 'ArrowDown' && atEnd ? 'down' : e.code === 'ArrowUp' && atStart ? 'up' : '';
+    if (dir) { e.preventDefault(); synth.keyClick(); navigate(dir); return; }
+  }
+  // Single-line text fields: up/down and Enter leave the field (left/right stay with the caret).
+  if (tag === 'INPUT' && e.target.type === 'text' && !inPlay() && ['ArrowUp', 'ArrowDown', 'Enter'].includes(e.code)) {
+    e.preventDefault();
+    synth.keyClick();
+    navigate(e.code === 'ArrowUp' ? 'up' : 'down');
+    return;
+  }
+  if (state === 'composer' && !csMenu && !typing) {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : '';
+    let act = '';
+    if (e.code === 'Backspace' || e.code === 'Delete') act = 'del';
+    else if (/^[0-9*#]$/.test(k) || /^[a-gp]$/.test(k)) act = k;
+    else if (k === '.') act = '*';
+    else if (k === '+') act = '#';
+    if (act) { e.preventDefault(); compInput(act); return; }
+    if ((e.code === 'Space' || e.code === 'Enter') && tag !== 'BUTTON') {
+      e.preventDefault();
+      if (!e.repeat) { const en = compEntry(); if (en) togglePreview(en); }
+      return;
+    }
+  }
   if (e.code === 'Escape' || (e.code === 'Backspace' && !typing)) {
     e.preventDefault();
     if (menu) synth.keyClick();
@@ -1068,7 +1427,7 @@ function onKey(e) {
     if (range && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; // native slider handling
     e.preventDefault();
     lastDevice = 'kbd';
-    synth.keyClick();
+    if (!(state === 'composer' && !csMenu)) synth.keyClick();
     navigate(dirs[e.code]);
   }
 }
@@ -1250,4 +1609,4 @@ let perfOn = /[?&]perf\b/.test(location.search);
 try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
 if (perfOn) setPerf(true);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, settings, perf, get state() { return state; } }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, settings, perf, mysongs, get state() { return state; } }; // debug/test hook (tests/smoke.html)

@@ -15,6 +15,8 @@ src/
   practice.js     sliceChart / scaleChart: pure chart transforms for training
   songs.js        built-in song data (id, category, title, tag, rtttl) + CATEGORIES
   library.js      derived metadata (BPM, length, stars, note counts), custom entries, hashing
+  mysongs.js      saved custom songs (CRUD, import/export, injectable storage)
+  composer.js     Nokia-style note editor state; toRTTTL / fromRTTTL
   scores.js       highscores store (injectable storage)
   settings.js     persisted settings incl. controller bindings and training options
   game.js         judging, scoring, holds, FC/AP, pause/restart; audio-clock only

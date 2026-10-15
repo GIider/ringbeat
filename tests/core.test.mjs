@@ -11,6 +11,10 @@ import { Game } from '../src/game.js';
 import { STAGES, buildStageChart, stagePassed } from '../src/tutorial.js';
 import { HOLD_MIN_SEC } from '../src/chart.js';
 import { createPerf } from '../src/perf.js';
+import * as C from '../src/composer.js';
+import { createMySongs, MAX_SONGS, MAX_RTTTL } from '../src/mysongs.js';
+import { VERSION } from '../src/version.js';
+import { readFileSync } from 'node:fs';
 import { sanitizeBindings, laneForSlot, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
@@ -262,4 +266,78 @@ test('perf: disabled is a no-op; enabled records stats, ring wraps, long frames 
   assert.equal(p.stats().y.mean, 3);
   p.reset();
   assert.deepEqual(p.stats(), {});
+});
+
+test('composer: keypad entry, modifiers, repeat-press octave cycle, RTTTL roundtrip', () => {
+  const s = C.create(); s.name = 'My: Tune,';
+  C.pressNote(s, 1, 0); C.pressNote(s, 3, 1000); C.pressNote(s, 0, 2000);
+  assert.deepEqual(s.notes.map(n => n.p), ['c', 'e', 'p']);
+  C.pressNote(s, 5, 3000); C.pressNote(s, 5, 3200); // quick repeat re-pitches instead of adding
+  assert.equal(s.notes.length, 4); assert.equal(s.notes[3].oct, 6);
+  C.toggleSharp(s); assert.ok(s.notes[3].sharp);
+  C.toggleDot(s); C.changeDur(s, 1);
+  assert.equal(s.notes[3].dur, 8);
+  assert.equal(C.toggleSharp(Object.assign(C.create(), { notes: [{ p: 'e', dur: 4, oct: 5 }], cursor: 1 })), false);
+  const text = C.toRTTTL(s);
+  assert.ok(text.startsWith('My Tune:d=4,o=5,b=120:'));
+  const back = C.fromRTTTL(text);
+  assert.deepEqual(back.notes.map(n => [n.p, n.sharp, n.dur, n.dotted]), s.notes.map(n => [n.p, n.sharp, n.dur, n.dotted]));
+  assert.equal(C.toRTTTL(back), text);
+  C.backspace(s); assert.equal(s.notes.length, 3);
+  assert.equal(customEntry(text) !== null, true);
+});
+
+test('mysongs: CRUD, limits, import/export, dedupe, corruption', () => {
+  const st = mem(), m = createMySongs(st);
+  const t = 'a:d=4,o=5,b=100:c,d,e,f';
+  const a = m.add('Alpha', t);
+  assert.ok(a); assert.equal(m.add('bad', 'nonsense'), null);
+  assert.ok(m.update(a.uid, { name: 'Beta' })); assert.equal(m.get(a.uid).name, 'Beta');
+  assert.ok(m.duplicate(a.uid)); assert.equal(m.count(), 2);
+  const json = m.exportJSON();
+  const m2 = createMySongs(mem());
+  assert.deepEqual(m2.importText(json), { added: 1, skipped: 1 }); // duplicate melody text is skipped
+  assert.deepEqual(m2.importText(json), { added: 0, skipped: 2 });
+  assert.deepEqual(createMySongs(mem()).importText(t + '\ngarbage\nb:d=8,o=6,b=90:g,a'), { added: 2, skipped: 0 });
+  assert.equal(createMySongs(mem()).importText('{oops').skipped, 1);
+  assert.equal(createMySongs(st).count(), 2); // persisted
+  assert.equal(createMySongs({ getItem: () => 'not json', setItem() {} }).count(), 0);
+  for (let i = 0; i < MAX_SONGS + 3; i++) m.add('s' + i, `s${i}:d=4,o=5,b=100:c,d${'e'.repeat(0)},${'cdefgab'[i % 7]}${i % 4 + 4}`);
+  assert.ok(m.count() <= MAX_SONGS);
+  assert.ok(m.remove(a.uid));
+});
+
+test('composer: stepPitch crosses octaves and clamps; controller add', () => {
+  const s = C.create();
+  assert.equal(C.stepPitch(s, 1), false);
+  C.addNote(s); C.stepPitch(s, -1);
+  assert.deepEqual([s.notes[0].p, s.notes[0].oct], ['b', 4]);
+  s.notes[0].oct = 7; s.notes[0].p = 'b';
+  assert.equal(C.stepPitch(s, 1), false);
+  C.addNote(s); assert.equal(s.notes.length, 2);
+  C.addRest(s); assert.equal(C.stepPitch(s, 1), false);
+});
+
+test('VERSION matches package.json', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(VERSION, pkg.version);
+});
+
+test('fast 16th-note song still gets sparse easy/normal charts', () => {
+  const seq = [];
+  for (let i = 0; i < 60; i++) { const n = ['d#', 'f', 'f#', 'g#', 'a#'][i % 5]; seq.push(`16${n}`, `16${n}`); }
+  const song = parseRTTTL(`Fast:d=4,o=5,b=147:${seq.join(',')}`);
+  for (const d of ['easy', 'normal']) {
+    const c = generateChart(song, { difficulty: d });
+    assert.ok(c.notes.length >= 20, `${d} has ${c.notes.length} notes`);
+  }
+});
+
+test('composer: a full-length song at the note cap fits the saved-song size limit', () => {
+  const s = C.create(); s.name = 'x'.repeat(40);
+  for (let i = 0; i < C.MAX_NOTES + 5; i++) s.notes.push({ p: 'c', sharp: true, dur: 32, dotted: true, oct: 7 });
+  s.cursor = s.notes.length;
+  assert.equal(C.pressNote(s, 1, 0), false); // capped
+  s.notes.length = C.MAX_NOTES;
+  assert.ok(C.toRTTTL(s).length <= MAX_RTTTL);
 });

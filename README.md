@@ -58,4 +58,4 @@ Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.
 
 ## Sharing
 
-"Custom… → Copy share link" puts the song in the URL hash (`#s=<base64url>`). Opening it selects the custom song (no autoplay).
+"My songs… → (song) → Copy share link" puts the song in the URL hash (`#s=<base64url>`). Opening it selects the custom song (no autoplay).
