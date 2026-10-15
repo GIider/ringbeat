@@ -1,5 +1,7 @@
 // Built-in songs: classical and folk melodies, well-known themes and hits, as RTTTL.
 // Pop/TV/film themes belong to their respective rights holders; these are short fan transcriptions for a rhythm game.
+// RTTTL sources: PICAXE archive (https://picaxe.com/rtttl-ringtones-for-tune-command/) and FlipperMusicRTTTL
+// (https://github.com/neverfa11ing/FlipperMusicRTTTL); classical/folk tunes hand-written. See README "Song sources & credits".
 // `category` groups songs in the song-select tabs (see CATEGORIES); `tag` is a short composer/game/artist label.
 export const CATEGORIES = [
   { id: 'classical', label: 'Classical' },

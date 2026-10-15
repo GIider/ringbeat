@@ -61,3 +61,19 @@ Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.
 ## Sharing
 
 "My songs… → (song) → Copy share link" puts the song in the URL hash (`#s=<base64url>`). Opening it selects the custom song (no autoplay).
+
+## Song sources & credits
+
+The built-in songs are short RTTTL transcriptions of existing melodies; the tunes belong to their composers and rights
+holders. The RTTTL strings come from:
+
+- **PICAXE RTTTL archive** — <https://picaxe.com/rtttl-ringtones-for-tune-command/>
+  (zips: [rtttl](http://picaxe.com/downloads/rtttl.zip), [rtttl2](http://picaxe.com/downloads/rtttl2.zip),
+  [rtttl3](http://picaxe.com/downloads/rtttl3.zip), [rtttl_tv](http://picaxe.com/downloads/rtttl_tv.zip),
+  [rtttl_xmas](http://picaxe.com/downloads/rtttl_xmas.zip)) — German/European songs, pop, Eurodance, TV & Film.
+- **FlipperMusicRTTTL** — <https://github.com/neverfa11ing/FlipperMusicRTTTL> (incl. ArcadeTones and the 10k song
+  archive) — NDW & Synth and Video Games additions.
+- **Traditional / public-domain tunes** (classical, folk, nursery, and the "Full" arrangements) were written by hand.
+
+Credit is per collection, not per song. RTTTL format reference:
+[Wikipedia](https://en.wikipedia.org/wiki/Ring_Tone_Text_Transfer_Language).
