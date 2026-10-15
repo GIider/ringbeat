@@ -27,6 +27,7 @@ import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
 import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
+import { marquee } from './marquee.js';
 
 const $ = id => document.getElementById(id);
 
@@ -86,6 +87,7 @@ function setState(s, screen) { state = s; show(screen); input.enabled = s === 'c
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
   $('st-title').textContent = el.dataset.title || '';
+  marquee($('st-title'));
   $('soft-left').textContent = el.dataset.softLeft || '';
   $('soft-right').textContent = el.dataset.softRight || '';
 }
@@ -141,7 +143,7 @@ if (new URLSearchParams(location.search).get('cameo') === 'debug') {
     b.addEventListener('click', () => { if (!inPlay()) fn(); });
     panel.appendChild(b);
   };
-  for (const id of ['snake', 'space-impact', 'dvd-logo', 'sms', 'signal-wobble', 'low-battery', 'parade']) add(id, () => cameo.play(id));
+  for (const id of ['snake', 'space-impact', 'sms', 'signal-wobble', 'low-battery', 'parade']) add(id, () => cameo.play(id));
   add('stop', () => { cameo.stop(); hideGag(); });
   add('imei', showImei);
   add('wipe', startWipe);
@@ -387,6 +389,8 @@ function markSelected() {
     const on = b.dataset.id === selectedId;
     b.classList.toggle('cur', on);
     b.setAttribute('aria-selected', String(on));
+    const t = b.querySelector('.t');
+    if (t) { if (on) marquee(t); else if (t.classList.contains('scrolls')) t.classList.remove('scrolls'); }
   }
 }
 
@@ -527,6 +531,7 @@ function openSongMenu(uid) {
   const e = curEntry();
   if (!e) { openMySongs(); return; }
   $('sm-title').textContent = e.title;
+  marquee($('sm-title'));
   $('sm-meta').textContent = `${e.bpm} BPM · ${e.notes.normal} notes · ${formatLength(e.length)}`;
   $('sm-msg').textContent = '';
   setState('songmenu', 'songmenu');
@@ -1529,7 +1534,7 @@ function wire() {
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', layout);
+  window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
   window.addEventListener('keydown', onKey);

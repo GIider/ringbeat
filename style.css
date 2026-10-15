@@ -253,12 +253,19 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .legend kbd { display: inline-block; min-width: 22px; text-align: center; border: var(--u) solid #6f8060; border-bottom-width: 4px;
   border-radius: 4px; padding: 0 4px; margin-right: 4px; font: inherit; color: #c4d6a8; }
 
+/* ---------- marquee for overlong titles ---------- */
+.scrolls { text-overflow: clip; }
+.scrolls .mq { display: inline-block; animation: mq var(--mq-dur, 4s) linear infinite; }
+@keyframes mq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(calc(-1 * var(--mq-dist, 0px))); } }
+
 /* ---------- gamepad focus ring for things outside lists ---------- */
 .using-pad .nudge button:focus, textarea:focus-visible { box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
   #phone { transition: none !important; }
   .boot-logo, .boot-art, .blink { animation: none; }
+  .scrolls { text-overflow: ellipsis; }
+  .scrolls .mq { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
 }
 

@@ -107,37 +107,6 @@ export function createSpaceImpact(rng, w, h) {
   return s;
 }
 
-// ---- Bouncing logo: DVD-style, bounces a few times then drifts off ----
-const LOGO = ['#####', '#...#', '#.#.#', '#...#', '#####'];
-export function createBouncer(rng, w, h) {
-  const LW = 5, LH = 5;
-  const s = {
-    x: ri(rng, 1, Math.max(1, w - LW - 1)), y: ri(rng, 1, Math.max(1, h - LH - 1)),
-    vx: rng() < 0.5 ? 1 : -1, vy: rng() < 0.5 ? 1 : -1,
-    bounces: 0, maxBounces: ri(rng, 4, 6), blink: 0, ticks: 0, done: false, corners: 0,
-  };
-  s.step = () => {
-    if (s.done) return;
-    if (++s.ticks > MAX_TICKS) { s.done = true; return; }
-    if (s.blink > 0) s.blink--;
-    if (s.bounces < s.maxBounces) {
-      let hx = false, hy = false;
-      if ((s.vx > 0 && s.x + LW >= w) || (s.vx < 0 && s.x <= 0)) { s.vx = -s.vx; hx = true; }
-      if ((s.vy > 0 && s.y + LH >= h) || (s.vy < 0 && s.y <= 0)) { s.vy = -s.vy; hy = true; }
-      if (hx || hy) s.bounces++;
-      if (hx && hy) { s.blink = 8; s.corners++; }
-    }
-    s.x += s.vx; s.y += s.vy;
-    if (s.x + LW <= 0 || s.x >= w || s.y + LH <= 0 || s.y >= h) s.done = true;
-  };
-  s.draw = put => {
-    if (s.blink > 0 && s.blink % 2 === 0) return;
-    LOGO.forEach((r, j) => { for (let i = 0; i < LW; i++) if (r[i] === '#') put(s.x + i, s.y + j); });
-  };
-  s.status = () => null;
-  return s;
-}
-
 // ---- Status-bar cameos: drive the signal/battery icons (the layer restores them when done) ----
 function statusSim(frames, tickEach, chirp) {
   const s = { ticks: 0, done: false, chirp: !!chirp };
@@ -177,7 +146,6 @@ const ALL = ['title', 'select', 'options'];
 export const CAMEOS = [
   { id: 'snake', weight: 5, kind: 'canvas', states: ALL, create: createSnake },
   { id: 'space-impact', weight: 2, kind: 'canvas', states: ['select', 'options'], create: createSpaceImpact },
-  { id: 'dvd-logo', weight: 2, kind: 'canvas', states: ['select', 'options'], create: createBouncer },
   { id: 'sms', weight: 1, kind: 'status', states: ['select'], create: createSms },
   { id: 'signal-wobble', weight: 1, kind: 'status', states: ['select'], create: createSignalWobble },
   { id: 'low-battery', weight: 1, kind: 'status', states: ['select'], once: true, create: createLowBattery },
