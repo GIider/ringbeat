@@ -268,7 +268,6 @@ function stopPreview() {
   clearTimeout(previewTimer); clearTimeout(autoPreviewTimer);
   previewTimer = autoPreviewTimer = null;
   if (synth.ctx) synth.stopAll();
-  $('btn-preview').textContent = 'Preview';
   for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Preview';
 }
 function startPreview(entry, maxSec = Infinity) {
@@ -283,7 +282,6 @@ function startPreview(entry, maxSec = Infinity) {
     synth.playNote({ midi: n.midi, when: t0 + n.startBeat * beat, duration: n.durBeat * beat * 0.92 });
     end = Math.max(end, n.startBeat + n.durBeat);
   }
-  $('btn-preview').textContent = 'Stop preview';
   for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Stop preview';
   previewTimer = setTimeout(stopPreview, (end * beat + 0.4) * 1000);
 }
@@ -568,7 +566,7 @@ function renderDpPanel() {
     if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
   }
 }
-function askDifficulty(entry, ret, retLabel, goBack, uid, training = false) {
+function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
   dpBack = goBack;
   dpEntry = entry;
   dpTab = 0;
@@ -586,7 +584,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, training = false) {
       settings.difficulty = d;
       if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
       save();
-      if (training) { openTraining(); return; }
+      if (trainable && trainingMode) { openTraining(); return; }
       startRun({ entry, diff: d, training: null, ret, retLabel });
     };
   }
@@ -597,6 +595,8 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, training = false) {
   const def = $('diffpick').querySelector('[data-default]');
   dpDiff = def ? def.dataset.diff : 'normal';
   renderDpPanel();
+  $('btn-train-mode').hidden = !trainable;
+  screens.diffpick.dataset.title = trainable && trainingMode ? 'Training' : 'Difficulty';
   setState('diffpick', 'diffpick');
 }
 
@@ -726,7 +726,7 @@ function openCustom(text = '', uid = '') {
   setState('custom', 'custom');
 }
 
-// ---- training mode (toggle beside the difficulties) ----
+// ---- training mode (toggle under the difficulties on the difficulty screen) ----
 let trainingMode = false;
 function setTrainingMode(on) {
   trainingMode = on;
@@ -734,8 +734,7 @@ function setTrainingMode(on) {
   b.classList.toggle('sel', on);
   b.setAttribute('aria-pressed', String(on));
   b.textContent = 'Training: ' + (on ? 'On' : 'Off');
-  $('btn-play').textContent = on ? 'Train' : 'Play';
-  screens.select.dataset.title = on ? 'Training' : 'Ringing tones';
+  screens.diffpick.dataset.title = on ? 'Training' : 'Difficulty';
   refreshChrome();
 }
 
@@ -821,7 +820,7 @@ function restartRun() { resumeEnd = 0; renderer.resumeCount = 0; if (run) startR
 
 function playSelected() {
   const e = selectedEntry();
-  if (e) askDifficulty(e, null, null, openSelect, null, trainingMode);
+  if (e) askDifficulty(e, null, null, openSelect, null, true);
 }
 
 function leaveToSelect() {
@@ -1022,7 +1021,7 @@ function tutorialOutro() {
   $('tut-title').textContent = "You're ready!";
   $('tut-body').innerHTML =
     `<p>Hit every note for a <b>Full Combo</b>, all Perfect for an <b>All Perfect</b>.</p>` +
-    `<p><b>Training</b> (in Options) slows songs down and loops sections.</p>` +
+    `<p><b>Training</b> (on the difficulty screen) slows songs down and loops sections.</p>` +
     `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
   $('btn-tut-go').textContent = 'Pick a song';
   $('btn-tut-skip').hidden = true;
@@ -1238,7 +1237,7 @@ function menuButton(index) {
       break;
     case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results') navigate('left'); break;
     case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results') navigate('right'); break;
-    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'select') setTrainingMode(!trainingMode); break;
+    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'diffpick' && !$('btn-train-mode').hidden) setTrainingMode(!trainingMode); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
   }
 }
@@ -1364,9 +1363,7 @@ function wire() {
   $('view-sort').onclick = () => setView('sort', SORTS);
   $('view-filter').onclick = () => setView('filter', FILTERS);
   $('view-cat').onclick = () => cycleCategory(1);
-  $('btn-play').onclick = playSelected;
   $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
-  $('btn-preview').onclick = () => togglePreview(selectedEntry());
 
   // my songs
   $('ms-new').onclick = () => openComposer();

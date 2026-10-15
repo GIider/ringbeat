@@ -8,19 +8,19 @@ green LCD (status bar, inverted highlight, two soft keys), the play screen puts 
 ## Screens & flow
 
 ```
-title ─▶ select ─▶ play ─▶ results ─▶ select
-            │  ▲      ▲ │
-            │  │      │ └─ pause ─▶ resume | restart | settings | training options | select
-            └──▶ Options ─┬─▶ details ─▶ play
-                          ├─▶ my songs (composer / paste / import-export)
+title ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
+            │  ▲        │          ▲ │
+            │  │        │          │ └─ pause ─▶ resume | restart | settings | training options | select
+            │  │        └─ Training: On ─▶ training options ─▶ play (practice)
+            └──▶ Options ─┬─▶ my songs (composer / paste / import-export)
                           ├─▶ settings ─▶ calibration
-                          └─▶ Training: On + song ─▶ training options ─▶ play (practice)
+                          └─▶ category / sort / show
 ```
 
 | Screen | Purpose |
 |---|---|
 | Title | Boot screen, "Press any key" (plays a short power-on jingle). Satisfies the browser's audio-gesture requirement. |
-| Song select | 153 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. Options (left soft key, `O`, gamepad X): Play/Train, Preview, Training mode, Category, Sort (default / easiest / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC), My songs, Settings. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
+| Song select | 153 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. The difficulty screen also has a Training toggle (gamepad Y; the title becomes *Training*): with it on, picking a difficulty opens the training options instead of starting the song. Options (left soft key, `O`, gamepad X): My songs, Settings, Category, Sort (default / easiest / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC). Rating = 1 + 16.2 × the position (share of the ladder, capped at 10) on an eight-level simulated skill ladder where bots start full-combo-ing the chart at least half the time (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
 | My songs | Up to 30 saved songs (`ringbeat.songs.v1`). Nokia-style composer: keys 1–7 = c…b, 0 rest, 8/9 length, `*` dot, `#` sharp, repeating a key cycles the octave, ▲▼ pitch step, ◀▶ cursor, left soft key = menu. Controller: A adds a copy of the last note, d-pad up/down tunes it. Also paste/edit RTTTL text, export a song (`.rtttl`), export/import all (`.json`, or RTTTL lines), copy text or share link (`#s=<base64url>`, saved to My songs when opened). |
 | Settings | Tone (buzzer / smooth), volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, replay tutorial, reset highscores. |
 | Training | Speed 50–150 %, optional A–B loop, then play. |

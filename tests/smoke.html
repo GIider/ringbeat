@@ -93,8 +93,10 @@ f.addEventListener('load', async () => {
     $('ms-back').click(); await sleep(50);
     log(vis('select'), 'my songs back');
 
-    $('btn-train-mode').click(); $('btn-play').click(); await sleep(50);
-    log(vis('diffpick'), 'training: difficulty screen first');
+    d.querySelector('.song-row.cur').click(); await sleep(50);
+    log(vis('diffpick') && !$('btn-train-mode').hidden, 'difficulty screen has the training toggle');
+    $('btn-train-mode').click(); await sleep(30);
+    log($('st-title').textContent === 'Training', 'training mode retitles the difficulty screen');
     d.querySelector('#diffpick [data-default]').click(); await sleep(50);
     log(vis('training'), 'training options');
     $('t-speed').value = 70; $('t-speed').dispatchEvent(new w.Event('input'));
@@ -110,9 +112,10 @@ f.addEventListener('load', async () => {
     $('btn-pause').click(); await sleep(100);
     $('btn-quit').click(); await sleep(100);
     log(vis('select'), 'quit -> select');
+    d.querySelector('.song-row.cur').click(); await sleep(50);
+    log($('btn-train-mode').getAttribute('aria-pressed') === 'true' && $('st-title').textContent === 'Training', 'training mode is remembered');
     $('btn-train-mode').click(); // training mode off again
-    log($('btn-train-mode').getAttribute('aria-pressed') === 'false' && $('btn-play').textContent === 'Play', 'training mode off');
-    $('btn-play').click(); await sleep(50);
+    log($('btn-train-mode').getAttribute('aria-pressed') === 'false' && $('st-title').textContent === 'Difficulty', 'training mode off');
     d.querySelector('#diffpick [data-default]').click(); await sleep(150);
     log(!vis('select') && !vis('diffpick') && !vis('results'), 'normal play starts');
     key('KeyR'); await sleep(150);
@@ -130,7 +133,7 @@ f.addEventListener('load', async () => {
     log($('r-hist').children.length === 9, 'timing histogram');
     $('btn-menu').click(); await sleep(100);
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
-    $('btn-play').click(); await sleep(100);
+    d.querySelector('.song-row.cur').click(); await sleep(100);
     log(vis('diffpick') && !!d.querySelector('#diffpick [data-default]'), 'play opens difficulty screen');
     log(!$('dp-tab-1').classList.contains('off'), 'Top tab enabled for a played song');
     key('ArrowRight'); await sleep(50); // Info -> Top
@@ -142,7 +145,7 @@ f.addEventListener('load', async () => {
     log($('r-top').children.length === 2 && $('r-top').children[1].classList.contains('cur'), 'results Top tab highlights run #2');
     $('btn-menu').click(); await sleep(100);
     log(vis('results') === false, 'left results');
-    $('btn-play').click(); await sleep(100);
+    d.querySelector('.song-row.cur').click(); await sleep(100);
     key('ArrowRight'); await sleep(50);
     log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
     key('Backspace'); await sleep(80);

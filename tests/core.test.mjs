@@ -240,6 +240,72 @@ test('bot: a dead lane produces misses', () => {
   assert.ok(r.counts.miss >= lane0);
 });
 
+const songChart = (id, d) => generateChart(parseRTTTL(SONGS.find(s => s.id === id).rtttl), { difficulty: d });
+
+test('bot: stray presses break full combo but not accuracy', () => {
+  const c = botChart('normal');
+  const clean = runBot(c, { sigma: 0 }, 1);
+  const messy = runBot(c, { sigma: 0, stray: 1 }, 1);
+  assert.equal(clean.fc, true);
+  assert.equal(messy.fc, false);
+  assert.equal(messy.counts.miss, 0);
+  assert.equal(messy.accuracy, clean.accuracy);
+});
+
+test('bot: fatigue widens timing jitter over the song', () => {
+  const c = songChart('ode-full', 'normal');
+  const fresh = measureChart(c, { runs: 1 }).acc; // smoke: runs and returns a number
+  assert.ok(Number.isFinite(fresh));
+  const prof = { sigma: 30 };
+  const acc = p => { let s = 0; for (let i = 1; i <= 8; i++) s += runBot(c, { ...prof, ...p }, i).accuracy; return s / 8; };
+  assert.ok(acc({ fatigue: 0 }) > acc({ fatigue: 2 }));
+});
+
+test('bot: ladder is strictly ordered in jitter and repeat gap', () => {
+  assert.equal(LADDER.length, 8);
+  for (let i = 1; i < LADDER.length; i++) {
+    assert.ok(LADDER[i].sigma < LADDER[i - 1].sigma);
+    assert.ok(LADDER[i].minGap < LADDER[i - 1].minGap);
+  }
+});
+
+test('bot: alternating lanes sustain a faster pace than repeating one lane', () => {
+  const mk = lanes => ({ lanes: 2, length: 4, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: Array.from({ length: 20 }, (_, i) => ({ id: i, time: i * 0.1, duration: 0.05, lane: lanes[i % lanes.length], midi: 60,
+      isHold: false, hit: false, judged: false, phrase: 0, accent: false, power: false })) });
+  const prof = { sigma: 0, minGap: 150 };
+  const same = runBot(mk([0]), prof, 1), alt = runBot(mk([0, 1]), prof, 1);
+  assert.ok(alt.counts.miss < same.counts.miss);
+});
+
+test('bot: specialists only tag features the chart contains', () => {
+  const plain = { lanes: 4, length: 20, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: Array.from({ length: 30 }, (_, i) => ({ id: i, time: i * 0.6, duration: 0.2, lane: i % 4, midi: 60 + (i % 4),
+      isHold: false, hit: false, judged: false, phrase: 0, accent: false, power: false })) };
+  const m = measureChart(plain, { runs: 5 });
+  for (const t of ['holds', 'rolls', 'slides', 'doubles', 'stamina']) assert.ok(!m.tags.includes(t), t);
+  assert.ok(Number.isFinite(m.nps) && Number.isFinite(m.acc));
+});
+
+test('difficulty.json: complete, in range, tags plausible, tiers sane', () => {
+  const d = JSON.parse(readFileSync(new URL('../src/difficulty.json', import.meta.url)));
+  const levels = LADDER.map(l => l.name);
+  for (const s of SONGS) {
+    assert.ok(d[s.id], 'rated: ' + s.id);
+    const r = DIFFICULTIES.map(k => d[s.id][k].rating);
+    for (const k of DIFFICULTIES) {
+      const m = d[s.id][k];
+      assert.ok(m.rating >= 1 && m.rating <= 10, s.id + ' ' + k);
+      assert.deepEqual(Object.keys(m.fc), levels, s.id + ' ' + k + ' ladder keys (run npm run bench)');
+      assert.ok(m.tags.length <= 2);
+    }
+    // Easy must not be much harder than Hard, and Normal must not outrate Hard by a wide margin.
+    assert.ok(r[0] <= r[2] + 1.8, s.id + ' easy vs hard ' + r);
+    assert.ok(r[1] <= r[2] + 1.8, s.id + ' normal vs hard ' + r);
+    assert.ok(r[0] <= r[1] + 1.8, s.id + ' easy vs normal ' + r);
+  }
+});
+
 test('listview: filter and sort', () => {
   const mk = (id, rating, bpm) => ({ id, title: id, bpm, stars: { normal: 1 }, rating: { normal: rating } });
   const es = [mk('a', 5, 100), mk('b', 2, 140), mk('custom:x', 1, 90), mk('c', 8, 80)];

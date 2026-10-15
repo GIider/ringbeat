@@ -16,27 +16,28 @@ export function mulberry32(seed) {
 
 const gauss = rnd => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
 
-const BASE = { sigma: 0, bias: 0, minGap: 0, laneMiss: null, densityPenalty: 0, holdSigma: 0, holdDrop: 0, chordMiss: 0 };
+const BASE = { sigma: 0, bias: 0, minGap: 0, laneMiss: null, densityPenalty: 0, holdSigma: 0, holdDrop: 0, chordMiss: 0,
+  stray: 0, fatigue: 0, rollGap: null, slideMult: 1 };
 
 // Skill ladder: timing jitter (ms) and the fastest repeat rate the player's fingers/reactions sustain (ms between presses).
+const geo = (a, b, i, n) => Math.round(a * Math.pow(b / a, i / (n - 1)));
 export const LADDER = [
-  { name: 'L1', sigma: 90, minGap: 200 },
-  { name: 'L2', sigma: 65, minGap: 150 },
-  { name: 'L3', sigma: 45, minGap: 115 },
-  { name: 'L4', sigma: 30, minGap: 90 },
-  { name: 'L5', sigma: 18, minGap: 70 },
-  { name: 'L6', sigma: 8, minGap: 50 },
-].map(p => ({ ...BASE, ...p, holdSigma: p.sigma * 1.5 }));
+  ...Array.from({ length: 8 }, (_, i) => ({ name: 'L' + (i + 1), sigma: geo(100, 14, i, 8), minGap: geo(220, 45, i, 8) })),
+// stray: chance per note of an extra press that matches no note (sloppier players mash more); fatigue: timing
+// jitter grows by this share per minute played.
+].map(p => ({ ...BASE, ...p, holdSigma: p.sigma * 1.5, stray: 0.006 * p.sigma / 100, fatigue: 0.12 }));
 
 const MID = LADDER[2];
 // Mid-skill players with one specific weakness; compared against the generalist MID to derive weakness tags.
 export const SPECIALISTS = [
   { ...MID, name: 'holds', tag: 'holds', holdSigma: 110, holdDrop: 0.35 },
   { ...MID, name: 'speed', tag: 'speed', minGap: 190, densityPenalty: 0.5 },
-  { ...MID, name: 'chords', tag: 'chords', chordMiss: 0.5 },
+  { ...MID, name: 'doubles', tag: 'doubles', chordMiss: 0.5 },
+  { ...MID, name: 'rolls', tag: 'rolls', rollGap: 190 },
+  { ...MID, name: 'slides', tag: 'slides', slideMult: 3 },
+  { ...MID, name: 'stamina', tag: 'stamina', fatigue: 0.6 },
   { ...MID, name: 'leftLane', tag: 'left lane', laneMiss: { first: 0.4 } },
   { ...MID, name: 'rightLane', tag: 'right lane', laneMiss: { last: 0.4 } },
-  { ...MID, name: 'late', tag: 'late', bias: 35 },
 ];
 
 // Play one chart. The chart is cloned (Game mutates notes). Returns Game.results().
@@ -55,11 +56,17 @@ export function runBot(chart, profile, seed = 1) {
   // Decide when the bot presses / releases each note (song time, seconds).
   const ev = [];
   let lastPress = -Infinity;
+  const lastInLane = new Array(c.lanes).fill(-Infinity);
+  const CROSS = 0.55; // alternating lanes (hands) can be played faster than repeating one lane
   const sorted = notes.slice().sort((a, b) => a.time - b.time);
   const times = sorted.map(n => n.time);
   for (let i = 0; i < sorted.length; i++) {
     const n = sorted[i];
-    if (p.minGap && n.time - lastPress > 1e-6 && (n.time - lastPress) * 1000 < p.minGap) continue; // too fast to keep up
+    if (p.minGap && !n.isRoll) { // too fast to keep up: same-lane repeats are the limiter, other lanes get a shorter gap
+      const same = (n.time - lastInLane[n.lane]) * 1000, any = (n.time - lastPress) * 1000;
+      if (same > 1e-3 && same < p.minGap) continue;
+      if (any > 1e-3 && any < p.minGap * CROSS) continue;
+    }
     let miss = 0;
     if (p.laneMiss) {
       if (p.laneMiss[n.lane] != null) miss = Math.max(miss, p.laneMiss[n.lane]);
@@ -72,7 +79,8 @@ export function runBot(chart, profile, seed = 1) {
       if (near) miss = Math.max(miss, p.chordMiss);
     }
     if (miss && rnd() < miss) continue;
-    let sigma = p.sigma;
+    let sigma = p.sigma * (1 + p.fatigue * n.time / 60);
+    if (n.slideIdx > 0) sigma *= p.slideMult;
     if (p.densityPenalty) {
       let cnt = 0;
       for (let j = i; j >= 0 && times[j] > n.time - 1; j--) cnt++;
@@ -80,11 +88,21 @@ export function runBot(chart, profile, seed = 1) {
     }
     const t = n.time + (p.bias + gauss(rnd) * sigma) / 1000;
     lastPress = n.time;
+    lastInLane[n.lane] = n.time;
+    // A stray press shortly after this note, in a lane with no note nearby (breaks FC like a real ghost tap).
+    if (p.stray && rnd() < p.stray) {
+      const lane = Math.floor(rnd() * c.lanes), st = n.time + 0.2 + rnd() * 0.15;
+      if (!sorted.some(m => m.lane === lane && st > m.time - 0.25 && st < m.time + m.duration + 0.25)) {
+        ev.push({ t: st, type: 'press', lane });
+        ev.push({ t: st + 0.04, type: 'release', lane });
+      }
+    }
     if (n.isRoll) { // mash: one press per tick the fingers can keep up with
       let last = -Infinity;
       for (const o of n.ticks) {
         const tt = n.time + o;
-        if (p.minGap && (tt - last) * 1000 < p.minGap) continue;
+        const rg = p.rollGap ?? p.minGap;
+        if (rg && (tt - last) * 1000 < rg) continue;
         last = tt;
         ev.push({ t: tt + (p.bias + gauss(rnd) * p.sigma) / 1000, type: 'press', lane: n.lane });
       }
@@ -127,22 +145,44 @@ export function measureProfile(chart, profile, runs = 30, seed = 1) {
   return { fcRate: fc / runs, apRate: ap / runs, acc: acc / runs, grades };
 }
 
+const RATING_STRETCH = 1.8;
+
 // Full difficulty measurement for a chart.
-// rating (1..10) = 1 + 9 * (expected number of failed ladder levels / ladder size), i.e. how far up the
-// ladder you must climb before a bot full-combos reliably. tags = weaknesses that hurt a mid-skill bot.
+// rating (1..10) = 1 + 9 * 1.8 * (ladder position where bots start full-combo-ing at least half the time / ladder size).
+// nps = notes per second, acc = accuracy of the mid-skill bot. tags = weaknesses that hurt a mid-skill bot.
 export function measureChart(chart, { runs = 30, seed = 1 } = {}) {
   const ladder = LADDER.map(p => measureProfile(chart, p, runs, seed));
-  const failed = ladder.reduce((s, m) => s + (1 - m.fcRate), 0);
-  const rating = Math.round((1 + 9 * failed / LADDER.length) * 10) / 10;
+  // Skill needed = where the FC rate crosses 50 % along the ladder (linear interpolation, 0 = below L1, N = above the top).
+  let x = LADDER.length;
+  for (let i = 0; i < ladder.length; i++) {
+    if (ladder[i].fcRate >= 0.5) {
+      const prev = i ? ladder[i - 1].fcRate : 0;
+      x = i + (i ? (0.5 - prev) / (ladder[i].fcRate - prev) - 1 : 0) + (i ? 0 : 0);
+      break;
+    }
+  }
+  // The catalogue's hardest charts need about 5/9 of the ladder, so stretch that range to fill 1..10.
+  const rating = Math.min(10, Math.round((1 + 9 * RATING_STRETCH * x / LADDER.length) * 10) / 10);
   const base = measureProfile(chart, MID, runs, seed);
-  // Up to two weaknesses that cost a mid-skill bot the most accuracy.
+  // Weaknesses that cost a mid-skill bot noticeable accuracy. A tag needs the chart to actually contain the
+  // feature, and lane tags only count for a lane carrying at least 40 % of the notes.
+  const n = chart.notes.length || 1;
+  const laneShare = l => chart.notes.filter(x => x.lane === l).length / n;
+  const has = {
+    holds: chart.notes.some(x => x.isHold), rolls: chart.notes.some(x => x.isRoll),
+    slides: chart.notes.some(x => x.slideIdx > 0), doubles: chart.notes.some(x => x.chordLane !== undefined),
+    speed: chart.length > 0 && n / chart.length >= 2.5, stamina: chart.length >= 60,
+    'left lane': laneShare(0) >= 0.4, 'right lane': laneShare(chart.lanes - 1) >= 0.4,
+  };
   const tags = SPECIALISTS
+    .filter(s => has[s.tag])
     .map(s => ({ tag: s.tag, drop: base.acc - measureProfile(chart, s, runs, seed).acc }))
-    .filter(x => x.drop >= 6)
+    .filter(x => x.drop >= 5)
     .sort((a, b) => b.drop - a.drop)
     .slice(0, 2)
     .map(x => x.tag);
   const fc = {};
   LADDER.forEach((p, i) => { fc[p.name] = Math.round(ladder[i].fcRate * 100) / 100; });
-  return { rating, fc, tags };
+  return { rating, fc, tags, nps: Math.round(10 * n / Math.max(1, chart.length)) / 10,
+    acc: Math.round(base.acc * 10) / 10 };
 }

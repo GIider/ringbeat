@@ -24,7 +24,7 @@ const MIN_KEPT_FRAC = 0.25;         // ...or below this share of the song's pitc
 const DIFFICULTY = {
   easy:   { lanes: 3, minDur: 0.18, minGap: 0.35, beatsOrHoldsOnly: true },
   normal: { lanes: 4, minDur: 0.12, minGap: 0.20, shortHolds: true },
-  hard:   { lanes: 4, minDur: 0, shortHolds: true, doubles: true },
+  hard:   { lanes: 4, minDur: 0, minGap: 0.11, shortHolds: true, doubles: true },
 };
 
 // Equal-count quantile split of pitches. Same pitch always maps to the same lane.
