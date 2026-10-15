@@ -456,10 +456,12 @@ export class Renderer {
 
     // Milestone banners over the highway
     const bx = Math.round(this.x0 + this.laneW * this.lanes / 2);
-    for (const b of this.banners) {
-      const age = now - b.t;
-      if (age > 1.2 || age < 0) continue;
-      this._box(c, b.text, bx, Math.round(H * 0.4));
+    // Simultaneous banners (e.g. POWER + PHRASE) stack upward, newest at the base position.
+    let slot = 0;
+    const live = this.banners.filter(b => { const age = now - b.t; return age >= 0 && age <= 1.2; });
+    live.sort((a, b) => b.t - a.t);
+    for (const b of live) {
+      this._box(c, b.text, bx, Math.round(H * 0.4) - slot++ * (CAP + 8));
     }
 
     // Resume countdown (song time is frozen while this shows)
