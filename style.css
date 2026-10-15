@@ -132,7 +132,7 @@ textarea::placeholder { color: var(--ink-dim); }
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .sel-head .arrow { font-size: var(--fs); }
-.sel-hint { color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.sel-hint { color: var(--ink-dim); white-space: normal; text-align: center; }
 .seg { display: flex; gap: 2px; }
 .seg button { background: none; border: var(--u) solid transparent; padding: 1px 6px; cursor: pointer; min-height: 0; }
 .seg button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }
@@ -153,7 +153,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .song-row:focus { outline: none; }
 .song-row:hover:not(.cur) { box-shadow: inset 0 0 0 var(--u) var(--ink); }
 .song-list .empty { margin: 12px; text-align: center; }
-.sel-info { padding: 3px 2px 4px; min-height: 2.4em; }
+.sel-info { padding: 3px 2px 4px; min-height: 3.6em; }
 .sel-info > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sel-info .stars-bar { margin-right: 6px; }
 .badge { display: inline-block; padding: 0 3px; margin-left: 4px; border: var(--u) solid currentColor; font-size: var(--fs); line-height: 1; }

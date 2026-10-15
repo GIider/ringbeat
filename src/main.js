@@ -382,7 +382,8 @@ function renderDetail() {
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
-    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
+    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
+    (e.tag ? `<div>${esc(e.tag)}</div>` : '');
 }
 
 function selectSong(id, scroll = true) {
@@ -1141,8 +1142,8 @@ function selectHints() {
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
   $('sel-hint').textContent = pad
-    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Category · ${bn(BTN.LT)} Sort`
-    : '◄► Category · D/F Sort · J/K Difficulty';
+    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Cat · ${bn(BTN.LT)} Sort`
+    : '◄► Cat · D/F Sort · J/K Diff';
 }
 
 pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
