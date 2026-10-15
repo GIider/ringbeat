@@ -26,7 +26,7 @@ browser (title shows PASS/FAIL).
 
 ## Features
 
-Song select with 67 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
+Song select with 92 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
 full combo / all perfect indicators · training mode (speed 50–150 %, A–B loop, timing display) ·
 keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·
 buzzer or smooth instrument voice.
