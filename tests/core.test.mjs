@@ -10,12 +10,15 @@ import { sliceChart, scaleChart } from '../src/practice.js';
 import { Game } from '../src/game.js';
 import { STAGES, buildStageChart, stagePassed } from '../src/tutorial.js';
 import { HOLD_MIN_SEC } from '../src/chart.js';
+import { createPerf } from '../src/perf.js';
 import { sanitizeBindings, laneForSlot, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
 
 test('library: every built-in parses cleanly and charts at all difficulties', () => {
   assert.ok(SONGS.length >= 15);
+  const full = SONGS.filter(x => { const c = generateChart(parseRTTTL(x.rtttl), { difficulty: 'normal' }); return c.length >= 60 && c.length <= 180; });
+  assert.ok(full.length >= 10, 'expected at least 10 full-length songs');
   assert.equal(new Set(SONGS.map(s => s.id)).size, SONGS.length);
   for (const s of SONGS) {
     const song = parseRTTTL(s.rtttl);
@@ -225,4 +228,26 @@ test('chart: every pitched note is either playable or backing', () => {
     const c = generateChart(song, { difficulty: d });
     assert.equal(c.notes.length + c.backing.length, total, d);
   }
+});
+
+test('perf: disabled is a no-op; enabled records stats, ring wraps, long frames counted', () => {
+  let t = 0;
+  const p = createPerf({ now: () => t, cap: 4 });
+  p.begin('a'); t += 5; p.end('a'); p.frame();
+  assert.deepEqual(p.stats(), {});
+  assert.equal(p.time('x', () => 7), 7);
+  p.enable();
+  for (const d of [1, 2, 3, 4, 100]) { p.begin('a'); t += d; p.end('a'); }
+  const a = p.stats().a;
+  assert.equal(a.n, 5);
+  assert.equal(a.max, 100);   // oldest sample (1) fell out of the 4-slot ring
+  assert.equal(a.p50, 4);
+  for (const d of [16, 16, 40]) { t += d; p.frame(); }
+  const r = p.report();
+  assert.equal(r.frames, 2);
+  assert.equal(r.longFrames, 1);
+  assert.equal(p.time('y', () => { t += 3; return 'ok'; }), 'ok');
+  assert.equal(p.stats().y.mean, 3);
+  p.reset();
+  assert.deepEqual(p.stats(), {});
 });

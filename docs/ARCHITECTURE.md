@@ -20,11 +20,14 @@ src/
   gamepad.js      Gamepad API poller, default bindings, lane folding
   nav.js          spatial focus navigation shared by keyboard and gamepad
   render.js       canvas highway, HUD, effects (visual only, never used for judging)
+  perf.js         frame/section profiler (ring buffers, percentiles); no-op until enabled
+  perfhud.js      corner overlay + report copy for perf.js
   synth.js        Web Audio instrument, ticks, miss thud
   calibration.js  latency calibration
   share.js        #s=<base64url> share links
   main.js         state machine, screen wiring, play/results flow
 scripts/serve.mjs   dependency-free dev server (LAN URLs, no-store)
+scripts/perf-bench.mjs  speed micro-benchmarks incl. headless render (`npm run perf`)
 tests/
   core.test.mjs   node tests: library, scores, practice transforms, game FC/AP, bindings
   rtttl.test.html parser/chart tests in the browser (title shows PASS/FAIL)
@@ -42,3 +45,13 @@ tests/
 - **Pad time.** Pad edges carry `performance.now()`-domain timestamps and go through the same `eventAudioTime` as keys.
 - **Persistence.** `ringbeat.v1` (settings) and `ringbeat.scores.v1` (scores); all reads are guarded and validated, so
   blocked or corrupted storage falls back to defaults.
+
+## Profiling
+
+- **In the browser:** open with `?perf` (or press F3 during play) for the overlay: FPS, frame p50/p95/max, and mean ms for
+  `pad`, `update`, `draw`, `chartgen`, `library`. F4 prints a table and copies the JSON report. `__ringbeat.perf.report()`
+  gives the same data from devtools. Disabled, the hooks are single-boolean no-ops.
+- **In node:** `npm run perf` runs the micro-benchmarks. `-- --filter chart` selects cases, `--json f.json` saves results,
+  `--baseline f.json` adds a Δ% column, `--fail-over 25` exits nonzero on a regression. Timings are machine-specific, so
+  record a baseline on the same machine first. `canvas calls/frame` for `render.draw` is deterministic and a good
+  regression signal.

@@ -1,0 +1,73 @@
+{
+ "rtttl.parse (all songs)": {
+  "iters": 410,
+  "mean": 0.4882,
+  "p50": 0.4685,
+  "p95": 0.5308,
+  "opsPerSec": 2048.3243
+ },
+ "chart.generate easy (all songs)": {
+  "iters": 907,
+  "mean": 0.2206,
+  "p50": 0.1882,
+  "p95": 0.4793,
+  "opsPerSec": 4533.6038
+ },
+ "chart.generate normal (all songs)": {
+  "iters": 867,
+  "mean": 0.231,
+  "p50": 0.2224,
+  "p95": 0.2746,
+  "opsPerSec": 4329.3495
+ },
+ "chart.generate hard (all songs)": {
+  "iters": 759,
+  "mean": 0.2636,
+  "p50": 0.2501,
+  "p95": 0.325,
+  "opsPerSec": 3793.2015
+ },
+ "library.build": {
+  "iters": 147,
+  "mean": 1.3691,
+  "p50": 1.3128,
+  "p95": 1.5812,
+  "opsPerSec": 730.3851
+ },
+ "practice.slice+scale (all)": {
+  "iters": 2340,
+  "mean": 0.0855,
+  "p50": 0.0807,
+  "p95": 0.1009,
+  "opsPerSec": 11697.4005
+ },
+ "game.simulate (longest, 1 bot run)": {
+  "iters": 1385,
+  "mean": 0.1444,
+  "p50": 0.1027,
+  "p95": 0.2292,
+  "opsPerSec": 6924.6243
+ },
+ "listview.applyView (all sorts)": {
+  "iters": 5234,
+  "mean": 0.0382,
+  "p50": 0.0364,
+  "p95": 0.0409,
+  "opsPerSec": 26165.9084
+ },
+ "share.encode+decode": {
+  "iters": 31280,
+  "mean": 0.0064,
+  "p50": 0.006,
+  "p95": 0.0084,
+  "opsPerSec": 156396.2684
+ },
+ "render.draw (1 frame)": {
+  "iters": 33968,
+  "mean": 0.0059,
+  "p50": 0.0055,
+  "p95": 0.0081,
+  "opsPerSec": 169836.3562,
+  "callsPerFrame": 144
+ }
+}

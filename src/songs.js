@@ -41,3 +41,106 @@ export const SONGS = [
   { id: 'nachtmusik', category: 'classical', title: 'Eine kleine Nachtmusik', tag: 'Mozart', rtttl: 'Nachtmusik:d=8,o=5,b=140:g,4p,d,4p,g,4p,d,4p,g,d,g,b,4d6,4p,c6,4p,a,c6,a,f#,4d,4p' },
   { id: 'tell', category: 'classical', title: 'William Tell Overture', tag: 'Rossini', rtttl: 'William Tell:d=16,o=5,b=140:8b,b,b,8b,b,b,8b,b,b,8e6,e6,e6,8e6,e6,e6,8e6,e6,e6,8g6,g6,g6,8e6,e6,e6,4c6,8b,8a,4g' },
 ];
+
+// --- Full-length songs (public-domain / original), built from sections ---------------------------------
+// rt(name, d, o, b, ...sections): each section is an RTTTL note string, or [notes, semitoneShift, speed]
+// to transpose it and/or scale its note values (speed 2 = twice as fast, 0.5 = half).
+const NAMES = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+const SEMI = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const TOKEN = /^(\d+)?([a-gp])(#)?(\.)?(\d+)?(\.)?$/;
+function rt(name, d, o, b, ...sections) {
+  const out = [];
+  for (const sec of sections) {
+    const [txt, shift = 0, speed = 1] = Array.isArray(sec) ? sec : [sec];
+    for (const raw of txt.split(',')) {
+      const tok = raw.trim();
+      if (!tok) continue;
+      const m = TOKEN.exec(tok);
+      if (!m) throw new Error(`${name}: bad token "${tok}"`);
+      const dur = (m[1] ? +m[1] : d) / speed;
+      const dot = m[4] || m[6] || '';
+      if (m[2] === 'p') { out.push(`${dur}p${dot}`); continue; }
+      const midi = 12 * ((m[5] ? +m[5] : o) + 1) + SEMI[m[2]] + (m[3] ? 1 : 0) + shift;
+      out.push(`${dur}${NAMES[midi % 12]}${dot}${Math.floor(midi / 12) - 1}`);
+    }
+  }
+  return `${name}:d=${d},o=${o},b=${b}:${out.join(',')}`;
+}
+
+const ODE_A = 'e,e,f,g,g,f,e,d,c,c,d,e,e.,8d,2d';
+const ODE_A2 = 'e,e,f,g,g,f,e,d,c,c,d,e,d.,8c,2c';
+const ODE_B = 'd,d,e,c,d,8e,8f,e,c,d,8e,8f,e,d,c,d,2g4';
+const ODE_PASS = [ODE_A, ODE_A2, ODE_B, ODE_A2];
+
+const CANON_GROUND = [
+  '2f#,2e,2d,2c#,2b4,2a4,2b4,2c#',
+  '4f#,4f#,4e,4e,4d,4d,4c#,4c#,4b4,4b4,4a4,4a4,4b4,4b4,4c#,4c#',
+  '4d,4f#,4a,4a,4g,4b,4a,4f#,4d,4d,4f#,4a,4a,4b,4c#6,4a',
+  '8d,8f#,8a,8f#,8g,8b,8a,8f#,8d,8f#,8a,8f#,8a,8b,8c#6,8a',
+  '8f#,8g,8a,8f#,8g,8a,8a4,8b4,8c#,8d,8e,8f#,8g,8f#,8d,8e',
+  '8f#,8f#4,8g4,8a4,8g4,8f#4,8e4,8f#4,8d,8e,8f#,8g,8a,8b,8g,8b',
+  '8a,8d6,8c#6,8d6,8a,8d6,8c#6,8d6,8g,8b,8a,8b,8f#,8a,8g,8f#',
+  '16d,16f#,16a,16f#,16d,16f#,16a,16f#,16a4,16c#,16e,16c#,16a4,16c#,16e,16c#',
+  '16b4,16d,16f#,16d,16b4,16d,16f#,16d,16f#4,16a4,16c#,16a4,16f#4,16a4,16c#,16a4',
+  '16g4,16b4,16d,16b4,16g4,16b4,16d,16b4,16d,16f#,16a,16f#,16d,16f#,16a,16f#',
+  '16g4,16b4,16d,16b4,16g4,16b4,16d,16b4,16a4,16c#,16e,16c#,16a4,16c#,16e,16c#',
+];
+
+const ELISE_A = 'e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,g#5,b5,8c6,p,e5';
+const ELISE_A_END1 = 'e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,c6,b5,8a5,p';
+const ELISE_B = '8p,b5,c,d,8e,p,g5,f,e,8d,p,f5,e,d,8c,p,e5,d,c,8b5,p,e5,e6,p,p,e6,e7,p,p,d#6,e6,p,p,d#6,e6,d#6,e6,d#6,e6,d#6,e6,d#6,e6,d#6,e6,b,d,c,8a5';
+const ELISE_C = '8c5,e5,g5,8c6,p,g5,e6,d6,c6,8g5,p,f5,e6,d6,c6,8f5,p,e5,d6,c6,b5,8e5,p,e5,e6,p,p,e6,e7,p,p,d#6,e6,p,p,d#6,e6,d#6,e6,d#6,e6,d#6,e6,d#6,e6,d#6,e6,b,d,c,8a5';
+
+const TURKISH_A = 'b,a,g#,a,4c6,d6,c6,b,c6,4e6,f6,e6,d#6,e6,b6,a6,g#6,a6,b6,a6,g#6,a6,4c7,8a6,4c7';
+const TURKISH_B = '8e,8a,8e,8a,8e,8a,8e,8a,8d,8a,8d,8a,8c,8a,8c,8a,8b4,8e,8b4,8e,8c,8e,8d,8e,4a,4p';
+const TURKISH_C = '8c6,8e6,8g6,8e6,8c6,8e6,8g6,8e6,8d6,8f6,8a6,8f6,8d6,8f6,8a6,8f6,8e6,8g6,8c7,8g6,8e6,8g6,8c7,8g6,4c7,4p';
+
+const MOUNTAIN = 'e,f#,g,a,b,g,4b,a#,f#,4a#,a,e,4a,e,f#,g,a,b,g,b,e6,d6,b,g,b,4d6,4p';
+
+const ENT_A = 'd,d#,e,4c6,e,4c6,e,2c6,c6,d6,d#6,e6,c6,d6,4e6,b,4d6,2c6,d,d#,e,4c6,e,4c6,e,2c6,p,a,g,f#,a,4c6,e6,d6,c6,a,4d6,4p';
+const ENT_B = '4p,8c6,8d6,8e6,8c6,8e6,8c6,8e6,4g6,8f6,8e6,8d6,8e6,8f6,8e6,8d6,4c6,4p,8a,8b,8c6,8a,8c6,8a,8c6,4e6,8d6,8c6,8b,8c6,8d6,8c6,8b,4a,4p';
+const ENT_C = '8g,8g,4a,8g,8e,4c6,8e,8d,4c,8d,8e,8f,8g,8a,2g,8g,8g,4a,8g,8e,4c6,8e,8d,8c,8d,8e,8c,4c,4p';
+
+const MINUET = '4d6,8g5,8a5,8b5,8c6,4d6,4g5,4g5,4e6,8c6,8d6,8e6,8f#6,4g6,4g5,4g5,4c6,8d6,8c6,8b5,8a5,4b5,8c6,8b5,8a5,8g5,4f#5,8g5,8a5,8b5,8g5,2a5,4p';
+const MINUET_B = '4b5,8g5,8a5,8b5,8g5,4a5,8d5,8e5,8f#5,8d5,4g5,8e5,8f#5,8g5,8d5,4c#6,8a5,8b5,8c#6,8a5,2d6,4p';
+
+const GREEN_V = '8a,2c6,8d6,e6.,8f6,e6,2d6,8b,2g,8a,b.,8c6,2a,8a,a.,8g#,8a,2b,8g#,2e,4p';
+const GREEN_C = '8g6,e6.,8f6,e6,2d6,8b,2g,8a,b.,8c6,b,8a,g#.,8f#,g#,2a,4p';
+const GREEN_C0 = '4g6,e6,8f6,e6,d6,8b,g,8a,b.,8c6,2a,8a,2a,4p';
+
+const GRACE_V = '8d,g.,8b,g,b,2a,8g,2e,8d,8d,g.,8b,g,b,2a,d6.,8b,d6,b,g,2d,8d,g.,8b,g,b,a.,8g,2e,d6,b,g,a,2g,4p';
+
+const LULLABY_A = 'e,e,2g,e,e,2g,e,g,c6,b,a,a,2g,d,e,f,d,d,e,f,d,f,b,a,g,c6,2c6';
+const LULLABY_B = 'e,g,c6,b,a,a,g,e,g,c6,b,a,a,g,e,g,c6,b,c6,d6,2c6,d,e,f,d,f,b,a,g,c6,2c6';
+
+const SPRINT_INTRO = 'c,d,e,f,g,a,b,c6,d6,e6,f6,g6,8e6,8c6,8g,8e,g,a,b,c6,b,a,g,f,e,d,c,d,e,8g,8c6,d6,c6,b,a,g,f,e,d,8c,8e,8g,8c6,4e6,8d6,8b,8g,8d,4c,4p';
+const SPRINT_VERSE = '8c,8e,8g,8e,8c,8e,8g,8e,8d,8f,8a,8f,8d,8f,8a,8f,8e,8g,8b,8g,8e,8g,8b,8g,8f,8a,8c6,8a,8g,8b,8d6,8b,4p';
+const SPRINT_CHORUS = 'c6,e6,g6,e6,c6,e6,g6,e6,d6,f6,a6,f6,d6,f6,a6,f6,e6,g6,c7,g6,e6,g6,c7,g6,8d7,8b6,8g6,8d6,4c7,4p';
+const SPRINT_BRIDGE = 'a,c6,e6,c6,a,c6,e6,c6,g,b,d6,b,g,b,d6,b,f,a,c6,a,f,a,c6,a,8g,8b,8d6,8g6,4g6,4p';
+const SPRINT_OUTRO = 'c,d,e,f,g,a,b,c6,d6,e6,f6,g6,a6,b6,c7,b6,a6,g6,f6,e6,d6,c6,b,a,g,f,e,d,2c';
+
+export const FULL_SONGS = [
+  { id: 'ode-full', category: 'classical', title: 'Ode to Joy (Full)', tag: 'Beethoven',
+    rtttl: rt('Ode Full', 4, 5, 132, ...ODE_PASS, [ODE_PASS.join(','), 0, 2], [ODE_PASS.join(','), 12], [ODE_A, 12], [ODE_A2 + ',2p', 12, 1]) },
+  { id: 'canon-full', category: 'classical', title: 'Canon in D (Full)', tag: 'Pachelbel',
+    rtttl: rt('Canon Full', 4, 5, 90, ...CANON_GROUND, [CANON_GROUND[4], 12], [CANON_GROUND[7], 12], '1d6') },
+  { id: 'elise-full', category: 'classical', title: 'Fur Elise (Full)', tag: 'Beethoven',
+    rtttl: rt('Elise Full', 16, 6, 125, ELISE_A, ELISE_A_END1, ELISE_A, ELISE_A_END1, ELISE_B, ELISE_A, ELISE_A_END1, ELISE_C, ELISE_C, ELISE_A, ELISE_A_END1, ELISE_B, ELISE_B, ELISE_A, ELISE_A_END1, ELISE_C, ELISE_A, ELISE_A_END1, '1a5') },
+  { id: 'turkish-full', category: 'classical', title: 'Turkish March (Full)', tag: 'Mozart',
+    rtttl: rt('Turkish Full', 16, 5, 130, TURKISH_A, TURKISH_A, TURKISH_B, TURKISH_B, TURKISH_A, TURKISH_C, TURKISH_C, TURKISH_A, TURKISH_B, TURKISH_B, TURKISH_A, [TURKISH_C, 0, 1], [TURKISH_C, 5], [TURKISH_A, 0, 1], TURKISH_A, TURKISH_B, TURKISH_A, '1a6') },
+  { id: 'mountain-full', category: 'classical', title: 'Mountain King (Full)', tag: 'Grieg',
+    rtttl: rt('Mountain Full', 8, 5, 100, [MOUNTAIN, 0, 0.5], [MOUNTAIN, 0, 0.5], MOUNTAIN, [MOUNTAIN, 2], [MOUNTAIN, 2, 2], [MOUNTAIN, 4, 2], [MOUNTAIN, 5, 2], [MOUNTAIN, 7, 2], [MOUNTAIN, 12, 2], '1e6') },
+  { id: 'entertainer-full', category: 'folk', title: 'The Entertainer (Full)', tag: 'Joplin',
+    rtttl: rt('Entertainer Full', 8, 5, 140, ENT_A, ENT_B, ENT_A, ENT_C, ENT_A, ENT_B, ENT_A, ENT_C, [ENT_A, 12], '1c6') },
+  { id: 'minuet-full', category: 'classical', title: 'Minuet in G (Full)', tag: 'Petzold',
+    rtttl: rt('Minuet Full', 4, 5, 120, MINUET, MINUET, MINUET_B, MINUET, [MINUET_B, 12], [MINUET, 12], '1g5') },
+  { id: 'greensleeves-full', category: 'folk', title: 'Greensleeves (Full)', tag: 'Folk',
+    rtttl: rt('Greensleeves Full', 4, 5, 100, GREEN_V, GREEN_C, GREEN_V, GREEN_C, [GREEN_V, 12], [GREEN_C, 12], GREEN_C0, '1a') },
+  { id: 'grace-full', category: 'folk', title: 'Amazing Grace (Full)', tag: 'Hymn',
+    rtttl: rt('Grace Full', 4, 5, 90, GRACE_V, GRACE_V, [GRACE_V, 2], [GRACE_V, 12, 1], '1g') },
+  { id: 'lullaby-full', category: 'classical', title: 'Lullaby (Full)', tag: 'Brahms',
+    rtttl: rt('Lullaby Full', 4, 5, 110, LULLABY_A, LULLABY_B, [LULLABY_A, 0, 2], [LULLABY_B, 12], [LULLABY_A, 12], '1c6') },
+  { id: 'sprint-long', category: 'original', title: 'Scale Sprint: Marathon', tag: 'Original',
+    rtttl: rt('Sprint Marathon', 16, 5, 150, SPRINT_INTRO, SPRINT_VERSE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_BRIDGE, SPRINT_VERSE, [SPRINT_CHORUS, 2], [SPRINT_CHORUS, 2], SPRINT_BRIDGE, SPRINT_BRIDGE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_OUTRO) },
+];
+SONGS.push(...FULL_SONGS);

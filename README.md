@@ -17,7 +17,7 @@ Tests: `npm test` (node), plus `tests/rtttl.test.html` and `tests/smoke.html` in
 
 ## Features
 
-Song select with 15 built-in songs + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
+Song select with 43 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
 full combo / all perfect indicators · training mode (speed 50–150 %, A–B loop, timing display) ·
 keyboard, touch and gamepad (rebindable) · latency calibration.
 

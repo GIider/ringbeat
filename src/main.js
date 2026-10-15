@@ -18,6 +18,8 @@ import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } fr
 import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverURL } from './cover.js';
+import { perf } from './perf.js';
+import { createHud, copyReport } from './perfhud.js';
 
 const $ = id => document.getElementById(id);
 
@@ -355,7 +357,7 @@ function startRun(r) {
     if (r.tutorial) {
       chart = buildStageChart(STAGES[r.tutorial.stage]);
     } else {
-      chart = generateChart(r.entry.song, { difficulty: r.diff });
+      chart = perf.time('chartgen', () => generateChart(r.entry.song, { difficulty: r.diff }));
     }
     if (r.training) {
       const { speed, loop, a, b } = r.training;
@@ -829,6 +831,8 @@ function onKey(e) {
     if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); startFromTitle(); }
     return;
   }
+  if (e.code === 'F3') { e.preventDefault(); setPerf(!perf.enabled); return; }
+  if (e.code === 'F4' && perf.enabled) { e.preventDefault(); copyReport(perf); return; }
   if (e.code === 'Escape') {
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
@@ -854,9 +858,19 @@ function onKey(e) {
 }
 
 // ---- frame loop ----
+const hud = createHud(perf);
+function setPerf(on) {
+  perf.enable(on);
+  try { localStorage.setItem('ringbeat.perf', on ? '1' : ''); } catch { /* storage blocked */ }
+  if (on) { perf.reset(); hud.show(); } else hud.hide();
+}
+
 function frame() {
   requestAnimationFrame(frame);
+  perf.frame();
+  perf.begin('pad');
   pad.poll();
+  perf.end('pad');
   if (state === 'calibration') {
     $('calib-pad').style.setProperty('--pulse', calibration.pulse().toFixed(3));
     if (calibration.running && calibration.finished) {
@@ -873,20 +887,27 @@ function frame() {
     return;
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
-  if (!game.active) { renderer.drawIdle(); return; }
+  if (!game.active) { perf.time('drawIdle', () => renderer.drawIdle()); return; }
+  perf.begin('update');
   game.update(game.songTime());
+  perf.end('update');
   if (!game.active || game.state === 'done') return;
   const t = game.songTime();
   if (state === 'countin' && t >= 0) state = 'playing';
+  perf.begin('draw');
   renderer.draw(game, t);
+  perf.end('draw');
 }
 
 // Bot-measured difficulty (optional: falls back to the density heuristic if missing).
 try {
   const r = await fetch(new URL('./difficulty.json', import.meta.url));
-  if (r.ok) { setMeasured(await r.json()); builtins = buildLibrary(); }
+  if (r.ok) { setMeasured(await r.json()); builtins = perf.time('library', () => buildLibrary()); }
 } catch { /* offline / file missing */ }
 
 wire();
+let perfOn = /[?&]perf\b/.test(location.search);
+try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
+if (perfOn) setPerf(true);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, settings }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, settings, perf }; // debug/test hook (tests/smoke.html)
