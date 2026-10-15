@@ -567,8 +567,7 @@ function renderDpPanel() {
   });
   if (dpTab === 0) {
     const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
-    box.innerHTML = `<div>${cap(d)} ${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b><span class="hint"> / 10</span></div>` +
-      `<div>${e.notes[d]} notes</div>${tricky}`;
+    box.innerHTML = `<div><b>${ratingOf(e, d).toFixed(1)}</b><span class="hint"> / 10</span> · ${e.notes[d]} notes</div>${tricky}`;
   } else {
     box.textContent = '';
     const ol = document.createElement('ol');
@@ -590,7 +589,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.textContent = cap(d) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)} · ${n}` : ' · no notes') +
+    b.textContent = cap(d) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)}` : ' · no notes') +
       (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
@@ -934,6 +933,7 @@ game.onFinish = r => {
   $('r-g').textContent = r.counts.great;
   $('r-o').textContent = r.counts.good;
   $('r-m').textContent = r.counts.miss;
+  $('r-ghost').textContent = r.ghosts ?? 0;
   const banner = $('r-banner');
   banner.hidden = !r.fc;
   banner.className = 'banner' + (r.ap ? ' ap' : '');
@@ -1735,7 +1735,7 @@ function demo(kind) {
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
     run = { entry: selectedEntry(), diff: settings.difficulty, training: null };
-    game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A',
+    game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A', ghosts: demoFc ? 0 : 3,
       fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
   } else if (kind === 'play' || kind === 'pause') {
     const e = selectedEntry();

@@ -153,6 +153,11 @@ test('game: a stray press before the last note breaks FC/AP', () => {
   assert.equal(r.counts.miss, 0);
   assert.equal(r.fc, false);
   assert.equal(r.ap, false);
+  assert.equal(r.ghosts, 1);
+});
+
+test('game: a stray press after the last note is not counted as a ghost hit', () => {
+  assert.equal(playWithStray(true).ghosts, 0);
 });
 
 test('game: a stray press resets the running combo', () => {

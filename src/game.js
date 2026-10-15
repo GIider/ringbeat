@@ -269,7 +269,7 @@ export class Game {
     const fc = this.counts.miss === 0 && this.strays === 0 && this.judgedCount >= total;
     return {
       score: this.score, maxCombo: this.maxCombo, counts: { ...this.counts },
-      accuracy: this.accuracy, grade: this.grade,
+      accuracy: this.accuracy, grade: this.grade, ghosts: this.strays,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
       deltas: this.deltas.slice(),
     };
