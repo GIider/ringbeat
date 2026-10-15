@@ -589,7 +589,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.textContent = cap(d) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)}` : ' · no notes') +
+    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))}` : ' · no notes') +
       (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);

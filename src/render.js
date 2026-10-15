@@ -231,8 +231,6 @@ export class Renderer {
       for (let x = bx + 1; x < bx + w - 1; x += 2) { c.fillRect(x, hitY - ph, 1, 1); c.fillRect(x, hitY + ph, 1, 1); }
       c.fillRect(bx + 1, hitY, 2, 1); c.fillRect(bx + w - 3, hitY, 2, 1);
     }
-    // left progress rail track (dotted)
-    for (let y = this.top; y < H - 2; y += 2) c.fillRect(1, y, 1, 1);
   }
 
   // Map a client X to a lane (used by pointer input).
@@ -424,7 +422,6 @@ export class Renderer {
 
   _hud(game, t, now) {
     const c = this.c, W = this.w, H = this.h;
-    const p = Math.max(0, Math.min(1, t / game.chart.length));
 
     // Score counts up in steps toward the real value; strings are rebuilt only when the integer changes.
     this._dispScore += (game.score - this._dispScore) * 0.3;
@@ -447,10 +444,6 @@ export class Renderer {
     if (!tag && game.fcAlive && game.judgedCount >= 5) tag = game.apAlive ? 'ALL PERFECT' : 'FULL COMBO';
     if (tag) this._text(c, tag, 3, 12, INK, false);
     if (cmb > 1) this._text(c, cmb + ' COMBO', W - 2, 12, INK, true, 1, 'right');
-
-    // Progress rail (left edge, fills downward from the top)
-    const ry = this.top, rh = H - 2 - ry;
-    c.fillStyle = INK; c.fillRect(0, ry, 3, Math.round(rh * p));
 
     // Milestone banners over the highway
     const bx = Math.round(this.x0 + this.laneW * this.lanes / 2);
