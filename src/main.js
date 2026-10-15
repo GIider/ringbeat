@@ -554,6 +554,7 @@ game.onFinish = r => {
   banner.hidden = !r.fc;
   banner.className = 'banner' + (r.ap ? ' ap' : '');
   banner.textContent = r.ap ? 'ALL PERFECT' : r.fc ? 'FULL COMBO' : '';
+  if (r.fc) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
   const best = $('r-best');
   best.hidden = true;
   if (training) {
@@ -1073,7 +1074,7 @@ function layout(animate = false) {
   ph.style.setProperty('--u', fs / 10 + 'px');
   renderer.setPixelScale(fs / 10);
   const lg = $('legend');
-  body.classList.toggle('legend-on', !compact && x >= 290);
+  body.classList.toggle('legend-on', !compact && x >= 286);
   lg.style.left = Math.max(16, x - 270) + 'px';
   if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
@@ -1100,7 +1101,7 @@ function updatePhones(g, t) {
   setSprite($('st-battery'), battery(bat), 2);
 }
 
-// ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|settings ----
+// ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|fc|settings ----
 let demoRun = null;
 function demo(kind) {
   settings.tutorialDone = true;
@@ -1109,10 +1110,11 @@ function demo(kind) {
   if (kind === 'options') openOptions();
   else if (kind === 'info') openInfo();
   else if (kind === 'settings') openSettings();
-  else if (kind === 'results') {
+  else if (kind === 'results' || kind === 'fc') {
+    const demoFc = kind === 'fc';
     run = { entry: selectedEntry(), diff: settings.difficulty, training: null };
     game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A',
-      fc: false, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
+      fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
   } else if (kind === 'play' || kind === 'pause') {
     const e = selectedEntry();
     const chart = generateChart(e.song, { difficulty: settings.difficulty });
