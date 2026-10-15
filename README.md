@@ -22,6 +22,9 @@ npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in sr
 Screenshot states for development: `index.html?demo=play` (also `pause`, `select`, `options`, `info`, `results`,
 `settings`) loads the Nokia Tune and freezes a frame at ~10 %.
 
+Versioning: `1.0.<build>` — major.minor from `package.json`, patch = the GitHub Actions run number (stamped by `npm run build` via `BUILD_NUMBER`).
+Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
+
 Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
 Chromium via Playwright (`npm install`, then once `npx playwright install chromium`). `tests/rtttl.test.html` and
 `tests/smoke.html` also run by hand in a browser (title shows PASS/FAIL).

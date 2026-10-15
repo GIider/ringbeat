@@ -1,7 +1,7 @@
 // Node tests for the idle cameos and easter-egg helpers: node --test tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSnake, createSpaceImpact, createBouncer, createParade, createScheduler, CAMEOS } from '../src/cameo.js';
+import { createSnake, createSpaceImpact, createParade, createScheduler, CAMEOS } from '../src/cameo.js';
 import { createSequenceMatcher, KONAMI, IMEI_CODE, fakeImei, luhnCheckDigit, createWipeGag } from '../src/secrets.js';
 
 function seeded(seed) {
@@ -42,13 +42,10 @@ test('snake: neighbouring cells are always adjacent (no teleporting)', () => {
   }
 });
 
-test('space impact and bouncer terminate and stay drawable', () => {
+test('space impact terminates and stay drawable', () => {
   for (let seed = 1; seed <= 40; seed++) {
     const a = createSpaceImpact(seeded(seed), W, H);
     assert.ok(run(a) < 3000);
-    const b = createBouncer(seeded(seed), W, H);
-    assert.ok(run(b) < 3000);
-    assert.ok(b.bounces >= 1);
     let cells = 0;
     createSpaceImpact(seeded(seed), W, H).draw(() => cells++);
     assert.ok(cells >= 0);

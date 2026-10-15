@@ -14,6 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm test
 
   build:
@@ -28,13 +30,15 @@ jobs:
         with:
           node-version: 22
       - run: npm run build
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
 
       - name: Create or update latest release
         run: |
           (cd dist && zip -qr ../ringbeat.zip .)
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
           gh release create latest ringbeat.zip \
-            --title "Latest Build (run ${{ github.run_number }})" \
+            --title "v1.0.${{ github.run_number }} (latest build)" \
             --notes "Built from commit ${{ github.sha }} on $(date -u +%Y-%m-%d)" \
             --prerelease
         env:
