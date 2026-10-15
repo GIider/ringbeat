@@ -13,7 +13,7 @@ import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
-import { SORTS, FILTERS, applyView, nextOf, ratingOf } from './listview.js';
+import { SORTS, FILTERS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
@@ -303,8 +303,8 @@ function setDifficulty(d) {
   renderDetail();
   if (state === 'select') focusCurrentRow();
 }
-function setView(key, list) {
-  settings.view[key] = nextOf(list, settings.view[key]);
+function setView(key, list, step = 1) {
+  settings.view[key] = (step < 0 ? prevOf : nextOf)(list, settings.view[key]);
   save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
@@ -983,6 +983,14 @@ function onKey(e) {
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
+  }
+  if (state === 'select' && !typing && tag !== 'SELECT' && ['KeyD', 'KeyF', 'KeyJ', 'KeyK'].includes(e.code)) {
+    e.preventDefault();
+    if (e.repeat) return;
+    synth.keyClick();
+    if (e.code === 'KeyD' || e.code === 'KeyF') cycleCategory(e.code === 'KeyF' ? 1 : -1);
+    else setView('sort', SORTS, e.code === 'KeyK' ? 1 : -1);
+    return;
   }
   if (state === 'select' && !typing && e.code === 'KeyO') { e.preventDefault(); synth.keyClick(); openOptions(); return; }
   if (menu && !e.repeat && (e.code === 'Enter' || e.code === 'Space') && !typing) synth.keyClick();

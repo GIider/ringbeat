@@ -8,7 +8,8 @@
 | Menu navigation | `↑` `↓` (spatial focus), `Enter`/`Space` activate, `Tab` also works |
 | Difficulty (song select) | `←` `→` |
 | Options (song select) | `O` |
-| Category (song select) | `[` `]` |
+| Category (song select) | `[` `]`, or play keys `D` `F` (prev / next) |
+| Sort (song select) | play keys `J` `K` (prev / next) |
 | Back / pause / resume | `Esc` or `Backspace` |
 | Restart (play, pause, results) | `R` |
 | Sliders | `←` `→` |

@@ -42,3 +42,4 @@ export function applyView(entries, { sort = 'default', filter = 'all', category 
 }
 
 export const nextOf = (arr, id) => arr[(arr.findIndex(x => x.id === id) + 1) % arr.length].id;
+export const prevOf = (arr, id) => arr[(arr.findIndex(x => x.id === id) - 1 + arr.length) % arr.length].id;
