@@ -101,7 +101,8 @@ td + td { text-align: right; color: var(--teal); }
 .song-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 8px 4px;
   border: 2px solid #4a5cff; border-radius: 14px; background: #0e1033; box-shadow: 0 0 18px #4a5cff33 inset; }
 .song-row { flex: none; display: grid; grid-template-columns: 56px 1fr auto auto; gap: 0 12px; text-align: left;
-  padding: 6px 10px; border-radius: 10px; border-color: #2c3484; background: #14184a; position: relative; }
+  padding: 6px 10px; border-radius: 10px; border-color: #2c3484; background: #14184a; position: relative;
+  contain: layout style; } /* row relayout (cursor move, re-sort) stays local to the row */
 .song-row .th { grid-row: 1 / span 2; width: 56px; height: 40px; object-fit: cover; border-radius: 6px; align-self: center;
   border: 1px solid #ffffff33; }
 .song-row .t { font-weight: bold; font-size: 1rem; grid-column: 2; align-self: end; }
