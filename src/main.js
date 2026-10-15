@@ -232,6 +232,17 @@ function openCustom() {
   setState('custom', 'custom');
 }
 
+// ---- training mode (toggle beside the difficulties) ----
+let trainingMode = false;
+function setTrainingMode(on) {
+  trainingMode = on;
+  const b = $('btn-train-mode');
+  b.classList.toggle('sel', on);
+  b.setAttribute('aria-pressed', String(on));
+  $('btn-play').textContent = on ? '▶ Train' : '▶ Play';
+  document.querySelector('.select-title').textContent = on ? 'Select Song to Train' : 'Select Song';
+}
+
 // ---- training options ----
 function openTraining() {
   const e = selectedEntry(), t = settings.training;
@@ -303,6 +314,7 @@ function startRun(r) {
 function restartRun() { if (run) startRun(run); }
 
 function playSelected() {
+  if (trainingMode) { if (selectedEntry()) openTraining(); return; }
   const e = selectedEntry();
   if (e) startRun({ entry: e, diff: settings.difficulty, training: null });
 }
@@ -431,7 +443,7 @@ function tutorialOutro() {
   $('tut-title').textContent = "You're ready!";
   $('tut-body').innerHTML =
     `<p>Hit every note for a <b>Full Combo</b>, all Perfect for an <b>All Perfect</b>.</p>` +
-    `<p><b>Training</b> (song select) slows songs down and loops sections.</p>` +
+    `<p><b>Training</b> (toggle next to the difficulties) slows songs down and loops sections.</p>` +
     `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
   $('btn-tut-go').textContent = 'Pick a song';
   $('btn-tut-skip').hidden = true;
@@ -599,7 +611,7 @@ function menuButton(index) {
     case BTN.B: back(); break;
     case BTN.LB: if (state === 'select') cycleDifficulty(-1); break;
     case BTN.RB: if (state === 'select') cycleDifficulty(1); break;
-    case BTN.Y: if (state === 'select') openTraining(); break;
+    case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
   }
 }
 pad.onNav = dir => {
@@ -651,7 +663,7 @@ function wire() {
   $('btn-start').onclick = startFromTitle;
   for (const b of $('diff-seg').children) b.onclick = () => setDifficulty(b.dataset.diff);
   $('btn-play').onclick = playSelected;
-  $('btn-training').onclick = openTraining;
+  $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
   $('btn-preview').onclick = () => togglePreview(selectedEntry());
   $('btn-custom').onclick = openCustom;
 

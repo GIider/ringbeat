@@ -50,7 +50,7 @@ f.addEventListener('load', async () => {
     $('btn-custom-back').click(); await sleep(50);
     log(vis('select'), 'custom back');
 
-    $('btn-training').click(); await sleep(50);
+    $('btn-train-mode').click(); $('btn-play').click(); await sleep(50);
     log(vis('training'), 'training options');
     $('t-speed').value = 70; $('t-speed').dispatchEvent(new w.Event('input'));
     $('t-loop').checked = true; $('t-loop').dispatchEvent(new w.Event('change'));

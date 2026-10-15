@@ -93,7 +93,7 @@ td + td { text-align: right; color: var(--teal); }
 .seg { display: inline-flex; gap: 6px; }
 .seg button, .tab { border-radius: 10px; border: 2px solid #4a5cff; background: #141a4a; transform: skewX(-6deg);
   min-width: 84px; font-weight: bold; box-shadow: 0 0 10px #4a5cff44; }
-.seg button.sel { background: var(--yellow); color: #0b0b1a; border-color: #fff3b0; box-shadow: 0 0 16px #ffd23faa; }
+.seg button.sel, .tab.sel { background: var(--yellow); color: #0b0b1a; border-color: #fff3b0; box-shadow: 0 0 16px #ffd23faa; }
 .select-body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; flex: 1; min-height: 0; }
 .song-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 8px 4px;
   border: 2px solid #4a5cff; border-radius: 14px; background: #0e1033; box-shadow: 0 0 18px #4a5cff33 inset; }

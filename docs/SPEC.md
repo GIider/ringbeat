@@ -11,7 +11,7 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
             │  │      │ └─ pause ─▶ resume | restart | training options | select
             ├──▶ custom (paste / share link)
             ├──▶ settings ─▶ calibration
-            └──▶ training options ─▶ play (practice)
+            └──▶ Training toggle + song ─▶ training options ─▶ play (practice)
 ```
 
 | Screen | Purpose |
