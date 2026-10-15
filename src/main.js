@@ -306,10 +306,12 @@ function badgeHTML(run) {
   return run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '';
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+// Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
+const starsValue = rating => (rating / 2).toFixed(1);
 // Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
 function starsText(rating) {
   const pct = Math.max(0, Math.min(100, Math.round(rating * 5) * 2));
-  return `<span class="stars-bar" role="img" aria-label="${(rating / 2).toFixed(1)} of 5 stars">` +
+  return `<span class="stars-bar" role="img" aria-label="${starsValue(rating)} of 5 stars">` +
     `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
 }
 
@@ -400,7 +402,7 @@ function renderDetail() {
   if (!e) return;
   const d = settings.difficulty, rec = scores.get(e.id, d);
   $('sel-info').innerHTML =
-    `<div>${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b>` +
+    `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
     `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
     (e.tag ? `<div>${esc(e.tag)}</div>` : '');
@@ -567,7 +569,7 @@ function renderDpPanel() {
   });
   if (dpTab === 0) {
     const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
-    box.innerHTML = `<div><b>${ratingOf(e, d).toFixed(1)}</b><span class="hint"> / 10</span> · ${e.notes[d]} notes</div>${tricky}`;
+    box.innerHTML = `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span> · ${e.notes[d]} notes</div>${tricky}`;
   } else {
     box.textContent = '';
     const ol = document.createElement('ol');

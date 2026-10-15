@@ -14,7 +14,7 @@ export const FILTERS = [
   { id: 'nofc', label: 'No FC' },
 ];
 
-// Bot-measured rating (1..10) when available, else the star heuristic scaled to the same range.
+// Bot-measured rating (1..10, internal; players see it as rating/2 stars) when available, else the star heuristic scaled to the same range.
 export const ratingOf = (e, d) => (e.rating && e.rating[d] != null ? e.rating[d] : (e.stars[d] || 0) * 1.4);
 
 function hasFC(scores, id, d) {
