@@ -2,6 +2,7 @@
 // The canvas backing store is one pixel per LCD pixel (CSS size = logical size x --u), two colours only: LCD ink on the
 // transparent LCD, so the DOM's green backlight and pixel grid show through. All coordinates are whole pixels.
 import { GLYPHS, boldGlyph, CAP } from './pixelfont.js';
+import { WINDOWS } from './game.js';
 
 const INK = '#1d2b12';
 const PAPER = '#a3c464';   // LCD green, used for text knocked out of an ink box
@@ -9,8 +10,8 @@ const JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MI
 const BANNER_POOL = 3;
 const RING_POOL = 12, LABEL_POOL = 8;
 const LANE_MAX = 40;
-const NOTE_H = 5;
-const REC_H = 13;          // receptor box height
+const NOTE_H = 7;
+const LABEL_H = CAP + 2;   // key-label row under each receptor
 
 const BOLD = {};
 const glyph = (ch, bold) => {
@@ -53,7 +54,7 @@ export class Renderer {
     this.c = canvas.getContext('2d');
     this.u = 2;                                   // CSS pixels per LCD pixel
     this.lanes = 4;
-    this.scrollTime = 1.6;
+    this._scrollTime = 1.6;
     this.keyLabels = [];
     this.title = '';
     this.trainingLabel = '';
@@ -103,6 +104,13 @@ export class Renderer {
     };
   }
 
+  get scrollTime() { return this._scrollTime; }
+  set scrollTime(v) {
+    if (v === this._scrollTime) return;
+    this._scrollTime = v;
+    if (this.w > 0) this._layout();
+  }
+
   setPixelScale(u) {
     if (u === this.u) return;
     this.u = u;
@@ -145,8 +153,15 @@ export class Renderer {
     this.laneW = Math.max(8, Math.min(LANE_MAX, Math.floor((W - 4) / n)));
     this.x0 = Math.floor((W - this.laneW * n) / 2);
     this.top = 20;                                // below the two HUD rows
-    this.recY = H - REC_H - 4;                    // receptor boxes
-    this.hitY = this.recY - 3;                    // hit line (2px, rows hitY..hitY+1)
+    // The receptor box *is* the target: its height spans the +-good window at the current scroll speed, so a note is
+    // hittable exactly while it overlaps the box, and perfect while it sits on the centre band.
+    const avail = H - this.top - 4 - LABEL_H - 3;
+    const pps0 = avail / this._scrollTime;
+    this.recH = Math.max(11, Math.min(17, Math.round(2 * WINDOWS.good * pps0) | 1));
+    this.recY = H - 4 - LABEL_H - this.recH;
+    this.hitY = this.recY + (this.recH >> 1);     // centre row of the box
+    this.pps = (this.hitY - this.top) / this._scrollTime;
+    this.perfH = Math.max(1, Math.round(WINDOWS.perfect * this.pps));
     this._titleLines = null;
     this._staticDirty = true;
     this._idleDone = false;
@@ -200,20 +215,21 @@ export class Renderer {
   }
 
   _paintStatic(c) {
-    const n = this.lanes, lw = this.laneW, x0 = this.x0, H = this.h, hitY = this.hitY;
+    const n = this.lanes, lw = this.laneW, x0 = this.x0, H = this.h, hitY = this.hitY, recY = this.recY;
+    const bw = lw - 5, ph = this.perfH;
     c.fillStyle = INK;
     // dotted lane separators
     for (let i = 0; i <= n; i++) {
       const x = x0 + i * lw;
-      for (let y = this.top + (i & 1); y < hitY; y += 2) c.fillRect(x, y, 1, 1);
+      for (let y = this.top + (i & 1); y < recY; y += 2) c.fillRect(x, y, 1, 1);
     }
-    // hit line: solid, a little wider than the lanes
-    c.fillRect(x0 - 2, hitY, lw * n + 5, 2);
-    // receptors
+    // receptors: hollow box the note slots into; dotted lines mark the perfect band, ticks mark the exact centre
     for (let i = 0; i < n; i++) {
-      const bx = x0 + i * lw + 2, bw = lw - 3, by = this.recY;
-      c.fillRect(bx, by, bw, 1); c.fillRect(bx, by + REC_H - 1, bw, 1);
-      c.fillRect(bx, by, 1, REC_H); c.fillRect(bx + bw - 1, by, 1, REC_H);
+      const bx = x0 + i * lw + ((lw - bw) >> 1) - 1, w = bw + 2, by = recY, h = this.recH;
+      c.fillRect(bx, by, w, 1); c.fillRect(bx, by + h - 1, w, 1);
+      c.fillRect(bx, by, 1, h); c.fillRect(bx + w - 1, by, 1, h);
+      for (let x = bx + 1; x < bx + w - 1; x += 2) { c.fillRect(x, hitY - ph, 1, 1); c.fillRect(x, hitY + ph, 1, 1); }
+      c.fillRect(bx + 1, hitY, 2, 1); c.fillRect(bx + w - 3, hitY, 2, 1);
     }
     // left progress rail track (dotted)
     for (let y = this.top; y < H - 2; y += 2) c.fillRect(1, y, 1, 1);
@@ -234,16 +250,24 @@ export class Renderer {
   }
 
   _keyBox(c, i, down) {
-    const bx = this.x0 + i * this.laneW + 2, bw = this.laneW - 3, by = this.recY;
-    if (down) { c.fillStyle = INK; c.fillRect(bx, by, bw, REC_H); }
+    const bw = this.laneW - 5, bx = this.x0 + i * this.laneW + ((this.laneW - bw) >> 1) - 1, w = bw + 2;
+    const ly = this.recY + this.recH + 2;
     const lab = this.keyLabels[i];
-    if (lab) this._text(c, String(lab).slice(0, 3), bx + Math.floor(bw / 2), by + 3, down ? PAPER : INK, true, 1, 'center');
+    if (down) {
+      c.fillStyle = INK;
+      c.fillRect(bx, ly - 1, w, LABEL_H);
+      // pressed: thicken the receptor with an inner outline (the box interior must stay clear for the note)
+      const by = this.recY, h = this.recH;
+      c.fillRect(bx + 1, by + 1, w - 2, 1); c.fillRect(bx + 1, by + h - 2, w - 2, 1);
+      c.fillRect(bx + 1, by + 1, 1, h - 2); c.fillRect(bx + w - 2, by + 1, 1, h - 2);
+    }
+    if (lab) this._text(c, String(lab).slice(0, 3), bx + (w >> 1), ly, down ? PAPER : INK, true, 1, 'center');
   }
 
   draw(game, t) {
     const c = this.c, W = this.w, H = this.h, n = this.lanes;
     const lw = this.laneW, x0 = this.x0, hitY = this.hitY;
-    const pps = (hitY - this.top) / this.scrollTime;
+    const pps = this.pps, ph = this.perfH;
     const now = performance.now() / 1000;
 
     this._idleDone = false;
@@ -256,6 +280,34 @@ export class Renderer {
     for (let i = 0; i < n; i++) {
       const age = now - this.flash[i];
       this._keyBox(c, i, !!(game.holds && game.holds[i]) || age < 0.09);
+    }
+
+    // Beat lines (every 4th stronger): a rhythm ruler between the notes.
+    const bl = game.chart.beatLen, fb = game.chart.firstBeat;
+    if (bl > 0) {
+      c.fillStyle = INK;
+      const span = n * lw, tEnd = t + this.scrollTime;
+      for (let k = Math.ceil(fb + t / bl); ; k++) {
+        const bt = (k - fb) * bl;
+        if (bt > tEnd) break;
+        const y = Math.round(hitY - (bt - t) * pps);
+        if (y < this.top || y >= this.recY) continue;
+        const step = (k & 3) === 0 ? 2 : 4;
+        for (let x = x0 + 1; x < x0 + span; x += step) c.fillRect(x, y, 1, 1);
+      }
+    }
+
+    // "Now" cue: a lane's perfect band goes solid while its next note is inside the hit window.
+    const bwr = lw - 5, rx = ((lw - bwr) >> 1) - 1;
+    c.fillStyle = INK;
+    for (let i = 0; i < n; i++) {
+      const list = game.byLane && game.byLane[i];
+      if (!list) continue;
+      let k = game.lanePtr[i];
+      while (k < list.length && list[k].judged) k++;
+      if (k >= list.length || Math.abs(t - list[k].time) > WINDOWS.good) continue;
+      const bx = x0 + i * lw + rx;
+      c.fillRect(bx, hitY - ph, bwr + 2, 1); c.fillRect(bx, hitY + ph, bwr + 2, 1);
     }
 
     // Notes: sorted by time, so only walk the visible slice.
@@ -287,6 +339,13 @@ export class Renderer {
       const y = yHead - (NOTE_H >> 1);
       if (y + NOTE_H < this.top || y > H) continue;
       c.fillStyle = INK;
+      if (!missed && !nt.holding) { // approach cue: a lead line 0.3s out, a second one 0.15s out
+        const dt = nt.time - t;
+        if (dt < 0.3 && dt > -WINDOWS.good) {
+          c.fillRect(x + 1, y - 2, bw - 2, 1);
+          if (dt < 0.15) c.fillRect(x + 1, y + NOTE_H + 1, bw - 2, 1);
+        }
+      }
       if (missed) { // hollow ghost
         c.fillRect(x, y, bw, 1); c.fillRect(x, y + NOTE_H - 1, bw, 1);
         c.fillRect(x, y, 1, NOTE_H); c.fillRect(x + bw - 1, y, 1, NOTE_H);
@@ -294,7 +353,7 @@ export class Renderer {
         c.fillRect(x, y, bw, NOTE_H);
         c.clearRect(x, y, 1, 1); c.clearRect(x + bw - 1, y, 1, 1);
         c.clearRect(x, y + NOTE_H - 1, 1, 1); c.clearRect(x + bw - 1, y + NOTE_H - 1, 1, 1);
-        if (nt.isHold) { c.fillStyle = PAPER; c.fillRect(x + (bw >> 1), y + 2, 1, 1); }   // hold heads have a centre dot
+        if (nt.isHold) { c.fillStyle = PAPER; c.fillRect(x + (bw >> 1), y + 3, 1, 1); }   // hold heads have a centre dot
       }
     }
 
@@ -321,7 +380,7 @@ export class Renderer {
       const age = now - l.t;
       if (age > 0.45 || age < 0) continue;
       const x = Math.max(0, Math.min(W - textWidth(l.text, false) - 1, x0 + l.lane * lw + (lw >> 1) - (textWidth(l.text, false) >> 1)));
-      this._text(c, l.text, x, hitY - 14 - (this.reduced ? 0 : age > 0.2 ? 1 : 0), INK, false);
+      this._text(c, l.text, x, this.recY - 10 - (this.reduced ? 0 : age > 0.2 ? 1 : 0), INK, false);
     }
 
     this._hud(game, t, now);

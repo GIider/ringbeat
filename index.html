@@ -11,8 +11,17 @@
   <link rel="preload" href="src/difficulty.json" as="fetch" crossorigin>
 </head>
 <body data-mode="menu">
-  <!-- Keyboard legend beside the phone (wide screens, menus only) -->
+  <!-- Keyboard legend beside the phone (wide screens; menu keys in menus, lane keys while playing) -->
   <aside id="legend" class="legend" aria-label="Keys">
+    <div class="lg-play">
+      <b>Playing</b>
+      <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> lanes</div>
+      <div><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> lanes (Easy)</div>
+      <div><kbd>Esc</kbd> pause</div>
+      <div><kbd>R</kbd> restart</div>
+      <p>Hold a key through long notes. Gamepad and touch work too.</p>
+    </div>
+    <div class="lg-menu">
     <b>Keys</b>
     <div><kbd>↑</kbd><kbd>↓</kbd> move</div>
     <div><kbd>←</kbd><kbd>→</kbd> difficulty, sliders</div>
@@ -24,6 +33,7 @@
     <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> play (in song)</div>
     <div><kbd>R</kbd> restart</div>
     <p>Gamepad, touch and the phone's own keys work too.</p>
+    </div>
   </aside>
 
   <div id="phone" class="no-anim">

@@ -219,7 +219,9 @@ body:not(.compact) .pause-btn { display: none; }
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);
   line-height: 1.5; opacity: 0; visibility: hidden; transition: opacity .3s; }
-body.legend-on[data-mode="menu"] .legend { opacity: .85; visibility: visible; }
+body.legend-on .legend { opacity: .85; visibility: visible; }
+.legend .lg-play, body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-menu { display: none; }
+body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: block; }
 .legend b { display: block; color: #c4d6a8; margin-bottom: 6px; }
 .legend p { color: #6f8060; margin-top: 10px; }
 .legend kbd { display: inline-block; min-width: 22px; text-align: center; border: var(--u) solid #6f8060; border-bottom-width: 4px;
