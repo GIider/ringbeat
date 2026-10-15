@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Ringbeat tests</title>
+<style>body{font:14px monospace;background:#111;color:#ddd;padding:1em}.ok{color:#4d4}.bad{color:#f55}</style>
+</head><body>
+<h3>Ringbeat tests</h3><pre id="out"></pre>
+<script type="module">
+import { parseRTTTL } from '../src/rtttl.js';
+import { encodeSong, decodeSong } from '../src/share.js';
+import { generateChart } from '../src/chart.js';
+import { SONGS } from '../src/songs.js';
+
+const out = document.getElementById('out');
+let pass = 0, fail = 0;
+function check(name, cond, extra = '') {
+  if (cond) pass++; else { fail++; console.error('FAIL', name, extra); }
+  out.insertAdjacentHTML('beforeend', `<span class="${cond ? 'ok' : 'bad'}">${cond ? 'PASS' : 'FAIL'}</span> ${name} ${cond ? '' : extra}\n`);
+}
+const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const midis = s => parseRTTTL(s).notes.filter(n => !n.isRest).map(n => n.midi);
+const totalBeats = s => { const n = parseRTTTL(s).notes; const l = n[n.length - 1]; return l.startBeat + l.durBeat; };
+const throws = f => { try { f(); return false; } catch { return true; } };
+
+// --- parser ---
+{
+  const s = parseRTTTL('x:b=100:c,d');           // d and o missing -> d=4, o=6
+  check('defaults missing: d=4,o=6', s.notes[0].durBeat === 1 && s.notes[0].midi === 84, JSON.stringify(s.notes[0]));
+  check('bpm taken from b=', s.bpm === 100);
+  const e = parseRTTTL(':d=4,o=5,b=63:c');        // empty name
+  check('empty name ok', e.name === '' && e.bpm === 63);
+}
+{
+  const n = parseRTTTL('t:d=4,o=5,b=120:8c.,8c.5,8c5.,c').notes;
+  check('dot after note', n[0].durBeat === 0.75);
+  check('dot after octave', n[2].durBeat === 0.75 && n[1].durBeat === 0.5 + 0.25);
+  check('undotted quarter', n[3].durBeat === 1);
+}
+{
+  const n = parseRTTTL('t:d=4,o=5,b=120:c#,a#6,p,2p,f#').notes;
+  check('sharps', n[0].midi === 73 && n[1].midi === 94 && n[4].midi === 78, JSON.stringify(n.map(x => x.midi)));
+  check('pauses are rests with correct start beats', n[2].isRest && n[3].isRest && n[3].startBeat === 3 && n[4].startBeat === 5);
+}
+{
+  const s = parseRTTTL('  Messy Song : D=8 , O=6, b=200 :  8C , xx, 3c, 4h5, ,16E7 ,32g#4, , p ');
+  check('messy: name kept', s.name === 'Messy Song');
+  const m = s.notes.filter(x => !x.isRest).map(x => x.midi);
+  check('messy: parsed values', eq(m, [84, 100, 68]), JSON.stringify(m));
+  check('messy: warnings collected (not thrown)', s.warnings.length === 3, JSON.stringify(s.warnings));
+  check('structurally unusable throws', throws(() => parseRTTTL('just text')) && throws(() => parseRTTTL('a:d=4:')) && throws(() => parseRTTTL('a:d=4:p,p')) && throws(() => parseRTTTL(42)));
+}
+{
+  const ode = SONGS[0].rtttl;
+  check('Ode first midis', eq(midis(ode).slice(0, 5), [76, 76, 77, 79, 79]), JSON.stringify(midis(ode).slice(0, 5)));
+  check('Ode total beats = 32', totalBeats(ode) === 32, totalBeats(ode));
+  check('Ode bpm', parseRTTTL(ode).bpm === 140);
+}
+
+// --- share ---
+{
+  const str = 'Ünï:d=4,o=5,b=120:c,d,e#,p';
+  const h = encodeSong(str);
+  check('share round-trip', decodeSong(h) === str, h);
+  check('share hash prefix', h.startsWith('#s=') && !/[+/=]/.test(h.slice(3)));
+  check('share round-trip all built-ins', SONGS.every(s => decodeSong(encodeSong(s.rtttl)) === s.rtttl));
+  check('garbled hashes -> null', ['', '#', '#s=', '#s=!!!', '#s=%%%', '#x=abc', '#s=/////', '#s=_w', null, undefined].every(g => decodeSong(g) === null));
+}
+
+// --- built-in songs & charts ---
+for (const s of SONGS) {
+  const song = parseRTTTL(s.rtttl);
+  check(`${song.name}: zero warnings`, song.warnings.length === 0, JSON.stringify(song.warnings));
+  for (const difficulty of ['easy', 'normal', 'hard']) {
+    const c = generateChart(song, { difficulty });
+    let ok = c.notes.length > 0 && c.notes.every(n => n.lane >= 0 && n.lane < c.lanes);
+    for (let i = 1; i < c.notes.length; i++) if (c.notes[i].time - c.notes[i - 1].time < 0.09 - 1e-9) ok = false;
+    // no hold may reach into the next note of its lane
+    const last = {};
+    for (const n of c.notes) {
+      if (last[n.lane] && last[n.lane].isHold && last[n.lane].time + last[n.lane].duration > n.time) ok = false;
+      last[n.lane] = n;
+    }
+    const used = new Set(c.notes.map(n => n.lane)).size;
+    check(`${song.name}/${difficulty}: playable (${c.notes.length} notes, ${used}/${c.lanes} lanes, ${c.notes.filter(n => n.isHold).length} holds)`, ok);
+  }
+}
+{
+  // quantile balance on a skewed melody: 8 low, 1 each of 3 higher pitches
+  const c = generateChart(parseRTTTL('q:d=8,o=5,b=60:c,c,c,c,c,c,c,c,d,e,f,g'), { difficulty: 'hard' });
+  const lanes = new Set(c.notes.map(n => n.lane));
+  check('quantile uses several lanes on skewed melody', lanes.size >= 3, [...lanes].join());
+}
+
+out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed\n`);
+document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
+</script>
+</body></html>

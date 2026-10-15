@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Ringbeat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <button id="btn-pause" class="pause-btn" hidden aria-label="Pause">❚❚</button>
+  <div id="toast" class="toast" hidden role="status"></div>
+
+  <!-- Title -->
+  <section id="title" class="screen">
+    <div class="panel center">
+      <h1>RINGBEAT</h1>
+      <p class="sub">Ringtones, but make it a rhythm game.</p>
+      <button id="btn-start" class="primary" data-default>Press any key to start</button>
+      <p class="hint">Keyboard · touch · gamepad</p>
+    </div>
+  </section>
+
+  <!-- Song select -->
+  <section id="select" class="screen" hidden>
+    <div class="select-wrap">
+      <header class="select-head">
+        <h2>Select song</h2>
+        <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
+          <button data-diff="easy">Easy</button>
+          <button data-diff="normal">Normal</button>
+          <button data-diff="hard">Hard</button>
+        </div>
+        <button id="btn-settings">Settings</button>
+      </header>
+      <div class="select-body">
+        <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
+        <aside class="detail">
+          <h2 id="d-title"></h2>
+          <div id="d-meta" class="hint"></div>
+          <div id="d-stars" class="stars"></div>
+          <div class="lbl">Best</div>
+          <div id="d-best" class="d-best"></div>
+          <div class="lbl">Top runs</div>
+          <ol id="d-top" class="top"></ol>
+          <div class="row">
+            <button id="btn-play" class="primary" data-default>▶ Play</button>
+            <button id="btn-training">Training</button>
+          </div>
+          <div class="row">
+            <button id="btn-preview">Preview</button>
+            <button id="btn-custom">Custom…</button>
+          </div>
+        </aside>
+      </div>
+      <p class="hint">D F J K · tap lanes · gamepad d-pad / face buttons · Esc pause · R restart</p>
+    </div>
+  </section>
+
+  <!-- Custom song -->
+  <section id="custom" class="screen" hidden>
+    <div class="panel">
+      <h2>Custom song</h2>
+      <label class="lbl" for="rtttl">Paste RTTTL</label>
+      <textarea id="rtttl" rows="4" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
+      <div id="status" class="status"></div>
+      <div class="row">
+        <button id="btn-custom-play" class="primary">▶ Play</button>
+        <button id="btn-custom-preview">Preview</button>
+        <button id="btn-share">Copy share link</button>
+        <button id="btn-custom-back">Back</button>
+      </div>
+      <div id="share-msg" class="hint"></div>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section id="settings" class="screen" hidden>
+    <div class="panel">
+      <h2>Settings</h2>
+      <div class="grid">
+        <label>Volume <input id="volume" type="range" min="0" max="100" step="5"></label>
+        <label>Scroll time <span id="scroll-val"></span>
+          <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
+        <label class="check"><input id="backing" type="checkbox"> Backing pulse</label>
+        <label class="check"><input id="pref-preview" type="checkbox"> Song preview</label>
+      </div>
+      <div class="row">
+        <span>Latency offset: <b id="menu-offset">0 ms</b></span>
+        <button id="btn-calibrate">Calibrate</button>
+      </div>
+
+      <div class="lbl">Controller</div>
+      <div id="pad-status" class="hint"></div>
+      <div id="bind-grid" class="bind-grid"></div>
+      <div class="row">
+        <button id="btn-bind-reset">Reset buttons</button>
+      </div>
+
+      <div class="lbl">Data</div>
+      <div class="row">
+        <button id="btn-reset-scores">Reset highscores</button>
+        <button id="btn-settings-back" class="primary">Back</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Training options -->
+  <section id="training" class="screen" hidden>
+    <div class="panel">
+      <h2>Training</h2>
+      <div id="t-song" class="sub"></div>
+      <div class="grid">
+        <label>Speed <b id="t-speed-val"></b>
+          <input id="t-speed" type="range" min="50" max="150" step="10"></label>
+        <label class="check"><input id="t-loop" type="checkbox"> Loop section</label>
+        <label>Loop start <b id="t-a-val"></b>
+          <input id="t-a" type="range" min="0" max="90" step="5"></label>
+        <label>Loop end <b id="t-b-val"></b>
+          <input id="t-b" type="range" min="10" max="100" step="5"></label>
+      </div>
+      <p class="hint">Practice runs are never saved to highscores. Pitch stays the same at any speed.</p>
+      <div class="row">
+        <button id="btn-train-start" class="primary" data-default>▶ Start</button>
+        <button id="btn-train-back">Back</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results" class="screen overlay" hidden>
+    <div class="panel small">
+      <h2 id="r-heading">Results</h2>
+      <div id="r-song" class="hint"></div>
+      <div id="r-grade" class="grade">S</div>
+      <div id="r-banner" class="banner" hidden></div>
+      <div class="big" id="r-score">0</div>
+      <div id="r-best" class="newbest" hidden></div>
+      <table>
+        <tr><td>Accuracy</td><td id="r-acc"></td></tr>
+        <tr><td>Max combo</td><td id="r-combo"></td></tr>
+        <tr><td>Perfect</td><td id="r-p"></td></tr>
+        <tr><td>Great</td><td id="r-g"></td></tr>
+        <tr><td>Good</td><td id="r-o"></td></tr>
+        <tr><td>Miss</td><td id="r-m"></td></tr>
+      </table>
+      <div class="hist-label hint">Early ◂ timing ▸ Late</div>
+      <div id="r-hist" class="hist"></div>
+      <div id="r-offset" class="hint"></div>
+      <div class="row">
+        <button id="btn-retry" class="primary" data-default>Retry</button>
+        <button id="btn-next">Next song</button>
+        <button id="btn-menu">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pause -->
+  <section id="pause" class="screen overlay" hidden>
+    <div class="panel small">
+      <h2>Paused</h2>
+      <div class="row">
+        <button id="btn-resume" class="primary" data-default>Resume</button>
+        <button id="btn-restart">Restart</button>
+        <button id="btn-pause-options" hidden>Training options</button>
+        <button id="btn-quit">Song select</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Calibration -->
+  <section id="calib" class="screen" hidden>
+    <div class="panel small">
+      <h2>Calibrate</h2>
+      <p id="calib-msg" class="hint"></p>
+      <div id="calib-pad" class="pad" role="button" aria-label="Tap here">TAP</div>
+      <div class="hint" id="calib-count">0 taps</div>
+      <div class="row">
+        <button id="nudge-minus">−5 ms</button>
+        <b id="calib-offset">0 ms</b>
+        <button id="nudge-plus">+5 ms</button>
+      </div>
+      <div class="row">
+        <button id="calib-reset">Reset</button>
+        <button id="calib-again">Again</button>
+        <button id="calib-done" class="primary">Done</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

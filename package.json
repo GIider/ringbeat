@@ -1,0 +1,11 @@
+{
+  "name": "ringbeat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser rhythm game with charts generated from RTTTL ringtones",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/core.test.mjs"
+  }
+}

@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Ringbeat smoke</title>
+<style>body{font:13px monospace;background:#111;color:#ddd;margin:8px}.ok{color:#4d4}.bad{color:#f55}iframe{width:700px;height:420px;border:1px solid #444;float:right}</style>
+</head><body>
+<h3>Ringbeat UI smoke test (drives index.html in an iframe)</h3>
+<iframe id="f" src="../index.html"></iframe>
+<pre id="out"></pre>
+<script>
+const out = document.getElementById('out'), f = document.getElementById('f');
+let pass = 0, fail = 0;
+const log = (ok, name, extra = '') => { ok ? pass++ : fail++; out.insertAdjacentHTML('beforeend', `<span class="${ok ? 'ok' : 'bad'}">${ok ? 'PASS' : 'FAIL'}</span> ${name} ${ok ? '' : extra}\n`); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+f.addEventListener('load', async () => {
+  const w = f.contentWindow, d = w.document, $ = id => d.getElementById(id);
+  const errors = [];
+  w.addEventListener('error', e => errors.push(e.message));
+  w.addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
+  const vis = id => !$(id).hidden;
+  const key = (code, type = 'keydown') => w.dispatchEvent(new w.KeyboardEvent(type, { code, key: code, bubbles: true }));
+  try {
+    await sleep(300);
+    log(vis('title') && !vis('select'), 'title screen visible');
+    key('Space'); await sleep(100);
+    log(vis('select') && !vis('title'), 'any key -> song select');
+    const rows = d.querySelectorAll('.song-row');
+    log(rows.length >= 15, `song list has ${rows.length} rows`);
+    log($('d-title').textContent.length > 0, 'detail pane filled: ' + $('d-title').textContent);
+    d.querySelector('#diff-seg [data-diff=hard]').click();
+    log(d.querySelector('#diff-seg .sel').dataset.diff === 'hard', 'difficulty switch');
+    const rows2 = d.querySelectorAll('.song-row'); // list is re-rendered on difficulty change
+    rows2[3].click(); rows2[3].focus(); await sleep(50);
+    log($('d-title').textContent === rows2[3].querySelector('.t').textContent, 'click selects song');
+    key('ArrowDown'); await sleep(50);
+    log(d.activeElement === rows2[4], 'arrow down moves focus');
+
+    $('btn-settings').click(); await sleep(50);
+    log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'settings + 4 bindings');
+    d.querySelector('#bind-grid button').click();
+    log(d.querySelector('#bind-grid button').classList.contains('capture'), 'rebind capture mode');
+    key('Escape'); await sleep(50);
+    log(vis('settings'), 'Esc cancels capture only');
+    key('Escape'); await sleep(100);
+    log(vis('select'), 'Esc -> back to select');
+
+    $('btn-custom').click(); await sleep(50);
+    $('rtttl').value = 'Zed:d=4,o=5,b=120:c,d,e,f,g'; $('rtttl').dispatchEvent(new w.Event('input'));
+    log($('status').className.includes('ok') && !$('btn-custom-play').disabled, 'custom RTTTL accepted');
+    $('rtttl').value = 'junk'; $('rtttl').dispatchEvent(new w.Event('input'));
+    log($('status').className.includes('err') && $('btn-custom-play').disabled, 'custom junk rejected');
+    $('btn-custom-back').click(); await sleep(50);
+    log(vis('select'), 'custom back');
+
+    $('btn-training').click(); await sleep(50);
+    log(vis('training'), 'training options');
+    $('t-speed').value = 70; $('t-speed').dispatchEvent(new w.Event('input'));
+    $('t-loop').checked = true; $('t-loop').dispatchEvent(new w.Event('change'));
+    $('btn-train-start').click(); await sleep(200);
+    log(['title','select','custom','settings','training','results','pause','calib'].every(s => !vis(s)), 'in game (all screens hidden)');
+    log(!$('btn-pause').hidden, 'pause button shown');
+    key('Escape'); await sleep(150);
+    log(vis('pause') && !$('btn-pause-options').hidden, 'paused shows training options');
+    key('Escape'); await sleep(200); // resume needs a real user gesture for the AudioContext; not asserted here
+    $('btn-pause').click(); await sleep(100);
+    $('btn-quit').click(); await sleep(100);
+    log(vis('select'), 'quit -> select');
+    $('btn-play').click(); await sleep(150);
+    log(!vis('select') && !vis('results'), 'normal play starts');
+    key('KeyR'); await sleep(150);
+    log(!vis('select'), 'R restarts');
+    // fake a finished run to exercise results / highscores / FC banner
+    const rb = w.__ringbeat;
+    const fake = (score, extra = {}) => ({ score, maxCombo: 8, counts: { perfect: 8, great: 0, good: 0, miss: 0 }, accuracy: 100, grade: 'S',
+      fc: true, ap: true, deltas: [-0.02, 0.01, 0.03, 0, 0.01, -0.01, 0.02, 0, 0.005, 0.01], ...extra });
+    rb.scores.clear();
+    rb.game.onFinish(fake(1234)); await sleep(100);
+    log(vis('results'), 'results shown');
+    log($('r-banner').textContent === 'ALL PERFECT' && !$('r-banner').hidden, 'ALL PERFECT banner');
+    log($('r-best').textContent.includes('NEW BEST'), 'new best flagged: ' + $('r-best').textContent);
+    log($('r-hist').children.length === 9, 'timing histogram');
+    $('btn-menu').click(); await sleep(100);
+    log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
+    log($('d-best').textContent.includes('1234'), 'best shown in detail: ' + $('d-best').textContent);
+    $('btn-play').click(); await sleep(100);
+    rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
+    log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
+    $('btn-menu').click(); await sleep(100);
+    log(d.querySelectorAll('#d-top li').length === 2, 'top runs listed');
+    rb.scores.clear();
+    log(vis('select'), 'back to select again');
+  } catch (e) { log(false, 'exception', e && e.stack || e); }
+  log(errors.length === 0, 'no runtime errors', errors.join(' | '));
+  out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed\n`);
+  document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
+});
+</script>
+</body></html>

@@ -1,0 +1,41 @@
+# Architecture
+
+Vanilla ES modules, no build. `npm start` serves the folder (`scripts/serve.mjs`), `npm test` runs the node tests.
+
+```
+index.html / style.css        all screens as <section class="screen">, canvas #stage for the highway
+src/
+  rtttl.js        parser: text -> { name, bpm, notes[], warnings[] }
+  chart.js        song -> chart (difficulty filter, lane assignment, holds)
+  practice.js     sliceChart / scaleChart: pure chart transforms for training
+  songs.js        built-in song data (id, title, tag, rtttl)
+  library.js      derived metadata (BPM, length, stars, note counts), custom entries, hashing
+  scores.js       highscores store (injectable storage)
+  settings.js     persisted settings incl. controller bindings and training options
+  game.js         judging, scoring, holds, FC/AP, pause/restart; audio-clock only
+  input.js        keyboard + pointer -> lane events with audio-clock timestamps
+  gamepad.js      Gamepad API poller, default bindings, lane folding
+  nav.js          spatial focus navigation shared by keyboard and gamepad
+  render.js       canvas highway, HUD, effects (visual only, never used for judging)
+  synth.js        Web Audio instrument, ticks, miss thud
+  calibration.js  latency calibration
+  share.js        #s=<base64url> share links
+  main.js         state machine, screen wiring, play/results flow
+scripts/serve.mjs   dependency-free dev server (LAN URLs, no-store)
+tests/
+  core.test.mjs   node tests: library, scores, practice transforms, game FC/AP, bindings
+  rtttl.test.html parser/chart tests in the browser (title shows PASS/FAIL)
+  smoke.html      UI smoke test driving index.html in an iframe
+```
+
+## Key decisions
+
+- **Training = chart transform.** Speed and loop are applied to the generated chart before `Game.start`, so
+  `Game` needs no special cases. `sliceChart` also shifts the beat-grid origin so the backing pulse stays aligned.
+- **Focus navigation, not custom menus.** Every screen is ordinary focusable DOM; keyboard arrows and gamepad
+  d-pad both go through `nav.js` (nearest control in direction), which keeps touch/mouse/keyboard/pad consistent.
+- **Selection by focus.** In the song list, focusing a row selects it; confirm on the selected row plays.
+  A mouse click only selects (double-click plays) so pointer users don't launch songs by accident.
+- **Pad time.** Pad edges carry `performance.now()`-domain timestamps and go through the same `eventAudioTime` as keys.
+- **Persistence.** `ringbeat.v1` (settings) and `ringbeat.scores.v1` (scores); all reads are guarded and validated, so
+  blocked or corrupted storage falls back to defaults.
