@@ -31,6 +31,16 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
 
 - **Difficulty:** Easy (3 lanes, beats and holds only), Normal (4 lanes), Hard (4 lanes, every note).
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
+  Also derived from the RTTTL text, no authoring needed:
+  - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
+    lasting ≥ 0.2 s is a short hold.
+  - **Phrases:** a rest of ≥ 1 beat ends a phrase (so does 16 beats without one). The first note after a rest is an
+    **accent** (caret above the head) and scores ×2. A phrase finished with no miss pays **+200** (`PHRASE +200`; not
+    in songs with a single phrase).
+  - **Power notes** (plus sign in the head): phrase peaks at or above the song's 85th pitch percentile. Hitting all of a
+    phrase's power notes with no miss starts a ×1.5 score burst for 4 s (`POWER x1.5`).
+  - **Double notes** (Hard): a legato leap of ≥ 7 semitones adds an octave-below partner tap in the neighbouring lane at
+    the same time (a bridge joins the two heads). Both notes are judged separately.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.
 - **Score:** Perfect 300 / Great 200 / Good 100, times a combo multiplier (+0.1 per 10 combo, max 2×); completed hold +100.
 - **Accuracy:** Perfect 1, Great ⅔, Good ⅓, Miss 0 (averaged over all judged notes; a dropped hold counts a miss).

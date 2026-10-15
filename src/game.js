@@ -4,6 +4,10 @@ export const WINDOWS = { perfect: 0.045, great: 0.09, good: 0.135 }; // seconds,
 export const HOLD_RELEASE_FORGIVE = 0.15; // releasing this close to the tail end still completes the hold
 export const HOLD_BONUS = 100;
 export const POINTS = { perfect: 300, great: 200, good: 100 };
+export const ACCENT_MULT = 2;       // first note after a long rest scores double
+export const PHRASE_BONUS = 200;    // a phrase played without a miss
+export const POWER_MULT = 1.5;      // score multiplier burst after all of a phrase's power notes are hit
+export const POWER_SEC = 4;
 const ACCURACY_WEIGHT = { perfect: 1, great: 2 / 3, good: 1 / 3, miss: 0 };
 const LOOKAHEAD = 0.1, SCHED_INTERVAL = 25; // ms timer that schedules *audio* only, never judges
 const END_PADDING = 0.6;
@@ -37,11 +41,21 @@ export class Game {
       this.byLane[n.lane].push(n);
     }
     this.backingPtr = 0;
+    // Per-phrase bookkeeping for the phrase bonus and power bursts.
+    this.phrases = new Map();
+    for (const n of chart.notes) {
+      let ph = this.phrases.get(n.phrase);
+      if (!ph) this.phrases.set(n.phrase, ph = { left: 0, missed: false, powerLeft: 0, powerMissed: false });
+      ph.left++;
+      if (n.power) ph.powerLeft++;
+    }
+    this.now = 0; this.burstUntil = -1; this.phrasesClean = 0;
     this.holds = new Array(chart.lanes).fill(null);
     this.pendingRelease = new Array(chart.lanes).fill(false);
     this.score = 0; this.combo = 0; this.maxCombo = 0;
     this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
     this.judgedCount = 0;
+    this.strays = 0;          // presses that matched no note before the last note was played (break FC)
     this.notesLeft = chart.notes.length; // notes not yet judged (a dropped hold does not add to this)
     this.accSum = 0;
     this.deltas = [];         // signed hit offsets in seconds (+ = late), in hit order
@@ -60,10 +74,11 @@ export class Game {
 
   get accuracy() { return this.judgedCount ? 100 * this.accSum / this.judgedCount : 100; }
   get grade() { return gradeFor(this.accuracy); }
-  // True while no note has been missed so far (the "full combo" streak is alive).
-  get fcAlive() { return this.judgedCount > 0 && this.counts.miss === 0; }
+  // True while no note has been missed and no stray press made (the "full combo" streak is alive).
+  get fcAlive() { return this.judgedCount > 0 && this.counts.miss === 0 && this.strays === 0; }
   get apAlive() { return this.fcAlive && this.counts.great + this.counts.good === 0; }
-  get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1); }
+  get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1) * (this.burst ? POWER_MULT : 1); }
+  get burst() { return this.now < this.burstUntil; }
 
   // ---- ticks (backing pulse, including the lead-in count-in, only when enabled) ----
   _startScheduler() {
@@ -97,6 +112,7 @@ export class Game {
     if (this.state !== 'running') return;
     this.fx.press(lane);
     const t = audioTime - this.songStart - this.calibration;
+    this.now = t;
     const list = this.byLane[lane];
     let i = this.lanePtr[lane];
     while (i < list.length && list[i].judged) i++;
@@ -108,7 +124,10 @@ export class Game {
       const d = Math.abs(t - n.time);
       if (d < bestAbs) { best = n; bestAbs = d; }
     }
-    if (!best || bestAbs > WINDOWS.good) return; // ghost tap: ignored
+    if (!best || bestAbs > WINDOWS.good) { // ghost tap: no score effect, but breaks FC until the last note is played
+      if (this.notesLeft > 0) { this.strays++; this.combo = 0; }
+      return;
+    }
     const j = bestAbs <= WINDOWS.perfect ? 'perfect' : bestAbs <= WINDOWS.great ? 'great' : 'good';
     this._judge(best, j);
     this.deltas.push(t - best.time);
@@ -122,6 +141,7 @@ export class Game {
       best.voice = this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: remaining, releasable: true });
     } else {
       this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: best.duration });
+      this._finish(best, true);
     }
   }
 
@@ -130,6 +150,7 @@ export class Game {
     const n = this.holds[lane];
     if (this.state !== 'running' || !n) return;
     const t = audioTime - this.songStart - this.calibration;
+    this.now = t;
     if (n.voice) n.voice.release(this.synth.ctx.currentTime);
     if (t >= n.time + n.duration - HOLD_RELEASE_FORGIVE) this._completeHold(n);
     else this._breakHold(n);
@@ -138,6 +159,7 @@ export class Game {
   // Per-frame: auto-misses, hold completion, end of song. `t` = songTime().
   update(t) {
     if (this.state !== 'running') return;
+    this.now = t;
     for (let lane = 0; lane < this.byLane.length; lane++) {
       const list = this.byLane[lane];
       let i = this.lanePtr[lane];
@@ -163,7 +185,7 @@ export class Game {
     this.counts[j]++;
     this.judgedCount++;
     this.accSum += ACCURACY_WEIGHT[j];
-    this.score += Math.round(POINTS[j] * this.multiplier);
+    this.score += Math.round(POINTS[j] * this.multiplier * (n.accent ? ACCENT_MULT : 1));
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     this.fx.judge(n.lane, j);
@@ -176,18 +198,36 @@ export class Game {
     this.combo = 0;
     this.synth.playMiss(n.midi);
     this.fx.judge(n.lane, 'miss');
+    this._finish(n, false);
+  }
+
+  // A note is finished once it is tapped, released or lost. Settles the phrase bonus and power bursts.
+  _finish(n, ok) {
+    const ph = this.phrases.get(n.phrase);
+    if (!ph) return;
+    if (!ok) { ph.missed = true; if (n.power) ph.powerMissed = true; }
+    if (n.power && --ph.powerLeft === 0 && !ph.powerMissed) {
+      this.burstUntil = this.now + POWER_SEC;
+      if (this.fx.banner) this.fx.banner('POWER x' + POWER_MULT);
+    }
+    if (--ph.left === 0 && !ph.missed && this.phrases.size > 1) {
+      this.score += PHRASE_BONUS;
+      this.phrasesClean++;
+      if (this.fx.banner) this.fx.banner('PHRASE +' + PHRASE_BONUS);
+    }
   }
 
   _completeHold(n) {
     n.holding = false; n.done = true;
     this.holds[n.lane] = null;
     this.score += Math.round(HOLD_BONUS * this.multiplier);
+    this._finish(n, true);
   }
 
   _breakHold(n) {
     n.holding = false; n.broken = true;
     this.holds[n.lane] = null;
-    this._miss(n, false);
+    this._miss(n, false); // also finishes the note
   }
 
   // ---- pause / restart ----
@@ -224,12 +264,13 @@ export class Game {
   results() {
     const total = this.chart.notes.length;
     // Full combo: every note was hit (holds that were dropped count as misses).
-    const fc = this.counts.miss === 0 && this.judgedCount >= total;
+    const fc = this.counts.miss === 0 && this.strays === 0 && this.judgedCount >= total;
     return {
       score: this.score, maxCombo: this.maxCombo, counts: { ...this.counts },
       accuracy: this.accuracy, grade: this.grade,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
       deltas: this.deltas.slice(),
+      phrasesClean: this.phrasesClean, phrases: this.phrases.size,
     };
   }
 }

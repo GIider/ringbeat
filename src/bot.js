@@ -59,7 +59,7 @@ export function runBot(chart, profile, seed = 1) {
   const times = sorted.map(n => n.time);
   for (let i = 0; i < sorted.length; i++) {
     const n = sorted[i];
-    if (p.minGap && (n.time - lastPress) * 1000 < p.minGap) continue; // too fast to keep up
+    if (p.minGap && n.time - lastPress > 1e-6 && (n.time - lastPress) * 1000 < p.minGap) continue; // too fast to keep up
     let miss = 0;
     if (p.laneMiss) {
       if (p.laneMiss[n.lane] != null) miss = Math.max(miss, p.laneMiss[n.lane]);

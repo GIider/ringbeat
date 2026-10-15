@@ -101,6 +101,7 @@ export class Renderer {
         const l = this.labels[this.labelI++ % LABEL_POOL];
         l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j];
       },
+      banner: text => this._banner(text, performance.now() / 1000),
     };
   }
 
@@ -352,7 +353,13 @@ export class Renderer {
         c.fillRect(x, y, bw, NOTE_H);
         c.clearRect(x, y, 1, 1); c.clearRect(x + bw - 1, y, 1, 1);
         c.clearRect(x, y + NOTE_H - 1, 1, 1); c.clearRect(x + bw - 1, y + NOTE_H - 1, 1, 1);
-        if (nt.isHold) { c.fillStyle = PAPER; c.fillRect(x + (bw >> 1), y + 3, 1, 1); }   // hold heads have a centre dot
+        const cx = x + (bw >> 1), cy = y + (NOTE_H >> 1);
+        c.fillStyle = PAPER;
+        if (nt.power) { c.fillRect(cx - 1, cy, 3, 1); c.fillRect(cx, cy - 1, 1, 3); }  // power notes: plus sign
+        else if (nt.isHold) c.fillRect(cx, cy, 1, 1);                                  // hold heads have a centre dot
+        c.fillStyle = INK;
+        if (nt.accent) { c.fillRect(cx - 1, y - 3, 3, 1); c.fillRect(cx, y - 4, 1, 1); } // accent: caret above the head
+        if (nt.chordLane === nt.lane + 1) c.fillRect(x + bw, cy, lw - bw, 1);            // double: bridge to the right lane
       }
     }
 

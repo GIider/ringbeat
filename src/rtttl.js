@@ -54,7 +54,7 @@ export function parseRTTTL(text) {
     const dotted = !!(m[4] || m[6]); // a dot in either position counts once
     const durBeat = (4 / dur) * (dotted ? 1.5 : 1);
     const midi = isRest ? 0 : 12 * (oct + 1) + SEMITONE[m[2]] + (m[3] ? 1 : 0);
-    notes.push({ midi, startBeat: beat, durBeat, isRest });
+    notes.push({ midi, startBeat: beat, durBeat, isRest, dotted });
     beat += durBeat;
     if (!isRest) playable++;
   }

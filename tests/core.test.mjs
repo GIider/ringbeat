@@ -132,6 +132,45 @@ test('game: a single miss breaks FC', () => {
   assert.equal(result.ap, false);
 });
 
+function playWithStray(afterLast) {
+  const g = new Game(stubSynth());
+  const chart = generateChart(parseRTTTL('t:d=8,o=5,b=120:c,d,e,f,g,a,b,c6'), { difficulty: 'normal' });
+  g.start(chart, { leadIn: 1, backing: false });
+  let result = null;
+  g.onFinish = r => { result = r; };
+  const stray = () => g.press(chart.notes[0].lane, g.songStart - 5);
+  if (!afterLast) stray();
+  chart.notes.forEach(n => g.press(n.lane, g.songStart + n.time + 0.01));
+  if (afterLast) stray();
+  for (let t = 0; t < chart.length + 2 && !result; t += 0.05) g.update(t);
+  return result;
+}
+
+test('game: a stray press before the last note breaks FC/AP', () => {
+  const r = playWithStray(false);
+  assert.equal(r.counts.miss, 0);
+  assert.equal(r.fc, false);
+  assert.equal(r.ap, false);
+});
+
+test('game: a stray press resets the running combo', () => {
+  const g = new Game(stubSynth());
+  const chart = generateChart(parseRTTTL('t:d=8,o=5,b=120:c,d,e,f,g,a,b,c6'), { difficulty: 'normal' });
+  g.start(chart, { leadIn: 1, backing: false });
+  const a = chart.notes[0];
+  g.press(a.lane, g.songStart + a.time);
+  assert.equal(g.combo, 1);
+  g.press(a.lane, g.songStart - 5); // far from any note
+  assert.equal(g.combo, 0);
+  g.stop(); // clear the scheduler interval
+});
+
+test('game: a press after the last note keeps FC', () => {
+  const r = playWithStray(true);
+  assert.equal(r.fc, true);
+  assert.equal(r.ap, true);
+});
+
 test('game: notesLeft counts down to zero, dropped holds do not go negative', () => {
   const { g, n } = playChart(0);
   assert.equal(g.notesLeft, 0);
@@ -340,4 +379,77 @@ test('composer: a full-length song at the note cap fits the saved-song size limi
   assert.equal(C.pressNote(s, 1, 0), false); // capped
   s.notes.length = C.MAX_NOTES;
   assert.ok(C.toRTTTL(s).length <= MAX_RTTTL);
+});
+
+// ---- Phase A: phrases, power notes, short holds, doubles ----
+const chartOf = (r, d = 'hard') => generateChart(parseRTTTL(r), { difficulty: d });
+
+test('chart: rests split phrases, first note after a rest is an accent', () => {
+  const c = chartOf('t:d=8,o=5,b=120:c,d,e,f,4p,g,a,b,c6,4p,e6,f6,g6,a6', 'normal');
+  const phrases = new Set(c.notes.map(n => n.phrase));
+  assert.equal(phrases.size, 3);
+  const acc = c.notes.filter(n => n.accent);
+  assert.equal(acc.length, 2);
+  assert.ok(acc.every(n => n.phrase > 0));
+  assert.equal(c.notes.find(n => n.phrase === 0).accent, false);
+});
+
+test('chart: long runs without rests are split into phrases but get no accent', () => {
+  const c = chartOf('t:d=8,o=5,b=120:' + 'c,d,e,f,g,a,b,c6,'.repeat(6).slice(0, -1), 'normal');
+  assert.ok(new Set(c.notes.map(n => n.phrase)).size > 1);
+  assert.equal(c.notes.filter(n => n.accent).length, 0);
+});
+
+test('chart: power notes are phrase peaks, not every note', () => {
+  const c = chartOf('t:d=8,o=5,b=120:c,e,g,c6,g,e,c,e,g,c6,g,e', 'normal');
+  const power = c.notes.filter(n => n.power);
+  assert.ok(power.length >= 1 && power.length < c.notes.length / 2);
+  assert.ok(power.every(n => n.midi >= 84));
+});
+
+test('chart: dotted-then-short notes become short holds on normal/hard, not easy', () => {
+  const r = 't:d=8,o=5,b=120:8c.,16d,8e.,16f,8g.,16a,8c6.,16b,8a.,16g';
+  const isShort = n => n.isHold && n.duration < HOLD_MIN_SEC;
+  assert.ok(chartOf(r, 'normal').notes.some(isShort));
+  assert.ok(!chartOf(r, 'easy').notes.some(isShort));
+  // a plain dotted note (no short follower) stays a tap
+  assert.ok(!chartOf('t:d=8,o=5,b=200:8c.,8d,8e.,8f,8g.,8a', 'normal').notes.some(n => n.isHold));
+});
+
+test('chart: doubles only on hard, in a free neighbouring lane, same time', () => {
+  const r = 't:d=8,o=5,b=120:c,c6,d,d6,e,e6,f,f6,g,g6,a,a6,b,b6,c,c6,d,d6';
+  assert.ok(!chartOf(r, 'normal').notes.some(n => n.chordLane !== undefined));
+  const c = chartOf(r, 'hard');
+  const pairs = c.notes.filter(n => n.chordLane !== undefined);
+  assert.ok(pairs.length >= 2);
+  for (const n of pairs) {
+    const mate = c.notes.find(m => m !== n && m.time === n.time && m.lane === n.chordLane);
+    assert.ok(mate, 'partner exists at the same time');
+    assert.equal(Math.abs(mate.lane - n.lane), 1);
+  }
+  c.notes.forEach((n, i) => { assert.equal(n.id, i); if (i) assert.ok(n.time >= c.notes[i - 1].time); });
+});
+
+test('game: accent scores double, clean phrase pays a bonus, power notes start a burst', async () => {
+  const g = new Game(stubSynth());
+  const chart = {
+    lanes: 4, length: 5, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: [
+      { id: 0, time: 1, duration: 0.2, lane: 0, midi: 60, isHold: false, phrase: 0, accent: false, power: true },
+      { id: 1, time: 2, duration: 0.2, lane: 1, midi: 62, isHold: false, phrase: 1, accent: true, power: false },
+      { id: 2, time: 3, duration: 0.2, lane: 2, midi: 64, isHold: false, phrase: 1, accent: false, power: false },
+    ],
+  };
+  g.start(chart, { leadIn: 0, backing: false });
+  const at = t => g.songStart + t;
+  g.update(1); g.press(0, at(1));
+  assert.ok(g.burst, 'power burst active');
+  assert.equal(g.score, 300 + 200, 'tap + clean one-note phrase');
+  assert.equal(g.multiplier, 1 * 1.5);
+  g.update(2); g.press(1, at(2));
+  assert.equal(g.score, 500 + 300 * 1.5 * 2, 'accent doubles, burst x1.5');
+  g.update(3); g.press(2, at(3));
+  assert.equal(g.phrasesClean, 2);
+  assert.equal(g.results().phrasesClean, 2);
+  g.stop();
 });

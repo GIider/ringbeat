@@ -43,6 +43,7 @@ const recent = new Float32Array(16);
 let recentN = 0;
 game.fx = {
   press: renderer.fx.press,
+  banner: renderer.fx.banner,
   judge: (lane, j) => { renderer.fx.judge(lane, j); recent[recentN++ % recent.length] = QUALITY[j]; },
 };
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
