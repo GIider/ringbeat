@@ -57,6 +57,19 @@
     </div>
   </section>
 
+  <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
+  <section id="tutorial" class="screen" hidden>
+    <div class="panel">
+      <h2 id="tut-title">Welcome to Ringbeat</h2>
+      <div id="tut-body"></div>
+      <div class="row">
+        <button id="btn-tut-go" class="primary" data-default>Start tutorial</button>
+        <button id="btn-tut-skip">Skip</button>
+      </div>
+    </div>
+  </section>
+  <div id="tut-caption" class="tut-caption" hidden aria-live="polite"></div>
+
   <!-- Custom song -->
   <section id="custom" class="screen" hidden>
     <div class="panel">
@@ -99,6 +112,7 @@
 
       <div class="lbl">Data</div>
       <div class="row">
+        <button id="btn-tutorial">Replay tutorial</button>
         <button id="btn-reset-scores">Reset highscores</button>
         <button id="btn-settings-back" class="primary">Back</button>
       </div>
@@ -164,6 +178,7 @@
         <button id="btn-restart">Restart</button>
         <button id="btn-pause-options" hidden>Training options</button>
         <button id="btn-quit">Song select</button>
+        <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
       </div>
     </div>
   </section>

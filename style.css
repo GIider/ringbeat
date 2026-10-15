@@ -130,3 +130,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline: 3px solid var(--teal); outline-offset: 2px; }
 button.song-row:focus-visible, .using-pad button.song-row:focus { outline-offset: -3px; }
 .song-list, .detail, .screen { scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
+
+/* ---- tutorial ---- */
+#tutorial { align-items: center; }
+#tut-body p { margin: 8px 0; }
+#tut-body b { color: var(--teal); }
+.tut-caption { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 6; width: min(92vw, 460px);
+  background: rgba(20, 20, 43, 0.92); border: 2px solid var(--line); border-radius: 8px; padding: 10px 14px;
+  font-size: 0.85rem; pointer-events: none; }
+.tut-caption[hidden] { display: none; }
+.tut-caption b { display: block; color: var(--yellow); margin-bottom: 4px; }
+.tut-caption .step { color: var(--dim); font-size: 0.72rem; margin-top: 6px; }

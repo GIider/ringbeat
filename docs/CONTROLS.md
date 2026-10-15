@@ -39,3 +39,6 @@ Menus:
 | Training options (song select) | Y |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
+
+## Tutorial
+Shown automatically the first time you start the game (skipped for players who already picked a song). Four short stages teach taps, timing, holds and combo. Replay it from Settings → Replay tutorial.

@@ -13,6 +13,7 @@ import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength } from './library.js';
 import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
+import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
 import * as nav from './nav.js';
 
 const $ = id => document.getElementById(id);
@@ -36,12 +37,13 @@ let state = 'title';
 let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
   title: $('title'), select: $('select'), custom: $('custom'), settings: $('settings'),
-  training: $('training'), results: $('results'), paused: $('pause'), calibration: $('calib'),
+  training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'), calibration: $('calib'),
 };
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   $('btn-pause').hidden = !(state === 'countin' || state === 'playing');
   if (name !== 'select' && name !== 'custom') stopPreview();
+  $('tut-caption').hidden = !(run && run.tutorial && (state === 'countin' || state === 'playing' || state === 'paused'));
   const el = screens[name];
   if (el) requestAnimationFrame(() => { if (!el.contains(document.activeElement)) focusDefault(el); });
 }
@@ -264,7 +266,11 @@ function startRun(r) {
   stopPreview();
   let chart;
   try {
-    chart = generateChart(r.entry.song, { difficulty: r.diff });
+    if (r.tutorial) {
+      chart = buildStageChart(STAGES[r.tutorial.stage]);
+    } else {
+      chart = generateChart(r.entry.song, { difficulty: r.diff });
+    }
     if (r.training) {
       const { speed, loop, a, b } = r.training;
       if (loop) chart = sliceChart(chart, a * chart.length, b * chart.length);
@@ -276,7 +282,7 @@ function startRun(r) {
   }
   synth.ensure();
   synth.setVolume(settings.volume);
-  renderer.title = r.entry.title;
+  renderer.title = r.tutorial ? STAGES[r.tutorial.stage].title : r.entry.title;
   renderer.trainingLabel = r.training
     ? `TRAINING ${Math.round(r.training.speed * 100)}%` +
       (r.training.loop ? ` · LOOP ${Math.round(r.training.a * 100)}–${Math.round(r.training.b * 100)}%` : '')
@@ -286,7 +292,8 @@ function startRun(r) {
   renderer.resetState();
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
-  game.start(chart, { leadIn: 2, backing: settings.backing, calibration: settings.calibration });
+  if (r.tutorial) showCaption(r.tutorial.stage);
+  game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, calibration: settings.calibration });
   setState('countin', null);
   return true;
 }
@@ -311,6 +318,9 @@ function pauseGame() {
   state = 'paused';
   input.enabled = false;
   $('btn-pause-options').hidden = !(run && run.training);
+  const tut = !!(run && run.tutorial);
+  $('btn-quit').hidden = tut;
+  $('btn-tut-skip-pause').hidden = !tut;
   show('paused');
 }
 async function resumeGame() {
@@ -351,6 +361,7 @@ function renderHistogram(deltas) {
 game.onFinish = r => {
   input.reset();
   padHeld.forEach(s => s.clear());
+  if (run && run.tutorial) { tutorialStageDone(r); return; }
   const training = run && run.training;
   if (training && training.loop) { // looped practice: go again immediately
     toast(`Loop: ${r.score} · ${r.accuracy.toFixed(1)}% · ${r.grade}${r.fc ? ' · FC' : ''}`, 1800);
@@ -394,6 +405,56 @@ function nextSong() {
   selectedId = e.id;
   settings.lastSongId = e.id; save();
   startRun({ entry: e, diff: run ? run.diff : settings.difficulty, training: null });
+}
+
+// ---- tutorial ----
+function controlsHTML() {
+  const keys = KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ');
+  const pad = [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ');
+  return `<p>Notes fall down four lanes. Hit each one as it reaches the white line.</p>` +
+    `<p>Keyboard: ${keys}<br>Gamepad: ${pad} (or d-pad)<br>Touch: tap and hold the lanes</p>` +
+    `<p>There are two note types — <b>taps</b> and <b>holds</b>. This takes about a minute.</p>`;
+}
+function openTutorial(stage = -1) {
+  $('btn-tut-go').textContent = 'Start tutorial';
+  $('btn-tut-skip').hidden = false;
+  $('tut-title').textContent = 'Welcome to Ringbeat';
+  $('tut-body').innerHTML = controlsHTML();
+  run = null;
+  setState('tutorial', 'tutorial');
+}
+function tutorialOutro() {
+  game.stop();
+  $('tut-title').textContent = "You're ready!";
+  $('tut-body').innerHTML =
+    `<p>Hit every note for a <b>Full Combo</b>, all Perfect for an <b>All Perfect</b>.</p>` +
+    `<p><b>Training</b> (song select) slows songs down and loops sections.</p>` +
+    `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
+  $('btn-tut-go').textContent = 'Pick a song';
+  $('btn-tut-skip').hidden = true;
+  run = { tutorial: { done: true } };
+  setState('tutorial', 'tutorial');
+}
+function showCaption(i) {
+  const st = STAGES[i];
+  $('tut-caption').innerHTML = `<b>${esc(st.title)}</b>${esc(st.text)}<div class="step">Step ${i + 1} of ${STAGES.length}</div>`;
+}
+function tutorialStageDone(r) {
+  const i = run.tutorial.stage;
+  if (!stagePassed(STAGES[i], r)) { toast('Not quite — try again', 1500); startRun(run); return; }
+  if (i + 1 < STAGES.length) { toast('Nice!', 1000); startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: i + 1 } }); }
+  else tutorialOutro();
+}
+function finishTutorial() {
+  game.stop();
+  input.reset();
+  run = null;
+  settings.tutorialDone = true; save();
+  openSelect();
+}
+function tutorialGo() {
+  if (run && run.tutorial && run.tutorial.done) finishTutorial();
+  else startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: 0 } });
 }
 
 // ---- calibration screen ----
@@ -516,6 +577,7 @@ function releasePad(index, ts) {
 function back() {
   switch (state) {
     case 'select': break;
+    case 'tutorial': finishTutorial(); break;
     case 'custom': case 'training': case 'settings': openSelect(); break;
     case 'results': openSelect(); break;
     case 'paused': resumeGame(); break;
@@ -548,7 +610,7 @@ pad.onNav = dir => {
 // ---- wiring ----
 function startFromTitle() {
   synth.ensure();
-  openSelect();
+  if (!settings.tutorialDone) openTutorial(); else openSelect();
 }
 
 function wire() {
@@ -575,6 +637,12 @@ function wire() {
       resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = 'Reset highscores'; }, 3000);
     }
   };
+
+  // tutorial
+  $('btn-tut-go').onclick = tutorialGo;
+  $('btn-tut-skip').onclick = finishTutorial;
+  $('btn-tut-skip-pause').onclick = finishTutorial;
+  $('btn-tutorial').onclick = () => { synth.ensure(); openTutorial(); };
 
   // title / select
   $('btn-start').onclick = startFromTitle;

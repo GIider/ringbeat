@@ -8,6 +8,8 @@ import { buildLibrary, customEntry, DIFFICULTIES } from '../src/library.js';
 import { createScores, TOP_N } from '../src/scores.js';
 import { sliceChart, scaleChart } from '../src/practice.js';
 import { Game } from '../src/game.js';
+import { STAGES, buildStageChart, stagePassed } from '../src/tutorial.js';
+import { HOLD_MIN_SEC } from '../src/chart.js';
 import { sanitizeBindings, laneForSlot, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
@@ -129,4 +131,23 @@ test('gamepad: bindings sanitize, lane folding', () => {
   assert.deepEqual(sanitizeBindings({ 1: [99] })[1], DEFAULT_BINDINGS[1]);
   assert.deepEqual([0, 1, 2, 3].map(s => laneForSlot(s, 4)), [0, 1, 2, 3]);
   assert.deepEqual([0, 1, 2, 3].map(s => laneForSlot(s, 3)), [0, 0, 1, 2]);
+});
+
+test('tutorial: stages build valid, non-overlapping charts', () => {
+  assert.ok(STAGES.length >= 3);
+  for (const st of STAGES) {
+    const c = buildStageChart(st);
+    assert.equal(c.lanes, 4);
+    assert.ok(c.notes.length > 0 && c.length > 0);
+    const lastEnd = new Array(4).fill(-Infinity);
+    for (const n of c.notes) {
+      assert.ok(n.lane >= 0 && n.lane < 4, st.id);
+      assert.equal(n.isHold, n.duration >= HOLD_MIN_SEC, st.id);
+      assert.ok(n.time >= lastEnd[n.lane] + 0.3, `${st.id}: lane ${n.lane} overlap`);
+      lastEnd[n.lane] = n.time + n.duration;
+    }
+  }
+  assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n.isHold)));
+  assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 1 } }), true);
+  assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 2 } }), false);
 });
