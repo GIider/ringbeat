@@ -119,7 +119,7 @@ export class Game {
       this.holds[lane] = best;
       // Sustain until release() or the note's natural end.
       const remaining = Math.max(0.05, best.time + best.duration - t);
-      best.voice = this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: remaining });
+      best.voice = this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: remaining, releasable: true });
     } else {
       this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: best.duration });
     }

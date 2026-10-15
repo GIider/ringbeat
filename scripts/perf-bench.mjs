@@ -33,6 +33,13 @@ const ctx = new Proxy({}, {
 globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {}, devicePixelRatio: 1 };
 const canvas = { getContext: () => ctx, clientWidth: 800, clientHeight: 600, width: 0, height: 0, getBoundingClientRect: () => ({ left: 0 }) };
 const { Renderer } = await import('../src/render.js');
+const { Synth } = await import('../src/synth.js');
+
+// Counts audio-graph nodes created per playNote (fake context).
+let audioNodes = 0;
+const node = () => { audioNodes++; return { connect: n => n, disconnect() {}, start() {}, stop() {}, gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {}, value: 0 }, frequency: {}, detune: {} }; };
+const fakeCtx = { currentTime: 0, createOscillator: node, createGain: node, createBiquadFilter: node };
+const synthFx = new Synth(); synthFx.ctx = fakeCtx; synthFx.bus = node();
 
 function renderFixture() {
   const r = new Renderer(canvas);
@@ -57,6 +64,8 @@ const cases = [
   ['listview.applyView (all sorts)', () => { for (const s of SORTS) applyView(lib, { sort: s.id }, 'normal', scores); }],
   ['share.encode+decode', () => { decodeSong(encodeSong(memStore)); }],
   ['render.draw (1 frame)', () => { rf.r.draw(rf.g, rf.t); }],
+  ['render.drawIdle (settled)', () => { rf.r.drawIdle(); }],
+  ['synth.playNote x8 (plain)', () => { for (let i = 0; i < 8; i++) synthFx.playNote({ midi: 60 + i, when: 0, duration: 0.2 }); }],
 ];
 
 // ---- harness ----

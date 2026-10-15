@@ -901,7 +901,12 @@ function frame() {
     return;
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
-  if (!game.active) { perf.time('drawIdle', () => renderer.drawIdle()); return; }
+  if (!game.active) {
+    perf.begin('drawIdle');
+    renderer.drawIdle();
+    perf.end('drawIdle');
+    return;
+  }
   if (state === 'resuming') {
     const left = resumeEnd - performance.now();
     if (resumeEnd && left <= 0) finishResume();

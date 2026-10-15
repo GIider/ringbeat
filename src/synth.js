@@ -1,5 +1,9 @@
 // Web Audio synthesizer. Everything is scheduled in AudioContext.currentTime seconds.
 
+const FREQ = Array.from({ length: 128 }, (_, m) => 440 * 2 ** ((m - 69) / 12));
+const freqOf = m => FREQ[m] || 440 * 2 ** ((m - 69) / 12);
+const disconnectAll = function () { for (const n of this) { try { n.disconnect(); } catch {} } };
+
 const ATTACK = 0.005, DECAY = 0.06, SUSTAIN = 0.5, RELEASE = 0.08, PEAK = 0.22;
 
 export class Synth {
@@ -53,36 +57,41 @@ export class Synth {
   }
 
   _cleanup(osc, nodes) {
-    osc.onended = () => nodes.forEach(n => { try { n.disconnect(); } catch {} });
+    osc.onended = disconnectAll.bind(nodes);
   }
 
   // Instrument voice. Auto-ends at when+duration; release() can cut it earlier (hold notes).
   // Omit duration (Infinity) to sustain until release().
-  playNote({ midi, when, duration = Infinity }) {
+  playNote({ midi, when, duration = Infinity, releasable = false }) {
     const ctx = this.ctx;
     const t = Math.max(when, ctx.currentTime);
-    const freq = 440 * 2 ** ((midi - 69) / 12);
+    const freq = freqOf(midi);
 
     const o1 = ctx.createOscillator(); o1.type = 'square'; o1.frequency.value = freq;
     const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.value = freq; o2.detune.value = 7;
     const g2 = ctx.createGain(); g2.gain.value = 0.35;
     const env = ctx.createGain();   // attack / decay / sustain
-    const rel = ctx.createGain();   // release lives on its own node so it can be re-scheduled freely
-    o1.connect(env); o2.connect(g2).connect(env); env.connect(rel).connect(this.bus);
+    // Release lives on its own node so held voices can be cut/re-scheduled freely. Plain fixed-length
+    // notes (long enough to reach sustain) fold the release into `env` and skip the extra node.
+    const needRel = releasable || !Number.isFinite(duration) || duration < ATTACK + DECAY + 0.01;
+    const rel = needRel ? ctx.createGain() : null;
+    o1.connect(env); o2.connect(g2).connect(env);
+    if (rel) env.connect(rel).connect(this.bus); else env.connect(this.bus);
 
     env.gain.setValueAtTime(0, t);
     env.gain.linearRampToValueAtTime(PEAK, t + ATTACK);
     env.gain.linearRampToValueAtTime(PEAK * SUSTAIN, t + ATTACK + DECAY);
 
     o1.start(t); o2.start(t);
-    this._cleanup(o2, [o1, o2, g2, env, rel]);
+    this._cleanup(o2, rel ? [o1, o2, g2, env, rel] : [o1, o2, g2, env]);
 
     let ended = false;
     const end = (at) => {
       at = Math.max(at, t + ATTACK);
-      rel.gain.cancelScheduledValues(at);
-      rel.gain.setValueAtTime(1, at);
-      rel.gain.linearRampToValueAtTime(0, at + RELEASE);
+      const p = rel ? rel.gain : env.gain;
+      if (rel) { p.cancelScheduledValues(at); p.setValueAtTime(1, at); }
+      else p.setValueAtTime(PEAK * SUSTAIN, at);
+      p.linearRampToValueAtTime(0, at + RELEASE);
       try { o1.stop(at + RELEASE + 0.02); o2.stop(at + RELEASE + 0.02); } catch {}
     };
     if (Number.isFinite(duration)) end(t + duration); // held voices without a duration wait for release()
@@ -102,7 +111,7 @@ export class Synth {
     const ctx = this.ctx;
     const t = Math.max(when, ctx.currentTime);
     const o = ctx.createOscillator(); o.type = 'triangle';
-    o.frequency.value = 440 * 2 ** ((midi - 12 - 69) / 12);
+    o.frequency.value = freqOf(midi - 12);
     o.detune.value = 35;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
     const g = ctx.createGain();

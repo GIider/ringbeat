@@ -12,7 +12,15 @@ const LANE_COLORS = {
 const JUDGE_COLORS = { perfect: '#ffe14d', great: '#4dffb0', good: '#4dc8ff', miss: '#ff4d6d' };
 const JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const noteName = m => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+const NOTE_NAMES = Array.from({ length: 128 }, (_, m) => NAMES[m % 12] + (Math.floor(m / 12) - 1));
+const noteName = m => NOTE_NAMES[m] || NAMES[m % 12] + (Math.floor(m / 12) - 1);
+const F = {
+  note: `bold 11px ${FONT}`, judge: `bold 14px ${FONT}`, key: `bold 16px ${FONT}`,
+  title: `bold 14px ${FONT}`, score: `bold 20px ${FONT}`, acc: `12px ${FONT}`,
+  combo: `bold 40px ${FONT}`, comboLbl: `bold 12px ${FONT}`, count: `bold 48px ${FONT}`,
+  resume: `bold 96px ${FONT}`, ready: `bold 20px ${FONT}`,
+};
+const GLOW_H = 220;
 
 const HIT_Y = 0.85;       // hit line, fraction of canvas height
 const RING_POOL = 12, LABEL_POOL = 8;
@@ -73,6 +81,7 @@ export class Renderer {
   setLanes(n, keyLabels) {
     this.lanes = n;
     this.keyLabels = keyLabels || [];
+    this._staticDirty = true;
     this.flash = new Float64Array(n).fill(-10);
     this._layout();
   }
@@ -83,6 +92,48 @@ export class Renderer {
     this.laneW = Math.min(this.w / this.lanes, 120);
     this.x0 = (this.w - this.laneW * this.lanes) / 2;
     this.hitY = this.h * HIT_Y;
+    // One glow gradient per lane, drawn at origin (translated into place per use).
+    const colors = LANE_COLORS[this.lanes] || LANE_COLORS[4];
+    this.glow = colors.slice(0, this.lanes).map(col => {
+      const g = this.c.createLinearGradient(0, -GLOW_H, 0, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, col);
+      return g;
+    });
+    this._staticDirty = true;
+    this._idleDone = false;
+  }
+
+  // Lanes, separators, hit line and key labels never change between frames: paint them once.
+  _buildStatic() {
+    this._staticDirty = false;
+    this.staticLayer = null;
+    if (typeof document === 'undefined' || !(this.w > 0 && this.h > 0)) return;
+    const dpr = this.canvas.width / this.w;
+    // A DOM canvas (not OffscreenCanvas) so the layer stays GPU-backed and blits without a per-frame upload.
+    const layer = document.createElement('canvas');
+    layer.width = this.canvas.width; layer.height = this.canvas.height;
+    const c = layer.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this._paintStatic(c);
+    this.staticLayer = layer;
+  }
+
+  _paintStatic(c) {
+    const n = this.lanes, lw = this.laneW, x0 = this.x0, H = this.h, hitY = this.hitY;
+    c.fillStyle = C.bg; c.fillRect(0, 0, this.w, H);
+    for (let i = 0; i < n; i++) {
+      c.fillStyle = i % 2 ? C.laneA : C.laneB;
+      c.fillRect(x0 + i * lw, 0, lw, H);
+    }
+    c.fillStyle = C.sep;
+    for (let i = 0; i <= n; i++) c.fillRect(x0 + i * lw - 1, 0, 2, H);
+    c.fillStyle = C.line;
+    c.fillRect(x0, hitY - 2, lw * n, 4);
+    c.fillStyle = C.dim; c.font = F.key;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) {
+      if (this.keyLabels[i]) c.fillText(this.keyLabels[i], x0 + (i + 0.5) * lw, hitY + 30);
+    }
   }
 
   // Map a client X to a lane (used by pointer input).
@@ -92,6 +143,8 @@ export class Renderer {
   }
 
   drawIdle() {
+    if (this._idleDone) return; // nothing changes while idle; repaint only after a resize or a game frame
+    this._idleDone = true;
     const c = this.c;
     c.fillStyle = C.bg; c.fillRect(0, 0, this.w, this.h);
   }
@@ -103,36 +156,35 @@ export class Renderer {
     const now = performance.now() / 1000;
     const colors = LANE_COLORS[n] || LANE_COLORS[4];
 
-    c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+    this._idleDone = false;
+    if (this._staticDirty) this._buildStatic();
+    if (this.staticLayer) {
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(this.staticLayer, 0, 0);
+      c.restore();
+    } else this._paintStatic(c);
 
-    // Lanes + flashes + active-hold glow
+    // Flashes + active-hold glow
     for (let i = 0; i < n; i++) {
-      c.fillStyle = i % 2 ? C.laneA : C.laneB;
-      c.fillRect(x0 + i * lw, 0, lw, H);
       const age = now - this.flash[i];
       const held = game.holds && game.holds[i];
       if (held || age < 0.15) {
         c.globalAlpha = held ? 0.22 : 0.3 * (1 - age / 0.15);
-        const g = c.createLinearGradient(0, hitY - 220, 0, hitY);
-        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, colors[i]);
-        c.fillStyle = g;
-        c.fillRect(x0 + i * lw, hitY - 220, lw, 220);
+        c.save();
+        c.translate(x0 + i * lw, hitY);
+        c.fillStyle = this.glow[i];
+        c.fillRect(0, -GLOW_H, lw, GLOW_H);
+        c.restore();
         c.globalAlpha = 1;
       }
     }
-    c.fillStyle = C.sep;
-    for (let i = 0; i <= n; i++) c.fillRect(x0 + i * lw - 1, 0, 2, H);
-
-    // Hit line
-    c.fillStyle = C.line;
-    c.fillRect(x0, hitY - 2, lw * n, 4);
 
     // Notes: sorted by time, so only walk the visible slice.
     const notes = game.chart.notes;
     const below = (H - hitY) / pps + 0.1;
     while (this.vi < notes.length && notes[this.vi].time + notes[this.vi].duration < t - below) this.vi++;
     const bw = lw - 12, bh = Math.max(18, Math.min(28, lw * 0.3));
-    c.font = `bold 11px ${FONT}`;
+    c.font = F.note;
     c.textAlign = 'center'; c.textBaseline = 'middle';
     for (let i = this.vi; i < notes.length; i++) {
       const nt = notes[i];
@@ -173,7 +225,7 @@ export class Renderer {
     c.globalAlpha = 1;
 
     // Judgement labels
-    c.font = `bold 14px ${FONT}`;
+    c.font = F.judge;
     for (const l of this.labels) {
       const age = now - l.t;
       if (age > 0.6 || age < 0) continue;
@@ -183,12 +235,6 @@ export class Renderer {
       c.fillText(l.text, x0 + (l.lane + 0.5) * lw, hitY - 40 - rise);
     }
     c.globalAlpha = 1;
-
-    // Key labels
-    c.fillStyle = C.dim; c.font = `bold 16px ${FONT}`;
-    for (let i = 0; i < n; i++) {
-      if (this.keyLabels[i]) c.fillText(this.keyLabels[i], x0 + (i + 0.5) * lw, hitY + 30);
-    }
 
     this._hud(game, t, now);
   }
@@ -201,12 +247,15 @@ export class Renderer {
     c.fillStyle = '#3be8d0'; c.fillRect(0, 0, W * p, 4);
 
     c.textBaseline = 'top';
-    c.fillStyle = C.text; c.textAlign = 'center'; c.font = `bold 14px ${FONT}`;
+    c.fillStyle = C.text; c.textAlign = 'center'; c.font = F.title;
     c.fillText(this.title, W / 2, 14);
-    c.textAlign = 'right'; c.font = `bold 20px ${FONT}`;
-    c.fillText(String(game.score).padStart(7, '0'), W - 12, 40);
-    c.font = `12px ${FONT}`; c.fillStyle = C.dim;
-    c.fillText(game.accuracy.toFixed(1) + '%', W - 12, 66);
+    if (game.score !== this._score) { this._score = game.score; this._scoreTxt = String(game.score).padStart(7, '0'); }
+    const acc = game.accuracy;
+    if (acc !== this._acc) { this._acc = acc; this._accTxt = acc.toFixed(1) + '%'; }
+    c.textAlign = 'right'; c.font = F.score;
+    c.fillText(this._scoreTxt, W - 12, 40);
+    c.font = F.acc; c.fillStyle = C.dim;
+    c.fillText(this._accTxt, W - 12, 66);
 
     // Combo with punch on increments
     if (game.combo !== this.lastCombo) {
@@ -221,9 +270,9 @@ export class Renderer {
       c.scale(s, s);
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.globalAlpha = 0.9;
-      c.fillStyle = C.text; c.font = `bold 40px ${FONT}`;
+      c.fillStyle = C.text; c.font = F.combo;
       c.fillText(String(game.combo), 0, 0);
-      c.font = `bold 12px ${FONT}`; c.fillStyle = C.dim;
+      c.font = F.comboLbl; c.fillStyle = C.dim;
       c.fillText('COMBO', 0, 30);
       c.restore();
     }
@@ -231,11 +280,11 @@ export class Renderer {
     // Full-combo streak badge (disappears at the first miss) and training label
     c.textAlign = 'left'; c.textBaseline = 'top';
     if (this.trainingLabel) {
-      c.fillStyle = C.dim; c.font = `bold 12px ${FONT}`;
+      c.fillStyle = C.dim; c.font = F.comboLbl;
       c.fillText(this.trainingLabel, 12, 48);
     }
     if (game.fcAlive && game.judgedCount >= 5) {
-      c.font = `bold 14px ${FONT}`;
+      c.font = F.title;
       c.fillStyle = game.apAlive ? '#ffe14d' : '#3be8d0';
       c.fillText(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO', 12, 66);
     }
@@ -259,16 +308,16 @@ export class Renderer {
     // Count-in
     if (t < 0) {
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = C.text; c.font = `bold 48px ${FONT}`;
+      c.fillStyle = C.text; c.font = F.count;
       c.fillText(String(Math.ceil(-t)), W / 2, H * 0.5);
     }
     // Resume countdown (song time is frozen while this shows)
     if (this.resumeCount > 0) {
       c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillRect(0, 0, W, H);
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = C.text; c.font = `bold 96px ${FONT}`;
+      c.fillStyle = C.text; c.font = F.resume;
       c.fillText(String(this.resumeCount), W / 2, H * 0.5);
-      c.font = `bold 20px ${FONT}`;
+      c.font = F.ready;
       c.fillText('GET READY', W / 2, H * 0.5 - 80);
     }
     c.globalAlpha = 1;
