@@ -1,4 +1,5 @@
-// Built-in songs: public-domain melodies (plus the original "Scale Sprint" stress test), as RTTTL.
+// Built-in songs: classical and folk melodies, well-known themes and hits, plus the original "Scale Sprint" stress test, as RTTTL.
+// Pop/TV/film themes belong to their respective rights holders; these are short fan transcriptions for a rhythm game.
 // `category` groups songs in the song-select tabs (see CATEGORIES); `tag` is a short composer/game/artist label.
 export const CATEGORIES = [
   { id: 'classical', label: 'Classical' },
@@ -50,9 +51,23 @@ export const SONGS = [
   { id: 'looney', category: 'folk', title: 'Looney Tunes', tag: 'Merrie Melodies', rtttl: 'Looney:d=4,o=5,b=140:32p,c6,8f6,8e6,8d6,8c6,a.,8c6,8f6,8e6,8d6,8d#6,e.6,8e6,8e6,8c6,8d6,8c6,8e6,8c6,8d6,8a,8c6,8g,8a#,8a,8f' },
   { id: 'finalcountdown', category: 'pop', title: 'The Final Countdown', tag: 'Europe', rtttl: 'Final Countdown:d=16,o=5,b=125:b,a,4b,4e,p,8p,c6,b,8c6,8b,4a,4p,c6,b,4c6,4e,p,8p,a,g,8a,8g,8f#,8a,4g.,f#,g,4a.,g,a,8b,8a,8g,8f#,4e,4c6,2b.,b,c6,b,a,1b' },
   { id: 'bumblebee', category: 'classical', title: 'Flight of the Bumblebee', tag: 'Rimsky-Korsakov', rtttl: 'Bumblebee:d=16,o=5,b=140:a,g#,g,f#,f,e,d#,d,c#,c,b4,a#4,a4,a#4,b4,c,c#,d,d#,e,f,f#,g,g#,a,g#,g,f#,f,e,d#,d,c#,c,b4,a#4,a4,a#4,b4,c,c#,d,d#,e,4a' },
+  { id: 'dasboot', category: 'pop', title: 'Das Boot', tag: 'Doldinger', rtttl: 'Das Boot:d=4,o=5,b=100:d#.4,8d4,8c4,8d4,8d#4,8g4,a#.4,8a4,8g4,8a4,8a#4,8d,2f.,p,f.4,8e4,8d4,8e4,8f4,8a4,c.,8b4,8a4,8b4,8c,8e,2g.,2p' },
+  { id: 'macarena', category: 'pop', title: 'Macarena', tag: 'Los del Rio', rtttl: 'Macarena:d=4,o=5,b=180:f,8f,8f,f,8f,8f,8f,8f,8f,8f,8f,8a,8c,8c,f,8f,8f,f,8f,8f,8f,8f,8f,8f,8d,8c,p,f,8f,8f,f,8f,8f,8f,8f,8f,8f,8f,8a,p,2c.6,a,8c6,8a,8f,p,2p' },
+  { id: 'scatman', category: 'pop', title: 'Scatman', tag: 'Scatman John', rtttl: 'Scatman:d=4,o=5,b=200:8b,16b,32p,8b,16b,32p,8b,2d6,16p,16c#.6,16p.,8d6,16p,16c#6,8b,16p,8f#,2p.,16c#6,8p,16d.6,16p.,16c#6,16b,8p,8f#,2p,32p,2d6,16p,16c#6,8p,16d.6,16p.,16c#6,16a.,16p.,8e,2p.,16c#6,8p,16d.6,16p.,16c#6,16b,8p,8b,16b,32p,8b,16b,32p,8b,2d6,16p,16c#.6,16p.,8d6,16p,16c#6,8b,16p,8f#,2p.,16c#6,8p,16d.6,16p.,16c#6,16b,8p,8f#,2p,32p,2d6,16p,16c#6,8p,16d.6,16p.,16c#6,16a.,16p.,8e,2p.,16c#6,8p,16d.6,16p.,16c#6,16a,8p,8e,2p,32p,16f#.6,16p.,16b.,16p.' },
+  { id: 'wannabe', category: 'pop', title: 'Wannabe', tag: 'Spice Girls', rtttl: 'Wannabe:d=4,o=5,b=125:16g,16g,16g,16g,8g,8a,8g,8e,8p,16c,16d,16c,8d,8d,8c,e,p,8g,8g,8g,8a,8g,8e,8p,c6,8c6,8b,8g,8a,16b,16a,g' },
+  { id: 'lindenstrasse', category: 'pop', title: 'Lindenstrasse', tag: 'TV Theme', rtttl: 'Linden:d=4,o=5,b=180:g,e,g,2c.6,2e.6,d.6,8e6,f6,2a,p,a,c6,a6,2g6,p,d6,e6,f6,2e6,c6,d6,e6,2d.6,2c.6,2b,p,g,e,g,2c.6,2e.6,d.6,8e6,f6,2a,p,a,c6,a6,2g6,p,d6,e6,f6,1d6,p,c6,1c6' },
+  { id: 'eurovision', category: 'pop', title: 'Eurovision Theme', tag: 'Charpentier', rtttl: 'Eurovision:d=4,o=5,b=63:8c,8f,16f,16g,8a,8f,c6,8a,8a,8a#,16c6,16a#,16a,16a#,8c6,16g,16f,16g,16a,8g,8c,8f,16f,16g,8a,8f,c6,8a,8a,16a#,16c6,16a,16a#,g,16f,2f' },
+  { id: 'ententanz', category: 'folk', title: 'Ententanz', tag: 'Birdie Song', rtttl: 'Ententanz:d=4,o=5,b=100:16g,16g,16a,16a,16e,16e,8g,16g,16g,16a,16a,16e,16e,8g,16g,16g,16a,16a,16c6,16c6,8b,8b,8a,8g,8f,16f,16f,16g,16g,16d,16d,8f,16f,16f,16g,16g,16d,16d,8f,16f,16f,16g,16g,16a,16b,8c6,8a,8g,8e,c' },
+  { id: 'toccata', category: 'classical', title: 'Toccata and Fugue', tag: 'Bach', rtttl: 'Toccata:d=4,o=5,b=160:16a4,16g4,1a4,16g4,16f4,16d4,16e4,2c#4,16p,d.4,2p,16a4,16g4,1a4,8e.4,8f.4,8c#.4,2d4' },
+  { id: 'bolero', category: 'classical', title: 'Bolero', tag: 'Ravel', rtttl: 'Bolero:d=4,o=5,b=80:c6,8c6,16b,16c6,16d6,16c6,16b,16a,8c6,16c6,16a,c6,8c6,16b,16c6,16a,16g,16e,16f,2g,16g,16f,16e,16d,16e,16f,16g,16a,g,g,16g,16a,16b,16a,16g,16f,16e,16d,16e,16d,8c,8c,16c,16d,8e,8f,d,2g' },
+  { id: 'atb', category: 'pop', title: '9 PM Till I Come', tag: 'ATB', rtttl: '9PM:d=4,o=4,b=285:4a5,4a5,16a#5,8b.5,4a5,4p,4c6,4p,4c6,4p,4c6,8d.6,16c#6,4c6,4g5,2p.,4f5,4g5,16g#5,8a.5,4g5,4p,4a5,4p,4c6,4p,4c6,8d.6,16c#6,4c6,4g5' },
+  { id: 'entchen', category: 'folk', title: 'Alle meine Entchen', tag: 'Kinderlied', rtttl: 'Entchen:d=4,o=5,b=120:c,d,e,f,2g,2g,a,a,a,a,2g,a,a,a,a,2g,f,f,f,f,2e,2e,d,d,d,d,2c' },
+  { id: 'haenschen', category: 'folk', title: 'Haenschen klein', tag: 'Kinderlied', rtttl: 'Haenschen:d=4,o=5,b=120:g,e,2e,f,d,2d,c,d,e,f,g,g,2g,g,e,2e,f,d,2d,c,e,g,g,2c' },
+  { id: 'auclair', category: 'folk', title: 'Au clair de la lune', tag: 'France', rtttl: 'Au clair:d=4,o=5,b=110:c,c,c,d,2e,2d,c,e,d,d,2c,c,c,c,d,2e,2d,c,e,d,d,2c' },
+  { id: 'bella', category: 'folk', title: 'Bella Ciao', tag: 'Italian Folk', rtttl: 'Bella Ciao:d=8,o=5,b=140:e,a,b,4c6,4a,e,a,b,4c6,4a,e,a,b,4c6,b,a,4e6,e6,e6,e6,4e6,c6,d6,2e6' },
 ];
 
-// --- Full-length songs (public-domain / original), built from sections ---------------------------------
+// --- Full-length songs (classical / folk / original), built from sections ---------------------------------
 // rt(name, d, o, b, ...sections): each section is an RTTTL note string, or [notes, semitoneShift, speed]
 // to transpose it and/or scale its note values (speed 2 = twice as fast, 0.5 = half).
 const NAMES = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
