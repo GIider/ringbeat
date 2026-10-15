@@ -54,7 +54,7 @@ const pad = new Pad();
 let state = 'title';
 let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
-  title: $('title'), select: $('select'), options: $('options'), info: $('song-info'), custom: $('custom'),
+  title: $('title'), select: $('select'), options: $('options'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
@@ -64,7 +64,7 @@ function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   $('btn-pause').hidden = !inPlay();
-  if (!['select', 'custom', 'options', 'info', 'mysongs', 'songmenu', 'composer'].includes(name)) stopPreview();
+  if (!['select', 'custom', 'options', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
   const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
   $('np-caption').hidden = !tut;
   const el = screens[name];
@@ -194,8 +194,9 @@ function renderCategories() {
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
   const t = tabs.find(x => x.id === settings.view.category);
   $('view-cat').textContent = `Category: ${t.label} (${t.count})`;
+  $('sel-cat').textContent = `${t.label} (${t.count})`;
   const sort = SORTS.find(x => x.id === settings.view.sort), filter = FILTERS.find(x => x.id === settings.view.filter);
-  $('sel-sub').textContent = `${t.label} · ${sort.label}${filter.id === 'all' ? '' : ' · ' + filter.label}`;
+  $('sel-sub').textContent = `${sort.label} · ${cap(settings.difficulty)}${filter.id === 'all' ? '' : ' · ' + filter.label}`;
 }
 function setCategory(id) {
   settings.view.category = id; save();
@@ -257,37 +258,11 @@ function renderDetail() {
   selectHints();
   const e = selectedEntry();
   if (!e) return;
-  const d = settings.difficulty;
-  setSprite($('d-cover'), coverRows(e.id, e.category), 3);
-  $('d-title').textContent = e.title;
-  $('d-meta').textContent = `${e.tag ? e.tag + ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes`;
-  $('d-stars').innerHTML = starsText(ratingOf(e, d)) +
-    `<div class="rating">${ratingOf(e, d).toFixed(1)}<span class="hint"> / 10</span></div>` +
-    (e.tags[d] && e.tags[d].length ? ` <span class="hint">Tricky: ${esc(e.tags[d].join(', '))}</span>` : '');
-  const rec = scores.get(e.id, d);
-  $('d-best').innerHTML = rec
-    ? `<b>${rec.best.score}</b> · <b>${esc(rec.best.grade)}</b> · ` +
-      `${rec.best.accuracy.toFixed(1)}% · ${rec.best.maxCombo}x${badgeHTML(rec.best)}`
-    : '<span class="hint">No plays yet</span>';
+  const d = settings.difficulty, rec = scores.get(e.id, d);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
     `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
-  const top = $('d-top');
-  top.textContent = '';
-  for (const r of (rec ? rec.top : [])) {
-    const li = document.createElement('li');
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
-    top.appendChild(li);
-  }
-  for (const b of $('diff-seg').children) {
-    b.classList.toggle('sel', b.dataset.diff === d);
-    // FC/AP flag per difficulty for the selected song.
-    const r = scores.get(e.id, b.dataset.diff);
-    b.classList.toggle('has-ap', !!(r && r.ap));
-    b.classList.toggle('has-fc', !!(r && r.fc && !r.ap));
-    b.title = r && r.ap ? 'All Perfect' : r && r.fc ? 'Full Combo' : '';
-  }
 }
 
 function selectSong(id, scroll = true) {
@@ -309,12 +284,6 @@ function selectSong(id, scroll = true) {
   }
 }
 
-function setDifficulty(d) {
-  settings.difficulty = d; save();
-  renderList();
-  renderDetail();
-  if (state === 'select') focusCurrentRow();
-}
 function setView(key, list, step = 1) {
   settings.view[key] = (step < 0 ? prevOf : nextOf)(list, settings.view[key]);
   save();
@@ -324,12 +293,6 @@ function setView(key, list, step = 1) {
   renderDetail();
   if (state === 'select') focusCurrentRow();
 }
-function cycleDifficulty(step) {
-  const order = ['easy', 'normal', 'hard'];
-  const i = Math.max(0, Math.min(2, order.indexOf(settings.difficulty) + step));
-  if (order[i] !== settings.difficulty) setDifficulty(order[i]);
-}
-
 function focusCurrentRow() {
   requestAnimationFrame(() => { // look the row up late: the list may have been re-rendered or the selection moved
     if (state !== 'select') return;
@@ -349,7 +312,6 @@ function openSelect() {
   focusCurrentRow();
 }
 function openOptions() { renderCategories(); setState('options', 'options'); }
-function openInfo() { renderDetail(); setState('info', 'info'); }
 
 // ---- my songs: library list, per-song menu, composer, text/paste screen ----
 const area = $('rtttl');
@@ -426,20 +388,62 @@ function importSharedText(text) {
   return r;
 }
 
-// -- difficulty picker (custom songs are played from the composer, song menu or text screen) --
-let dpBack = null;
-function askDifficulty(entry, ret, retLabel, goBack, uid) {
+// -- difficulty picker: also the song's detail screen (Info / Best / Top runs tabs for the focused difficulty) --
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+let dpBack = null, dpEntry = null, dpDiff = 'normal', dpTab = 0;
+const DP_TABS = ['Info', 'Best', 'Top'];
+function setDpTab(i) {
+  const n = Math.max(0, Math.min(DP_TABS.length - 1, i));
+  if (n === dpTab) return;
+  dpTab = n;
+  renderDpPanel();
+  synth.keyClick();
+}
+function renderDpPanel() {
+  const e = dpEntry, d = dpDiff;
+  if (!e) return;
+  DP_TABS.forEach((_, i) => { const t = $('dp-tab-' + i); t.classList.toggle('sel', i === dpTab); t.setAttribute('aria-selected', String(i === dpTab)); });
+  const rec = scores.get(e.id, d), box = $('dp-panel');
+  if (dpTab === 0) {
+    const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
+    box.innerHTML = `<div>${cap(d)} ${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b><span class="hint"> / 10</span></div>` +
+      `<div>${e.notes[d]} notes</div>${tricky}`;
+  } else if (dpTab === 1) {
+    box.innerHTML = rec
+      ? `<div><b>${rec.best.score}</b> · <b>${esc(rec.best.grade)}</b>${badgeHTML(rec.best)}</div>` +
+        `<div>${rec.best.accuracy.toFixed(1)}% · ${rec.best.maxCombo}x combo</div>`
+      : '<div class="hint">No plays yet</div>';
+  } else {
+    box.textContent = '';
+    const ol = document.createElement('ol');
+    ol.className = 'top';
+    for (const r of (rec ? rec.top : [])) {
+      const li = document.createElement('li');
+      li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
+      ol.appendChild(li);
+    }
+    if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
+  }
+}
+function askDifficulty(entry, ret, retLabel, goBack, uid, training = false) {
   dpBack = goBack;
+  dpEntry = entry;
+  dpTab = 0;
+  setSprite($('dp-cover'), coverRows(entry.id, entry.category), 2);
   $('dp-title').textContent = entry.title;
+  $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
-    const d = b.dataset.diff, n = entry.notes[d] || 0;
-    b.textContent = d[0].toUpperCase() + d.slice(1) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)} · ${n} notes` : ' · no notes');
+    const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
+    b.textContent = cap(d) + (n ? ` · ${'★'.repeat(entry.stars[d] || 1)} · ${n}` : ' · no notes') +
+      (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
+    b.onfocus = () => { dpDiff = d; renderDpPanel(); };
     b.onclick = () => {
       settings.difficulty = d;
       if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
       save();
+      if (training) { openTraining(); return; }
       startRun({ entry, diff: d, training: null, ret, retLabel });
     };
   }
@@ -447,6 +451,9 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
     const f = $('diffpick').querySelector('[data-diff]:not([disabled])');
     if (f) f.setAttribute('data-default', '');
   }
+  const def = $('diffpick').querySelector('[data-default]');
+  dpDiff = def ? def.dataset.diff : 'normal';
+  renderDpPanel();
   setState('diffpick', 'diffpick');
 }
 
@@ -584,8 +591,7 @@ function setTrainingMode(on) {
   b.classList.toggle('sel', on);
   b.setAttribute('aria-pressed', String(on));
   b.textContent = 'Training: ' + (on ? 'On' : 'Off');
-  $('btn-play').textContent = $('btn-info-play').textContent = on ? 'Train' : 'Play';
-  screens.info.dataset.softLeft = on ? 'Train' : 'Play';
+  $('btn-play').textContent = on ? 'Train' : 'Play';
   screens.select.dataset.title = on ? 'Training' : 'Ringing tones';
   refreshChrome();
 }
@@ -671,9 +677,8 @@ function startRun(r) {
 function restartRun() { resumeEnd = 0; renderer.resumeCount = 0; if (run) startRun(run); }
 
 function playSelected() {
-  if (trainingMode) { if (selectedEntry()) openTraining(); return; }
   const e = selectedEntry();
-  if (e) startRun({ entry: e, diff: settings.difficulty, training: null });
+  if (e) askDifficulty(e, null, null, openSelect, null, trainingMode);
 }
 
 function leaveToSelect() {
@@ -988,8 +993,8 @@ function selectHints() {
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
   $('sel-hint').textContent = pad
-    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Diff · ${bn(BTN.RT)} Cat · ${bn(BTN.LT)} Sort`
-    : '◄► Diff · D/F Cat · J/K Sort';
+    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Category · ${bn(BTN.LT)} Sort`
+    : '◄► Category · D/F Sort';
 }
 
 pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
@@ -1039,7 +1044,7 @@ function back() {
   switch (state) {
     case 'title': break;
     case 'select': stopPreview(); setState('title', 'title'); break;
-    case 'options': case 'info': openSelect(); break;
+    case 'options': openSelect(); break;
     case 'tutorial': finishTutorial(); break;
     case 'settings': closeSettings(); break;
     case 'training': openSelect(); break;
@@ -1072,11 +1077,10 @@ function menuButton(index) {
       if (state === 'select') openOptions();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
       break;
-    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleDifficulty(-1); else if (state === 'results') navigate('left'); break;
-    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleDifficulty(1); else if (state === 'results') navigate('right'); break;
+    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results') navigate('left'); break;
+    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results') navigate('right'); break;
     case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'select') setTrainingMode(!trainingMode); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
-    case BTN.RT: if (state === 'select') cycleCategory(1); break;
   }
 }
 pad.onNav = dir => {
@@ -1089,7 +1093,8 @@ function navigate(dir) {
   const root = activeScreen();
   if (!root || state === 'title') return;
   if (state === 'composer' && !csMenu) { compInput(dir); return; }
-  if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleDifficulty(dir === 'left' ? -1 : 1); return; }
+  if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
+  if (state === 'diffpick' && (dir === 'left' || dir === 'right')) { setDpTab(dpTab + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     const p = resultsPage;
     setResultsPage(p + (dir === 'left' ? -1 : 1));
@@ -1104,7 +1109,6 @@ function softLeft() {
   switch (state) {
     case 'title': startFromTitle(); break;
     case 'select': openOptions(); break;
-    case 'info': playSelected(); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
@@ -1183,12 +1187,9 @@ function wire() {
 
   // title / select
   $('btn-start').onclick = startFromTitle;
-  for (const b of $('diff-seg').children) b.onclick = () => setDifficulty(b.dataset.diff);
   $('view-sort').onclick = () => setView('sort', SORTS);
   $('view-filter').onclick = () => setView('filter', FILTERS);
   $('view-cat').onclick = () => cycleCategory(1);
-  $('btn-info').onclick = openInfo;
-  $('btn-info-play').onclick = playSelected;
   $('btn-play').onclick = playSelected;
   $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
   $('btn-preview').onclick = () => togglePreview(selectedEntry());
@@ -1434,12 +1435,11 @@ function onKey(e) {
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
   }
-  if (state === 'select' && !typing && tag !== 'SELECT' && ['KeyD', 'KeyF', 'KeyJ', 'KeyK'].includes(e.code)) {
+  if (state === 'select' && !typing && tag !== 'SELECT' && ['KeyD', 'KeyF'].includes(e.code)) {
     e.preventDefault();
     if (e.repeat) return;
     synth.keyClick();
-    if (e.code === 'KeyD' || e.code === 'KeyF') cycleCategory(e.code === 'KeyF' ? 1 : -1);
-    else setView('sort', SORTS, e.code === 'KeyK' ? 1 : -1);
+    if (e.code === 'KeyD' || e.code === 'KeyF') setView('sort', SORTS, e.code === 'KeyF' ? 1 : -1);
     return;
   }
   if (state === 'select' && !typing && e.code === 'KeyO') { e.preventDefault(); synth.keyClick(); openOptions(); return; }
@@ -1525,7 +1525,7 @@ function demo(kind) {
   selectedId = entryById('nokia') ? 'nokia' : selectedId;
   openSelect();
   if (kind === 'options') openOptions();
-  else if (kind === 'info') openInfo();
+  else if (kind === 'info') askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';

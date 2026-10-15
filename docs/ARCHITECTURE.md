@@ -1,6 +1,6 @@
 # Architecture
 
-Vanilla ES modules, no build. `npm start` serves the folder (`scripts/serve.mjs`), `npm test` runs the node tests.
+Vanilla ES modules, no build. `npm start` serves the folder (`scripts/serve.mjs`; `npm run dev` adds live reload), `npm test` runs the node tests, `npm run smoke` the headless UI test.
 
 ```
 index.html / style.css        the phone (#phone: SVG shell, #lcd with every screen as <section class="screen">, key hit

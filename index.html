@@ -55,11 +55,7 @@
         <section id="select" class="screen" data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
           <div class="sel-head">
             <span class="arrow" id="sel-arrow-l" aria-hidden="true">◄</span>
-            <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
-              <button data-diff="easy" tabindex="-1">Easy</button>
-              <button data-diff="normal" tabindex="-1">Normal</button>
-              <button data-diff="hard" tabindex="-1">Hard</button>
-            </div>
+            <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
             <span class="arrow" id="sel-arrow-r" aria-hidden="true">►</span>
           </div>
           <div id="sel-sub" class="sel-sub"></div>
@@ -72,7 +68,6 @@
         <section id="options" class="screen" data-title="Options" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
             <button id="btn-play" data-default>Play</button>
-            <button id="btn-info">Details</button>
             <button id="btn-preview">Preview</button>
             <button id="btn-train-mode" aria-pressed="false">Training: Off</button>
             <button id="view-cat">Category: All</button>
@@ -80,21 +75,6 @@
             <button id="view-filter">Show: All</button>
             <button id="btn-custom">My songs…</button>
             <button id="btn-settings">Settings</button>
-          </div>
-        </section>
-
-        <!-- Song details -->
-        <section id="song-info" class="screen" data-title="Details" data-soft-left="Play" data-soft-right="Back">
-          <h2 id="d-title"></h2>
-          <i id="d-cover" class="spr cover"></i>
-          <div id="d-meta" class="hint"></div>
-          <div id="d-stars" class="stars"></div>
-          <div class="lbl">Best</div>
-          <div id="d-best" class="d-best"></div>
-          <div class="lbl">Top runs</div>
-          <ol id="d-top" class="top"></ol>
-          <div class="menu">
-            <button id="btn-info-play" data-default>Play</button>
           </div>
         </section>
 
@@ -185,13 +165,22 @@
 
         <!-- Difficulty picker for custom songs -->
         <section id="diffpick" class="screen" data-title="Difficulty" data-soft-left="Select" data-soft-right="Back">
+          <i id="dp-cover" class="spr cover"></i>
           <h2 id="dp-title"></h2>
+          <div id="dp-meta" class="hint"></div>
           <div class="menu">
             <button id="dp-easy" data-diff="easy">Easy</button>
             <button id="dp-normal" data-diff="normal">Normal</button>
             <button id="dp-hard" data-diff="hard">Hard</button>
-            <button id="dp-back">Back</button>
           </div>
+          <div class="dp-tabs" role="tablist" aria-label="Song details">
+            <span class="arrow" aria-hidden="true">◄</span>
+            <span id="dp-tab-0" role="tab">Info</span>
+            <span id="dp-tab-1" role="tab">Best</span>
+            <span id="dp-tab-2" role="tab">Top</span>
+            <span class="arrow" aria-hidden="true">►</span>
+          </div>
+          <div id="dp-panel" class="dp-panel" aria-live="polite"></div>
         </section>
 
         <!-- Settings -->

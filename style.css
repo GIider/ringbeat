@@ -138,6 +138,10 @@ textarea::placeholder { color: var(--ink-dim); }
 .seg button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }
 .seg button.has-fc::after, .seg button.has-ap::after { content: "✓"; margin-left: 2px; }
 .seg button.has-ap::after { content: "★"; }
+.sel-cat { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-tabs { display: flex; justify-content: center; gap: 6px; margin: 2px 0 0; }
+.dp-tabs .sel { background: var(--ink); color: var(--lcd); font-weight: 700; padding: 0 4px; }
+.dp-panel { min-height: 3.2em; }
 .sel-sub { text-align: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-list { flex: 1; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);
   scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
@@ -165,6 +169,7 @@ textarea::placeholder { color: var(--ink-dim); }
 
 /* ---------- details ---------- */
 .cover { display: block; margin: 4px auto 6px; }
+#dp-cover { margin: 0 auto 2px; }
 .d-best { min-height: 1.2em; }
 .top { margin: 0 0 6px; padding-left: 1.6em; }
 .top li { margin: 1px 0; }

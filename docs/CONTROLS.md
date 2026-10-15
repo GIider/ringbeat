@@ -6,10 +6,10 @@
 | Lanes (4) | `D` `F` `J` `K` |
 | Lanes (Easy, 3) | `F` `J` `K` |
 | Menu navigation | `↑` `↓` (spatial focus), `Enter`/`Space` activate, `Tab` also works |
-| Difficulty (song select) | `←` `→` |
+| Category (song select) | `←` `→`, or `[` `]` |
+| Detail tab (difficulty screen) | `←` `→` |
 | Options (song select) | `O` |
-| Category (song select) | `[` `]`, or play keys `D` `F` (prev / next) |
-| Sort (song select) | play keys `J` `K` (prev / next) |
+| Sort (song select) | play keys `D` `F` (prev / next) |
 | Back / pause / resume | `Esc` or `Backspace` |
 | Restart (play, pause, results) | `R` |
 | Sliders | `←` `→` |
@@ -44,10 +44,9 @@ Menus:
 | Adjust slider | ← → |
 | Confirm | A (or Start) |
 | Back | B |
-| Difficulty − / + (song select) | LB / RB |
+| Category − / + (song select) | LB / RB |
 | Toggle Training mode (song select) | Y |
 | Options (song select) | X |
-| Next category (song select) | RT (keyboard: `[` / `]`) |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
 
@@ -56,5 +55,5 @@ Shown automatically the first time you start the game (skipped for players who a
 
 ## Song select hints
 The song list shows each song's note count for the selected difficulty, and a hint line under it lists
-the navigation keys (◄► difficulty, D/F category, J/K sort). Once a controller is used, the hint line and
-the difficulty arrows switch to the controller buttons (LB/RB, RT, LT); keyboard or mouse input switches them back.
+the navigation keys (◄► category, D/F sort). Once a controller is used, the hint line and
+the difficulty arrows switch to the controller buttons (LB/RB, LT); keyboard or mouse input switches them back.

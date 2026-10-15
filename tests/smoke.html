@@ -27,28 +27,30 @@ f.addEventListener('load', async () => {
     log(vis('select') && !vis('title'), 'any key -> song select');
     const rows = d.querySelectorAll('.song-row');
     log(rows.length >= 15, `song list has ${rows.length} rows`);
-    log($('d-title').textContent.length > 0, 'detail pane filled: ' + $('d-title').textContent);
-    d.querySelector('#diff-seg [data-diff=hard]').click();
-    log(d.querySelector('#diff-seg .sel').dataset.diff === 'hard', 'difficulty switch');
-    const rows2 = d.querySelectorAll('.song-row'); // list is re-rendered on difficulty change
+    log($('sel-cat').textContent.length > 0, 'category header: ' + $('sel-cat').textContent);
+    const rows2 = d.querySelectorAll('.song-row');
     rows2[3].click(); rows2[3].focus(); await sleep(50);
-    log($('d-title').textContent === rows2[3].querySelector('.t').textContent, 'click selects song');
+    log(rows2[3].classList.contains('cur'), 'click selects song');
     key('ArrowDown'); await sleep(50);
     const desc = el => el ? (el.id || el.className) + ':' + (el.textContent || '').slice(0, 20) : 'none';
     log(d.activeElement === rows2[4], 'arrow down moves focus', desc(d.activeElement) + ' vs ' + desc(rows2[4]) + ' idx=' + [...rows2].indexOf(d.activeElement));
     const phoneKey = k => d.querySelector(`#phone .k[data-key="${k}"]`).dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
     phoneKey('8'); await sleep(50);
     log(d.activeElement === rows2[5], 'keypad 8 moves down');
-    key('ArrowRight'); await sleep(50);
-    log(d.querySelector('#diff-seg .sel').dataset.diff === 'hard' && vis('select'), 'right arrow on hard stays hard');
+    const cat0 = $('sel-cat').textContent;
+    key('ArrowRight'); await sleep(80);
+    log($('sel-cat').textContent !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
-    log(d.querySelector('#diff-seg .sel').dataset.diff === 'normal', 'left arrow lowers difficulty');
-    log(d.activeElement && d.activeElement.classList.contains('cur'), 'cursor row keeps focus after difficulty change');
+    log($('sel-cat').textContent === cat0, 'left arrow switches back');
     log($('soft-left').textContent === 'Options' && $('st-title').textContent === 'Ringing tones', 'soft keys + status title');
     phoneKey('softL'); await sleep(80);
     log(vis('options') && $('soft-left').textContent === 'Select', 'left soft key opens Options');
-    $('btn-info').click(); await sleep(50);
-    log(vis('song-info') && $('d-title').textContent.length > 0, 'details screen');
+    key('Backspace'); await sleep(80);
+    log(vis('select'), 'Backspace -> back to select');
+    d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
+    log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
+    key('ArrowRight'); await sleep(50);
+    log($('dp-tab-1').classList.contains('sel'), 'right arrow switches detail tab');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
     const v0 = $('set-voice').textContent;
@@ -92,6 +94,8 @@ f.addEventListener('load', async () => {
     log(vis('select'), 'my songs back');
 
     $('btn-train-mode').click(); $('btn-play').click(); await sleep(50);
+    log(vis('diffpick'), 'training: difficulty screen first');
+    d.querySelector('#diffpick [data-default]').click(); await sleep(50);
     log(vis('training'), 'training options');
     $('t-speed').value = 70; $('t-speed').dispatchEvent(new w.Event('input'));
     $('t-loop').checked = true; $('t-loop').dispatchEvent(new w.Event('change'));
@@ -108,8 +112,9 @@ f.addEventListener('load', async () => {
     log(vis('select'), 'quit -> select');
     $('btn-train-mode').click(); // training mode off again
     log($('btn-train-mode').getAttribute('aria-pressed') === 'false' && $('btn-play').textContent === 'Play', 'training mode off');
-    $('btn-play').click(); await sleep(150);
-    log(!vis('select') && !vis('results'), 'normal play starts');
+    $('btn-play').click(); await sleep(50);
+    d.querySelector('#diffpick [data-default]').click(); await sleep(150);
+    log(!vis('select') && !vis('diffpick') && !vis('results'), 'normal play starts');
     key('KeyR'); await sleep(150);
     log(!vis('select'), 'R restarts');
     // fake a finished run to exercise results / highscores / FC banner
@@ -125,12 +130,19 @@ f.addEventListener('load', async () => {
     log($('r-hist').children.length === 9, 'timing histogram');
     $('btn-menu').click(); await sleep(100);
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
-    log($('d-best').textContent.includes('1234'), 'best shown in detail: ' + $('d-best').textContent);
     $('btn-play').click(); await sleep(100);
+    log(vis('diffpick') && !!d.querySelector('#diffpick [data-default]'), 'play opens difficulty screen');
+    key('ArrowRight'); await sleep(50); // Info -> Best
+    log($('dp-panel').textContent.includes('1234'), 'best shown in detail: ' + $('dp-panel').textContent);
+    key('ArrowRight'); await sleep(50); // Best -> Top
+    d.querySelector('#diffpick [data-default]').click(); await sleep(100);
     rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
     $('btn-menu').click(); await sleep(100);
-    log(d.querySelectorAll('#d-top li').length === 2, 'top runs listed');
+    $('btn-play').click(); await sleep(100);
+    key('ArrowRight'); key('ArrowRight'); await sleep(50);
+    log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
+    key('Backspace'); await sleep(80);
     rb.scores.clear();
     log(vis('select'), 'back to select again');
   } catch (e) { log(false, 'exception', e && e.stack || e); }

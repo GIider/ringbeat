@@ -13,6 +13,7 @@ ES modules need an HTTP server (opening `index.html` via `file://` won't work). 
 ```
 npm start            # http://localhost:8000 (also prints LAN URLs)
 npm start -- 9000    # custom port (or PORT=9000 npm start)
+npm run dev          # same server, the page reloads whenever a file changes
 npm run build        # stage runtime files into dist/ (what CI deploys to GitHub Pages)
 npm run bench        # re-measure song difficulty with bots -> src/difficulty.json
 npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in src/pixelfont.js
@@ -21,8 +22,9 @@ npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in sr
 Screenshot states for development: `index.html?demo=play` (also `pause`, `select`, `options`, `info`, `results`,
 `settings`) loads the Nokia Tune and freezes a frame at ~10 %.
 
-Tests: `npm test` (node: core logic, font builder, sprites), plus `tests/rtttl.test.html` and `tests/smoke.html` in a
-browser (title shows PASS/FAIL).
+Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
+Chromium via Playwright (`npm install`, then once `npx playwright install chromium`). `tests/rtttl.test.html` and
+`tests/smoke.html` also run by hand in a browser (title shows PASS/FAIL).
 
 ## Features
 
