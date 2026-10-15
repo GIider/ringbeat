@@ -1533,6 +1533,7 @@ function wire() {
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
+  $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });
 
