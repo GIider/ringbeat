@@ -15,6 +15,7 @@ import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
 import * as nav from './nav.js';
+import { coverURL } from './cover.js';
 
 const $ = id => document.getElementById(id);
 
@@ -81,7 +82,7 @@ function stopPreview() {
   clearTimeout(previewTimer); clearTimeout(autoPreviewTimer);
   previewTimer = autoPreviewTimer = null;
   if (synth.ctx) synth.stopAll();
-  $('btn-preview').textContent = 'Preview';
+  $('btn-preview').textContent = '▶ Preview';
   $('btn-custom-preview').textContent = 'Preview';
 }
 function startPreview(entry, maxSec = Infinity) {
@@ -96,7 +97,7 @@ function startPreview(entry, maxSec = Infinity) {
     synth.playNote({ midi: n.midi, when: t0 + n.startBeat * beat, duration: n.durBeat * beat * 0.92 });
     end = Math.max(end, n.startBeat + n.durBeat);
   }
-  $('btn-preview').textContent = 'Stop';
+  $('btn-preview').textContent = '■ Stop';
   $('btn-custom-preview').textContent = 'Stop';
   previewTimer = setTimeout(stopPreview, (end * beat + 0.4) * 1000);
 }
@@ -123,6 +124,7 @@ function renderList() {
     const rec = scores.get(e.id, settings.difficulty);
     const best = rec && rec.best;
     b.innerHTML =
+      `<img class="th" src="${coverURL(e.id)}" alt="">` +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="m">${esc(e.tag)}${e.tag ? ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)}</span>` +
       `<span class="b">${best ? `<span class="${gradeClass(best.grade)}">${esc(best.grade)}</span>${badgeHTML(best)}` : ''}</span>`;
@@ -144,6 +146,7 @@ function renderDetail() {
   const e = selectedEntry();
   if (!e) return;
   const d = settings.difficulty;
+  $('d-cover').src = coverURL(e.id);
   $('d-title').textContent = e.title;
   $('d-meta').textContent = `${e.tag ? e.tag + ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes`;
   $('d-stars').innerHTML = starsText(e.stars[d]);

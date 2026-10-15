@@ -25,17 +25,18 @@
   <section id="select" class="screen" hidden>
     <div class="select-wrap">
       <header class="select-head">
-        <h2>Select song</h2>
+        <h2 class="select-title">Select Song</h2>
         <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
           <button data-diff="easy">Easy</button>
           <button data-diff="normal">Normal</button>
           <button data-diff="hard">Hard</button>
         </div>
-        <button id="btn-settings">Settings</button>
+        <button id="btn-settings" class="tab">Settings</button>
       </header>
       <div class="select-body">
         <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
         <aside class="detail">
+          <img id="d-cover" class="hero" alt="">
           <h2 id="d-title"></h2>
           <div id="d-meta" class="hint"></div>
           <div id="d-stars" class="stars"></div>
@@ -43,17 +44,15 @@
           <div id="d-best" class="d-best"></div>
           <div class="lbl">Top runs</div>
           <ol id="d-top" class="top"></ol>
-          <div class="row">
+          <div class="actions">
             <button id="btn-play" class="primary" data-default>▶ Play</button>
             <button id="btn-training">Training</button>
-          </div>
-          <div class="row">
-            <button id="btn-preview">Preview</button>
+            <button id="btn-preview">▶ Preview</button>
             <button id="btn-custom">Custom…</button>
           </div>
         </aside>
       </div>
-      <p class="hint">D F J K · tap lanes · gamepad d-pad / face buttons · Esc pause · R restart</p>
+      <p class="hint keys"><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> tap lanes · gamepad d-pad / face buttons · Esc pause · R restart</p>
     </div>
   </section>
 
