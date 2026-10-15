@@ -46,9 +46,9 @@ const screens = {
 };
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
-  $('btn-pause').hidden = !(state === 'countin' || state === 'playing');
+  $('btn-pause').hidden = !(state === 'countin' || state === 'playing' || state === 'resuming');
   if (name !== 'select' && name !== 'custom') stopPreview();
-  $('tut-caption').hidden = !(run && run.tutorial && (state === 'countin' || state === 'playing' || state === 'paused'));
+  $('tut-caption').hidden = !(run && run.tutorial && (state === 'countin' || state === 'playing' || state === 'resuming' || state === 'paused'));
   const el = screens[name];
   if (el) requestAnimationFrame(() => { if (!el.contains(document.activeElement)) focusDefault(el); });
 }
@@ -57,7 +57,7 @@ function focusDefault(el) {
   const d = el.querySelector('[data-default]:not([disabled])') || nav.focusables(el)[0];
   if (d && !el.hidden) d.focus({ preventScroll: true });
 }
-const activeScreen = () => screens[state === 'countin' || state === 'playing' ? '' : state];
+const activeScreen = () => screens[state === 'countin' || state === 'playing' || state === 'resuming' ? '' : state];
 
 let toastTimer = 0;
 function toast(msg, ms = 2200) {
@@ -385,7 +385,7 @@ function startRun(r) {
   setState('countin', null);
   return true;
 }
-function restartRun() { if (run) startRun(run); }
+function restartRun() { resumeEnd = 0; renderer.resumeCount = 0; if (run) startRun(run); }
 
 function playSelected() {
   if (trainingMode) { if (selectedEntry()) openTraining(); return; }
@@ -394,13 +394,17 @@ function playSelected() {
 }
 
 function leaveToSelect() {
+  resumeEnd = 0;
+  renderer.resumeCount = 0;
   game.stop();
   input.reset();
   openSelect();
 }
 
 function pauseGame() {
-  if (state !== 'countin' && state !== 'playing') return;
+  if (state !== 'countin' && state !== 'playing' && state !== 'resuming') return;
+  resumeEnd = 0;
+  renderer.resumeCount = 0;
   game.pause();
   input.reset();
   padHeld.forEach(s => s.clear());
@@ -412,9 +416,19 @@ function pauseGame() {
   $('btn-tut-skip-pause').hidden = !tut;
   show('paused');
 }
-async function resumeGame() {
+// Resume shows a 3-2-1 countdown first. The audio context stays suspended meanwhile, so song time is frozen.
+let resumeEnd = 0;
+function resumeGame() {
   if (state !== 'paused') return;
+  resumeEnd = performance.now() + 3000;
+  renderer.resumeCount = 3;
+  setState('resuming', null);
+}
+async function finishResume() {
+  resumeEnd = 0;
+  renderer.resumeCount = 0;
   await game.resume();
+  if (state !== 'resuming') return;
   setState(game.songTime() < 0 ? 'countin' : 'playing', null);
 }
 
@@ -631,16 +645,16 @@ function useMouse() { document.body.classList.remove('using-pad'); }
 pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
 pad.onDisconnect = () => {
   toast('Controller disconnected');
-  if (state === 'countin' || state === 'playing') pauseGame();
+  if (state === 'countin' || state === 'playing' || state === 'resuming') pauseGame();
 };
 
 pad.onButton = (index, down, ts) => {
   usePad();
-  if (state === 'countin' || state === 'playing') {
+  if (state === 'countin' || state === 'playing' || state === 'resuming') {
     if (!down) { releasePad(index, ts); return; }
     if (index === BTN.START) return pauseGame();
     if (index === BTN.BACK) return restartRun();
-    pressPad(index, ts);
+    if (state !== 'resuming') pressPad(index, ts);
     return;
   }
   if (!down) return;
@@ -680,7 +694,7 @@ function back() {
     case 'results': openSelect(); break;
     case 'paused': resumeGame(); break;
     case 'calibration': leaveCalibration(); break;
-    case 'countin': case 'playing': pauseGame(); break;
+    case 'countin': case 'playing': case 'resuming': pauseGame(); break;
   }
 }
 
@@ -840,7 +854,7 @@ function onKey(e) {
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
   }
-  if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'paused', 'results'].includes(state)) { restartRun(); return; }
+  if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'resuming', 'paused', 'results'].includes(state)) { restartRun(); return; }
   if (state === 'calibration' && !e.repeat) {
     if (tag === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return;
     calibTap(e);
@@ -888,6 +902,11 @@ function frame() {
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
   if (!game.active) { perf.time('drawIdle', () => renderer.drawIdle()); return; }
+  if (state === 'resuming') {
+    const left = resumeEnd - performance.now();
+    if (resumeEnd && left <= 0) finishResume();
+    else if (resumeEnd) renderer.resumeCount = Math.ceil(left / 1000);
+  }
   perf.begin('update');
   game.update(game.songTime());
   perf.end('update');

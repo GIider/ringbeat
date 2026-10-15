@@ -262,6 +262,15 @@ export class Renderer {
       c.fillStyle = C.text; c.font = `bold 48px ${FONT}`;
       c.fillText(String(Math.ceil(-t)), W / 2, H * 0.5);
     }
+    // Resume countdown (song time is frozen while this shows)
+    if (this.resumeCount > 0) {
+      c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillRect(0, 0, W, H);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = C.text; c.font = `bold 96px ${FONT}`;
+      c.fillText(String(this.resumeCount), W / 2, H * 0.5);
+      c.font = `bold 20px ${FONT}`;
+      c.fillText('GET READY', W / 2, H * 0.5 - 80);
+    }
     c.globalAlpha = 1;
   }
 }
