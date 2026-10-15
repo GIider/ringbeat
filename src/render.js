@@ -318,10 +318,42 @@ export class Renderer {
     for (let i = this.vi; i < notes.length; i++) {
       const nt = notes[i];
       if (nt.time > t + this.scrollTime + 0.1) break;
-      if (nt.done || (nt.hit && !nt.isHold)) continue;
+      if (nt.done || (nt.hit && !nt.isHold && !nt.isRoll)) continue;
       const missed = nt.judgement === 'miss' || nt.broken;
       const x = x0 + nt.lane * lw + hx;
+      if (nt.isRoll) { // rolls: a dotted rail with a thin bar per tick (the head is the first tick)
+        const yTop = Math.round(hitY - (nt.time + nt.duration - t) * pps), yBot = Math.round(hitY - (nt.time - t) * pps);
+        const rx = x + (bw >> 1);
+        c.fillStyle = INK;
+        for (let y = Math.max(this.top, yTop); y < Math.min(H, yBot); y += 2) c.fillRect(rx, y, 1, 1);
+        for (let k = 0; k < nt.ticks.length; k++) {
+          const yk = Math.round(hitY - (nt.time + nt.ticks[k] - t) * pps);
+          if (yk < this.top || yk > H - 2) continue;
+          if (k === 0 && !nt.hit) { // head: a full-height note with an "R" notch
+            c.fillRect(x, yk - 3, bw, NOTE_H);
+            c.clearRect(x, yk - 3, 1, 1); c.clearRect(x + bw - 1, yk - 3, 1, 1);
+            c.clearRect(x, yk + 3, 1, 1); c.clearRect(x + bw - 1, yk + 3, 1, 1);
+            c.fillStyle = PAPER; c.fillRect(rx - 1, yk, 3, 1); c.fillStyle = INK;
+          } else if (nt.time + nt.ticks[k] > t - 0.02 || !nt.hit) c.fillRect(x + 1, yk - 1, bw - 2, 3);
+        }
+        continue;
+      }
       const yHead = nt.holding ? hitY : Math.round(hitY - (nt.time - t) * pps);
+      if (nt.slide !== undefined && !missed) { // slide: dotted line to the next note of the chain
+        let nx = null;
+        for (let j = i + 1; j < notes.length && j <= i + 4; j++) {
+          if (notes[j].slide === nt.slide && notes[j].slideIdx === nt.slideIdx + 1) { nx = notes[j]; break; }
+        }
+        if (nx) {
+          const x1 = x + (bw >> 1), y1 = yHead, x2 = x0 + nx.lane * lw + hx + (bw >> 1), y2 = Math.round(hitY - (nx.time - t) * pps);
+          const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+          c.fillStyle = INK;
+          for (let k = 0; k <= steps; k += 2) {
+            const px = Math.round(x1 + (x2 - x1) * k / steps), py = Math.round(y1 + (y2 - y1) * k / steps);
+            if (py >= this.top && py <= H - 2) c.fillRect(px, py, 1, 1);
+          }
+        }
+      }
       if (nt.isHold) {
         const yTop = Math.max(this.top, Math.round(hitY - (nt.time + nt.duration - t) * pps));
         const hgt = yHead - yTop;

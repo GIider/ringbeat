@@ -11,6 +11,12 @@ const PHRASE_MAX_BEATS = 16;        // ...and so does running this long without 
 const POWER_PERCENTILE = 0.85;      // power notes: phrase peaks at or above this pitch percentile
 const LEAP_SEMITONES = 7;           // double notes: a leap at least this big (Hard only)
 const DOUBLE_GAP_SEC = 0.1;         // keep the partner lane free this long around a double
+export const SLIDE_MIN_NOTES = 3;  // stepwise runs (1-2 semitones, one direction) this long become slides
+const SLIDE_MAX_GAP = 0.5;          // seconds between consecutive slide notes (start to start)
+export const ROLL_MIN_NOTES = 4;    // a run of this many same-pitch notes...
+export const ROLL_MAX_SPACING = 0.26; // ...each starting within this many seconds of the last becomes a roll
+export const ROLL_TAIL_SEC = 0.05;  // presses are accepted this long after the last tick
+export const ROLL_MAX_HZ = 9;       // the press rate a roll can ask for (goal = span * this, at most one per tick)
 
 const MIN_KEPT = 30;                // below this many playable notes, thin by spacing instead
 const MIN_KEPT_FRAC = 0.25;         // ...or below this share of the song's pitched notes
@@ -85,13 +91,37 @@ export function generateChart(song, opts = {}) {
     });
   });
 
+  // Rolls: runs of legato same-pitch notes at a fast pace become one lane-long "mash" note. `ticks` holds the
+  // member start offsets (seconds from the roll's time); the roll is scored by how many of them the player keeps up with.
+  {
+    const merged = [];
+    for (let i = 0; i < notes.length;) {
+      let j = i + 1;
+      while (j < notes.length && notes[j].midi === notes[j - 1].midi &&
+             notes[j].time - notes[j - 1].time <= ROLL_MAX_SPACING &&
+             notes[j].time - (notes[j - 1].time + notes[j - 1].duration) < 0.03) j++;
+      if (j - i >= ROLL_MIN_NOTES) {
+        const first = notes[i], ticks = notes.slice(i, j).map(m => m.time - first.time);
+        const span = ticks[ticks.length - 1];
+        merged.push({ ...first, duration: span + ROLL_TAIL_SEC, dottedShort: false, ticks,
+          tickDur: Math.min(0.12, first.duration), goal: Math.max(3, Math.min(ticks.length, Math.round((span + 0.1) * ROLL_MAX_HZ))) });
+      } else merged.push(...notes.slice(i, j));
+      i = j;
+    }
+    notes = merged;
+  }
+
   // Difficulty filter
   // Rejected notes are not playable but still sound: the game auto-plays them as backing notes.
   const backing = [];
+  const addBacking = n => {
+    if (n.ticks) n.ticks.forEach(o => backing.push({ time: n.time + o, duration: n.tickDur, midi: n.midi }));
+    else backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+  };
   const all = notes;
   notes = notes.filter(n => {
-    const ok = n.duration >= diff.minDur && !(diff.beatsOrHoldsOnly && !n.onBeat && n.duration < HOLD_MIN_SEC);
-    if (!ok) backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+    const ok = n.ticks || (n.duration >= diff.minDur && !(diff.beatsOrHoldsOnly && !n.onBeat && n.duration < HOLD_MIN_SEC));
+    if (!ok) addBacking(n);
     return ok;
   });
   // Fast songs (mostly 16ths) would lose nearly everything to the duration cutoff.
@@ -102,16 +132,15 @@ export function generateChart(song, opts = {}) {
     for (const n of all) {
       const last = notes[notes.length - 1];
       const dup = last && last.midi === n.midi && n.time - last.time < diff.minGap;
-      if (last && (n.time - last.time < diff.minGap || dup)) {
-        backing.push({ time: n.time, duration: n.duration, midi: n.midi });
-      } else notes.push(n);
+      if (last && !n.ticks && (n.time - last.time < diff.minGap || dup)) addBacking(n);
+      else notes.push(n);
     }
   }
   // Safety rule against unplayable bursts
   const kept = [];
   for (const n of notes) {
     if (kept.length && n.time - kept[kept.length - 1].time < MIN_GAP_SEC) {
-      backing.push({ time: n.time, duration: n.duration, midi: n.midi });
+      addBacking(n);
       continue;
     }
     kept.push(n);
@@ -122,6 +151,35 @@ export function generateChart(song, opts = {}) {
   // Lanes are computed from the *remaining* notes so they stay balanced.
   const midis = kept.map(n => n.midi);
   const laneList = LANE_MODE === 'contour' ? assignLanesContour(midis, lanes) : assignLanesQuantile(midis, lanes);
+
+  // Slides: stepwise runs of tap notes are re-laned to sweep one lane per note (up = right), at most one
+  // note per lane. Follow-up notes get a wider hit window in the game; `slide` is the chain id, `slideIdx` the position.
+  const slideOf = new Array(kept.length).fill(null);
+  {
+    const plain = i => !kept[i].ticks && kept[i].duration < HOLD_MIN_SEC && !(diff.shortHolds && kept[i].dottedShort);
+    let id = 0;
+    for (let i = 0; i < kept.length - 1;) {
+      if (!plain(i)) { i++; continue; }
+      let j = i, dir = 0;
+      while (j + 1 < kept.length && j + 1 - i < lanes && plain(j + 1)) {
+        const step = kept[j + 1].midi - kept[j].midi, a = kept[j], b = kept[j + 1];
+        if (Math.abs(step) < 1 || Math.abs(step) > 2 || b.time - a.time > SLIDE_MAX_GAP || b.time - (a.time + a.duration) > 0.1) break;
+        if (dir && Math.sign(step) !== dir) break;
+        dir = Math.sign(step);
+        j++;
+      }
+      const len = j - i + 1;
+      if (len < SLIDE_MIN_NOTES) { i++; continue; }
+      const want = laneList[i];
+      const first = dir > 0 ? Math.max(0, Math.min(want, lanes - len)) : Math.min(lanes - 1, Math.max(want, len - 1));
+      for (let k = 0; k < len; k++) {
+        laneList[i + k] = first + dir * k;
+        slideOf[i + k] = { slide: id, slideIdx: k };
+      }
+      id++;
+      i = j + 1;
+    }
+  }
 
   // Phrase accents (first note after a long rest) and power notes (phrase peaks in the top pitch band).
   const sortedMidi = midis.slice().sort((a, b) => a - b);
@@ -145,8 +203,8 @@ export function generateChart(song, opts = {}) {
   for (let i = kept.length - 1; i >= 0; i--) { // backwards so we know the next note in each lane
     const n = kept[i], lane = laneList[i];
     let duration = n.duration;
-    const long = duration >= HOLD_MIN_SEC;
-    let isHold = long || (diff.shortHolds && n.dottedShort && duration >= SHORT_HOLD_SEC);
+    const long = !n.ticks && duration >= HOLD_MIN_SEC;
+    let isHold = !n.ticks && (long || (diff.shortHolds && n.dottedShort && duration >= SHORT_HOLD_SEC));
     if (isHold && nextInLane[lane] !== null) {
       duration = Math.min(duration, nextInLane[lane] - n.time - HOLD_TAIL_GAP);
       if (duration < (long ? MIN_HOLD_SEC : SHORT_HOLD_SEC)) { isHold = false; duration = n.duration; }
@@ -154,6 +212,8 @@ export function generateChart(song, opts = {}) {
     nextInLane[lane] = n.time;
     out[i] = { id: i, time: n.time, duration, lane, midi: n.midi, isHold, hit: false, judged: false,
       phrase: n.phrase, accent: accent[i], power: power[i] };
+    if (slideOf[i]) Object.assign(out[i], slideOf[i]);
+    if (n.ticks) Object.assign(out[i], { isRoll: true, ticks: n.ticks, goal: n.goal, rollHits: 0 });
   }
 
   // Double notes (Hard): after a leap, the landing note gets an octave-below partner in the neighbouring lane.
@@ -164,10 +224,10 @@ export function generateChart(song, opts = {}) {
     let lastDouble = -2;
     for (let i = 1; i < kept.length; i++) {
       const n = out[i], prev = kept[i - 1];
-      if (Math.abs(n.midi - prev.midi) < LEAP_SEMITONES || i - 1 === lastDouble) continue;
+      if (n.isRoll || out[i - 1].isRoll || n.slide !== undefined || out[i - 1].slide !== undefined || Math.abs(n.midi - prev.midi) < LEAP_SEMITONES || i - 1 === lastDouble) continue;
       if (n.time - (prev.time + prev.duration) > 0.05) continue; // only legato leaps
       const free = l => l >= 0 && l < lanes && !byLane[l].some(m =>
-        m.time < n.time + DOUBLE_GAP_SEC && m.time + (m.isHold ? m.duration : 0) > n.time - DOUBLE_GAP_SEC);
+        m.time < n.time + DOUBLE_GAP_SEC && m.time + (m.isHold || m.isRoll ? m.duration : 0) > n.time - DOUBLE_GAP_SEC);
       const lane = [n.lane - 1, n.lane + 1].find(free);
       if (lane === undefined) continue;
       const partner = { id: 0, time: n.time, duration: Math.min(n.duration, 0.5), lane, midi: n.midi - 12,

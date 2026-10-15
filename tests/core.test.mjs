@@ -196,12 +196,15 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
     const lastEnd = new Array(4).fill(-Infinity);
     for (const n of c.notes) {
       assert.ok(n.lane >= 0 && n.lane < 4, st.id);
-      assert.equal(n.isHold, n.duration >= HOLD_MIN_SEC, st.id);
+      assert.equal(n.isHold, !n.isRoll && n.duration >= HOLD_MIN_SEC, st.id);
       assert.ok(n.time >= lastEnd[n.lane] + 0.3, `${st.id}: lane ${n.lane} overlap`);
       lastEnd[n.lane] = n.time + n.duration;
     }
   }
   assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n.isHold)));
+  for (const kind of ['isRoll', 'accent', 'power', 'chordLane', 'slide']) {
+    assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n[kind])), `a stage teaches ${kind}`);
+  }
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 1 } }), true);
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 2 } }), false);
   const c = (perfect, good, miss) => ({ counts: { perfect, great: 0, good, miss } });
@@ -452,4 +455,104 @@ test('game: accent scores double, clean phrase pays a bonus, power notes start a
   assert.equal(g.phrasesClean, 2);
   assert.equal(g.results().phrasesClean, 2);
   g.stop();
+});
+
+// ---- rolls ----
+const ROLL_SONG = 't:d=16,o=5,b=125:8c,e,g,g,g,g,g,g,g,g,8e,4c';
+
+test('chart: fast same-pitch runs become one roll with tick offsets; slow repeats stay taps', () => {
+  const c = chartOf(ROLL_SONG, 'normal');
+  const rolls = c.notes.filter(n => n.isRoll);
+  assert.equal(rolls.length, 1);
+  const r = rolls[0];
+  assert.equal(r.ticks.length, 8);
+  assert.equal(r.ticks[0], 0);
+  assert.ok(!r.isHold && r.goal >= 3 && r.goal <= r.ticks.length);
+  assert.ok(Math.abs(r.duration - (r.ticks[7] + 0.05)) < 1e-9);
+  // the run's own notes are gone from the playable list; their sound is not lost (it is the player's mash)
+  assert.equal(c.notes.filter(n => n.midi === r.midi && !n.isRoll).length, 0);
+  const slow = chartOf('t:d=4,o=5,b=100:c,c,c,c,c,c,e,g', 'normal');
+  assert.equal(slow.notes.filter(n => n.isRoll).length, 0);
+});
+
+test('game: roll is judged by share of its goal; each press scores; misses when ignored', () => {
+  const run = presses => {
+    const g = new Game(stubSynth());
+    const chart = {
+      lanes: 4, length: 3, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+      notes: [
+        { id: 0, time: 1, duration: 0.65, lane: 1, midi: 60, isHold: false, isRoll: true, ticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6], goal: 5, phrase: 0 },
+        { id: 1, time: 2, duration: 0.2, lane: 1, midi: 64, isHold: false, phrase: 0 },
+      ],
+    };
+    g.start(chart, { leadIn: 0, backing: false });
+    try {
+      for (let k = 0; k < presses; k++) { g.update(1 + k * 0.1); g.press(1, g.songStart + 1 + k * 0.1); }
+      g.update(1.8);
+      const roll = chart.notes[0];
+      g.update(2); g.press(1, g.songStart + 2); // the tap after the roll is still hittable
+      return { judgement: roll.judgement, hits: roll.rollHits, score: g.score, tap: chart.notes[1].judgement, miss: g.counts.miss };
+    } finally { g.stop(); }
+  };
+  const full = run(7), great = run(3), good = run(2), one = run(1), none = run(0);
+  assert.equal(full.judgement, 'perfect');
+  assert.equal(full.hits, 7);
+  assert.ok(full.score > 300 + 70, 'tick points on top of the roll judgement');
+  assert.equal(great.judgement, 'great'); // 3 of goal 5 = 0.6
+  assert.equal(good.judgement, 'good');   // 0.4
+  assert.equal(one.judgement, 'miss');
+  assert.equal(none.judgement, 'miss');
+  assert.equal(none.miss, 1);
+  assert.equal(none.tap, 'perfect');
+});
+
+test('practice: rolls scale with speed and are clipped to the ticks that fit a loop end', () => {
+  const c = chartOf(ROLL_SONG, 'normal');
+  const r = c.notes.find(n => n.isRoll);
+  const half = scaleChart(c, 0.5).notes.find(n => n.isRoll);
+  assert.ok(Math.abs(half.ticks[3] - r.ticks[3] * 2) < 1e-9);
+  assert.ok(Math.abs(half.duration - r.duration * 2) < 1e-9);
+  const cut = sliceChart(c, 0, r.time + r.ticks[4] + 0.08).notes.find(n => n.isRoll);
+  assert.equal(cut.ticks.length, 5);
+  assert.ok(cut.goal <= 5 && cut.time + cut.duration <= r.time + r.ticks[4] + 0.08);
+  const tiny = sliceChart(c, 0, r.time + 0.12).notes.find(n => n.midi === r.midi);
+  assert.ok(!tiny.isRoll && tiny.ticks === undefined);
+});
+
+// ---- slides ----
+test('chart: stepwise runs become slides, one lane per note, in one direction', () => {
+  const c = chartOf('t:d=8,o=5,b=100:c,d,e,g,a,g,e,c', 'normal');
+  const sl = c.notes.filter(n => n.slide !== undefined);
+  assert.ok(sl.length >= 3);
+  const chains = new Map();
+  for (const n of sl) (chains.get(n.slide) || chains.set(n.slide, []).get(n.slide)).push(n);
+  for (const ch of chains.values()) {
+    assert.ok(ch.length >= 3 && ch.length <= 4);
+    ch.forEach((n, k) => assert.equal(n.slideIdx, k));
+    const step = Math.sign(ch[1].lane - ch[0].lane);
+    assert.notEqual(step, 0);
+    ch.forEach((n, k) => k && assert.equal(n.lane - ch[k - 1].lane, step));
+    const dir = Math.sign(ch[1].midi - ch[0].midi);
+    assert.equal(step, dir);
+  }
+  // leaps and repeats are not slides
+  assert.equal(chartOf('t:d=8,o=5,b=100:c,g,c6,g,c,g,c6,g', 'normal').notes.filter(n => n.slide !== undefined).length, 0);
+});
+
+test('game: slide follow-ups accept wide presses as Good; the first note and ordinary notes do not', () => {
+  const play = (idx, off) => {
+    const g = new Game(stubSynth());
+    const chart = { lanes: 4, length: 3, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+      notes: [{ id: 0, time: 1, duration: 0.2, lane: 0, midi: 60, isHold: false, phrase: 0, slide: 0, slideIdx: idx }] };
+    g.start(chart, { leadIn: 0, backing: false });
+    try {
+      g.update(1 + off); g.press(0, g.songStart + 1 + off);
+      return chart.notes[0].judgement;
+    } finally { g.stop(); }
+  };
+  assert.equal(play(0, 0.16), 'miss', 'first note: outside the normal window');
+  assert.equal(play(1, 0.16), 'good', 'follow-up: forgiven');
+  assert.equal(play(1, -0.16), 'good');
+  assert.equal(play(1, 0.2), 'miss');
+  assert.equal(play(1, 0.01), 'perfect');
 });

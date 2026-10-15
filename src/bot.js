@@ -80,6 +80,16 @@ export function runBot(chart, profile, seed = 1) {
     }
     const t = n.time + (p.bias + gauss(rnd) * sigma) / 1000;
     lastPress = n.time;
+    if (n.isRoll) { // mash: one press per tick the fingers can keep up with
+      let last = -Infinity;
+      for (const o of n.ticks) {
+        const tt = n.time + o;
+        if (p.minGap && (tt - last) * 1000 < p.minGap) continue;
+        last = tt;
+        ev.push({ t: tt + (p.bias + gauss(rnd) * p.sigma) / 1000, type: 'press', lane: n.lane });
+      }
+      continue;
+    }
     ev.push({ t, type: 'press', lane: n.lane });
     if (n.isHold) {
       let rt = n.time + n.duration + gauss(rnd) * p.holdSigma / 1000;

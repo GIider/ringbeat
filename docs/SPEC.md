@@ -20,7 +20,7 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
 | Screen | Purpose |
 |---|---|
 | Title | Boot screen, "Press any key" (plays a short power-on jingle). Satisfies the browser's audio-gesture requirement. |
-| Song select | 104 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. Options (left soft key, `O`, gamepad X): Play/Train, Preview, Training mode, Category, Sort (default / easiest / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC), My songs, Settings. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
+| Song select | 153 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. Options (left soft key, `O`, gamepad X): Play/Train, Preview, Training mode, Category, Sort (default / easiest / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC), My songs, Settings. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
 | My songs | Up to 30 saved songs (`ringbeat.songs.v1`). Nokia-style composer: keys 1–7 = c…b, 0 rest, 8/9 length, `*` dot, `#` sharp, repeating a key cycles the octave, ▲▼ pitch step, ◀▶ cursor, left soft key = menu. Controller: A adds a copy of the last note, d-pad up/down tunes it. Also paste/edit RTTTL text, export a song (`.rtttl`), export/import all (`.json`, or RTTTL lines), copy text or share link (`#s=<base64url>`, saved to My songs when opened). |
 | Settings | Tone (buzzer / smooth), volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, replay tutorial, reset highscores. |
 | Training | Speed 50–150 %, optional A–B loop, then play. |
@@ -39,6 +39,15 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
     in songs with a single phrase).
   - **Power notes** (plus sign in the head): phrase peaks at or above the song's 85th pitch percentile. Hitting all of a
     phrase's power notes with no miss starts a ×1.5 score burst for 4 s (`POWER x1.5`).
+  - **Rolls:** a legato run of ≥ 4 same-pitch notes, each starting within 0.26 s of the last, becomes one roll in a
+    single lane: a dotted rail with a bar per tick. Mash the lane between the first tick (window opens 135 ms early) and
+    50 ms after the last. Each press scores 10 × multiplier; one judgement at the end by presses ÷ goal
+    (goal = span × 9 Hz, at most one per tick, ≥ 3): ≥ 80 % Perfect, ≥ 60 % Great, ≥ 40 % Good, else Miss. Presses
+    inside a roll are never strays. Loop sections clip a roll to the ticks that fit (under 3 → a plain tap).
+  - **Slides:** a run of ≥ 3 tap notes moving 1–2 semitones per step in one direction (legato, ≤ 0.5 s apart) is
+    re-laned to sweep one lane per note (up = right, at most one note per lane, so ≤ 4) and joined by a dotted line.
+    The first note is judged normally; the follow-ups accept presses up to ±180 ms off (anything outside the Good window
+    is judged Good). Each note still scores and combos on its own.
   - **Double notes** (Hard): a legato leap of ≥ 7 semitones adds an octave-below partner tap in the neighbouring lane at
     the same time (a bridge joins the two heads). Both notes are judged separately.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.

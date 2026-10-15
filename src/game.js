@@ -8,9 +8,15 @@ export const ACCENT_MULT = 2;       // first note after a long rest scores doubl
 export const PHRASE_BONUS = 200;    // a phrase played without a miss
 export const POWER_MULT = 1.5;      // score multiplier burst after all of a phrase's power notes are hit
 export const POWER_SEC = 4;
+export const SLIDE_WINDOW = 0.18;   // slide follow-up notes (not the first) accept presses this far off
+export const ROLL_TICK_POINTS = 10;  // per press inside a roll, times the multiplier
+export const ROLL_GRADES = [[0.8, 'perfect'], [0.6, 'great'], [0.4, 'good']]; // share of the roll's goal -> judgement
 const ACCURACY_WEIGHT = { perfect: 1, great: 2 / 3, good: 1 / 3, miss: 0 };
 const LOOKAHEAD = 0.1, SCHED_INTERVAL = 25; // ms timer that schedules *audio* only, never judges
 const END_PADDING = 0.6;
+
+// Hit window of a note: slide follow-ups (idx > 0) are more forgiving than everything else.
+const windowOf = n => (n.slideIdx > 0 ? SLIDE_WINDOW : WINDOWS.good);
 
 export function gradeFor(acc) {
   return acc >= 95 ? 'S' : acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : 'D';
@@ -37,7 +43,7 @@ export class Game {
     this.byLane = Array.from({ length: chart.lanes }, () => []);
     for (const n of chart.notes) {
       n.hit = n.judged = n.holding = n.broken = n.done = false;
-      n.judgement = null; n.voice = null;
+      n.judgement = null; n.voice = null; n.rollHits = 0;
       this.byLane[n.lane].push(n);
     }
     this.backingPtr = 0;
@@ -117,18 +123,23 @@ export class Game {
     let i = this.lanePtr[lane];
     while (i < list.length && list[i].judged) i++;
     this.lanePtr[lane] = i;
-    let best = null, bestAbs = Infinity;
-    for (; i < list.length && list[i].time <= t + WINDOWS.good; i++) {
+    let best = null, bestAbs = Infinity, roll = null, rollAbs = Infinity;
+    for (; i < list.length && list[i].time <= t + SLIDE_WINDOW; i++) {
       const n = list[i];
       if (n.judged) continue;
+      if (n.isRoll) { // a roll takes every press from its window opening until its last tick has passed
+        if (t <= n.time + n.duration) { roll = n; rollAbs = Math.max(0, n.time - t); }
+        continue;
+      }
       const d = Math.abs(t - n.time);
-      if (d < bestAbs) { best = n; bestAbs = d; }
+      if (d < bestAbs && d <= windowOf(n)) { best = n; bestAbs = d; }
     }
-    if (!best || bestAbs > WINDOWS.good) { // ghost tap: no score effect, but breaks FC until the last note is played
+    if (roll && rollAbs <= bestAbs) { this._rollHit(roll); return; }
+    if (!best) { // ghost tap: no score effect, but breaks FC until the last note is played
       if (this.notesLeft > 0) { this.strays++; this.combo = 0; }
       return;
     }
-    const j = bestAbs <= WINDOWS.perfect ? 'perfect' : bestAbs <= WINDOWS.great ? 'great' : 'good';
+    const j = bestAbs <= WINDOWS.perfect ? 'perfect' : bestAbs <= WINDOWS.great ? 'great' : 'good'; // slides: wide hits are Good
     this._judge(best, j);
     this.deltas.push(t - best.time);
     best.hit = true;
@@ -163,9 +174,14 @@ export class Game {
     for (let lane = 0; lane < this.byLane.length; lane++) {
       const list = this.byLane[lane];
       let i = this.lanePtr[lane];
-      while (i < list.length && (list[i].judged || list[i].time + WINDOWS.good < t)) {
+      while (i < list.length) {
         const n = list[i];
-        if (!n.judged) this._miss(n, true);
+        if (n.judged) { i++; continue; }
+        if (n.isRoll) { // resolves once its last tick has passed
+          if (t <= n.time + n.duration) break;
+          this._finishRoll(n);
+        } else if (n.time + windowOf(n) < t) this._miss(n, true);
+        else break;
         i++;
       }
       this.lanePtr[lane] = i;
@@ -177,6 +193,21 @@ export class Game {
       clearInterval(this.timer);
       this.onFinish(this.results());
     }
+  }
+
+  _rollHit(n) {
+    n.hit = true;
+    n.rollHits++;
+    this.score += Math.round(ROLL_TICK_POINTS * this.multiplier);
+    this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: 0.1 });
+  }
+
+  _finishRoll(n) {
+    const share = n.rollHits / n.goal;
+    const grade = ROLL_GRADES.find(([min]) => share >= min);
+    n.done = true;
+    if (grade) { this._judge(n, grade[1]); this._finish(n, true); }
+    else this._miss(n, true);
   }
 
   _judge(n, j) {
