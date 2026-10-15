@@ -413,6 +413,18 @@ function setView(key, list, step = 1) {
   renderDetail();
   if (state === 'select') focusCurrentRow();
 }
+const DIFFS = ['easy', 'normal', 'hard'];
+// Switch the difficulty the list shows (scores / FC badges / sort / filter are all per difficulty).
+function cycleDifficulty(step) {
+  const i = DIFFS.indexOf(settings.difficulty);
+  settings.difficulty = DIFFS[(i + step + DIFFS.length) % DIFFS.length];
+  save();
+  const keep = selectedEntry();
+  if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
+  renderList();
+  renderDetail();
+  if (state === 'select') focusCurrentRow();
+}
 function focusCurrentRow() {
   requestAnimationFrame(() => { // look the row up late: the list may have been re-rendered or the selection moved
     if (state !== 'select') return;
@@ -1114,7 +1126,7 @@ function selectHints() {
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
   $('sel-hint').textContent = pad
     ? `${bn(BTN.LB)}/${bn(BTN.RB)} Category · ${bn(BTN.LT)} Sort`
-    : '◄► Category · D/F Sort';
+    : '◄► Category · D/F Sort · J/K Difficulty';
 }
 
 pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
@@ -1590,6 +1602,13 @@ function onKey(e) {
     if (e.repeat) return;
     synth.keyClick();
     if (e.code === 'KeyD' || e.code === 'KeyF') setView('sort', SORTS, e.code === 'KeyF' ? 1 : -1);
+    return;
+  }
+  if (state === 'select' && !typing && tag !== 'SELECT' && (e.code === 'KeyJ' || e.code === 'KeyK')) {
+    e.preventDefault();
+    if (e.repeat) return;
+    synth.keyClick();
+    cycleDifficulty(e.code === 'KeyK' ? 1 : -1);
     return;
   }
   if (state === 'select' && !typing && e.code === 'KeyO') { e.preventDefault(); synth.keyClick(); openOptions(); return; }
