@@ -601,11 +601,19 @@ function bindButton(index) {
   settings.padBindings[s] = [index];
   save(); renderBindings();
 }
-function openSettings() {
+let settingsFrom = 'select';
+function openSettings(from = 'select') {
+  settingsFrom = from;
+  document.querySelectorAll('#settings .menu-only').forEach(el => { el.hidden = from === 'paused'; });
   capturingSlot = -1;
   renderBindings();
   showOffset();
   setState('settings', 'settings');
+}
+
+function closeSettings() {
+  capturingSlot = -1;
+  if (settingsFrom === 'paused') setState('paused', 'paused'); else openSelect();
 }
 
 // ---- gamepad routing ----
@@ -665,7 +673,8 @@ function back() {
   switch (state) {
     case 'select': break;
     case 'tutorial': finishTutorial(); break;
-    case 'custom': case 'training': case 'settings': openSelect(); break;
+    case 'settings': closeSettings(); break;
+    case 'custom': case 'training': openSelect(); break;
     case 'results': openSelect(); break;
     case 'paused': resumeGame(); break;
     case 'calibration': leaveCalibration(); break;
@@ -708,13 +717,14 @@ function wire() {
   const v = $('volume'), sc = $('scroll'), bk = $('backing'), pv = $('pref-preview');
   v.value = settings.volume * 100; sc.value = settings.scrollTime; bk.checked = settings.backing; pv.checked = settings.preview;
   v.oninput = () => { settings.volume = v.value / 100; synth.setVolume(settings.volume); save(); };
-  sc.oninput = () => { settings.scrollTime = +sc.value; $('scroll-val').textContent = sc.value + 's'; save(); };
+  sc.oninput = () => { settings.scrollTime = +sc.value; renderer.scrollTime = settings.scrollTime; $('scroll-val').textContent = sc.value + 's'; save(); };
   $('scroll-val').textContent = sc.value + 's';
-  bk.onchange = () => { settings.backing = bk.checked; save(); };
+  bk.onchange = () => { settings.backing = bk.checked; game.backing = settings.backing; save(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   $('btn-calibrate').onclick = startCalibration;
-  $('btn-settings').onclick = openSettings;
-  $('btn-settings-back').onclick = openSelect;
+  $('btn-settings').onclick = () => openSettings();
+  $('btn-pause-settings').onclick = () => openSettings('paused');
+  $('btn-settings-back').onclick = closeSettings;
   $('btn-bind-reset').onclick = () => { settings.padBindings = cloneBindings(DEFAULT_BINDINGS); capturingSlot = -1; save(); renderBindings(); toast('Controller buttons reset'); };
   let resetTimer = 0;
   $('btn-reset-scores').onclick = e => {

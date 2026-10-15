@@ -21,6 +21,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .screen.overlay { background: rgba(11, 11, 26, 0.82); align-items: center; }
 #calib { align-items: center; }
 .screen[hidden] { display: none; }
+.menu-only[hidden] { display: none; }
 .panel { width: 100%; max-width: 560px; margin: auto; }
 .panel.small { max-width: 360px; text-align: center; }
 

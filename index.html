@@ -100,7 +100,7 @@
         <label class="check"><input id="backing" type="checkbox"> Backing pulse</label>
         <label class="check"><input id="pref-preview" type="checkbox"> Song preview</label>
       </div>
-      <div class="row">
+      <div class="row menu-only">
         <span>Latency offset: <b id="menu-offset">0 ms</b></span>
         <button id="btn-calibrate">Calibrate</button>
       </div>
@@ -114,8 +114,8 @@
 
       <div class="lbl">Data</div>
       <div class="row">
-        <button id="btn-tutorial">Replay tutorial</button>
-        <button id="btn-reset-scores">Reset highscores</button>
+        <button id="btn-tutorial" class="menu-only">Replay tutorial</button>
+        <button id="btn-reset-scores" class="menu-only">Reset highscores</button>
         <button id="btn-settings-back" class="primary">Back</button>
       </div>
     </div>
@@ -178,6 +178,7 @@
       <div class="row">
         <button id="btn-resume" class="primary" data-default>Resume</button>
         <button id="btn-restart">Restart</button>
+        <button id="btn-pause-settings">Settings</button>
         <button id="btn-pause-options" hidden>Training options</button>
         <button id="btn-quit">Song select</button>
         <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
