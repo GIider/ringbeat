@@ -111,12 +111,17 @@ test('sprites are rectangular 1-bit art', () => {
 });
 
 test('song pictures: 72x28 picture messages, deterministic per song', () => {
-  for (const s of SONGS.slice(0, 12)) {
+  const seen = new Set();
+  for (const s of SONGS) {
     const rows = coverRows(s.id, s.category);
     assert.equal(rows.length, COVER_H); assert.equal(rows[0].length, COVER_W);
     assert.ok(rectangular(rows), s.id);
     assert.deepEqual(rows, coverRows(s.id, s.category));
+    const ink = rows.join('').split('#').length - 1;
+    assert.ok(ink > 60 && ink < COVER_W * COVER_H * 0.6, `${s.id} ink ${ink}`);
+    seen.add(rows.join('|'));
   }
+  assert.equal(seen.size, SONGS.length, 'every song gets its own picture');
   assert.notDeepEqual(coverRows('ode', 'classical'), coverRows('tetris', 'videogame'));
 });
 
