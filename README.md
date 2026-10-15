@@ -8,6 +8,16 @@ right inside that LCD.
 All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). No dependencies, no build step;
 the few assets (pixel font, phone artwork) are made in-repo — see below.
 
+## Screenshots
+
+| Song list | Playing | Playing (compact) |
+| --- | --- | --- |
+| ![Song list](docs/screenshots/select-desktop.png) | ![Playing](docs/screenshots/play-desktop.png) | ![Playing, compact](docs/screenshots/play-compact.png) |
+
+On narrow screens (under 600 px wide) the phone body is dropped and the LCD fills the window.
+
+Regenerate them with `npm run screenshots` (see below).
+
 ## Run
 
 ES modules need an HTTP server (opening `index.html` via `file://` won't work). No dependencies; npm only runs the script:
@@ -18,6 +28,7 @@ npm start -- 9000    # custom port (or PORT=9000 npm start)
 npm run dev          # same server, the page reloads whenever a file changes
 npm run build        # stage runtime files into dist/ (what CI deploys to GitHub Pages)
 npm run bench        # re-measure song difficulty with bots -> src/difficulty.json
+npm run screenshots  # regenerate docs/screenshots/*.png from the ?demo= states (Playwright)
 npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in src/pixelfont.js
 ```
 
