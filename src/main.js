@@ -87,7 +87,8 @@ function paintRange(el) {
 }
 function paintRanges(root) { root.querySelectorAll('input[type=range]').forEach(paintRange); }
 function focusDefault(el) {
-  const d = el.querySelector('[data-default]:not([disabled])') || nav.focusables(el)[0];
+  const cur = el === screens.select && Array.from($('song-list').children).find(b => b.dataset.id === selectedId);
+  const d = cur || el.querySelector('[data-default]:not([disabled])') || nav.focusables(el)[0];
   if (d && !el.hidden) { d.focus({ preventScroll: true }); light(d); }
 }
 // The highlighted list item follows focus but stays lit while focus is elsewhere (e.g. on a phone key).
