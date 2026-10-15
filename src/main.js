@@ -566,8 +566,16 @@ game.onFinish = r => {
     else if (rec.rank) { best.hidden = false; best.textContent = `Rank #${rec.rank}`; }
   }
   renderHistogram(r.deltas);
+  setResultsPage(0);
   setState('results', 'results');
 };
+
+let resultsPage = 0;
+function setResultsPage(n) {
+  resultsPage = Math.max(0, Math.min(2, n));
+  for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
+  for (const el of document.querySelectorAll('#r-tabs button')) el.classList.toggle('sel', +el.dataset.page === resultsPage);
+}
 
 function nextSong() {
   const list = visible().length ? visible() : entries();
@@ -812,8 +820,8 @@ function menuButton(index) {
       break;
     case BTN.B: back(); break;
     case BTN.X: if (state === 'select') openOptions(); break;
-    case BTN.LB: if (state === 'select') cycleDifficulty(-1); break;
-    case BTN.RB: if (state === 'select') cycleDifficulty(1); break;
+    case BTN.LB: if (state === 'select') cycleDifficulty(-1); else if (state === 'results') navigate('left'); break;
+    case BTN.RB: if (state === 'select') cycleDifficulty(1); else if (state === 'results') navigate('right'); break;
     case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
     case BTN.RT: if (state === 'select') cycleCategory(1); break;
@@ -829,6 +837,12 @@ function navigate(dir) {
   const root = activeScreen();
   if (!root || state === 'title') return;
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleDifficulty(dir === 'left' ? -1 : 1); return; }
+  if (state === 'results' && (dir === 'left' || dir === 'right')) {
+    const p = resultsPage;
+    setResultsPage(p + (dir === 'left' ? -1 : 1));
+    if (resultsPage !== p) synth.keyClick();
+    return;
+  }
   if (!nav.adjust(document.activeElement, dir)) nav.move(root, dir);
 }
 
@@ -955,6 +969,16 @@ function wire() {
   $('btn-restart').onclick = restartRun;
   $('btn-pause-options').onclick = () => { game.stop(); input.reset(); openTraining(); };
   $('btn-quit').onclick = leaveToSelect;
+  for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
+  { // horizontal swipe flips results pages
+    let sx = null;
+    const r = $('results');
+    r.addEventListener('pointerdown', e => { sx = e.clientX; });
+    r.addEventListener('pointerup', e => {
+      if (sx !== null && Math.abs(e.clientX - sx) > 40) navigate(e.clientX < sx ? 'right' : 'left');
+      sx = null;
+    });
+  }
   $('btn-retry').onclick = restartRun;
   $('btn-next').onclick = nextSong;
   $('btn-menu').onclick = leaveToSelect;
@@ -1013,6 +1037,9 @@ function onKey(e) {
     if (menu) synth.keyClick();
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
+  }
+  if (state === 'results' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+    e.preventDefault(); navigate(e.code === 'BracketRight' ? 'right' : 'left'); return;
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
@@ -1197,11 +1224,18 @@ function frame() {
   updatePhones(game, t);
 }
 
-// Bot-measured difficulty (optional: falls back to the density heuristic if missing).
-try {
-  const r = await fetch(new URL('./difficulty.json', import.meta.url));
-  if (r.ok) { setMeasured(await r.json()); builtins = perf.time('library', () => buildLibrary()); }
-} catch { /* offline / file missing */ }
+// Bot-measured difficulty (optional: falls back to the density heuristic if missing). Loaded after first paint so a slow
+// network never delays the UI; the list re-renders with the measured ratings once it arrives.
+fetch(new URL('./difficulty.json', import.meta.url))
+  .then(r => (r.ok ? r.json() : null))
+  .then(data => {
+    if (!data) return;
+    setMeasured(data);
+    builtins = perf.time('library', () => buildLibrary());
+    renderList();
+    renderDetail();
+  })
+  .catch(() => { /* offline / file missing */ });
 
 wire();
 phoneIdle();

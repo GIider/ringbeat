@@ -173,26 +173,35 @@
         <section id="results" class="screen" data-title="Results" data-soft-left="Select" data-soft-right="Back">
           <h2 id="r-heading" class="sr">Results</h2>
           <div id="r-song" class="hint center"></div>
-          <div class="r-top">
-            <div id="r-grade" class="grade">S</div>
-            <div>
+          <div id="r-tabs" class="seg r-tabs" role="tablist">
+            <button type="button" class="sel" data-page="0" role="tab" tabindex="-1">Score</button>
+            <button type="button" data-page="1" role="tab" tabindex="-1">Stats</button>
+            <button type="button" data-page="2" role="tab" tabindex="-1">Timing</button>
+          </div>
+          <div class="r-pages">
+            <div class="r-page" data-page="0">
+              <div id="r-grade" class="grade">S</div>
               <div class="big" id="r-score">0</div>
               <div id="r-banner" class="banner" hidden></div>
               <div id="r-best" class="newbest" hidden></div>
             </div>
+            <div class="r-page" data-page="1" hidden>
+              <table>
+                <tr><td>Accuracy</td><td id="r-acc"></td></tr>
+                <tr><td>Max combo</td><td id="r-combo"></td></tr>
+                <tr><td>Perfect</td><td id="r-p"></td></tr>
+                <tr><td>Great</td><td id="r-g"></td></tr>
+                <tr><td>Good</td><td id="r-o"></td></tr>
+                <tr><td>Miss</td><td id="r-m"></td></tr>
+              </table>
+            </div>
+            <div class="r-page" data-page="2" hidden>
+              <div class="hist-label hint">Early ◄ timing ► Late</div>
+              <div id="r-hist" class="hist"></div>
+              <div id="r-offset" class="hint center"></div>
+            </div>
           </div>
-          <table>
-            <tr><td>Accuracy</td><td id="r-acc"></td></tr>
-            <tr><td>Max combo</td><td id="r-combo"></td></tr>
-            <tr><td>Perfect</td><td id="r-p"></td></tr>
-            <tr><td>Great</td><td id="r-g"></td></tr>
-            <tr><td>Good</td><td id="r-o"></td></tr>
-            <tr><td>Miss</td><td id="r-m"></td></tr>
-          </table>
-          <div class="hist-label hint">Early ◄ timing ► Late</div>
-          <div id="r-hist" class="hist"></div>
-          <div id="r-offset" class="hint"></div>
-          <div class="menu">
+          <div class="menu r-foot">
             <button id="btn-retry" data-default>Retry</button>
             <button id="btn-next">Next song</button>
             <button id="btn-menu">Song select</button>

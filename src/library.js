@@ -24,15 +24,32 @@ export function hashString(s) {
   return (h >>> 0).toString(36);
 }
 
+// Parsed song + generated charts per RTTTL string: the library is rebuilt when measured ratings arrive, and only the
+// rating lookup changes then, so the (pure) parse/chart work is reused.
+const derived = new Map();
+function derive(rtttl) {
+  let d = derived.get(rtttl);
+  if (d) return d;
+  const song = parseRTTTL(rtttl);
+  d = { song, charts: {} };
+  for (const diff of DIFFICULTIES) {
+    try { d.charts[diff] = generateChart(song, { difficulty: diff }); } catch { d.charts[diff] = null; }
+  }
+  if (derived.size > 256) derived.clear();
+  derived.set(rtttl, d);
+  return d;
+}
+
 // Build a library entry; returns null if the RTTTL cannot be parsed or charted.
 export function makeEntry({ id, title, tag, category, rtttl }) {
-  let song;
-  try { song = parseRTTTL(rtttl); } catch { return null; }
+  let song, charts;
+  try { ({ song, charts } = derive(rtttl)); } catch { return null; }
   const stars = {}, notes = {}, rating = {}, tags = {};
   let length = 0;
   for (const d of DIFFICULTIES) {
     try {
-      const c = generateChart(song, { difficulty: d });
+      const c = charts[d];
+      if (!c) throw new Error('no chart');
       const m = measured[id] && measured[id][d];
       if (m && typeof m.rating === 'number') {
         rating[d] = m.rating; tags[d] = Array.isArray(m.tags) ? m.tags : [];
