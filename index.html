@@ -103,6 +103,7 @@
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
         <section id="tutorial" class="screen" data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
           <h2 id="tut-title">Welcome to Ringbeat</h2>
+          <div id="tut-progress" class="tut-progress" aria-live="polite"></div>
           <div id="tut-body"></div>
           <div class="menu">
             <button id="btn-tut-go" data-default>Start tutorial</button>
@@ -256,7 +257,6 @@
   </div>
 
   <button id="btn-pause" class="pause-btn" hidden aria-label="Pause">❚❚</button>
-  <div id="tut-caption" class="tut-caption" hidden aria-live="polite"></div>
   <div id="toast" class="toast" hidden role="status"></div>
 
   <script type="module" src="src/main.js"></script>

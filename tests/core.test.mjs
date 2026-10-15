@@ -161,6 +161,10 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
   assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n.isHold)));
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 1 } }), true);
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 2 } }), false);
+  const c = (perfect, good, miss) => ({ counts: { perfect, great: 0, good, miss } });
+  assert.equal(stagePassed({ maxMiss: 0, minGreatPct: 50 }, c(4, 4, 0)), true);
+  assert.equal(stagePassed({ maxMiss: 0, minGreatPct: 50 }, c(3, 5, 0)), false);
+  assert.equal(stagePassed({ maxMiss: 0 }, c(8, 0, 1)), false);
 });
 
 // ---- bots + list view ----

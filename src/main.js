@@ -16,7 +16,7 @@ import { CATEGORIES } from './songs.js';
 import { SORTS, FILTERS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
-import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
+import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
 import { SPRITES, spriteHTML, setSprite, signal, battery, ringing } from './pixelart.js';
@@ -62,7 +62,6 @@ function show(name) {
   $('btn-pause').hidden = !inPlay();
   if (name !== 'select' && name !== 'custom' && name !== 'options' && name !== 'info') stopPreview();
   const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
-  $('tut-caption').hidden = !tut;
   $('np-caption').hidden = !tut;
   const el = screens[name];
   if (el) {
@@ -586,12 +585,43 @@ function controlsHTML() {
     `<p>Keyboard: ${keys}<br>Gamepad: ${pad} (or d-pad)<br>Touch: tap and hold the lanes</p>` +
     `<p>There are two note types — <b>taps</b> and <b>holds</b>. This takes about a minute.</p>`;
 }
-function openTutorial(stage = -1) {
+function tutProgress(done, current) {
+  const n = STAGES.length;
+  const boxes = STAGES.map((_, i) => (i < done ? '■' : i === current ? '▣' : '□')).join(' ');
+  $('tut-progress').hidden = false;
+  $('tut-progress').textContent = `${boxes}   ${current >= 0 ? `Lesson ${current + 1} of ${n}` : `${n} lessons`}`;
+}
+function openTutorial() {
   $('btn-tut-go').textContent = 'Start tutorial';
   $('btn-tut-skip').hidden = false;
   $('tut-title').textContent = 'Welcome to Ringbeat';
-  $('tut-body').innerHTML = controlsHTML();
-  run = null;
+  $('tut-body').innerHTML = controlsHTML() +
+    `<p>${STAGES.length} short lessons. Pass each one to move on.</p>`;
+  tutProgress(0, -1);
+  run = { tutorial: { stage: -1 } };
+  setState('tutorial', 'tutorial');
+}
+// Lesson card: text + goal, waits for the player to confirm before the round starts.
+function openLesson(i, failed) {
+  const st = STAGES[i];
+  $('tut-title').textContent = failed ? `Try again: ${st.title}` : st.title;
+  $('tut-body').innerHTML =
+    (failed ? `<p><b>Not quite</b> — ${esc(failed)}.</p>` : '') +
+    `<p>${esc(st.text)}</p><p>${esc(goalText(st))}</p>`;
+  $('btn-tut-go').textContent = failed ? 'Retry lesson' : 'Start lesson';
+  $('btn-tut-skip').hidden = false;
+  tutProgress(i, i);
+  run = { tutorial: { stage: i, pending: true } };
+  setState('tutorial', 'tutorial');
+}
+function lessonPassed(i) {
+  const last = i + 1 >= STAGES.length;
+  $('tut-title').textContent = `Lesson ${i + 1} passed ✓`;
+  $('tut-body').innerHTML = `<p>${esc(STAGES[i].title)} mastered.</p>`;
+  $('btn-tut-go').textContent = last ? 'Continue' : 'Next lesson';
+  $('btn-tut-skip').hidden = false;
+  tutProgress(i + 1, -1);
+  run = { tutorial: { stage: i, passed: true } };
   setState('tutorial', 'tutorial');
 }
 function tutorialOutro() {
@@ -603,30 +633,33 @@ function tutorialOutro() {
     `<p>If hits feel early or late, try <b>Settings → Calibrate</b>. You can replay this tutorial from Settings.</p>`;
   $('btn-tut-go').textContent = 'Pick a song';
   $('btn-tut-skip').hidden = true;
+  tutProgress(STAGES.length, -1);
   run = { tutorial: { done: true } };
   setState('tutorial', 'tutorial');
 }
 function showCaption(i) {
-  const st = STAGES[i];
-  $('tut-caption').innerHTML = $('np-caption').innerHTML =
-    `<b>${esc(st.title)}</b>${esc(st.text)}<div class="step">Step ${i + 1} of ${STAGES.length}</div>`;
+  $('np-caption').textContent = `Lesson ${i + 1}/${STAGES.length} · ${goalText(STAGES[i])}`;
 }
 function tutorialStageDone(r) {
   const i = run.tutorial.stage;
-  if (!stagePassed(STAGES[i], r)) { toast('Not quite — try again', 1500); startRun(run); return; }
-  if (i + 1 < STAGES.length) { toast('Nice!', 1000); startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: i + 1 } }); }
-  else tutorialOutro();
+  if (!stagePassed(STAGES[i], r)) { game.stop(); openLesson(i, failReason(STAGES[i], r)); return; }
+  game.stop();
+  lessonPassed(i);
 }
 function finishTutorial() {
   game.stop();
   input.reset();
   run = null;
+  $('tut-progress').hidden = true;
   settings.tutorialDone = true; save();
   openSelect();
 }
 function tutorialGo() {
-  if (run && run.tutorial && run.tutorial.done) finishTutorial();
-  else startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: 0 } });
+  const t = run && run.tutorial;
+  if (t && t.done) finishTutorial();
+  else if (t && t.passed) { if (t.stage + 1 < STAGES.length) openLesson(t.stage + 1); else tutorialOutro(); }
+  else if (t && t.stage >= 0) startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: t.stage } });
+  else openLesson(0);
 }
 
 // ---- calibration screen ----
