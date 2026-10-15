@@ -37,6 +37,7 @@ Menus:
 | Back | B |
 | Difficulty − / + (song select) | LB / RB |
 | Toggle Training mode (song select) | Y |
+| Next category (song select) | RT (keyboard: `[` / `]`) |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
 

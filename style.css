@@ -94,6 +94,8 @@ td + td { text-align: right; color: var(--teal); }
 .seg button, .tab { border-radius: 10px; border: 2px solid #4a5cff; background: #141a4a; transform: skewX(-6deg);
   min-width: 84px; font-weight: bold; box-shadow: 0 0 10px #4a5cff44; }
 .seg button.sel, .tab.sel { background: var(--yellow); color: #0b0b1a; border-color: #fff3b0; box-shadow: 0 0 16px #ffd23faa; }
+.cats { flex-wrap: wrap; margin: 0 0 12px 6px; }
+.cats button { min-width: 0; padding: 4px 12px; font-size: 0.9rem; }
 .select-body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; flex: 1; min-height: 0; }
 .song-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 8px 8px 4px;
   border: 2px solid #4a5cff; border-radius: 14px; background: #0e1033; box-shadow: 0 0 18px #4a5cff33 inset; }
@@ -121,6 +123,9 @@ td + td { text-align: right; color: var(--teal); }
 .stars-bar { position: relative; display: inline-block; white-space: nowrap; letter-spacing: 0.1em; line-height: 1; }
 .stars-bar .off { color: var(--line); }
 .stars-bar .on { position: absolute; left: 0; top: 0; overflow: hidden; color: var(--yellow); }
+.song-row .r { text-align: center; }
+.song-row .r .num { display: block; font-size: 0.7rem; line-height: 1.2; }
+.stars .rating { margin: 2px 0 0; }
 .song-row .r .stars-bar { font-size: 0.7rem; letter-spacing: 0; }
 .seg button.has-fc::after, .seg button.has-ap::after { content: " FC"; font-size: 0.65rem; color: #7dffb0; }
 .seg button.has-ap::after { content: " AP"; color: var(--yellow); }

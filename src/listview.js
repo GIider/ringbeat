@@ -6,6 +6,7 @@ export const SORTS = [
   { id: 'diff-desc', label: 'Hardest first' },
   { id: 'title', label: 'Title' },
   { id: 'bpm', label: 'BPM' },
+  { id: 'length', label: 'Duration' },
 ];
 export const FILTERS = [
   { id: 'all', label: 'All' },
@@ -21,8 +22,9 @@ function hasFC(scores, id, d) {
   return !!rec && (rec.fc === true || rec.top.some(r => r.fc));
 }
 
-export function applyView(entries, { sort = 'default', filter = 'all' }, diff, scores) {
+export function applyView(entries, { sort = 'default', filter = 'all', category = 'all' }, diff, scores) {
   let list = entries.map((e, i) => ({ e, i }));
+  if (category !== 'all') list = list.filter(x => x.e.category === category);
   if (filter === 'unplayed') list = list.filter(x => !scores.get(x.e.id, diff));
   else if (filter === 'nofc') list = list.filter(x => !hasFC(scores, x.e.id, diff));
   // Custom songs always stay at the end of the list.
@@ -32,6 +34,7 @@ export function applyView(entries, { sort = 'default', filter = 'all' }, diff, s
     'diff-desc': (a, b) => ratingOf(b.e, diff) - ratingOf(a.e, diff),
     title: (a, b) => a.e.title.localeCompare(b.e.title),
     bpm: (a, b) => a.e.bpm - b.e.bpm,
+    length: (a, b) => a.e.length - b.e.length,
   }[sort] || (() => 0);
   const isCustom = x => String(x.e.id).startsWith('custom:');
   list.sort((a, b) => (isCustom(a) - isCustom(b)) || cmp(a, b) || a.i - b.i);

@@ -190,6 +190,22 @@ test('listview: filter and sort', () => {
   assert.deepEqual(ids({ filter: 'nofc' }), ['b', 'c', 'custom:x']);
 });
 
+test('listview: category filter', () => {
+  const es = [{ id: 'a', category: 'pop' }, { id: 'b', category: 'classical' }, { id: 'custom:x', category: 'custom' }];
+  const sc = { get: () => null };
+  const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
+  assert.deepEqual(ids({ category: 'pop' }), ['a']);
+  assert.deepEqual(ids({ category: 'all' }), ['a', 'b', 'custom:x']);
+});
+
+test('songs: every song has a known category and every category is used', async () => {
+  const { CATEGORIES } = await import('../src/songs.js');
+  const ids = new Set(CATEGORIES.map(c => c.id));
+  assert.ok(SONGS.length >= 30);
+  for (const s of SONGS) assert.ok(ids.has(s.category), s.id);
+  for (const c of ids) assert.ok(SONGS.some(s => s.category === c), c);
+});
+
 test('scores: fc/ap flags are sticky per difficulty', () => {
   const m = new Map();
   const st = { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) };

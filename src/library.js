@@ -25,7 +25,7 @@ export function hashString(s) {
 }
 
 // Build a library entry; returns null if the RTTTL cannot be parsed or charted.
-export function makeEntry({ id, title, tag, rtttl }) {
+export function makeEntry({ id, title, tag, category, rtttl }) {
   let song;
   try { song = parseRTTTL(rtttl); } catch { return null; }
   const stars = {}, notes = {}, rating = {}, tags = {};
@@ -44,7 +44,7 @@ export function makeEntry({ id, title, tag, rtttl }) {
   }
   if (!length) return null;
   return {
-    id, rtttl, tag: tag || '', song,
+    id, rtttl, tag: tag || '', category: category || '', song,
     title: title || song.name || 'Untitled',
     bpm: song.bpm, length, stars, notes, rating, tags,
   };
@@ -55,7 +55,7 @@ export function buildLibrary() {
 }
 
 export function customEntry(rtttl) {
-  const e = makeEntry({ id: 'custom:' + hashString(rtttl.trim()), tag: 'Custom', rtttl: rtttl.trim() });
+  const e = makeEntry({ id: 'custom:' + hashString(rtttl.trim()), tag: 'Custom', category: 'custom', rtttl: rtttl.trim() });
   return e;
 }
 

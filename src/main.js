@@ -11,6 +11,7 @@ import { encodeSong, decodeSong } from './share.js';
 import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
+import { CATEGORIES } from './songs.js';
 import { SORTS, FILTERS, applyView, nextOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
@@ -121,7 +122,43 @@ function starsText(rating) {
     `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
 }
 
+// Category chips: All + each category (+ Custom when a custom song exists), with song counts.
+function categoryTabs() {
+  const all = entries();
+  const tabs = [{ id: 'all', label: 'All' }, ...CATEGORIES];
+  if (custom) tabs.push({ id: 'custom', label: 'Custom' });
+  return tabs.map(t => ({ ...t, count: t.id === 'all' ? all.length : all.filter(e => e.category === t.id).length }));
+}
+function renderCategories() {
+  const tabs = categoryTabs();
+  if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
+  const box = $('cat-tabs');
+  box.textContent = '';
+  for (const t of tabs) {
+    const b = document.createElement('button');
+    b.dataset.cat = t.id;
+    b.classList.toggle('sel', t.id === settings.view.category);
+    b.textContent = `${t.label} ${t.count}`;
+    b.onclick = () => setCategory(t.id);
+    box.appendChild(b);
+  }
+}
+function setCategory(id) {
+  settings.view.category = id; save();
+  const keep = selectedEntry();
+  if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
+  renderCategories();
+  renderList();
+  renderDetail();
+}
+function cycleCategory(step) {
+  const tabs = categoryTabs().filter(t => t.count > 0);
+  const i = tabs.findIndex(t => t.id === settings.view.category);
+  setCategory(tabs[(i + step + tabs.length) % tabs.length].id);
+}
+
 function renderList() {
+  renderCategories();
   const box = $('song-list');
   box.textContent = '';
   const list = visible();
@@ -144,7 +181,7 @@ function renderList() {
       `<img class="th" src="${coverURL(e.id)}" alt="">` +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="m">${esc(e.tag)}${e.tag ? ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)}</span>` +
-      `<span class="r" title="Difficulty ${ratingOf(e, settings.difficulty).toFixed(1)} / 10">${starsText(ratingOf(e, settings.difficulty))}</span>` +
+      `<span class="r" title="Difficulty ${ratingOf(e, settings.difficulty).toFixed(1)} / 10">${starsText(ratingOf(e, settings.difficulty))}<span class="num">${ratingOf(e, settings.difficulty).toFixed(1)}</span></span>` +
       `<span class="b">${best ? `<span class="${gradeClass(best.grade)}">${esc(best.grade)}</span>${badgeHTML(best)}` : ''}</span>`;
     b.addEventListener('focus', () => selectSong(e.id, false));
     b.addEventListener('click', ev => {
@@ -168,7 +205,7 @@ function renderDetail() {
   $('d-title').textContent = e.title;
   $('d-meta').textContent = `${e.tag ? e.tag + ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes`;
   $('d-stars').innerHTML = starsText(ratingOf(e, d)) +
-    (e.rating[d] != null ? ` <span class="rating">${e.rating[d].toFixed(1)}/10</span>` : '') +
+    `<div class="rating">${ratingOf(e, d).toFixed(1)}<span class="hint"> / 10</span></div>` +
     (e.tags[d] && e.tags[d].length ? ` <span class="hint">Tricky: ${esc(e.tags[d].join(', '))}</span>` : '');
   const rec = scores.get(e.id, d);
   $('d-best').innerHTML = rec
@@ -649,6 +686,7 @@ function menuButton(index) {
     case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
     case BTN.X: if (state === 'select') setView('filter', FILTERS); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
+    case BTN.RT: if (state === 'select') cycleCategory(1); break;
   }
 }
 pad.onNav = dir => {
@@ -784,6 +822,9 @@ function onKey(e) {
   if (e.code === 'Escape') {
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
+  }
+  if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+    e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
   }
   if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'paused', 'results'].includes(state)) { restartRun(); return; }
   if (state === 'calibration' && !e.repeat) {

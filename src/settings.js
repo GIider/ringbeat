@@ -18,7 +18,8 @@ export const settings = {
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
-    sort: ['default', 'diff-asc', 'diff-desc', 'title', 'bpm'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'default',
+    sort: ['default', 'diff-asc', 'diff-desc', 'title', 'bpm', 'length'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'default',
+    category: ['all', 'classical', 'pop', 'videogame', 'folk', 'original', 'custom'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
     filter: ['all', 'unplayed', 'nofc'].includes(raw.view && raw.view.filter) ? raw.view.filter : 'all',
   },
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',

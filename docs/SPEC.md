@@ -17,7 +17,7 @@ title ─▶ select ─▶ play ─▶ results ─▶ select
 | Screen | Purpose |
 |---|---|
 | Title | "Press any key". Satisfies the browser's audio-gesture requirement. |
-| Song select | 15 built-in songs + the user's Custom song. Per-row BPM, length, best grade, FC/AP badge. Detail pane: difficulty stars + bot rating (1-10) and weakness tags, best run, top 5. Sort (default / easiest / hardest / title / BPM) and filter (all / unplayed / no FC for the selected difficulty) buttons; gamepad LT cycles sort, X cycles filter. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. |
+| Song select | 32 built-in songs in 5 categories (Classical, Pop & Film, Video Games, Folk & Kids, Originals; tabs above the list, RT or `[` / `]` cycles) + the user's Custom song. Per-row BPM, length, best grade, FC/AP badge. Detail pane: difficulty stars + bot rating (1-10) and weakness tags, best run, top 5. Sort (default / easiest / hardest / title / BPM) and filter (all / unplayed / no FC for the selected difficulty) buttons; gamepad LT cycles sort, X cycles filter. Rating = 1 + 9 × expected share of six simulated skill levels that fail to full-combo the chart (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. |
 | Custom | Paste RTTTL, live validation, preview, play, copy share link (`#s=<base64url>`). |
 | Settings | Volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, reset highscores. |
 | Training | Speed 50–150 %, optional A–B loop, then play. |
