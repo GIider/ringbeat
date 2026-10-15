@@ -116,6 +116,24 @@ export class Synth {
     this._cleanup(o, [o, g]);
   }
 
+  // "Not available" buzz: two short low beeps.
+  blocked() {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime;
+    for (const at of [0, 0.07]) {
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 220;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + at);
+      g.gain.linearRampToValueAtTime(0.05, t + at + 0.003);
+      g.gain.setValueAtTime(0.05, t + at + 0.04);
+      g.gain.linearRampToValueAtTime(0, t + at + 0.05);
+      o.connect(g).connect(this.bus);
+      o.start(t + at); o.stop(t + at + 0.06);
+      this._cleanup(o, [o, g]);
+    }
+  }
+
   // Short power-on melody.
   jingle() {
     const ctx = this.ensure(), t0 = ctx.currentTime + 0.05;

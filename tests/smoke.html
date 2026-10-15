@@ -50,7 +50,7 @@ f.addEventListener('load', async () => {
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
     key('ArrowRight'); await sleep(50);
-    log($('dp-tab-1').classList.contains('sel'), 'right arrow switches detail tab');
+    log(!$('dp-tab-1').classList.contains('sel') && $('dp-tab-1').classList.contains('off'), 'Top tab blocked for an unplayed song');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
     const v0 = $('set-voice').textContent;
@@ -132,15 +132,18 @@ f.addEventListener('load', async () => {
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
     $('btn-play').click(); await sleep(100);
     log(vis('diffpick') && !!d.querySelector('#diffpick [data-default]'), 'play opens difficulty screen');
-    key('ArrowRight'); await sleep(50); // Info -> Best
-    log($('dp-panel').textContent.includes('1234'), 'best shown in detail: ' + $('dp-panel').textContent);
-    key('ArrowRight'); await sleep(50); // Best -> Top
+    log(!$('dp-tab-1').classList.contains('off'), 'Top tab enabled for a played song');
+    key('ArrowRight'); await sleep(50); // Info -> Top
+    log($('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
     d.querySelector('#diffpick [data-default]').click(); await sleep(100);
     rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
+    $('r-tabs').querySelector('[data-page="3"]').click();
+    log($('r-top').children.length === 2 && $('r-top').children[1].classList.contains('cur'), 'results Top tab highlights run #2');
     $('btn-menu').click(); await sleep(100);
+    log(vis('results') === false, 'left results');
     $('btn-play').click(); await sleep(100);
-    key('ArrowRight'); key('ArrowRight'); await sleep(50);
+    key('ArrowRight'); await sleep(50);
     log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
     key('Backspace'); await sleep(80);
     rb.scores.clear();

@@ -177,8 +177,7 @@
           <div class="dp-tabs" role="tablist" aria-label="Song details">
             <span class="arrow" aria-hidden="true">◄</span>
             <span id="dp-tab-0" role="tab">Info</span>
-            <span id="dp-tab-1" role="tab">Best</span>
-            <span id="dp-tab-2" role="tab">Top</span>
+            <span id="dp-tab-1" role="tab">Top</span>
             <span class="arrow" aria-hidden="true">►</span>
           </div>
           <div id="dp-panel" class="dp-panel" aria-live="polite"></div>
@@ -238,6 +237,7 @@
             <button type="button" class="sel" data-page="0" role="tab" tabindex="-1">Score</button>
             <button type="button" data-page="1" role="tab" tabindex="-1">Stats</button>
             <button type="button" data-page="2" role="tab" tabindex="-1">Timing</button>
+            <button type="button" data-page="3" role="tab" tabindex="-1">Top</button>
           </div>
           <div class="r-pages">
             <div class="r-page" data-page="0">
@@ -260,6 +260,10 @@
               <div class="hist-label hint">Early ◄ timing ► Late</div>
               <div id="r-hist" class="hist"></div>
               <div id="r-offset" class="hint center"></div>
+            </div>
+            <div class="r-page" data-page="3" hidden>
+              <ol id="r-top" class="top"></ol>
+              <div id="r-top-empty" class="hint center" hidden>Practice runs are not saved</div>
             </div>
           </div>
           <div class="menu r-foot">

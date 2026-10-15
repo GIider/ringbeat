@@ -520,13 +520,14 @@ function importSharedText(text) {
   return r;
 }
 
-// -- difficulty picker: also the song's detail screen (Info / Best / Top runs tabs for the focused difficulty) --
+// -- difficulty picker: also the song's detail screen (Info / Top runs tabs for the focused difficulty) --
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
 let dpBack = null, dpEntry = null, dpDiff = 'normal', dpTab = 0;
-const DP_TABS = ['Info', 'Best', 'Top'];
+const DP_TABS = ['Info', 'Top'];
 function setDpTab(i) {
   const n = Math.max(0, Math.min(DP_TABS.length - 1, i));
   if (n === dpTab) return;
+  if (n > 0 && !(dpEntry && scores.get(dpEntry.id, dpDiff))) { synth.blocked(); return; }
   dpTab = n;
   renderDpPanel();
   synth.keyClick();
@@ -534,17 +535,18 @@ function setDpTab(i) {
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
   if (!e) return;
-  DP_TABS.forEach((_, i) => { const t = $('dp-tab-' + i); t.classList.toggle('sel', i === dpTab); t.setAttribute('aria-selected', String(i === dpTab)); });
   const rec = scores.get(e.id, d), box = $('dp-panel');
+  if (!rec) dpTab = 0; // focused difficulty has no plays: fall back to Info
+  DP_TABS.forEach((_, i) => {
+    const t = $('dp-tab-' + i);
+    t.classList.toggle('sel', i === dpTab);
+    t.classList.toggle('off', i > 0 && !rec); // nothing to show until the song has been played
+    t.setAttribute('aria-selected', String(i === dpTab));
+  });
   if (dpTab === 0) {
     const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
     box.innerHTML = `<div>${cap(d)} ${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b><span class="hint"> / 10</span></div>` +
       `<div>${e.notes[d]} notes</div>${tricky}`;
-  } else if (dpTab === 1) {
-    box.innerHTML = rec
-      ? `<div><b>${rec.best.score}</b> · <b>${esc(rec.best.grade)}</b>${badgeHTML(rec.best)}</div>` +
-        `<div>${rec.best.accuracy.toFixed(1)}% · ${rec.best.maxCombo}x combo</div>`
-      : '<div class="hint">No plays yet</div>';
   } else {
     box.textContent = '';
     const ol = document.createElement('ol');
@@ -916,6 +918,7 @@ game.onFinish = r => {
   if (r.fc) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
   const best = $('r-best');
   best.hidden = true;
+  topRuns = { runs: [], rank: null };
   if (training) {
     best.hidden = false; best.textContent = 'Practice runs are not saved'; best.style.color = 'var(--dim)';
   } else if (run) {
@@ -923,15 +926,28 @@ game.onFinish = r => {
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = '★ NEW BEST ★'; }
     else if (rec.rank) { best.hidden = false; best.textContent = `Rank #${rec.rank}`; }
+    topRuns = { runs: scores.get(run.entry.id, run.diff)?.top || [], rank: rec.rank };
   }
+  renderTopRuns();
   renderHistogram(r.deltas);
   setResultsPage(0);
   setState('results', 'results');
 };
 
-let resultsPage = 0;
+let resultsPage = 0, topRuns = { runs: [], rank: null };
+function renderTopRuns() {
+  const ol = $('r-top');
+  ol.textContent = '';
+  for (const [i, r] of topRuns.runs.entries()) {
+    const li = document.createElement('li');
+    if (topRuns.rank === i + 1) li.className = 'cur';
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
+    ol.appendChild(li);
+  }
+  $('r-top-empty').hidden = topRuns.runs.length > 0;
+}
 function setResultsPage(n) {
-  resultsPage = Math.max(0, Math.min(2, n));
+  resultsPage = Math.max(0, Math.min(3, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) el.classList.toggle('sel', +el.dataset.page === resultsPage);
 }

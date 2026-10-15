@@ -291,3 +291,5 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .cameo-debug { position: fixed; top: 8px; right: 8px; z-index: 30; display: flex; flex-direction: column; gap: 4px;
   padding: 8px; background: #000a; color: #fff; font: 12px/1.2 monospace; border-radius: 6px; }
 .cameo-debug button { font: inherit; padding: 4px 8px; cursor: pointer; text-align: left; }
+.top li.cur { background: var(--ink); color: var(--lcd); font-weight: 700; }
+.dp-tabs .off { color: var(--ink-dim); }

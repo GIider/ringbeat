@@ -65,7 +65,7 @@ export class Game {
   get apAlive() { return this.fcAlive && this.counts.great + this.counts.good === 0; }
   get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1); }
 
-  // ---- ticks (count-in always; backing pulse optional) ----
+  // ---- ticks (backing pulse, including the lead-in count-in, only when enabled) ----
   _startScheduler() {
     clearInterval(this.timer);
     this._schedule();
@@ -78,8 +78,7 @@ export class Game {
     for (;;) {
       const t = this.songStart + (this.nextBeat - c.firstBeat) * c.beatLen;
       if (t >= horizon || t > stopAt) break;
-      const countIn = t < this.songStart - 1e-6;
-      if (t >= ctx.currentTime - 0.005 && (countIn || this.backing)) {
+      if (t >= ctx.currentTime - 0.005 && this.backing) {
         this.synth.tick({ when: t, accent: ((this.nextBeat % 4) + 4) % 4 === 0 });
       }
       this.nextBeat++;
