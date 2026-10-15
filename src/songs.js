@@ -26,7 +26,7 @@ export const SONGS = [
   { id: 'cancan', category: 'classical', title: 'Can-Can', tag: 'Offenbach', rtttl: 'Can-Can:d=8,o=5,b=150:4c6,4g,4g,4a,4g,4p,4c6,4g,4g,4a,4g,4p,4c6,4g,4a,4b,2c6,4g,4g,4f,4e,2c' },
   { id: 'smoke', category: 'pop', title: 'Smoke on the Water', tag: 'Deep Purple', rtttl: 'Smoke:d=4,o=4,b=112:8e,8g,4a,8e,8g,4a#,4a,8e,8g,4a,4g,2e' },
   { id: 'seven', category: 'pop', title: 'Seven Nation Army', tag: 'The White Stripes', rtttl: 'Seven Nation:d=8,o=5,b=124:4e.,e,4g,e,4d,c,2b4,p,4e.,e,4g,e,4d,c,2b4' },
-  { id: 'takeonme', category: 'pop', title: 'Take On Me', tag: 'a-ha', rtttl: 'Take On Me:d=16,o=5,b=170:8f#,8f#,8d,8b4,8p,8b4,8p,8e,8p,8e,8p,8e,8g#,8g#,a,b,a,b,e,8d,8f#,8f#,8f#,8e,8e,f#,e' },
+  { id: 'takeonme', category: 'pop', title: 'Take On Me', tag: 'a-ha', rtttl: 'Take On Me:d=16,o=5,b=90:8f#,8f#,8d,8b4,8p,8b4,8p,8e,8p,8e,8p,8e,8g#,8g#,a,b,a,b,e,8d,8f#,8f#,8f#,8e,8e,f#,e' },
   { id: 'axelf', category: 'pop', title: 'Axel F', tag: 'Harold Faltermeyer', rtttl: 'Axel F:d=8,o=5,b=125:4f,a.,f,16f,4a#,f,d#,f,4c6,f,f,4d6,c6,a,f,c6,f6,16f,d#,16d#,c,g,4f' },
   { id: 'panther', category: 'pop', title: 'Pink Panther', tag: 'Henry Mancini', rtttl: 'Pink Panther:d=4,o=5,b=160:8d#,8e,2p,8f#,8g,2p,8d#,8e,16p,8f#,8g,16p,8c6,8b,16p,8d#,8e,16p,8b,2a#,2p,16a,16g,16e,16d,2e' },
   { id: 'imperial', category: 'pop', title: 'Imperial March', tag: 'John Williams', rtttl: 'Imperial March:d=4,o=5,b=104:g,g,g,8d#.,16a#4,g,8d#.,16a#4,2g,d6,d6,d6,8d#6.,16a#4,f#,8d#.,16a#4,2g' },
