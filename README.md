@@ -1,8 +1,10 @@
 # Ringbeat
 
+**Play now:** <https://giider.github.io/ringbeat/>
+
 A browser rhythm game whose charts are generated automatically from RTTTL (Nokia ringtone) text, dressed up as a
-late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the phone steps aside so the
-highway can run next to its "now playing" screen.
+late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the note highway runs
+right inside that LCD.
 All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). No dependencies, no build step;
 the few assets (pixel font, phone artwork) are made in-repo — see below.
 
@@ -28,6 +30,11 @@ Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
 Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
 Chromium via Playwright (`npm install`, then once `npx playwright install chromium`). `tests/rtttl.test.html` and
 `tests/smoke.html` also run by hand in a browser (title shows PASS/FAIL).
+
+## Deployment
+
+Every push to `main` runs the tests, builds `dist/` (version `1.0.<run number>`), publishes it as the `latest`
+pre-release and deploys it to GitHub Pages ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 
 ## Features
 
