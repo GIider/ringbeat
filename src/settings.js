@@ -16,11 +16,12 @@ export const settings = {
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
   backing: raw.backing !== false,
   preview: raw.preview !== false,
+  idleGags: raw.idleGags !== false,
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
     sort: ['default', 'diff-asc', 'diff-desc', 'title', 'bpm', 'length'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'default',
-    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'original', 'custom'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
+    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
     filter: ['all', 'unplayed', 'nofc'].includes(raw.view && raw.view.filter) ? raw.view.filter : 'all',
   },
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',

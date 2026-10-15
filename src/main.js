@@ -21,9 +21,11 @@ import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } fr
 import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, spriteHTML, setSprite, signal, battery, ringing } from './pixelart.js';
+import { SPRITES, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
 import { VERSION } from './version.js';
 import { perf } from './perf.js';
+import { createCameoLayer } from './cameolayer.js';
+import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
 
 const $ = id => document.getElementById(id);
@@ -75,6 +77,8 @@ function show(name) {
     else requestAnimationFrame(() => { if (!el.contains(document.activeElement)) focusDefault(el); });
   }
   setMode();
+  cameo.sync();
+  if (!['title', 'select', 'options'].includes(state)) hideGag();
 }
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
 // Status bar title + soft-key labels come from the visible screen's data attributes.
@@ -104,6 +108,122 @@ function light(el) {
   lit = item; lit.classList.add('hl');
 }
 const activeScreen = () => screens[state === 'countin' || state === 'playing' || state === 'resuming' ? '' : state];
+
+// ---- easter eggs (decorative only: nothing here selects, navigates or touches saved data) ----
+const cameo = createCameoLayer({
+  canvas: $('cameo'),
+  getState: () => state,
+  enabled: () => settings.idleGags,
+  dev: new URLSearchParams(location.search).get('cameo') || '',
+  onStatus: st => {
+    if (inPlay()) return;
+    if (!st) { phoneIdle(); return; }
+    if (st.envelope) setSprite($('st-signal'), envelope(), 2);
+    else if (st.signal != null) setSprite($('st-signal'), signal(st.signal), 2);
+    if (st.battery != null) setSprite($('st-battery'), battery(st.battery), 2);
+  },
+  onChirp: () => { if (!previewTimer && !autoPreviewTimer) chirp([79, 84]); },
+});
+// Short buzzer notes, only if audio is already running (never unlocks or resumes the AudioContext).
+function chirp(midis) {
+  if (!synth.ctx || synth.ctx.state !== 'running') return;
+  midis.forEach((midi, i) => synth.playNote({ midi, when: synth.ctx.currentTime + 0.02 + i * 0.12, duration: 0.1 }));
+}
+if (new URLSearchParams(location.search).get('cameo') === 'debug') {
+  const panel = document.createElement('div');
+  panel.className = 'cameo-debug';
+  panel.innerHTML = '<b>Cameo debug</b>';
+  const add = (label, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label; b.tabIndex = -1;
+    b.addEventListener('pointerdown', e => e.preventDefault());
+    b.addEventListener('click', () => { if (!inPlay()) fn(); });
+    panel.appendChild(b);
+  };
+  for (const id of ['snake', 'space-impact', 'dvd-logo', 'sms', 'signal-wobble', 'low-battery', 'parade']) add(id, () => cameo.play(id));
+  add('stop', () => { cameo.stop(); hideGag(); });
+  add('imei', showImei);
+  add('wipe', startWipe);
+  add('konami', konamiReward);
+  document.body.appendChild(panel);
+}
+const konami = createSequenceMatcher(KONAMI);
+const imeiCode = createSequenceMatcher(IMEI_CODE);
+const wipe = createWipeGag();
+let gagTimer = 0, gagHold = 0, gagTick = 0, holdFired = false, dialTimer = 0, dialBuf = '';
+// Hold gesture (C key or the right phone key): fires the wipe gag after HOLD_MS.
+const HOLD_MS = 1200;
+function beginHold(onFire) {
+  endHold();
+  holdFired = false;
+  gagHold = setTimeout(() => { gagHold = 0; holdFired = true; onFire(); }, HOLD_MS);
+}
+function endHold() { clearTimeout(gagHold); gagHold = 0; return holdFired; }
+// Letting go while the bar is still filling cancels the fake wipe.
+function releaseGag() { wipe.release(); if (!wipe.active) hideGagIfWipe(); }
+// While the number view is up the phone acts as a dialer: nothing underneath can be selected or navigated.
+const dialing = () => !!dialTimer;
+const gagStates = () => ['title', 'select', 'options'].includes(state);
+function hideGag() {
+  clearTimeout(gagTimer); clearTimeout(gagHold); clearInterval(gagTick); clearTimeout(dialTimer);
+  gagTimer = gagHold = gagTick = dialTimer = 0; dialBuf = '';
+  if ($('gag')) $('gag').style.pointerEvents = '';
+  wipe.cancel();
+  if ($('gag')) $('gag').hidden = true;
+}
+function showGag(title, text, bar = -1, segments = 0) {
+  $('gag').hidden = false;
+  $('gag-title').textContent = title;
+  $('gag-text').textContent = text;
+  const b = $('gag-bar');
+  if (bar < 0) b.textContent = '';
+  else if (b.children.length !== segments) b.innerHTML = '<i></i>'.repeat(segments);
+  Array.from(b.children).forEach((c, i) => c.classList.toggle('on', i < bar));
+}
+// Only the wipe gag (not the IMEI panel) is cancelled by releasing C.
+function hideGagIfWipe() { if (gagTick) hideGag(); }
+function showImei() {
+  hideGag();
+  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION);
+  gagTimer = setTimeout(hideGag, 6000);
+}
+function startWipe() {
+  hideGag();
+  wipe.start();
+  gagTick = setInterval(() => {
+    wipe.step(100);
+    const v = wipe.view();
+    if (!v) { hideGag(); return; }
+    showGag('', v.text, v.bar, v.segments);
+  }, 100);
+  showGag('', 'Clearing memory...', 0, 12);
+}
+function konamiReward() {
+  const lcd = $('lcd');
+  lcd.classList.add('flash');
+  setTimeout(() => lcd.classList.remove('flash'), 140);
+  setTimeout(() => lcd.classList.add('flash'), 280);
+  setTimeout(() => lcd.classList.remove('flash'), 420);
+  toast('Cheat activated');
+  chirp([72, 76, 79, 84]);
+  cameo.parade();
+}
+// Fed passively from every key source; consumes nothing. Armed only on title/select/options.
+function eggToken(code, key) {
+  if (!gagStates()) { konami.reset(); imeiCode.reset(); return; }
+  if (code && konami.feed(code)) konamiReward();
+  if (!key) return;
+  if (imeiCode.feed(key)) { showImei(); return; }
+  // "*" opens a dialer-style number view as a hint; it fades after a few idle seconds.
+  if (/^[0-9*#]$/.test(key) && (dialBuf || key === '*') && !gagTick && !gagTimer) {
+    dialBuf = (dialBuf + key).slice(-15);
+    stopPreview();
+    $('gag').style.pointerEvents = 'auto'; // swallows clicks on the song list underneath
+    showGag('Enter number', dialBuf + '_');
+    clearTimeout(dialTimer);
+    dialTimer = setTimeout(hideGag, 3000);
+  }
+}
 
 let toastTimer = 0;
 function toast(msg, ms = 2200) {
@@ -1013,6 +1133,8 @@ pad.onButton = (index, down, ts) => {
     return;
   }
   if (!down) return;
+  eggToken({ [BTN.UP]: 'ArrowUp', [BTN.DOWN]: 'ArrowDown', [BTN.LEFT]: 'ArrowLeft', [BTN.RIGHT]: 'ArrowRight', [BTN.B]: 'KeyB', [BTN.A]: 'KeyA' }[index] || '', '');
+  if (dialing()) { if (index === BTN.B) hideGag(); return; }
   if (capturingSlot >= 0 && state === 'settings') { bindButton(index); return; }
   if (state === 'calibration') {
     if (index === BTN.B || index === BTN.START) leaveCalibration();
@@ -1114,7 +1236,21 @@ function softLeft() {
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
   }
 }
+// Right soft key: Back fires on release; holding it ~1.2 s runs the fake memory wipe instead (title/select/options).
+function softRightDown() {
+  if (!gagStates() || wipe.active) { phoneKey('softR'); return; }
+  beginHold(startWipe);
+  const up = () => {
+    window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (endHold()) releaseGag(); else phoneKey('softR');
+  };
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+}
 function phoneKey(key) {
+  if (!$('gag').hidden && gagTimer) hideGag();
+  if (key.length === 1) eggToken('', key);
+  if (dialing()) { if (key === 'softR') hideGag(); return; }
   if (state === 'composer' && !csMenu) {
     if (key === 'softL') setCompMenu(true);
     else if (key === 'softR') compInput('del');
@@ -1147,11 +1283,12 @@ function startFromTitle() {
 function wire() {
   // settings controls
   const v = $('volume'), sc = $('scroll'), bk = $('backing'), pv = $('pref-preview');
-  v.value = settings.volume * 100; sc.value = settings.scrollTime; bk.checked = settings.backing; pv.checked = settings.preview;
+  v.value = settings.volume * 100; sc.value = settings.scrollTime; bk.checked = settings.backing; pv.checked = settings.preview; $('pref-gags').checked = settings.idleGags;
   v.oninput = () => { settings.volume = v.value / 100; synth.setVolume(settings.volume); save(); };
   sc.oninput = () => { settings.scrollTime = +sc.value; renderer.scrollTime = settings.scrollTime; $('scroll-val').textContent = sc.value + 's'; save(); };
   $('scroll-val').textContent = sc.value + 's';
   bk.onchange = () => { settings.backing = bk.checked; game.backing = settings.backing; save(); };
+  $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceLabel = () => { $('set-voice').textContent = 'Tone: ' + (settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth'); };
   voiceLabel();
@@ -1342,11 +1479,11 @@ function wire() {
 
   // phone keys + soft-key labels (pointerdown, and never steal focus from the list)
   for (const k of document.querySelectorAll('#phone .k')) {
-    k.addEventListener('pointerdown', e => { e.preventDefault(); phoneKey(k.dataset.key); });
+    k.addEventListener('pointerdown', e => { e.preventDefault(); if (k.dataset.key === 'softR') softRightDown(); else phoneKey(k.dataset.key); });
     k.addEventListener('click', e => { if (e.detail === 0) phoneKey(k.dataset.key); }); // keyboard-less AT activation
   }
   $('soft-left').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
-  $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softR'); });
+  $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
   document.addEventListener('focusin', e => light(e.target));
@@ -1354,6 +1491,9 @@ function wire() {
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
   window.addEventListener('keydown', onKey);
+  const releaseC = () => { endHold(); releaseGag(); };
+  window.addEventListener('keyup', e => { if (e.code === 'KeyC') releaseC(); });
+  window.addEventListener('blur', releaseC);
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
   const wake = () => { if (synth.ctx && synth.ctx.state === 'suspended' && game.state !== 'paused') synth.ctx.resume(); };
   window.addEventListener('keydown', wake, true);
@@ -1388,6 +1528,16 @@ function onKey(e) {
   setDevice('kbd');
   const tag = e.target.tagName;
   const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text');
+  if (!typing && !e.repeat) {
+    if (!$('gag').hidden && gagTimer) hideGag(); // any key dismisses the IMEI panel
+    eggToken(e.code, e.key.length === 1 ? e.key : '');
+    if (e.code === 'KeyC' && gagStates() && !gagHold && !wipe.active) beginHold(startWipe);
+  }
+  if (dialing()) {
+    e.preventDefault();
+    if (e.code === 'Escape' || e.code === 'Backspace') hideGag();
+    return;
+  }
   if (state === 'title') {
     if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); startFromTitle(); }
     return;

@@ -275,3 +275,19 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 #comp-menu input[type=text] { width: 100%; box-sizing: border-box; background: none; border: var(--u) solid var(--ink); color: inherit; font: inherit; padding: 2px 4px; }
 /* Same box for both cursor buttons regardless of glyph width in the pixel font. */
 .comp-move button { box-sizing: border-box; width: 3em; min-width: 3em; height: 1.8em; padding: 0; text-align: center; line-height: 1; }
+
+/* ---------- easter eggs: idle cameos + overlay (decorative, never interactive) ---------- */
+.cameo { position: absolute; left: 0; top: 0; color: var(--ink); opacity: .5; pointer-events: none; image-rendering: pixelated; }
+.lcd.flash { filter: invert(1); }
+.gag { position: absolute; inset: 0; z-index: 4; background: var(--lcd); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; text-align: center; pointer-events: none; padding: 8px; }
+.gag-title { font-weight: 700; }
+.gag-text { white-space: pre-line; }
+.gag-bar { display: flex; gap: 2px; }
+.gag-bar:empty { display: none; }
+.gag-bar i { width: 10px; height: 14px; border: var(--u) solid var(--ink); }
+.gag-bar i.on { background: var(--ink); }
+
+.cameo-debug { position: fixed; top: 8px; right: 8px; z-index: 30; display: flex; flex-direction: column; gap: 4px;
+  padding: 8px; background: #000a; color: #fff; font: 12px/1.2 monospace; border-radius: 6px; }
+.cameo-debug button { font: inherit; padding: 4px 8px; cursor: pointer; text-align: left; }

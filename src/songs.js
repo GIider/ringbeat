@@ -1,4 +1,4 @@
-// Built-in songs: classical and folk melodies, well-known themes and hits, plus the original "Scale Sprint" stress test, as RTTTL.
+// Built-in songs: classical and folk melodies, well-known themes and hits, plus the original "Scale Sprint" stress test (filed under Video Games), as RTTTL.
 // Pop/TV/film themes belong to their respective rights holders; these are short fan transcriptions for a rhythm game.
 // `category` groups songs in the song-select tabs (see CATEGORIES); `tag` is a short composer/game/artist label.
 export const CATEGORIES = [
@@ -9,7 +9,6 @@ export const CATEGORIES = [
   { id: 'screen', label: 'TV & Film' },
   { id: 'videogame', label: 'Video Games' },
   { id: 'folk', label: 'Folk & Kids' },
-  { id: 'original', label: 'Originals' },
 ];
 export const SONGS = [
   { id: 'ode', category: 'classical', title: 'Ode to Joy', tag: 'Beethoven', rtttl: 'Ode:d=4,o=5,b=140:e,e,f,g,g,f,e,d,c,c,d,e,e.,8d,2d,e,e,f,g,g,f,e,d,c,c,d,e,d.,8c,2c' },
@@ -26,7 +25,7 @@ export const SONGS = [
   { id: 'turkish', category: 'classical', title: 'Turkish March', tag: 'Mozart', rtttl: 'Turkish March:d=16,o=5,b=140:b,a,g#,a,4c6,d6,c6,b,c6,4e6,f6,e6,d#6,e6,b6,a6,g#6,a6,b6,a6,g#6,a6,4c7,8a6,4c7' },
   { id: 'elise', category: 'classical', title: 'Fur Elise', tag: 'Beethoven', rtttl: 'Fur Elise:d=16,o=6,b=130:e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,g#5,b5,8c6,p,e5,e,d#,e,d#,e,b5,d,c,8a5,p,c5,e5,a5,8b5,p,e5,c6,b5,4a5' },
   { id: 'mountain', category: 'classical', title: 'Mountain King', tag: 'Grieg', rtttl: 'Mountain King:d=8,o=5,b=150:e,f#,g,a,b,g,4b,a#,f#,4a#,a,e,4a,e,f#,g,a,b,g,b,e6,d6,b,g,b,4d6' },
-  { id: 'sprint', category: 'original', title: 'Scale Sprint', tag: 'Original', rtttl: 'Scale Sprint:d=16,o=5,b=160:c,d,e,f,g,a,b,c6,d6,e6,f6,g6,8e6,8c6,8g,8e,g,a,b,c6,b,a,g,f,e,d,c,d,e,8g,8c6,d6,c6,b,a,g,f,e,d,8c,8e,8g,8c6,4e6,8d6,8b,8g,8d,4c' },
+  { id: 'sprint', category: 'videogame', title: 'Scale Sprint', tag: 'Original', rtttl: 'Scale Sprint:d=16,o=5,b=160:c,d,e,f,g,a,b,c6,d6,e6,f6,g6,8e6,8c6,8g,8e,g,a,b,c6,b,a,g,f,e,d,c,d,e,8g,8c6,d6,c6,b,a,g,f,e,d,8c,8e,8g,8c6,4e6,8d6,8b,8g,8d,4c' },
   { id: 'cancan', category: 'classical', title: 'Can-Can', tag: 'Offenbach', rtttl: 'Can-Can:d=8,o=5,b=150:4c6,4g,4g,4a,4g,4p,4c6,4g,4g,4a,4g,4p,4c6,4g,4a,4b,2c6,4g,4g,4f,4e,2c' },
   { id: 'smoke', category: 'pop', title: 'Smoke on the Water', tag: 'Deep Purple', rtttl: 'Smoke:d=4,o=4,b=112:8e,8g,4a,8e,8g,4a#,4a,8e,8g,4a,4g,2e' },
   { id: 'seven', category: 'pop', title: 'Seven Nation Army', tag: 'The White Stripes', rtttl: 'Seven Nation:d=8,o=5,b=124:4e.,e,4g,e,4d,c,2b4,p,4e.,e,4g,e,4d,c,2b4' },
@@ -40,6 +39,12 @@ export const SONGS = [
   { id: 'pacman', category: 'videogame', title: 'Pac-Man Intro', tag: 'Pac-Man', rtttl: 'PacMan:d=16,o=5,b=140:b,b6,f#6,d#6,8b6,4f#6,c6,c7,g6,e6,8c7,4g6,b,b6,f#6,d#6,8b6,8f#6,8d#6,8d#6,e6,f6,8f6,8f#6,g6,8g6,8g#6,a6,8b6' },
   { id: 'storms', category: 'videogame', title: 'Song of Storms', tag: 'Ocarina of Time', rtttl: 'Song of Storms:d=8,o=5,b=140:d,f,2d6,d,f,2d6,e6,4f6,8e6,f6,e6,c6,4a,4a,d,f,g,a,4a,d,f,g,e,2d' },
   { id: 'megalovania', category: 'videogame', title: 'Megalovania', tag: 'Undertale', rtttl: 'Megalovania:d=16,o=5,b=120:d,d,8d6,8a,4p,g#,8p,8g,8f,d,f,g,c,c,8d6,8a,4p,g#,8p,8g,8f,d,f,g,b4,b4,8d6,8a,4p,g#,8p,8g,8f,d,f,g,a#4,a#4,8d6,8a,4p,g#,8p,8g,8f,d,f,g' },
+  { id: 'sonic', category: 'videogame', title: 'Green Hill Zone', tag: 'Sonic the Hedgehog', rtttl: 'Green Hill:d=8,o=5,b=140:4e6,c6,4a,4e6,c6,4a,4g,a,b,4c6,4b,a,4g,e,4d,e,4g,2a' },
+  { id: 'mariougr', category: 'videogame', title: 'Super Mario Underground', tag: 'Super Mario Bros.', rtttl: 'Underground:d=16,o=4,b=140:c,c5,a,a5,a#,a#5,8p,c,c5,a,a5,a#,a#5,8p,f,f5,d,d5,d#,d#5,8p,f,f5,d,d5,d#,d#5' },
+  { id: 'doom', category: 'videogame', title: 'Doom E1M1', tag: 'Doom', rtttl: 'E1M1:d=16,o=4,b=150:e,e,e5,e,e,d5,e,e,c5,e,e,a#,e,e,b,c5,e,e,e5,e,e,d5,e,e,c5,e,e,a#,e,e,e5,e,e,d5,e,e,c5,e,e,a#,e,e,b,c5,e,e,e5,e,e,d5,e,e,c5,e,e,a#' },
+  { id: 'pokemon', category: 'videogame', title: 'Pokemon Route Theme', tag: 'Pokemon', rtttl: 'Route:d=8,o=5,b=150:4g,4e,4c,4e,4g,4e,4c6,p,4g,4f,4d,4f,4a,4f,4d6,p,4c6,4b,4a,4g,4e,2c' },
+  { id: 'kirby', category: 'videogame', title: 'Green Greens', tag: 'Kirby', rtttl: 'Green Greens:d=8,o=5,b=140:c,e,g,e,c6,g,e,g,d,f,a,f,d6,a,f,a,e,g,b,g,e6,b,g,b,c6,4p' },
+  { id: 'minecraft', category: 'videogame', title: 'Sweden', tag: 'Minecraft', rtttl: 'Sweden:d=4,o=5,b=60:8c,8e,4g,8f,8a,4c6,8g,8b,4d6,2e6,8e,8g,4b,8a,8c6,4e6,2c6' },
   { id: 'canon', category: 'classical', title: 'Canon in D', tag: 'Pachelbel', rtttl: 'Canon:d=4,o=5,b=100:2f#,2e,2d,2c#,2b4,2a4,2b4,2c#,8d,8f#,8a,8a,8g,8b,8a,8f#,8d,8d,8f#,8a,8a,8b,8c#6,8a,2f#,2e,2d' },
   { id: 'moonlight', category: 'classical', title: 'Moonlight Sonata', tag: 'Beethoven', rtttl: 'Moonlight:d=8,o=4,b=66:g#,c#5,e5,g#,c#5,e5,g#,c#5,e5,g#,c#5,e5,a,c#5,e5,a,c#5,e5,f#,a,c#5,f#,a,c#5,g#,b,d#5,g#,b,d#5' },
   { id: 'nachtmusik', category: 'classical', title: 'Eine kleine Nachtmusik', tag: 'Mozart', rtttl: 'Nachtmusik:d=8,o=5,b=140:g,4p,d,4p,g,4p,d,4p,g,d,g,b,4d6,4p,c6,4p,a,c6,a,f#,4d,4p' },
@@ -85,6 +90,11 @@ export const SONGS = [
   { id: 'foreveryoung', category: 'ndw', title: 'Forever Young', tag: 'Alphaville', rtttl: 'ForeverY:d=4,o=5,b=100:16a#6,8c#7,16a#6,8a#6,8p,16f#6,16g#6,16g#6,8g#6,16a#6,8g#6,8g#6,p,8p,16f#6,16f#6,16f#6,16f#6,16g#6,16g#6,8g#6,16f#6,8d#6,8p,16f#6,8d#6,8c#6,8p,16f#6,8g#6,8f#6' },
   { id: 'themodel', category: 'ndw', title: 'The Model', tag: 'Kraftwerk', rtttl: 'TheModel:d=8,o=5,b=125:4a.,a,c6,a,c6,a,4e.,e,g,e,4g,4a.,a,c6,a,c6,a,4e.,e,g,e,4g,4a,4a,a,c6,b,a,4b.,g,4e.,e,2a,c6,b,a,4b.,g,2e,4a,4a,a,c6,b,a,4b.,g,4e.,e,2a,c6,b,a,4b.,g,4e' },
   { id: 'tourdefrance', category: 'ndw', title: 'Tour de France', tag: 'Kraftwerk', rtttl: 'TourDeFr:d=4,o=5,b=285:c,p,e,f,g,2p,e,g,a,e,f,g,p,c6,p,1a#,1p,c,p,e,f,g,2p,e,g,a,e,f,g,p,c6,p,1d6' },
+  { id: 'dadada', category: 'ndw', title: 'Da Da Da', tag: 'Trio', rtttl: 'Da Da Da:d=4,o=5,b=140:8e,8p,8e,8p,8e,8p,8e,8p,8g,8p,8g,8p,8e,8p,8e,8p,8d,8p,8d,8p,8c,8p,8c,8p,2e' },
+  { id: 'sweetdreams', category: 'ndw', title: 'Sweet Dreams', tag: 'Eurythmics', rtttl: 'Sweet Dreams:d=8,o=5,b=125:c,c,c,c,d#,d#,d#,d#,c,c,c,c,a#4,a#4,a#4,a#4,c,c,c,c,d#,d#,d#,d#,g,g,f,f,d#,d#' },
+  { id: 'bluemonday', category: 'ndw', title: 'Blue Monday', tag: 'New Order', rtttl: 'Blue Monday:d=16,o=5,b=130:8f,8f,8f,8f,8f,8f,8f,8f,8g#,8g#,8g#,8g#,8c6,8c6,8a#,8a#,8g#,8f,8g#,8a#,2c6' },
+  { id: 'dontyouwantme', category: 'ndw', title: 'Dont You Want Me', tag: 'Human League', rtttl: 'Dont You Want Me:d=8,o=5,b=115:4g,a,4g,f,4d#,f,4g,4a#,c6,a#,g,4f,d#,f,4g,2g' },
+  { id: 'kommissar', category: 'ndw', title: 'Der Kommissar', tag: 'Falco', rtttl: 'Kommissar:d=8,o=5,b=110:4a,4a,a,g,4a,4a,a,g,4a,c6,b,a,4g,e,4g,a,4g,e' },
   { id: 'pippi', category: 'screen', title: 'Pippi Longstocking', tag: 'Kids TV', rtttl: 'PippiLon:d=4,o=6,b=250:g5,c,e,c,d,p,8f,8e,8d,8c,b5,d,g5,b5,2c,e,p,g5,c,e,c,d,p,8f,8e,8d,8c,b5,d,g5,b5,2c,2p,2e,e,e,2f,f,8f,8e,d,8d,8d,d,8c,8c,b5,c,d,p,2e,e,e,2f,f,e,d,d,c,b5,1c' },
   { id: 'biene', category: 'screen', title: 'Biene Maja', tag: 'Kids TV', rtttl: 'BieneMaj:d=4,o=6,b=125:g5,a5,b5,8c,8b5,8b5,8a5,8a5,8g5,8g5,8c5,d5,a.5,p,8b5,8a5,8g5,8g5,8f5,8f5,8d5,c5,c.,p,e.,8c5,8c5,8g5,8g5,8e5,f.5,p.,d.,8b5,8b5,8g5,8g5,8f5,e.5' },
   { id: 'smurfs', category: 'screen', title: 'The Smurfs', tag: 'Kids TV', rtttl: 'Smurfs:d=32,o=5,b=200:4c6,16p,4f6,p,16c6,p,8d6,p,8a#,p,4g,16p,4c6,p,16a,p,8f,p,8a,p,4g,4p,g,g#,a,a#,b,4c6,16p,4f6,p,16c6,p,8d6,p,8a#,p,4g,16p,4c6,p,16a,p,8a#,p,8e,p,4f' },
@@ -193,7 +203,7 @@ export const FULL_SONGS = [
     rtttl: rt('Grace Full', 4, 5, 90, GRACE_V, GRACE_V, [GRACE_V, 2], [GRACE_V, 12, 1], '1g') },
   { id: 'lullaby-full', category: 'classical', title: 'Lullaby (Full)', tag: 'Brahms',
     rtttl: rt('Lullaby Full', 4, 5, 110, LULLABY_A, LULLABY_B, [LULLABY_A, 0, 2], [LULLABY_B, 12], [LULLABY_A, 12], '1c6') },
-  { id: 'sprint-long', category: 'original', title: 'Scale Sprint: Marathon', tag: 'Original',
+  { id: 'sprint-long', category: 'videogame', title: 'Scale Sprint: Marathon', tag: 'Original',
     rtttl: rt('Sprint Marathon', 16, 5, 150, SPRINT_INTRO, SPRINT_VERSE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_BRIDGE, SPRINT_VERSE, [SPRINT_CHORUS, 2], [SPRINT_CHORUS, 2], SPRINT_BRIDGE, SPRINT_BRIDGE, SPRINT_VERSE, SPRINT_CHORUS, SPRINT_CHORUS, SPRINT_OUTRO) },
 ];
 SONGS.push(...FULL_SONGS);

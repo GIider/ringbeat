@@ -104,15 +104,6 @@ const S = {
     '####...',
     '.##....',
   ],
-  original: [
-    '...###.',
-    '..###..',
-    '.###...',
-    '#######',
-    '...###.',
-    '..###..',
-    '.##....',
-  ],
   custom: [
     '.....##',
     '....###',
@@ -136,6 +127,11 @@ export function signal(level) {
     }
   }
   return rows.map(r => r.join(''));
+}
+
+// Little envelope (new-message icon), same 14x9 footprint as the signal bars.
+export function envelope() {
+  return ['..............', '..............', '.############.', '.##........##.', '.#.#......#.#.', '.#..##..##..#.', '.#....##....#.', '.############.', '..............'];
 }
 
 // Battery outline with `level` (0-4) segments.

@@ -41,6 +41,7 @@
         <i id="st-battery" class="spr"></i>
       </div>
       <div class="screens">
+        <canvas id="cameo" class="cameo" aria-hidden="true"></canvas>
 
         <!-- Title / boot -->
         <section id="title" class="screen boot" data-title="" data-soft-left="Start" data-soft-right="">
@@ -192,6 +193,7 @@
               <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
             <label class="item check"><input id="backing" type="checkbox"> Backing pulse</label>
             <label class="item check"><input id="pref-preview" type="checkbox"> Song preview</label>
+            <label class="item check"><input id="pref-gags" type="checkbox"> Idle animations</label>
             <button id="btn-calibrate" class="menu-only">Latency: <b id="menu-offset">0 ms</b></button>
           </div>
           <div class="lbl">Controller</div>
@@ -295,6 +297,13 @@
             <button id="calib-reset">Reset</button>
           </div>
         </section>
+
+        <!-- Easter-egg overlay (IMEI panel, fake memory wipe): decorative, never focusable -->
+        <div id="gag" class="gag" hidden aria-hidden="true">
+          <div id="gag-title" class="gag-title"></div>
+          <div id="gag-text" class="gag-text"></div>
+          <div id="gag-bar" class="gag-bar"></div>
+        </div>
 
       </div>
       <div class="softbar">
