@@ -132,6 +132,7 @@ textarea::placeholder { color: var(--ink-dim); }
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .sel-head .arrow { font-size: var(--fs); }
+.sel-hint { color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .seg { display: flex; gap: 2px; }
 .seg button { background: none; border: var(--u) solid transparent; padding: 1px 6px; cursor: pointer; min-height: 0; }
 .seg button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }

@@ -53,3 +53,8 @@ A disconnect during play pauses the game. Notes: controllers appear to the brows
 
 ## Tutorial
 Shown automatically the first time you start the game (skipped for players who already picked a song). Four short lessons teach taps, timing, holds and combo. Each lesson opens with a text card that waits for you to confirm, shows "Lesson n of N" progress, and only unlocks the next lesson once you meet its goal (no misses, plus an accuracy target on some). Replay it from Settings → Replay tutorial.
+
+## Song select hints
+The song list shows each song's note count for the selected difficulty, and a hint line under it lists
+the navigation keys (◄► difficulty, D/F category, J/K sort). Once a controller is used, the hint line and
+the difficulty arrows switch to the controller buttons (LB/RB, RT, LT); keyboard or mouse input switches them back.

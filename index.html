@@ -23,12 +23,9 @@
     </div>
     <div class="lg-menu">
     <b>Keys</b>
-    <div><kbd>↑</kbd><kbd>↓</kbd> move</div>
-    <div><kbd>←</kbd><kbd>→</kbd> difficulty, sliders</div>
+    <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move, adjust</div>
     <div><kbd>Enter</kbd> select</div>
     <div><kbd>O</kbd> options</div>
-    <div><kbd>D</kbd><kbd>F</kbd> category</div>
-    <div><kbd>J</kbd><kbd>K</kbd> sort</div>
     <div><kbd>Esc</kbd> back · pause</div>
     <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> play (in song)</div>
     <div><kbd>R</kbd> restart</div>
@@ -57,17 +54,18 @@
         <!-- Song select: "Ringing tones" -->
         <section id="select" class="screen" data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
           <div class="sel-head">
-            <span class="arrow" aria-hidden="true">◄</span>
+            <span class="arrow" id="sel-arrow-l" aria-hidden="true">◄</span>
             <div class="seg" id="diff-seg" role="group" aria-label="Difficulty">
               <button data-diff="easy" tabindex="-1">Easy</button>
               <button data-diff="normal" tabindex="-1">Normal</button>
               <button data-diff="hard" tabindex="-1">Hard</button>
             </div>
-            <span class="arrow" aria-hidden="true">►</span>
+            <span class="arrow" id="sel-arrow-r" aria-hidden="true">►</span>
           </div>
           <div id="sel-sub" class="sel-sub"></div>
           <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
           <div id="sel-info" class="sel-info" aria-live="polite"></div>
+          <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
         </section>
 
         <!-- Options for the selected song -->

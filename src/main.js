@@ -44,7 +44,7 @@ game.fx = {
   judge: (lane, j) => { renderer.fx.judge(lane, j); recent[recentN++ % recent.length] = QUALITY[j]; },
 };
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
-input.onPress = (lane, t) => { lastDevice = 'kbd'; game.press(lane, t); };
+input.onPress = (lane, t) => { setDevice('kbd'); game.press(lane, t); };
 input.onRelease = (lane, t) => game.release(lane, t);
 const calibration = new Calibration(synth);
 const scores = createScores();
@@ -254,6 +254,7 @@ function markSelected() {
 }
 
 function renderDetail() {
+  selectHints();
   const e = selectedEntry();
   if (!e) return;
   const d = settings.difficulty;
@@ -271,7 +272,7 @@ function renderDetail() {
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${ratingOf(e, d).toFixed(1)}</b>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
-    `<div>${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
+    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   const top = $('d-top');
   top.textContent = '';
   for (const r of (rec ? rec.top : [])) {
@@ -971,8 +972,25 @@ function slotsFor(index) {
   for (let s = 0; s < 4; s++) if (settings.padBindings[s].includes(index)) out.push(s);
   return out;
 }
-function usePad() { lastDevice = 'pad'; document.body.classList.add('using-pad'); }
-function useMouse() { document.body.classList.remove('using-pad'); }
+// Switch the active input device; device-dependent labels refresh only on change.
+function setDevice(d) {
+  document.body.classList.toggle('using-pad', d === 'pad');
+  if (lastDevice === d) return;
+  lastDevice = d;
+  selectHints();
+}
+function usePad() { setDevice('pad'); }
+function useMouse() { setDevice('kbd'); }
+
+function selectHints() {
+  const pad = lastDevice === 'pad';
+  const bn = buttonName;
+  $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
+  $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
+  $('sel-hint').textContent = pad
+    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Diff · ${bn(BTN.RT)} Cat · ${bn(BTN.LT)} Sort`
+    : '◄► Diff · D/F Cat · J/K Sort';
+}
 
 pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
 pad.onDisconnect = () => {
@@ -1333,7 +1351,7 @@ function wire() {
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', layout);
 
-  window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') { useMouse(); lastDevice = 'kbd'; } });
+  window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
   window.addEventListener('keydown', onKey);
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
   const wake = () => { if (synth.ctx && synth.ctx.state === 'suspended' && game.state !== 'paused') synth.ctx.resume(); };
@@ -1366,6 +1384,7 @@ function wire() {
 
 function onKey(e) {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  setDevice('kbd');
   const tag = e.target.tagName;
   const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text');
   if (state === 'title') {
@@ -1437,7 +1456,7 @@ function onKey(e) {
     const range = tag === 'INPUT' && e.target.type === 'range';
     if (range && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; // native slider handling
     e.preventDefault();
-    lastDevice = 'kbd';
+    setDevice('kbd');
     if (!(state === 'composer' && !csMenu)) synth.keyClick();
     navigate(dirs[e.code]);
   }
