@@ -2,30 +2,30 @@
   <!-- Ringbeat phone, front. The LCD window (56,98 328x388) and the key hit-areas are DOM (index.html). -->
   <defs>
     <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#141921"/>
-      <stop offset=".12" stop-color="#2b3342"/>
-      <stop offset=".5" stop-color="#323b4b"/>
-      <stop offset=".88" stop-color="#29313f"/>
-      <stop offset="1" stop-color="#12171e"/>
+      <stop offset="0" stop-color="#1a202b"/>
+      <stop offset=".1" stop-color="#2d3547"/>
+      <stop offset=".5" stop-color="#2f384a"/>
+      <stop offset=".9" stop-color="#283042"/>
+      <stop offset="1" stop-color="#171c26"/>
     </linearGradient>
     <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3b4557"/>
-      <stop offset=".45" stop-color="#2b3341"/>
-      <stop offset="1" stop-color="#242b37"/>
+      <stop offset="0" stop-color="#9a978e"/>
+      <stop offset=".5" stop-color="#85837b"/>
+      <stop offset="1" stop-color="#6f6d66"/>
     </linearGradient>
     <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8a93a3"/>
-      <stop offset=".5" stop-color="#4a5262"/>
-      <stop offset="1" stop-color="#9aa3b2"/>
+      <stop offset="0" stop-color="#b3b1a8"/>
+      <stop offset=".5" stop-color="#7a7870"/>
+      <stop offset="1" stop-color="#b3b1a8"/>
     </linearGradient>
     <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#1c222c"/>
       <stop offset="1" stop-color="#10141a"/>
     </linearGradient>
     <linearGradient id="key" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#e3e7ec"/>
-      <stop offset=".55" stop-color="#b3bac4"/>
-      <stop offset="1" stop-color="#7f8793"/>
+      <stop offset="0" stop-color="#d9d8d2"/>
+      <stop offset=".55" stop-color="#b9b8b1"/>
+      <stop offset="1" stop-color="#8f8e87"/>
     </linearGradient>
     <linearGradient id="keyHi" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fff" stop-opacity=".75"/>
@@ -43,37 +43,31 @@
     <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".55"/>
     </filter>
-    <path id="shell" d="M44 104 C44 40 124 10 220 10 C316 10 396 40 396 104 L400 480 C401 520 386 540 386 576
-      C386 616 424 668 424 764 C424 836 336 872 220 872 C104 872 16 836 16 764 C16 668 54 616 54 576
-      C54 540 39 520 40 480 Z"/>
-    <path id="plate" d="M60 110 C60 56 132 28 220 28 C308 28 380 56 380 110 L384 480 C385 516 370 538 370 576
-      C370 618 406 668 406 762 C406 822 324 856 220 856 C116 856 34 822 34 762 C34 668 70 618 70 576
-      C70 538 55 516 56 480 Z"/>
-    <g id="oval"><ellipse cx="0" cy="0" rx="48" ry="24" fill="url(#key)"/>
+    <path id="shell" d="M92 8 L348 8 C380 8 404 30 408 70 C412 120 414 300 414 520
+      C414 600 420 700 408 780 C400 840 370 872 320 872 L120 872 C70 872 40 840 32 780
+      C20 700 26 600 26 520 C26 300 28 120 32 70 C36 30 60 8 92 8 Z"/>
+    <path id="plate" d="M36 100 Q36 76 60 76 H380 Q404 76 404 100 V470
+      C404 560 388 598 340 598 L100 598 C52 598 36 560 36 470 Z"/>
+    <g id="oval"><ellipse cx="0" cy="1" rx="52" ry="28" fill="#161b25"/><ellipse cx="0" cy="0" rx="48" ry="24" fill="url(#key)"/>
       <ellipse cx="0" cy="-7" rx="37" ry="12" fill="url(#keyHi)"/></g>
   </defs>
 
   <use href="#shell" fill="url(#body)"/>
   <use href="#shell" fill="#fff" filter="url(#grain)"/>
-  <use href="#plate" fill="url(#face)" stroke="url(#rim)" stroke-width="2.5"/>
+  <use href="#plate" fill="url(#face)" stroke="url(#rim)" stroke-width="2"/>
   <use href="#plate" fill="#fff" filter="url(#grain)"/>
 
-  <!-- earpiece -->
+  <!-- earpiece: vertical slot column -->
   <g fill="url(#hole)">
-    <circle cx="170" cy="46" r="5"/><circle cx="195" cy="46" r="5"/><circle cx="220" cy="46" r="5"/>
-    <circle cx="245" cy="46" r="5"/><circle cx="270" cy="46" r="5"/>
-    <circle cx="182" cy="66" r="5"/><circle cx="207" cy="66" r="5"/><circle cx="232" cy="66" r="5"/>
-    <circle cx="257" cy="66" r="5"/>
+    <rect x="210" y="14" width="20" height="5" rx="2.5"/><rect x="210" y="23" width="20" height="5" rx="2.5"/><rect x="210" y="32" width="20" height="5" rx="2.5"/>
   </g>
 
+  <!-- badge -->
+  <rect x="176" y="46" width="88" height="22" rx="4" fill="#1b212c" stroke="#9a978e" stroke-width="1.5"/>
+  <text x="220" y="62" text-anchor="middle" font-family="Verdana, 'DejaVu Sans', sans-serif" font-weight="bold" font-size="13" fill="#d9d8d2" letter-spacing="1">RINGBEAT</text>
   <!-- display bezel + window well -->
-  <rect x="44" y="86" width="352" height="412" rx="40" fill="url(#bezel)" stroke="#4d5667" stroke-width="2"/>
-  <rect x="54" y="96" width="332" height="392" rx="22" fill="#0a0d11"/>
-
-  <!-- navigation cluster wells -->
-  <path d="M54 518 C76 498 128 498 150 512 L142 594 C112 600 80 594 62 582 Z" fill="#12161d" opacity=".9"/>
-  <path d="M386 518 C364 498 312 498 290 512 L298 594 C328 600 360 594 378 582 Z" fill="#12161d" opacity=".9"/>
-  <ellipse cx="220" cy="534" rx="74" ry="33" fill="#12161d" opacity=".9"/>
+  <rect x="46" y="88" width="348" height="412" rx="24" fill="url(#bezel)" stroke="#55535c" stroke-width="2"/>
+  <rect x="54" y="96" width="332" height="392" rx="10" fill="#0a0d11"/>
 
   <!-- side keys + navi key -->
   <g filter="url(#drop)">
@@ -81,15 +75,15 @@
     <path d="M380 518 C360 503 314 503 296 514 L303 588 C330 594 356 589 372 577 Z" fill="url(#key)"/>
     <ellipse cx="220" cy="532" rx="64" ry="26" fill="url(#key)"/>
     <ellipse cx="220" cy="524" rx="52" ry="12" fill="url(#keyHi)"/>
-    <rect x="186" y="530" width="68" height="6" rx="3" fill="#2f7fd6"/>
-    <rect x="188" y="530" width="64" height="2" rx="1" fill="#9dd0ff" opacity=".8"/>
+    <rect x="186" y="530" width="68" height="6" rx="3" fill="#2fbf6a"/>
+    <rect x="188" y="530" width="64" height="2" rx="1" fill="#b9ffd6" opacity=".7"/>
   </g>
   <!-- call / end glyphs -->
-  <path d="M92 534 c-4 10 2 24 14 30 l5 -6 -7 -7 -4 3 c-5 -4 -7 -10 -6 -15 l5 -1 -1 -9 Z" fill="#2c3a2a"/>
-  <path d="M348 534 c4 10 -2 24 -14 30 l-5 -6 7 -7 4 3 c5 -4 7 -10 6 -15 l-5 -1 1 -9 Z" fill="#5a2a2a"/>
+  <path d="M92 534 c-4 10 2 24 14 30 l5 -6 -7 -7 -4 3 c-5 -4 -7 -10 -6 -15 l5 -1 -1 -9 Z" fill="#1f7a2e"/>
+  <path d="M348 534 c4 10 -2 24 -14 30 l-5 -6 7 -7 4 3 c5 -4 7 -10 6 -15 l-5 -1 1 -9 Z" fill="#1f7a2e"/>
 
   <!-- keypad -->
-  <g filter="url(#drop)" font-family="Verdana, 'DejaVu Sans', sans-serif" fill="#1f2633">
+  <g filter="url(#drop)" font-family="Verdana, 'DejaVu Sans', sans-serif" fill="#1f8a3a">
     <g transform="translate(112 640)"><use href="#oval"/><text x="-28" y="9" font-size="25" font-weight="bold">1</text><text x="-6" y="6" font-size="14">oo</text></g>
     <g transform="translate(220 634)"><use href="#oval"/><text x="-26" y="9" font-size="25" font-weight="bold">2</text><text x="-5" y="6" font-size="14">abc</text></g>
     <g transform="translate(328 640)"><use href="#oval"/><text x="-26" y="6" font-size="14">def</text><text x="10" y="9" font-size="25" font-weight="bold">3</text></g>
@@ -103,5 +97,5 @@
     <g transform="translate(220 808)"><use href="#oval"/><text x="-8" y="9" font-size="25" font-weight="bold">0</text></g>
     <g transform="translate(328 814)"><use href="#oval"/><text x="-10" y="9" font-size="25" font-weight="bold">#</text></g>
   </g>
-  <circle cx="220" cy="848" r="3" fill="url(#hole)"/>
+  <circle cx="206" cy="780" r="2.5" fill="url(#hole)"/><circle cx="234" cy="780" r="2.5" fill="url(#hole)"/>
 </svg>
