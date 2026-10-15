@@ -10,7 +10,8 @@ import { Input, KEY_LABELS, eventAudioTime } from './input.js';
 import { encodeSong, decodeSong } from './share.js';
 import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
-import { buildLibrary, customEntry, formatLength } from './library.js';
+import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
+import { SORTS, FILTERS, applyView, nextOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed } from './tutorial.js';
@@ -64,7 +65,7 @@ function toast(msg, ms = 2200) {
 }
 
 // ---- library & selection ----
-const builtins = buildLibrary();
+let builtins = buildLibrary(); // rebuilt once difficulty.json has loaded
 let custom = null;       // library entry for the user's custom song, or null
 let selectedId = '';
 
@@ -74,7 +75,9 @@ function setCustom(rtttl) {
 }
 const entries = () => (custom ? [...builtins, custom] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
-const selectedEntry = () => entryById(selectedId) || entries()[0];
+const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
+// Entries after the song-select sort/filter (for the current difficulty).
+const visible = () => applyView(entries(), settings.view, settings.difficulty, scores);
 
 // ---- preview (plays the song straight through, optionally cut at maxSec) ----
 let previewTimer = null, autoPreviewTimer = null;
@@ -111,12 +114,26 @@ function badgeHTML(run) {
   return run && run.ap ? ' <span class="badge ap">AP</span>' : run && run.fc ? ' <span class="badge">FC</span>' : '';
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
-const starsText = n => '★'.repeat(n) + '<span class="off">' + '★'.repeat(5 - n) + '</span>';
+// Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
+function starsText(rating) {
+  const pct = Math.max(0, Math.min(100, Math.round(rating * 5) * 2));
+  return `<span class="stars-bar" role="img" aria-label="${(rating / 2).toFixed(1)} of 5 stars">` +
+    `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
+}
 
 function renderList() {
   const box = $('song-list');
   box.textContent = '';
-  for (const e of entries()) {
+  const list = visible();
+  $('view-sort').textContent = 'Sort: ' + SORTS.find(x => x.id === settings.view.sort).label;
+  $('view-filter').textContent = 'Show: ' + FILTERS.find(x => x.id === settings.view.filter).label;
+  if (!list.length) {
+    const p = document.createElement('p');
+    p.className = 'hint empty';
+    p.textContent = 'No songs match this filter.';
+    box.appendChild(p);
+  }
+  for (const e of list) {
     const b = document.createElement('button');
     b.className = 'song-row';
     b.dataset.id = e.id;
@@ -127,6 +144,7 @@ function renderList() {
       `<img class="th" src="${coverURL(e.id)}" alt="">` +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="m">${esc(e.tag)}${e.tag ? ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)}</span>` +
+      `<span class="r" title="Difficulty ${ratingOf(e, settings.difficulty).toFixed(1)} / 10">${starsText(ratingOf(e, settings.difficulty))}</span>` +
       `<span class="b">${best ? `<span class="${gradeClass(best.grade)}">${esc(best.grade)}</span>${badgeHTML(best)}` : ''}</span>`;
     b.addEventListener('focus', () => selectSong(e.id, false));
     b.addEventListener('click', ev => {
@@ -149,7 +167,9 @@ function renderDetail() {
   $('d-cover').src = coverURL(e.id);
   $('d-title').textContent = e.title;
   $('d-meta').textContent = `${e.tag ? e.tag + ' · ' : ''}${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes`;
-  $('d-stars').innerHTML = starsText(e.stars[d]);
+  $('d-stars').innerHTML = starsText(ratingOf(e, d)) +
+    (e.rating[d] != null ? ` <span class="rating">${e.rating[d].toFixed(1)}/10</span>` : '') +
+    (e.tags[d] && e.tags[d].length ? ` <span class="hint">Tricky: ${esc(e.tags[d].join(', '))}</span>` : '');
   const rec = scores.get(e.id, d);
   $('d-best').innerHTML = rec
     ? `<b>${rec.best.score}</b> · <span class="${gradeClass(rec.best.grade)}">${esc(rec.best.grade)}</span> · ` +
@@ -162,7 +182,14 @@ function renderDetail() {
     li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
     top.appendChild(li);
   }
-  for (const b of $('diff-seg').children) b.classList.toggle('sel', b.dataset.diff === d);
+  for (const b of $('diff-seg').children) {
+    b.classList.toggle('sel', b.dataset.diff === d);
+    // FC/AP flag per difficulty for the selected song.
+    const r = scores.get(e.id, b.dataset.diff);
+    b.classList.toggle('has-ap', !!(r && r.ap));
+    b.classList.toggle('has-fc', !!(r && r.fc && !r.ap));
+    b.title = r && r.ap ? 'All Perfect' : r && r.fc ? 'Full Combo' : '';
+  }
 }
 
 function selectSong(id, scroll = true) {
@@ -186,6 +213,14 @@ function selectSong(id, scroll = true) {
 
 function setDifficulty(d) {
   settings.difficulty = d; save();
+  renderList();
+  renderDetail();
+}
+function setView(key, list) {
+  settings.view[key] = nextOf(list, settings.view[key]);
+  save();
+  const keep = selectedEntry();
+  if (keep && !visible().includes(keep)) selectedId = (visible()[0] || keep).id;
   renderList();
   renderDetail();
 }
@@ -414,7 +449,7 @@ game.onFinish = r => {
 };
 
 function nextSong() {
-  const list = entries();
+  const list = visible().length ? visible() : entries();
   const i = Math.max(0, list.findIndex(e => e.id === (run ? run.entry.id : selectedId)));
   const e = list[(i + 1) % list.length];
   selectedId = e.id;
@@ -612,6 +647,8 @@ function menuButton(index) {
     case BTN.LB: if (state === 'select') cycleDifficulty(-1); break;
     case BTN.RB: if (state === 'select') cycleDifficulty(1); break;
     case BTN.Y: if (state === 'select') setTrainingMode(!trainingMode); break;
+    case BTN.X: if (state === 'select') setView('filter', FILTERS); break;
+    case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
   }
 }
 pad.onNav = dir => {
@@ -662,6 +699,8 @@ function wire() {
   // title / select
   $('btn-start').onclick = startFromTitle;
   for (const b of $('diff-seg').children) b.onclick = () => setDifficulty(b.dataset.diff);
+  $('view-sort').onclick = () => setView('sort', SORTS);
+  $('view-filter').onclick = () => setView('filter', FILTERS);
   $('btn-play').onclick = playSelected;
   $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
   $('btn-preview').onclick = () => togglePreview(selectedEntry());
@@ -790,6 +829,12 @@ function frame() {
   if (state === 'countin' && t >= 0) state = 'playing';
   renderer.draw(game, t);
 }
+
+// Bot-measured difficulty (optional: falls back to the density heuristic if missing).
+try {
+  const r = await fetch(new URL('./difficulty.json', import.meta.url));
+  if (r.ok) { setMeasured(await r.json()); builtins = buildLibrary(); }
+} catch { /* offline / file missing */ }
 
 wire();
 requestAnimationFrame(frame);

@@ -151,3 +151,53 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 1 } }), true);
   assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 2 } }), false);
 });
+
+// ---- bots + list view ----
+import { runBot, LADDER, measureChart } from '../src/bot.js';
+import { applyView } from '../src/listview.js';
+
+const botChart = d => generateChart(parseRTTTL(SONGS.find(s => s.id === 'twinkle').rtttl), { difficulty: d });
+
+test('bot: deterministic per seed, perfect bot is AP', () => {
+  const c = botChart('normal');
+  const a = runBot(c, LADDER[2], 5), b = runBot(c, LADDER[2], 5);
+  assert.deepEqual(a, b);
+  const p = runBot(c, { sigma: 0 }, 1);
+  assert.equal(p.ap, true);
+});
+
+test('bot: higher skill never has lower FC rate on average', () => {
+  const m = measureChart(botChart('normal'), { runs: 20 });
+  assert.ok(m.fc.L6 >= m.fc.L1);
+  assert.ok(m.rating >= 1 && m.rating <= 10);
+});
+
+test('bot: a dead lane produces misses', () => {
+  const c = botChart('normal');
+  const r = runBot(c, { sigma: 0, laneMiss: { 0: 1 } }, 1);
+  const lane0 = c.notes.filter(n => n.lane === 0).length;
+  assert.ok(r.counts.miss >= lane0);
+});
+
+test('listview: filter and sort', () => {
+  const mk = (id, rating, bpm) => ({ id, title: id, bpm, stars: { normal: 1 }, rating: { normal: rating } });
+  const es = [mk('a', 5, 100), mk('b', 2, 140), mk('custom:x', 1, 90), mk('c', 8, 80)];
+  const sc = { get: (id) => id === 'a' ? { top: [{ fc: true }] } : id === 'b' ? { top: [{ fc: false }] } : null };
+  const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
+  assert.deepEqual(ids({}), ['a', 'b', 'c', 'custom:x']);
+  assert.deepEqual(ids({ sort: 'diff-desc' }), ['c', 'a', 'b', 'custom:x']);
+  assert.deepEqual(ids({ filter: 'unplayed' }), ['c', 'custom:x']);
+  assert.deepEqual(ids({ filter: 'nofc' }), ['b', 'c', 'custom:x']);
+});
+
+test('scores: fc/ap flags are sticky per difficulty', () => {
+  const m = new Map();
+  const st = { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) };
+  const s = createScores(st);
+  s.record('x', 'hard', { score: 100, fc: true, ap: false });
+  for (let i = 0; i < 6; i++) s.record('x', 'hard', { score: 1000 + i, fc: false });
+  assert.equal(s.get('x', 'hard').fc, true);
+  assert.equal(s.get('x', 'hard').ap, false);
+  assert.equal(createScores(st).get('x', 'hard').fc, true); // persisted
+  assert.equal(s.get('x', 'easy'), null);
+});

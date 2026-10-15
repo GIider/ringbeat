@@ -39,7 +39,11 @@ export function createScores(storage = browserStorage()) {
           for (const [diff, e] of Object.entries(diffs)) {
             const top = Array.isArray(e && e.top) ? e.top.map(cleanRun).filter(Boolean).slice(0, TOP_N) : [];
             if (!top.length) continue;
-            (data[id] ||= {})[diff] = { top, plays: isNum(e.plays) ? e.plays : top.length };
+            // fc/ap are sticky per song+difficulty (survive runs falling out of the top 5); migrate from top runs.
+            (data[id] ||= {})[diff] = {
+              top, plays: isNum(e.plays) ? e.plays : top.length,
+              fc: e.fc === true || top.some(r => r.fc), ap: e.ap === true || top.some(r => r.ap),
+            };
           }
         }
       }
@@ -49,18 +53,20 @@ export function createScores(storage = browserStorage()) {
   const persist = () => { try { storage.setItem(SCORES_KEY, JSON.stringify(data)); } catch { /* ignore */ } };
 
   return {
-    // -> { best, top, plays } or null
+    // -> { best, top, plays, fc, ap } or null (fc/ap: ever achieved on this difficulty)
     get(songId, diff) {
       const e = load()[songId] && load()[songId][diff];
-      return e ? { best: e.top[0], top: e.top.slice(), plays: e.plays } : null;
+      return e ? { best: e.top[0], top: e.top.slice(), plays: e.plays, fc: e.fc, ap: e.ap } : null;
     },
     // Records a finished run. -> { rank (1-based or null if outside top N), isNewBest }
     record(songId, diff, result) {
       const run = cleanRun({ ...result, date: result.date ?? Date.now() });
       if (!run) return { rank: null, isNewBest: false };
       const d = load();
-      const e = ((d[songId] ||= {})[diff] ||= { top: [], plays: 0 });
+      const e = ((d[songId] ||= {})[diff] ||= { top: [], plays: 0, fc: false, ap: false });
       e.plays++;
+      if (run.fc) e.fc = true;
+      if (run.ap) e.ap = true;
       // Stable: a tie ranks below the older run.
       let idx = e.top.findIndex(r => run.score > r.score);
       if (idx < 0) idx = e.top.length;

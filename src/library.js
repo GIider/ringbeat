@@ -5,6 +5,12 @@ import { SONGS } from './songs.js';
 
 export const DIFFICULTIES = ['easy', 'normal', 'hard'];
 
+// Bot-measured difficulty ({songId: {diff: {rating, tags}}}, from scripts/bench.mjs); set once at startup.
+let measured = {};
+export function setMeasured(data) { measured = data && typeof data === 'object' ? data : {}; }
+// Stars 1..5 from a bot rating 1..10.
+const starsFromRating = r => Math.max(1, Math.min(5, Math.round(r / 1.4)));
+
 // Difficulty rating 1..5 from the chart's note density (notes per second).
 export function starsFor(chart) {
   const density = chart.notes.length / Math.max(1, chart.length);
@@ -22,12 +28,16 @@ export function hashString(s) {
 export function makeEntry({ id, title, tag, rtttl }) {
   let song;
   try { song = parseRTTTL(rtttl); } catch { return null; }
-  const stars = {}, notes = {};
+  const stars = {}, notes = {}, rating = {}, tags = {};
   let length = 0;
   for (const d of DIFFICULTIES) {
     try {
       const c = generateChart(song, { difficulty: d });
-      stars[d] = starsFor(c);
+      const m = measured[id] && measured[id][d];
+      if (m && typeof m.rating === 'number') {
+        rating[d] = m.rating; tags[d] = Array.isArray(m.tags) ? m.tags : [];
+        stars[d] = starsFromRating(m.rating);
+      } else stars[d] = starsFor(c);
       notes[d] = c.notes.length;
       length = Math.max(length, c.length);
     } catch { stars[d] = 0; notes[d] = 0; }
@@ -36,7 +46,7 @@ export function makeEntry({ id, title, tag, rtttl }) {
   return {
     id, rtttl, tag: tag || '', song,
     title: title || song.name || 'Untitled',
-    bpm: song.bpm, length, stars, notes,
+    bpm: song.bpm, length, stars, notes, rating, tags,
   };
 }
 

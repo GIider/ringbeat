@@ -17,6 +17,10 @@ export const settings = {
   preview: raw.preview !== false,
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
+  view: {
+    sort: ['default', 'diff-asc', 'diff-desc', 'title', 'bpm'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'default',
+    filter: ['all', 'unplayed', 'nofc'].includes(raw.view && raw.view.filter) ? raw.view.filter : 'all',
+  },
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',
   // Existing players (who already picked a song) are not shown the tutorial.
   tutorialDone: raw.tutorialDone === true || (typeof raw.lastSongId === 'string' && raw.lastSongId !== ''),

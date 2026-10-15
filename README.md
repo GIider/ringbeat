@@ -10,6 +10,7 @@ ES modules need an HTTP server (opening `index.html` via `file://` won't work). 
 ```
 npm start            # http://localhost:8000 (also prints LAN URLs)
 npm start -- 9000    # custom port (or PORT=9000 npm start)
+npm run bench        # re-measure song difficulty with bots -> src/difficulty.json
 ```
 
 Tests: `npm test` (node), plus `tests/rtttl.test.html` and `tests/smoke.html` in a browser (title shows PASS/FAIL).
