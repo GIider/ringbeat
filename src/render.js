@@ -62,7 +62,6 @@ export class Renderer {
     this.title = '';
     this.modLabel = '';        // active mod chips, shown on the HUD while no FC/AP tag is up
     this.hidden = false;       // Hidden mod: notes vanish before they reach the hit line
-    this.resumeCount = 0;
     this.w = 0; this.h = 0;
     this.reduced = typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
@@ -599,12 +598,6 @@ export class Renderer {
       if (best < 0) break;
       used |= 1 << best;
       this._box(c, bn[best].text, bx, Math.round(H * 0.4) - slot++ * (CAP + 8));
-    }
-
-    // Resume countdown (song time is frozen while this shows)
-    if (this.resumeCount > 0) {
-      this._box(c, 'GET READY', bx, Math.round(H * 0.3));
-      this._box(c, String(this.resumeCount), bx, Math.round(H * 0.45), 3);
     }
   }
 }

@@ -1157,7 +1157,7 @@ function startRun(r) {
   setState('countin', null);
   return true;
 }
-function restartRun() { abortRun('restart'); resumeEnd = 0; renderer.resumeCount = 0; if (run) startRun(run); }
+function restartRun() { abortRun('restart'); resumeEnd = 0; setResumeCount(0); if (run) startRun(run); }
 
 function playSelected() {
   const e = selectedEntry();
@@ -1167,7 +1167,7 @@ function playSelected() {
 function leaveToSelect() {
   abortRun('quit');
   resumeEnd = 0;
-  renderer.resumeCount = 0;
+  setResumeCount(0);
   game.stop();
   input.reset();
   leaveRun();
@@ -1182,7 +1182,7 @@ function leaveRun() {
 function pauseGame() {
   if (state !== 'countin' && state !== 'playing' && state !== 'resuming') return;
   resumeEnd = 0;
-  renderer.resumeCount = 0;
+  setResumeCount(0);
   game.pause();
   commitTime(); // bank the time so far (the tab may be closed while paused)
   input.reset();
@@ -1196,15 +1196,22 @@ function pauseGame() {
 }
 // Resume shows a 3-2-1 countdown first. The audio context stays suspended meanwhile, so song time is frozen.
 let resumeEnd = 0;
+let resumeShown = 0;
+function setResumeCount(n) {
+  if (n === resumeShown) return;
+  resumeShown = n;
+  $('np-count').hidden = n <= 0;
+  if (n > 0) $('np-count-n').textContent = String(n);
+}
 function resumeGame() {
   if (state !== 'paused') return;
   resumeEnd = performance.now() + 3000;
-  renderer.resumeCount = 3;
+  setResumeCount(3);
   setState('resuming', null);
 }
 async function finishResume() {
   resumeEnd = 0;
-  renderer.resumeCount = 0;
+  setResumeCount(0);
   await game.resume();
   if (state !== 'resuming') return;
   setState(game.songTime() < 0 ? 'countin' : 'playing', null);
@@ -2258,7 +2265,7 @@ function frame() {
   if (state === 'resuming') {
     const left = resumeEnd - performance.now();
     if (resumeEnd && left <= 0) finishResume();
-    else if (resumeEnd) renderer.resumeCount = Math.ceil(left / 1000);
+    else if (resumeEnd) setResumeCount(Math.ceil(left / 1000));
   }
   perf.begin('update');
   const t = game.songTime(); // one clock read per frame: update and draw see the same time

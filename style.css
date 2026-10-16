@@ -267,6 +267,10 @@ textarea::placeholder { color: var(--ink-dim); }
 .np { padding: 0; overflow: hidden; }
 .np-caption { position: absolute; left: 6px; right: 6px; top: calc(var(--u) * 21); z-index: 2; text-align: left; background: var(--lcd);
   border: var(--u) solid var(--ink); padding: 4px 6px; pointer-events: none; }
+.np-count { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column;
+  align-items: center; gap: calc(var(--u) * 2); background: var(--lcd); border: var(--u) solid var(--ink); padding: calc(var(--u) * 3) calc(var(--u) * 6);
+  pointer-events: none; white-space: nowrap; font-weight: 700; -webkit-font-smoothing: auto; font-smooth: auto; }
+.np-count-n { font-size: calc(var(--u) * 24); line-height: 1; }
 .np-caption b { display: block; }
 .np-caption .step { color: var(--ink-dim); margin-top: 4px; }
 

@@ -213,9 +213,7 @@ const cases = [
     for (const x of r.rings) { x.t = now; x.big = true; }
     for (const l of r.labels) { l.t = now; l.text = 'PERFECT'; }
     for (let i = 0; i < r.banners.length; i++) { r.banners[i].t = now - i * 0.1; r.banners[i].text = (i + 1) * 50 + ' COMBO'; }
-    r.resumeCount = 3;
     r.draw(rf.g, rf.t);
-    r.resumeCount = 0;
   }],
   ['render.text sprites cold (cache cleared)', () => { rf.r._sprites.clear(); rf.r.draw(rf.g, rf.t); }],
   ['render.text sprite churn (250 distinct strings)', () => {
