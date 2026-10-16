@@ -1,0 +1,133 @@
+[Docs](README.md) › Development
+
+# Development
+
+Ringbeat is vanilla ES modules served as-is: no bundler, no transpiler, no runtime dependencies. The only dev dependency
+is Playwright, for the browser tests and screenshots.
+
+## Setup
+
+```
+npm install                                   # also points git at .githooks/ (the `prepare` script)
+npx playwright install chromium               # once; add firefox webkit to run the smoke test on those engines
+npm start                                     # http://localhost:8000
+```
+
+Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html` via `file://` won't work.
+
+## npm scripts
+
+| Script | What it does |
+|---|---|
+| `npm start` | Dev server on port 8000 (see [Dev server](#dev-server)) |
+| `npm run dev` | Same server with live reload |
+| `npm test` | Node unit tests (`tests/*.test.mjs`), then the headless Chromium smoke test |
+| `npm run smoke` | Only the smoke test (`scripts/smoke.mjs` → `tests/smoke.html`) |
+| `npm run coverage` | Node unit tests with `--experimental-test-coverage` |
+| `npm run build` | Stage the runtime files into `dist/`, version-stamped (see [RELEASING.md](RELEASING.md#the-dist-build)) |
+| `npm run bench` | Re-measure every built-in song with the bot ladder → `src/difficulty.json` (`-- --runs N`, default 30; see [SONGS.md](SONGS.md#difficulty-ratings)) |
+| `npm run bench:tutorial` | Per tutorial lesson: play time, note density, and how bots of four skill levels fare (`-- --runs N`, default 200) |
+| `npm run perf` | Node micro-benchmarks (see [PERFORMANCE.md](PERFORMANCE.md)) |
+| `npm run perf:play` | Plays songs in headless Chromium and reports frame pacing |
+| `npm run perf:menus` | Drives the menus in headless Chromium and reports per-press cost |
+| `npm run screenshots` | README screenshots into the git-ignored `docs/screenshots/` (see [RELEASING.md](RELEASING.md#screenshots)) |
+| `npm run font` | Rebuild `assets/fonts/*.ttf` from `src/pixelfont.js` |
+| `prepare` | Runs on `npm install`: `git config core.hooksPath .githooks` |
+
+Not wired to npm: `node scripts/i18n-keys.mjs [--lang=de] [--all]` lists untranslated strings
+(see [TRANSLATIONS.md](TRANSLATIONS.md)), and `node scripts/version-lib.mjs` prints the version a build would get.
+
+## Dev server
+
+`scripts/serve.mjs` is a dependency-free static server.
+
+- Port: the first all-digit argument (`npm start -- 9000`), else `PORT`, else 8000.
+- Binds `0.0.0.0` and prints the LAN URLs, so you can open the game on a phone on the same network.
+- Sends `Cache-Control: no-store`, so a reload always gets fresh modules.
+- `--dev` (`npm run dev`) watches the project (ignoring `node_modules`, `.git`, `dist`) and injects a small
+  EventSource client into HTML pages that reloads the page shortly after any file changes.
+
+## Tests
+
+`npm test` runs both layers. CI additionally runs the smoke test in Firefox and WebKit and in WebKit with
+iPhone 13 touch emulation (see [RELEASING.md](RELEASING.md#ci)).
+
+**Node unit tests** (`node --test tests/*.test.mjs`) cover the logic modules with in-memory storage and fake
+audio/canvas:
+
+| File | Covers |
+|---|---|
+| `assets.test.mjs` | Glyph table and bold cut, glyphs for every song title, committed TTFs match the glyph table, sprites, cover art |
+| `audiostate.test.mjs` | AudioContext resume / interruption handling, Game pause and resume |
+| `calibration.test.mjs` | Latency calibration ticks, median, outliers |
+| `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
+| `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
+| `customrating.test.mjs` | Custom-song ratings: async measurement matches `difficulty.json`, cleaning, share encoding, storage |
+| `game.test.mjs` | Grades, combo multiplier, holds, pause/resume, judgement windows, rolls, the stray error tone |
+| `i18n.test.mjs` | Language detection, `t`/`tn`/`tm`/`fmt`, German coverage, stale entries, placeholders, glyphs |
+| `mods.test.mjs` | Speed, mirror, sudden death, judging, demo autoplay; scores keep their mods |
+| `modules.test.mjs` | My songs validation and storage, composer edits, bot weaknesses, list view, lane assignment, input clock, gamepad, cameo status, IMEI formatting |
+| `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
+| `settings.test.mjs` | Settings sanitising and persistence |
+| `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |
+| `docs.test.mjs` | Links between docs resolve; every source file, script and test is in [ARCHITECTURE.md](ARCHITECTURE.md); every npm script is in this file |
+
+**Browser tests:**
+
+- `scripts/smoke.mjs` starts the dev server on a random port and loads `tests/smoke.html`, which drives `index.html` in
+  an iframe through the real UI. It fails on any failed check or page error and prints `WARN` lines as GitHub warnings.
+  - `SMOKE_BROWSERS=chromium,firefox,webkit` picks the engines (default `chromium`; each needs `npx playwright install`).
+  - `SMOKE_DEVICE='iPhone 13'` applies a Playwright device profile (touch, viewport).
+- `tests/smoke.html` and `tests/rtttl.test.html` (parser and chart checks) also run by hand: start the dev server and
+  open them; the page title shows PASS or FAIL. `rtttl.test.html` is not run by any script.
+
+## Git hooks
+
+`npm install` enables `.githooks/`:
+
+| Hook | Runs |
+|---|---|
+| `pre-commit` | The node unit tests (quietly). If `src/pixelfont.js` or `scripts/build-font.mjs` is staged, also rebuilds the fonts and aborts if `assets/fonts` changed |
+| `pre-push` | `npm test` (including the Chromium smoke test) |
+| `post-merge` | `sync-deps`: `npm install` if `package-lock.json` changed |
+| `post-checkout` | `sync-deps`, on branch checkouts only |
+
+Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
+
+## Debug URLs and hooks
+
+| Hook | Effect |
+|---|---|
+| `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
+| `?perf` | Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) |
+| `?cameo=<any>` | Idle cameos every 2–4 s instead of every 45–150 s |
+| `?cameo=debug` | Adds a panel with a button per cameo plus stop, IMEI, wipe and Konami |
+| `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
+| `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, state}` for devtools and `tests/smoke.html` |
+| `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
+
+To start fresh, clear the `ringbeat.*` keys in `localStorage` (list in
+[ARCHITECTURE.md › Persistence](ARCHITECTURE.md#persistence)).
+
+## Editing the pixel font
+
+1. Edit the glyph bitmaps in `src/pixelfont.js` (the bold cut is derived; umlauts and other raised glyphs are listed in
+   `RAISED`).
+2. Run `npm run font` to rebuild `assets/fonts/rb-pixel.ttf` and `rb-pixel-bold.ttf` (`scripts/build-font.mjs` has its
+   own small TrueType writer).
+3. Commit the `.js` and both `.ttf` files together; `pre-commit` and `assets.test.mjs` check they match.
+
+Any new character in UI text, a translation, a song title or a changelog message needs a glyph; the tests list the
+missing ones.
+
+## Conventions
+
+- Logic modules are DOM-free and take their storage as a parameter (`createScores(storage)`, `createStats(storage)`,
+  `createMySongs(storage)`), so node tests run them against an in-memory map. Every storage read is guarded and
+  validated.
+- `src/main.js` holds the DOM wiring; keep rules and maths in the small modules where they can be tested.
+- The English source text is the translation key; wrap new UI strings as described in [TRANSLATIONS.md](TRANSLATIONS.md).
+- Visual assets are made in the repo (no external fonts or images); see the [project README](../README.md#assets).
+- `src/difficulty.json` and `assets/fonts/*.ttf` are generated; regenerate them instead of editing them by hand.
+
+See also: [ARCHITECTURE.md](ARCHITECTURE.md) · [SONGS.md](SONGS.md) · [RELEASING.md](RELEASING.md) · [PERFORMANCE.md](PERFORMANCE.md)

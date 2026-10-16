@@ -1,7 +1,8 @@
 // Bootstrap, screen state machine, wiring.
-// States: title -> menu -> (select | mysongs | stats | inbox -> msgload -> message | profile | settings <-> calibration)
-//   select <-> (diffpick <-> mods) -> countin -> playing <-> paused -> results -> select
-// Every menu is a <section> inside the phone's LCD; during play the phone moves aside and shows "now playing".
+// States: title -> menu -> (select | mysongs -> songmenu / composer / custom | stats | inbox -> msgload -> message | profile
+//   | settings <-> calibration); first visit to Tones: tutprompt -> tutorial
+//   select <-> (diffpick <-> mods) -> countin -> playing <-> paused (-> resuming) -> results -> select
+// Every screen is a <section> inside the phone's LCD; during play the #nowplaying screen holds the highway canvas.
 
 import { generateChart } from './chart.js';
 import * as mods from './mods.js';
@@ -588,7 +589,7 @@ function menuAnim(now) {
   paintMenuIcon();
 }
 
-// ---- stats: lifetime numbers on four pages (◄►) ----
+// ---- stats: lifetime numbers on five pages (◄►) ----
 const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes'];
 const STAT_DIFFS = ['all', 'normal', 'hard'];
 let statPage = 0, statDiff = 'all', statTimer = 0;
@@ -1992,7 +1993,7 @@ function wire() {
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
-  $('boot-build').textContent = buildLine(BUILD, false); // number is already the patch in VERSION
+  $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the CI run number is stamped but not shown
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });
@@ -2135,7 +2136,7 @@ function onKey(e) {
   }
 }
 
-// ---- phone layout: where the phone, the side phone and the highway sit in the current mode ----
+// ---- phone layout: body[data-mode], compact mode, LCD font/pixel scale and the key legend ----
 let mode = '';
 function setMode() {
   const over = (game.active || demoRun) && (state === 'paused' || (state === 'settings' && settingsFrom === 'paused'));
@@ -2197,7 +2198,7 @@ function updatePhones(g, t) {
   setSprite($('st-battery'), battery(bat), 2);
 }
 
-// ---- dev-only screenshot states: ?demo=play|pause|select|info|results|fc|settings ----
+// ---- dev-only screenshot states: ?demo=menu|select|info|play|pause|results|fc|settings|stats|message ----
 let demoRun = null, demoLabels = [];
 const DEMO_SEED = 11;
 const DEMO_JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };

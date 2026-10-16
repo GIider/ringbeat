@@ -1,5 +1,5 @@
 // Plays real songs in headless Chromium with a keyboard bot and reports frame pacing from the in-page profiler.
-// Usage: npm run perf:play [-- --songs 0,6,12 --diff hard --seconds 30 --max-long 2 --max-p99 20]
+// Usage: npm run perf:play [-- --songs 0,6,12 --diff hard --seconds 30 --max-long 2 --max-p99 25]
 // Needs the Playwright browser (`npx playwright install chromium`). Headless software rendering is slower than a real
 // GPU, so use it for before/after comparisons on one machine, not as an absolute fps number.
 import { chromium } from 'playwright';
