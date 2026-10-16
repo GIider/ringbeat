@@ -163,7 +163,7 @@ test('changelog: one unread message after an update; reading marks it', () => {
 
 const rectangular = rows => rows.every(r => r.length === rows[0].length && /^[#.]+$/.test(r));
 test('menu icons: every item animates, frames are equal-size 1-bit sprites', () => {
-  assert.deepEqual(MENU_IDS, ['tones', 'mysongs', 'stats', 'messages', 'profile', 'settings']);
+  assert.deepEqual(MENU_IDS, ['tones', 'mysongs', 'stats', 'messages', 'profile', 'settings', 'admin']);
   for (const id of MENU_IDS) {
     for (const opts of [{}, { unread: true }]) {
       const frames = menuFrames(id, opts);

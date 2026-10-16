@@ -19,7 +19,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
                ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
                ├─ 4 Messages ─▶ inbox ─▶ opening… ─▶ message
                ├─ 5 Profile (optional online profile)
-               └─ 6 Settings ─▶ calibration
+               ├─ 6 Settings ─▶ calibration
+               └─ 7 Admin (only with ?dev; needs the admin token)
 ```
 
 | Screen | Purpose |
@@ -38,6 +39,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Stats | Five pages (←→, LB/RB, swipe). See [Stats](#stats). |
 | Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one plays a short "Opening message" envelope animation (any key skips it) and an SMS tone, then shows the SMS view (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
 | Profile | The player card (name, since, playtime) and the optional online profile. See [Profile](#profile). |
+| Admin | Dev mode only (`?dev`). Unlock with the `ADMIN_TOKEN` (kept in memory, never stored), then: *Players* (search by name; open one to blacklist/whitelist, hide, delete, or browse their runs), *Flagged runs* (approve, hide or delete), *Maintenance* (table counts, purge expired sessions and sign-in rows, rebuild boards, verify pending runs) and *Log* (the audit trail). Deletes need a second press. Routes: [CLOUD.md](CLOUD.md#leaderboards). |
 | Settings | Covered in the [Settings](#settings) section below. |
 | Calibration | Tap along with 12 ticks at 90 BPM; the median offset becomes the latency setting (±5 ms nudge, *Again*, *Reset*, clamped to ±500 ms). Any key or button counts as a tap. |
 

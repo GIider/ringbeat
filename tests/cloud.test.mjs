@@ -13,6 +13,7 @@ import { SONGS } from '../src/songs.js';
 import { hashString } from '../src/library.js';
 import * as mods from '../src/mods.js';
 import { createCloud } from '../src/cloud.js';
+import { createAdmin, AdminError, playerLine, runLine, logLine } from '../src/admin.js';
 import { createNetDebug, describe, line } from '../src/netdebug.js';
 import { createScores } from '../src/scores.js';
 import { createStats } from '../src/stats.js';
@@ -856,4 +857,103 @@ test('netState: send for a round with something to upload, recv for a pull only,
   a.cloud.queueRun('s', 'normal', result(1, 5));
   await a.cloud.submit();
   assert.deepEqual(nets.slice(0, 2), ['send', 'idle']);
+});
+
+test('admin: players, runs, ban/unban, deletes, unflag, stats, purge and the audit log', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const admin = { Authorization: 'Bearer admin-secret' };
+  const get = async path => (await srv.call(path, { headers: admin })).json();
+  const post = (path, body) => srv.call(path, { method: 'POST', headers: admin, body: JSON.stringify(body) });
+  const ann = await signedIn(srv, 1, 'Ann'), bob = await signedIn(srv, 2, 'Bob');
+  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'a1' }]);
+  await bob.post([{ ...played('ode', 'normal', LADDER[2]).run, clientRunId: 'b1' }]);
+
+  // Every new route needs the token.
+  for (const p of ['/admin/players', '/admin/runs', '/admin/stats', '/admin/log']) assert.equal((await srv.call(p)).status, 404, p);
+  assert.equal((await srv.call('/admin/ban', { method: 'POST', body: '{}' })).status, 404);
+
+  assert.deepEqual((await get('/admin/players?q=an')).players.map(p => [p.name, p.runs, p.banned]), [['Ann', 1, 0]]);
+  assert.equal((await get('/admin/players')).players.length, 2);
+  assert.equal((await get('/admin/players?q=%25')).players.length, 0, 'wildcards are literal');
+  assert.equal((await get('/admin/players?offset=1')).players.length, 1);
+  const annRuns = (await get('/admin/runs?user=' + ann.id)).runs;
+  assert.equal(annRuns.length, 1);
+
+  // Ban: off the boards, sessions gone, sync and sign-in refused; unban lifts it.
+  assert.equal((await post('/admin/ban', { userId: 'nobody' })).status, 404);
+  assert.equal((await post('/admin/ban', { userId: ann.id })).status, 204);
+  assert.deepEqual((await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name), ['Bob']);
+  assert.equal((await srv.call('/me', { headers: ann.h })).status, 401, 'session dropped');
+  const code = (await githubSignIn(srv, 1, { login: 'Ann', name: 'Ann' })).slice('#login='.length);
+  assert.equal((await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) })).status, 403);
+  assert.equal((await post('/admin/ban', { userId: ann.id, banned: false })).status, 204);
+  const again = await signedIn(srv, 1, 'Ann');
+  assert.equal((await srv.call('/me', { headers: again.h })).status, 200);
+  assert.equal((await boardOf(srv, 'ode', 'normal')).runs.length, 2);
+  // A session that outlives the ban (made before it) is refused with 403 too.
+  srv.env.DB.db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(bob.id);
+  assert.equal((await srv.call('/me', { headers: bob.h })).status, 403);
+  srv.env.DB.db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(bob.id);
+
+  // Unflag and delete a run.
+  const flagged = srv.env.DB.db.prepare("UPDATE runs SET flags = 'flat' WHERE client_run_id = 'b1'").run();
+  assert.equal(Number(flagged.changes), 1);
+  const bobRun = srv.env.DB.db.prepare("SELECT id FROM runs WHERE client_run_id = 'b1'").get().id;
+  assert.equal((await get('/admin/flagged')).runs.length, 1);
+  assert.equal((await post('/admin/unflag', { runId: bobRun })).status, 204);
+  assert.equal((await get('/admin/flagged')).runs.length, 0);
+  assert.equal((await post('/admin/run/delete', { runId: 'x' })).status, 400);
+  assert.equal((await post('/admin/run/delete', { runId: bobRun })).status, 204);
+  assert.equal((await post('/admin/run/delete', { runId: bobRun })).status, 404);
+  assert.deepEqual((await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name), ['Ann']);
+
+  // Stats and purge.
+  let st = await get('/admin/stats');
+  assert.equal(st.counts.users, 2);
+  assert.equal((await post('/admin/purge', { what: 'nope' })).status, 400);
+  srv.tick(400 * 24 * 3600 * 1000);
+  st = await get('/admin/stats');
+  assert.ok(st.expired >= 2, 'both sessions expired');
+  assert.ok((await (await post('/admin/purge', { what: 'expired' })).json()).removed >= 2);
+  assert.equal((await post('/admin/rebuild', {})).status, 204);
+
+  // Delete a player: everything of theirs goes.
+  assert.equal((await post('/admin/player/delete', { userId: 'nobody' })).status, 404);
+  assert.equal((await post('/admin/player/delete', { userId: ann.id })).status, 204);
+  for (const t of ['runs', 'sessions', 'identities']) assert.equal(srv.env.DB.db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE user_id = ?`).get(ann.id).n, 0, t);
+  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM users WHERE id = ?').get(ann.id).n, 0);
+
+  const log = (await get('/admin/log')).log.map(l => l.action);
+  for (const a of ['ban', 'unban', 'unflag', 'delete run', 'purge expired', 'rebuild boards', 'delete player']) assert.ok(log.includes(a), a);
+});
+
+test('admin client: a wrong token is refused and forgotten, the right one works and is never stored', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const calls = [];
+  const fetch = (url, init) => { calls.push(init); return srv.call(url.slice(API.length), init); };
+  const admin = createAdmin({ apiBase: API, fetch });
+  await assert.rejects(admin.unlock('nope'), e => e instanceof AdminError && e.status === 404);
+  assert.equal(admin.unlocked(), false);
+  await admin.unlock('  admin-secret ');
+  assert.equal((await admin.stats()).counts.users, 0);
+  assert.ok(admin.unlocked());
+  const ann = await signedIn(srv, 1, 'Ann');
+  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'a1' }]);
+  const [p] = await admin.players('ann');
+  assert.equal(playerLine(p), 'Ann · 1');
+  const [r] = await admin.runs(p.id);
+  assert.match(runLine({ ...r, name: 'Ann' }), /^Ann · ode N · \d+/);
+  await admin.ban(p.id, true);
+  assert.equal(playerLine((await admin.players('ann'))[0]), 'Ann [banned] · 1');
+  assert.match(logLine((await admin.log())[0]), /^\d{4}-\d\d-\d\d \d\d:\d\d ban user /);
+  await admin.ban(p.id, false);
+  await admin.deleteRun(r.id);
+  assert.deepEqual(await admin.runs(p.id), []);
+  assert.ok(calls.every(c => c.headers.Authorization === 'Bearer admin-secret' || c.headers.Authorization === 'Bearer nope'));
+  admin.lock();
+  await assert.rejects(admin.stats(), e => e.status === 404);
+  const offline = createAdmin({ apiBase: API, fetch: async () => { throw new TypeError('offline'); } });
+  await assert.rejects(offline.unlock('x'), e => e.status === 0);
 });

@@ -167,8 +167,27 @@ function settings(g, n) {
   gear(g, 19, 11, n);
 }
 
-const SYMBOLS = { tones, mysongs, stats, messages, profile, settings };
-const FRAMES = { tones: 4, mysongs: 4, stats: 4, messages: 4, profile: 4, settings: 2 };
+const SHIELD = [
+  '#############',
+  '#...........#',
+  '#...........#',
+  '#...........#',
+  '#...........#',
+  '#...........#',
+  '.#.........#.',
+  '..#.......#..',
+  '...#.....#...',
+  '....#####....',
+];
+// Dev-only admin app: a shield with a keyhole; the shine sweeps across it.
+function admin(g, n) {
+  stamp(g, SHIELD, 8, 5);
+  fill(g, 13, 8, 3, 3); vline(g, 14, 11, 13);
+  if (n % 2) { line(g, 10, 7, 11, 6); line(g, 22, 7, 21, 6); }
+}
+
+const SYMBOLS = { tones, mysongs, stats, messages, profile, settings, admin };
+const FRAMES = { tones: 4, mysongs: 4, stats: 4, messages: 4, profile: 4, settings: 2, admin: 2 };
 export const MENU_IDS = Object.keys(SYMBOLS);
 
 // One frame (any integer n, wraps) of a menu icon -> rows.

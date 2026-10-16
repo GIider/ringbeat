@@ -35,12 +35,50 @@ async function run(name) {
     for (const l of out.split('\n').filter(l => l.startsWith('WARN'))) console.log(`::warning title=Smoke test (${name})::${l.slice(5)}`);
     if (errors.length) console.log('page errors:', [...new Set(errors)].join(' | '));
     ok = /, 0 failed/.test(out) && !errors.length;
+    if (ok) ok = await adminSmoke(context, name);
   } catch (e) {
     console.error(`smoke test could not run (${name}):`, e.message);
   } finally {
     if (browser) await browser.close();
   }
   return ok;
+}
+// Dev mode (?dev) adds the Admin app as the 7th menu item; it unlocks with a token the (faked) API accepts.
+async function adminSmoke(context, name) {
+  const json = (route, status, body) => route.fulfill({ status, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  await context.route(url => url.href.startsWith(API_BASE + '/admin/'), route => {
+    const req = route.request(), path = new URL(req.url()).pathname;
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' } });
+    if (req.headers().authorization !== 'Bearer tok') return json(route, 404, { error: 'not found' });
+    if (path === '/admin/flagged') return json(route, 200, { runs: [] });
+    if (path === '/admin/players') return json(route, 200, { players: [{ id: 'u1', name: 'Ann', hidden: 0, banned: 0, created: 1, runs: 2 }] });
+    return json(route, 404, { error: 'not found' });
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const text = sel => page.locator(sel).first().innerText();
+  const fail = why => { console.log(`[${name}] admin smoke failed: ${why}`, errors.join(' | ')); return false; };
+  try {
+    await page.goto(`http://127.0.0.1:${port}/?dev`);
+    await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
+    await page.keyboard.press('Space');
+    await page.waitForSelector('#mm-title');
+    await page.keyboard.press('7');
+    if ((await text('#mm-title')) !== 'Admin') return fail('no Admin menu item');
+    await page.evaluate(() => document.getElementById('mm-go').click());
+    await page.fill('#ad-token', 'nope');
+    await page.click('[data-act=unlock]');
+    await page.waitForFunction(() => document.getElementById('ad-msg').textContent === 'Wrong token');
+    await page.fill('#ad-token', 'tok');
+    await page.click('[data-act=unlock]');
+    await page.click('[data-act=players]');
+    await page.waitForSelector('[data-act=player]');
+    if (!(await text('[data-act=player]')).includes('Ann')) return fail('player row missing');
+    if (errors.length) return fail('page errors');
+    console.log(`[${name}] admin smoke ok`);
+    return true;
+  } catch (e) { return fail(e.message); } finally { await page.close(); }
 }
 try {
   await new Promise(r => setTimeout(r, 500));

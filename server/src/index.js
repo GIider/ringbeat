@@ -101,6 +101,7 @@ export async function handle(req, env, now = Date.now()) {
       const row = await env.DB.prepare('SELECT user_id, expires FROM login_codes WHERE code_hash = ?').bind(hash).first();
       await env.DB.prepare('DELETE FROM login_codes WHERE code_hash = ?').bind(hash).run();
       if (!row || row.expires < now) return fail(400, 'expired');
+      if (await env.DB.prepare('SELECT 1 FROM users WHERE id = ? AND banned = 1').bind(row.user_id).first()) return fail(403, 'banned');
       const token = randomToken();
       await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, created, expires) VALUES (?, ?, ?, ?)')
         .bind(await sha256(token), row.user_id, now, now + SESSION_MS).run();
@@ -143,19 +144,21 @@ export async function handle(req, env, now = Date.now()) {
         const r = Number.isInteger(body.runId)
           ? await env.DB.prepare('UPDATE runs SET hidden = ? WHERE id = ?').bind(hidden, body.runId).run()
           : await env.DB.prepare('UPDATE users SET hidden = ? WHERE id = ?').bind(hidden, String(body.userId || '')).run();
-        if (r.meta.changes) await boardsChanged(env).run();
+        if (r.meta.changes) await env.DB.batch([boardsChanged(env), audit(env, now, hidden ? 'hide' : 'unhide', Number.isInteger(body.runId) ? 'run ' + body.runId : 'user ' + body.userId)]);
         return r.meta.changes ? json(null) : fail(404, 'no such run or user');
       }
       if (route === 'POST /admin/verify') return json({ verified: await verifyPending(env) });
-      return fail(404, 'not found');
+      return adminRoute(env, route, url, body, now, json, fail);
     }
 
     const auth = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(req.headers.get('Authorization') || '');
     const tokenHash = auth && await sha256(auth[1]);
-    const session = tokenHash && await env.DB.prepare('SELECT user_id, expires FROM sessions WHERE token_hash = ?').bind(tokenHash).first();
+    const session = tokenHash && await env.DB.prepare(`SELECT s.user_id, s.expires, u.banned FROM sessions s
+      JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`).bind(tokenHash).first();
     if (!session || session.expires < now) {
       return url.pathname === '/' ? new Response('Ringbeat API', { headers: cors }) : fail(401, 'sign in');
     }
+    if (session.banned) return fail(403, 'banned');
     const uid = session.user_id;
 
     if (route === 'POST /auth/logout') {
@@ -169,9 +172,7 @@ export async function handle(req, env, now = Date.now()) {
       return json({ rules: RULES, runs });
     }
     if (route === 'DELETE /me') {
-      await env.DB.batch(['runs', 'device_slots', 'shared_docs', 'login_codes', 'sessions', 'identities']
-        .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(uid))
-        .concat(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid), boardsChanged(env)));
+      await env.DB.batch(purgeUser(env, uid));
       return json(null);
     }
 
@@ -301,6 +302,97 @@ const verdicts = runs => runs.map(r => ({ clientRunId: r.clientRunId, verified: 
 
 // The GET /boards snapshot needs a rebuild (a run ranked, a name or a hide changed). Writes nothing when already marked.
 const boardsChanged = env => env.DB.prepare('UPDATE board_tops SET dirty = 1 WHERE id = 1 AND dirty = 0');
+
+// Everything that belongs to one player, as statements for a batch (DELETE /me and the admin delete share it).
+const purgeUser = (env, uid) => ['runs', 'device_slots', 'shared_docs', 'login_codes', 'sessions', 'identities']
+  .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(uid))
+  .concat(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid), boardsChanged(env));
+
+const audit = (env, now, action, target, detail = '') =>
+  env.DB.prepare('INSERT INTO admin_log (at, action, target, detail) VALUES (?, ?, ?, ?)').bind(now, action, target, detail);
+
+const ADMIN_PAGE = 20;
+const TABLES = ['users', 'runs', 'sessions', 'device_slots', 'shared_docs', 'oauth_states', 'login_codes', 'admin_log'];
+
+// The /admin/* routes beyond hide and verify. The caller has already checked ADMIN_TOKEN.
+async function adminRoute(env, route, url, body, now, json, fail) {
+  const q = url.searchParams;
+  const offset = Math.max(0, parseInt(q.get('offset'), 10) || 0);
+  const id = v => String(v || '').slice(0, 64);
+  if (route === 'GET /admin/players') {
+    const like = '%' + String(q.get('q') || '').replace(/[\\%_]/g, c => '\\' + c) + '%';
+    const { results } = await env.DB.prepare(`SELECT u.id, u.display_name AS name, u.hidden, u.banned, u.created,
+      (SELECT COUNT(*) FROM runs r WHERE r.user_id = u.id) AS runs FROM users u
+      WHERE u.display_name LIKE ? ESCAPE '\\' OR u.id = ? ORDER BY u.created DESC LIMIT ? OFFSET ?`)
+      .bind(like, id(q.get('q')), ADMIN_PAGE, offset).all();
+    return json({ players: results });
+  }
+  if (route === 'GET /admin/runs') {
+    const { results } = await env.DB.prepare(`SELECT id, song_id, diff, score, flags, hidden, verified, played_at
+      FROM runs WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?`).bind(id(q.get('user')), ADMIN_PAGE, offset).all();
+    return json({ runs: results });
+  }
+  if (route === 'POST /admin/run/delete') {
+    if (!Number.isInteger(body.runId)) return fail(400, 'bad run');
+    const r = await env.DB.prepare('DELETE FROM runs WHERE id = ?').bind(body.runId).run();
+    if (!r.meta.changes) return fail(404, 'no such run');
+    await env.DB.batch([boardsChanged(env), audit(env, now, 'delete run', 'run ' + body.runId)]);
+    return json(null);
+  }
+  if (route === 'POST /admin/player/delete') {
+    const uid = id(body.userId);
+    const u = await env.DB.prepare('SELECT display_name FROM users WHERE id = ?').bind(uid).first();
+    if (!u) return fail(404, 'no such user');
+    await env.DB.batch([...purgeUser(env, uid), audit(env, now, 'delete player', 'user ' + uid, u.display_name)]);
+    return json(null);
+  }
+  if (route === 'POST /admin/ban') {
+    const uid = id(body.userId), banned = body.banned === false ? 0 : 1;
+    const r = await env.DB.prepare('UPDATE users SET banned = ?, hidden = ? WHERE id = ?').bind(banned, banned, uid).run();
+    if (!r.meta.changes) return fail(404, 'no such user');
+    await env.DB.batch([...(banned ? [env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(uid)] : []),
+      boardsChanged(env), audit(env, now, banned ? 'ban' : 'unban', 'user ' + uid)]);
+    return json(null);
+  }
+  if (route === 'POST /admin/unflag') {
+    if (!Number.isInteger(body.runId)) return fail(400, 'bad run');
+    const r = await env.DB.prepare("UPDATE runs SET flags = '' WHERE id = ?").bind(body.runId).run();
+    if (!r.meta.changes) return fail(404, 'no such run');
+    await env.DB.batch([boardsChanged(env), audit(env, now, 'unflag', 'run ' + body.runId)]);
+    return json(null);
+  }
+  if (route === 'GET /admin/stats') {
+    const one = sql => env.DB.prepare(sql).bind(...(sql.includes('?') ? [now] : [])).first();
+    const [counts, pending, expired, board] = await Promise.all([
+      Promise.all(TABLES.map(t => one(`SELECT COUNT(*) AS n FROM ${t}`))),
+      one('SELECT COUNT(*) AS n FROM runs WHERE verified = 0'),
+      one(`SELECT (SELECT COUNT(*) FROM sessions WHERE expires < ?1) + (SELECT COUNT(*) FROM oauth_states WHERE expires < ?1)
+        + (SELECT COUNT(*) FROM login_codes WHERE expires < ?1) AS n`),
+      one('SELECT built, dirty FROM board_tops WHERE id = 1'),
+    ]);
+    return json({ counts: Object.fromEntries(TABLES.map((t, i) => [t, counts[i].n])), pending: pending.n, expired: expired.n,
+      built: board?.built || 0, dirty: !!board?.dirty });
+  }
+  if (route === 'POST /admin/purge') {
+    if (body.what === 'expired') {
+      const rs = await env.DB.batch(['sessions', 'oauth_states', 'login_codes'].map(t => env.DB.prepare(`DELETE FROM ${t} WHERE expires < ?`).bind(now)));
+      const n = rs.reduce((a, r) => a + r.meta.changes, 0);
+      await audit(env, now, 'purge expired', '', String(n)).run();
+      return json({ removed: n });
+    }
+    return fail(400, 'bad purge');
+  }
+  if (route === 'POST /admin/rebuild') {
+    await rebuildBoards(env, now, { force: true });
+    await audit(env, now, 'rebuild boards', '').run();
+    return json(null);
+  }
+  if (route === 'GET /admin/log') {
+    const { results } = await env.DB.prepare('SELECT at, action, target, detail FROM admin_log ORDER BY id DESC LIMIT 50').all();
+    return json({ log: results });
+  }
+  return fail(404, 'not found');
+}
 
 // Rebuilds the GET /boards snapshot when something changed (or `force`): the top BOARD_TOP public runs of every song
 // and difficulty under the current RULES. -> the stored row { rules, doc, built }.

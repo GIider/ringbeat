@@ -129,6 +129,17 @@ these routes answer 404.
 - `GET /admin/flagged`: the newest flagged runs.
 - `POST /admin/hide {runId}` or `{userId}`: takes a run or a player off every board. Add `hidden: false` to undo.
 - `POST /admin/verify`: re-plays waiting runs now.
+- `GET /admin/players?q=&offset=` and `GET /admin/runs?user=&offset=`: search players by name (or id) and list a player's runs, 20 per page.
+- `POST /admin/ban {userId, banned}`: the blacklist. A banned player is hidden from every board, loses their sessions, and
+  sign-in and sync answer `403 banned`. `banned: false` is the whitelist (it also unhides).
+- `POST /admin/run/delete {runId}`, `POST /admin/player/delete {userId}`: delete a run, or a player with everything of theirs
+  (the same cascade as `DELETE /me`).
+- `POST /admin/unflag {runId}`: approve a flagged run.
+- `GET /admin/stats`, `POST /admin/purge {what: "expired"}`, `POST /admin/rebuild`: row counts, delete expired sessions and
+  sign-in rows, force a leaderboard snapshot rebuild.
+- `GET /admin/log`: the newest 50 entries of `admin_log`; every change above (and `hide`) writes one.
+
+The game's **Admin** app (dev mode, `?dev`) drives these routes. The token is typed in and kept in memory only.
 
 **Opt-out.** Profile → "On leaderboards" (`profile.public` in the next `POST /sync`). A player who opts out leaves the public boards but
 still sees their own rank.
@@ -201,7 +212,7 @@ the device keeps its own data.
 | `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 min |
 | `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
-| `GET /admin/flagged`, `POST /admin/hide`, `POST /admin/verify` | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
+| `/admin/*` (`flagged`, `hide`, `verify`, `players`, `runs`, `ban`, `run/delete`, `player/delete`, `unflag`, `stats`, `purge`, `rebuild`, `log`) | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
 
 `POST /sync`, part by part. The answer always has `{at, rules}`:
 - `shared` (the device's copy) and/or `sharedRev` (the revision it last saw): the Worker merges and stores as above.
@@ -231,7 +242,7 @@ Limits:
 
 | Table | Holds |
 |---|---|
-| `users` | A profile: our own id, display name, `public` (on leaderboards), `hidden` (moderation) |
+| `users` | A profile: our own id, display name, `public` (on leaderboards), `hidden` (moderation), `banned` (blacklist) |
 | `identities` | `(provider, subject) → user`; GitHub's numeric id. Another login provider becomes another row on the same user |
 | `sessions` | SHA-256 of each bearer token, expiry |
 | `oauth_states`, `login_codes` | Short-lived sign-in state |
@@ -239,6 +250,7 @@ Limits:
 | `device_slots` | One row per user × device |
 | `runs` | Every uploaded run. Re-playable runs also keep `replay`, `rules`, `loadout` (the mods) and a custom song's `rtttl`. `verified` (1 ranked, 0 waiting or history, −1 invalid), `flags` and `hidden` (moderation). Boards read the partial index `runs_rank` |
 | `board_tops` | One row: the `GET /boards` snapshot, its `rules`, when it was `built`, and `dirty` |
+| `admin_log` | One row per moderation change: when, action, target, detail |
 
 ## Setup and deploy
 

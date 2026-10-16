@@ -28,6 +28,7 @@ import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
+import { createAdmin, PAGE as ADMIN_PAGE, playerLine, runLine, logLine } from './admin.js';
 import { RULES, encodeLog } from './replay.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
@@ -98,7 +99,7 @@ let state = 'title';
 let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lanes show
 const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
-  profile: $('profile'), select: $('select'), custom: $('custom'),
+  profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
@@ -317,11 +318,12 @@ let customs = [];        // library entries for the player's saved songs ({...en
 let selectedId = '';
 
 // ---- cloud save: optional online profile (see docs/CLOUD.md); `ringbeat.api` in localStorage points at a local API ----
+const apiBase = (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })();
 const cloud = createCloud({
   scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
   isBusy: () => inPlay() || state === 'paused', // no sync while a song runs
   debug: DEV ? createNetDebug() : null,
-  apiBase: (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })(),
+  apiBase,
 });
 onSave(() => cloud.schedule());
 let settingsArrived = () => {}; // set up in wire()
@@ -612,6 +614,7 @@ const MENU = [
   { id: 'messages', title: 'Messages', open: () => openInbox() },
   { id: 'profile', title: 'Profile', open: () => openProfile() },
   { id: 'settings', title: 'Settings', open: () => openSettings('menu') },
+  ...(DEV ? [{ id: 'admin', title: 'Admin', open: () => openAdmin() }] : []),
 ];
 const MENU_FRAME_MS = 300;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
@@ -776,6 +779,126 @@ function renderStats() {
       `${statRow(tr('Accuracy'), acc)}${statRow(tr('Ghost taps'), fmtNum(s.ghosts))}` +
       `${statRow(tr('FC runs'), fmtNum(s.fcRuns))}${statRow(tr('AP runs'), fmtNum(s.apRuns))}</table>` + empty;
   }
+}
+
+// ---- admin (dev mode, ?dev): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
+// The token is kept in memory only. Views form a stack; Back pops it and reloads the view underneath. ----
+const admin = createAdmin({ apiBase });
+let adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
+function openAdmin() {
+  adStack = []; adMsg = ''; adArm = '';
+  setState('admin', 'admin');
+  adminShow(admin.unlocked() ? { v: 'root' } : { v: 'unlock' });
+}
+function adminBack() {
+  adMsg = ''; adArm = '';
+  if (adStack.length > 1) { adStack.pop(); adminShow(adStack.pop()); } else openMenu('admin');
+}
+const adError = e => (e && e.status === 404 ? tr('Wrong token or not found') : e && e.status === 0 ? tr('No connection, try again later') : tr('Error {n}', { n: e ? e.status : '?' }));
+// Loads what a view needs, then draws it. A failed load still draws the view (empty) with the error line.
+async function adminShow(view) {
+  adStack.push(view);
+  const btn = (act, label, i = '') => `<button data-act="${act}" data-i="${i}">${esc(label)}</button>`;
+  const rows = (items, act, line) => items.map((x, i) => btn(act, line(x), i)).join('');
+  const pages = () => (view.offset ? btn('prev', tr('Previous page')) : '') + (adRows.length === ADMIN_PAGE ? btn('next', tr('Next page')) : '');
+  let html = '', def = '';
+  adRows = [];
+  if (!['unlock', 'root'].includes(view.v)) $('ad-msg').textContent = tr('Working…');
+  try {
+    switch (view.v) {
+      case 'unlock':
+        html = `<label class="item"><span>${esc(tr('Token'))}</span> <input id="ad-token" type="text" spellcheck="false" autocomplete="off"></label>${btn('unlock', tr('Unlock'))}`;
+        break;
+      case 'root':
+        html = btn('players', tr('Players')) + btn('flagged', tr('Flagged runs')) + btn('maint', tr('Maintenance')) + btn('log', tr('Log')) + btn('lock', tr('Lock'));
+        break;
+      case 'players':
+        adRows = await admin.players(view.q, view.offset);
+        html = `<label class="item"><span>${esc(tr('Search'))}</span> <input id="ad-q" type="text" maxlength="16" spellcheck="false" autocomplete="off" value="${esc(view.q)}"></label>` +
+          btn('search', tr('Search')) + rows(adRows, 'player', playerLine) + pages();
+        def = adRows.length ? 'player' : '';
+        break;
+      case 'player':
+        adRows = await admin.runs(view.p.id, view.offset);
+        html = `<p class="hint">${esc(playerLine(view.p))}</p>` +
+          btn('ban', view.p.banned ? tr('Whitelist (unban)') : tr('Blacklist (ban)')) +
+          btn('hideplayer', view.p.hidden && !view.p.banned ? tr('Show on boards') : tr('Hide from boards')) +
+          btn('delplayer', tr('Delete player')) + rows(adRows, 'run', runLine) + pages();
+        break;
+      case 'run':
+        html = `<p class="hint">${esc(runLine(view.r))}</p>` + (view.r.flags ? btn('unflag', tr('Approve (clear flags)')) : '') +
+          btn('hiderun', view.r.hidden ? tr('Show on boards') : tr('Hide from boards')) + btn('delrun', tr('Delete run'));
+        break;
+      case 'flagged':
+        adRows = await admin.flagged();
+        html = adRows.length ? rows(adRows, 'run', runLine) : `<p class="hint center">${esc(tr('Nothing flagged'))}</p>`;
+        break;
+      case 'maint': {
+        const st = await admin.stats();
+        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}</p>` +
+          btn('purge', tr('Purge expired')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
+        break;
+      }
+      case 'log': {
+        const log = await admin.log();
+        html = log.length ? `<div class="hint ad-log">${log.map(l => `<div>${esc(logLine(l))}</div>`).join('')}</div>` : `<p class="hint center">${esc(tr('Log is empty'))}</p>`;
+        break;
+      }
+    }
+    if (!adMsg) $('ad-msg').textContent = '';
+  } catch (e) { adMsg = adError(e); }
+  if (state !== 'admin') return;
+  const list = $('ad-list');
+  list.innerHTML = html;
+  if (adMsg) { $('ad-msg').textContent = adMsg; adMsg = ''; }
+  const first = (def && list.querySelector(`[data-act="${def}"]`)) || list.querySelector('input, button');
+  if (first) { first.toggleAttribute('data-default', true); first.focus({ preventScroll: true }); light(first); }
+}
+// Runs `fn` (may return a message), then redraws; `back` returns to the view underneath (the thing acted on is gone).
+async function adminDo(fn, okMsg, { back = false } = {}) {
+  adArm = '';
+  try { adMsg = (await fn()) || okMsg; } catch (e) { adMsg = adError(e); back = false; }
+  if (back && adStack.length > 1) adStack.pop();
+  adminShow(adStack.pop());
+}
+// Destructive buttons need a second press within 4 s.
+function adminArmed(b, key) {
+  if (adArm === key && Date.now() - adArmAt < 4000) { adArm = ''; return true; }
+  adArm = key; adArmAt = Date.now();
+  b.textContent = tr('Press again to delete');
+  return false;
+}
+function wireAdmin() {
+  $('ad-list').onclick = async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const view = adStack[adStack.length - 1], row = adRows[+b.dataset.i];
+    const go = v => { adArm = ''; adminShow(v); };
+    const reload = patch => { adStack.pop(); go({ ...view, ...patch }); };
+    switch (b.dataset.act) {
+      case 'unlock':
+        $('ad-msg').textContent = tr('Working…');
+        try { await admin.unlock($('ad-token').value); adStack = []; adminShow({ v: 'root' }); }
+        catch (err) { $('ad-msg').textContent = err.status === 404 ? tr('Wrong token') : adError(err); }
+        break;
+      case 'lock': admin.lock(); openMenu('admin'); break;
+      case 'players': go({ v: 'players', q: '', offset: 0 }); break;
+      case 'flagged': case 'maint': case 'log': go({ v: b.dataset.act }); break;
+      case 'search': reload({ q: $('ad-q').value.trim(), offset: 0 }); break;
+      case 'prev': case 'next': reload({ offset: Math.max(0, (view.offset || 0) + (b.dataset.act === 'next' ? ADMIN_PAGE : -ADMIN_PAGE)) }); break;
+      case 'player': go({ v: 'player', p: row, offset: 0 }); break;
+      case 'run': go({ v: 'run', r: row }); break;
+      case 'ban': adminDo(() => admin.ban(view.p.id, !view.p.banned), view.p.banned ? tr('Whitelisted') : tr('Blacklisted'), { back: true }); break;
+      case 'hideplayer': adminDo(() => admin.hidePlayer(view.p.id, !(view.p.hidden && !view.p.banned)), tr('Done'), { back: true }); break;
+      case 'delplayer': if (adminArmed(b, 'delplayer')) adminDo(() => admin.deletePlayer(view.p.id), tr('Player deleted'), { back: true }); break;
+      case 'unflag': adminDo(() => admin.unflag(view.r.id), tr('Approved'), { back: true }); break;
+      case 'hiderun': adminDo(() => admin.hideRun(view.r.id, !view.r.hidden), tr('Done'), { back: true }); break;
+      case 'delrun': if (adminArmed(b, 'delrun')) adminDo(() => admin.deleteRun(view.r.id), tr('Run deleted'), { back: true }); break;
+      case 'purge': adminDo(async () => tr('Removed {n}', { n: (await admin.purgeExpired()).removed })); break;
+      case 'rebuild': adminDo(() => admin.rebuild(), tr('Boards rebuilt')); break;
+      case 'verify': adminDo(async () => tr('Verified {n}', { n: (await admin.verify()).verified })); break;
+    }
+  };
 }
 
 // ---- messages: the changelog as an SMS inbox ----
@@ -1826,6 +1949,7 @@ function back() {
     case 'menu': setState('title', 'title'); break;
     case 'select': stopPreview(); openMenu('tones'); break;
     case 'stats': case 'inbox': case 'profile': openMenu(); break;
+    case 'admin': adminBack(); break;
     case 'msgload': openInbox(MESSAGES[msgIdx].version); break;
     case 'message': openInbox(MESSAGES[msgIdx].version); break;
     case 'tutorial': finishTutorial(); break;
@@ -2045,6 +2169,7 @@ function wire() {
     arrows[1].addEventListener('click', () => navigate('right'));
   }
   // messages
+  wireAdmin();
   $('inbox-list').onclick = e => { const b = e.target.closest('button'); if (b) openMessage(+b.dataset.i); };
 
   // tutorial
@@ -2614,4 +2739,4 @@ let perfOn = false;
 try { perfOn = !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
 if (DEV || perfOn) setPerf(true, perfOn); // ?dev alone doesn't leave it on for later visits
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, get state() { return state; } }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, admin, get state() { return state; } }; // debug/test hook (tests/smoke.html)
