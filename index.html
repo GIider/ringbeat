@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e0c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
   <title>Ringbeat</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -352,7 +357,7 @@
         <!-- Calibration -->
         <section id="calib" class="screen" hidden data-title="Latency" data-soft-left="Select" data-soft-right="Back">
           <p id="calib-msg" class="hint"></p>
-          <div id="calib-pad" class="pad" role="button" aria-label="Tap here" data-i18n data-i18n-attr="aria-label">TAP</div>
+          <div id="calib-pad" class="pad" role="button" tabindex="0" aria-label="Tap here" data-i18n data-i18n-attr="aria-label">TAP</div>
           <div class="hint center" id="calib-count">0 taps</div>
           <div class="nudge">
             <button id="nudge-minus">−5</button>

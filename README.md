@@ -43,7 +43,7 @@ Versioning: `1.0.<build>` — major.minor from `package.json`, patch = the GitHu
 Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
 
 Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
-Chromium via Playwright (`npm install`, then once `npx playwright install chromium`). `tests/rtttl.test.html` and
+Chromium via Playwright (`npm install`, then once `npx playwright install chromium firefox webkit`; run other engines with `SMOKE_BROWSERS=firefox,webkit` and touch emulation with `SMOKE_DEVICE='iPhone 13'`). `tests/rtttl.test.html` and
 `tests/smoke.html` also run by hand in a browser (title shows PASS/FAIL).
 Git hooks (`.githooks/`, enabled by `npm install`): `pre-commit` runs the unit tests and checks `assets/fonts` matches `src/pixelfont.js`; `pre-push` runs `npm test`; `post-merge`/`post-checkout` re-run `npm install` when `package-lock.json` changes. Skip with `--no-verify`.
 

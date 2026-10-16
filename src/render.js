@@ -15,6 +15,7 @@ const SPRITE_MAX = 200;   // cached text strings (each has up to 4 colour/weight
 const LANE_MAX = 40;
 const NOTE_H = 7;
 const HIDE_FRAC = 0.35;  // Hidden mod: share of the approach time (nearest the hit line) where notes are not drawn
+const HEAD = 1;           // rows above the cap line that text sprites keep (raised umlaut dots)
 const LABEL_H = CAP + 2;   // key-label row under each receptor
 
 const BOLD = {};
@@ -38,13 +39,13 @@ export function textWidth(str, bold = false) {
 function paintText(c, str, x, y, color, bold) {
   c.fillStyle = color;
   for (const ch of str) {
-    const g = glyph(ch, bold);
+    const g = glyph(ch, bold), up = g.up || 0;
     for (let r = 0; r < g.rows.length; r++) {
       const row = g.rows[r];
       for (let k = 0; k < row.length; k++) {
         if (row[k] !== '#') continue;
         let e = k + 1; while (e < row.length && row[e] === '#') e++;
-        c.fillRect(x + k, y + r, e - k, 1);
+        c.fillRect(x + k, y + r - up, e - k, 1);
         k = e - 1;
       }
     }
@@ -207,18 +208,18 @@ export class Renderer {
       ent = slots[si];
       if (ent === null) {
         const w = textWidth(str, bold);
-        const sp = makeCanvas(Math.max(1, w), CAP + 2);
-        if (sp) paintText(sp.getContext('2d'), str, 0, 0, color, bold);
+        const sp = makeCanvas(Math.max(1, w), CAP + 2 + HEAD);
+        if (sp) paintText(sp.getContext('2d'), str, 0, HEAD, color, bold); // HEAD: room for raised umlaut dots
         slots[si] = ent = { w, sp };
       }
     } else {
       ent = { w: textWidth(str, bold), sp: null }; // unexpected colour: draw uncached
     }
-    const w = ent.w, h = CAP + 2, sp = ent.sp;
+    const w = ent.w, h = CAP + 2 + HEAD, sp = ent.sp;
     if (align === 'center') x -= Math.floor(w * scale / 2);
     else if (align === 'right') x -= w * scale;
     x = Math.round(x); y = Math.round(y);
-    if (sp && typeof c.drawImage === 'function') c.drawImage(sp, x, y, w * scale, h * scale);
+    if (sp && typeof c.drawImage === 'function') c.drawImage(sp, x, y - HEAD * scale, w * scale, h * scale);
     else if (scale === 1) paintText(c, str, x, y, color, bold);
     return w * scale;
   }

@@ -279,12 +279,15 @@ export class Game {
     if (this.state !== 'running') return;
     this.state = 'paused';
     clearInterval(this.timer);
+    this.synth.wantRunning = false;
     this.synth.ctx.suspend(); // currentTime stops, so the timing model stays correct
   }
 
   async resume() {
     if (this.state !== 'paused') return;
-    await this.synth.ctx.resume();
+    this.synth.wantRunning = true;
+    // Safari can leave this promise pending after an interruption; don't let it freeze the game
+    await Promise.race([this.synth.ctx.resume().catch(() => {}), new Promise(r => setTimeout(r, 500))]);
     this.state = 'running';
     this._startScheduler();
     const now = this.synth.ctx.currentTime - this.synth.getLatency();

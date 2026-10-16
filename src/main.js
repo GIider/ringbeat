@@ -1962,6 +1962,7 @@ function wire() {
 
   // calibration
   $('calib-pad').addEventListener('pointerdown', e => { e.preventDefault(); calibTap(e); });
+  $('calib-pad').addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); e.stopPropagation(); if (!e.repeat) calibTap(e); } });
   $('nudge-minus').onclick = () => nudge(-5);
   $('nudge-plus').onclick = () => nudge(5);
   $('calib-reset').onclick = () => { settings.calibration = 0; save(); showOffset(); };
@@ -1985,9 +1986,9 @@ function wire() {
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
-  window.addEventListener('blur', endHold);
+  window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); });
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
-  const wake = () => { if (synth.ctx && synth.ctx.state === 'suspended' && game.state !== 'paused') synth.ctx.resume(); };
+  const wake = () => { if (synth.ctx && synth.ctx.state !== 'running' && game.state !== 'paused') synth.ctx.resume(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); }); // audio clock keeps running when hidden
@@ -2145,11 +2146,12 @@ function layout(animate = false) {
   Object.assign(ph.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
   // Pixel text stays on whole device pixels: 2 or 3 CSS px per font pixel. The play canvas uses the same grid.
   const lcdW = compact ? vw : w * 0.745, fs = lcdW >= 470 ? 30 : 20;
-  ph.style.setProperty('--fs', fs + 'px');
-  ph.style.setProperty('--u', fs / 10 + 'px');
-  renderer.setPixelScale(fs / 10);
-  if (unit !== fs / 10) {
-    unit = fs / 10;
+  const dpr = window.devicePixelRatio || 1, u = Math.max(1, Math.round(fs / 10 * dpr)) / dpr; // whole device pixels per LCD pixel, even at DPR 1.25 / 2.625
+  ph.style.setProperty('--fs', u * 10 + 'px');
+  ph.style.setProperty('--u', u + 'px');
+  renderer.setPixelScale(u);
+  if (unit !== u) {
+    unit = u;
     if (state === 'profile') { $('pf-icon')._spr = ''; setSprite($('pf-icon'), PERSON_ART, unit * 2); }
   }
   if (state === 'menu') paintMenuIcon();

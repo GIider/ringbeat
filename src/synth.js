@@ -27,8 +27,12 @@ export class Synth {
       this.lowpass.connect(this.master).connect(this.comp).connect(ctx.destination);
       this.setVolume(this.volume);
       this._newBus();
+      // Safari reports 'interrupted' (call, Siri, app switch); treat anything but 'running' as resumable
+      ctx.onstatechange = () => { if (this.wantRunning && ctx.state !== 'running' && !document.hidden) ctx.resume().catch(() => {}); };
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {} // play through the iOS silent switch
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.wantRunning = true;
+    if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
     return this.ctx;
   }
 

@@ -10,7 +10,7 @@ const PX = 100;              // font units per pixel; unitsPerEm = 10 px, so fon
 const UPM = PX * (ASC + DESC);
 
 // Pixel rows -> rectangles {x, y, w, h} in pixel units, y measured up from the baseline.
-export function glyphRects(rows) {
+export function glyphRects(rows, up = 0) {
   const runs = [];
   rows.forEach((row, r) => {
     for (let x = 0; x < row.length;) {
@@ -30,7 +30,7 @@ export function glyphRects(rows) {
     const rect = { x: run.x, w: run.w, r0: run.r, r1: run.r };
     open.set(key, rect); rects.push(rect);
   }
-  return rects.map(k => ({ x: k.x, w: k.w, y: CAP - 1 - k.r1, h: k.r1 - k.r0 + 1 }));
+  return rects.map(k => ({ x: k.x, w: k.w, y: CAP - 1 - k.r1 + up, h: k.r1 - k.r0 + 1 }));
 }
 
 class Buf {
@@ -68,7 +68,7 @@ export function buildTTF({ family = FAMILY, bold = false } = {}) {
     loca.push(glyf.length);
     const adv = (g.w + 1) * PX;
     advMax = Math.max(advMax, adv); sumAdv += adv;
-    const rects = glyphRects(g.rows);
+    const rects = glyphRects(g.rows, g.up || 0);
     if (!rects.length) { hmtx.u16(adv).i16(0); continue; }
     let gx0 = 1e9, gy0 = 1e9, gx1 = -1e9, gy1 = -1e9;
     for (const r of rects) {

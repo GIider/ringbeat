@@ -22,8 +22,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm test
+      - run: SMOKE_BROWSERS=firefox,webkit node scripts/smoke.mjs
+      - run: SMOKE_BROWSERS=webkit SMOKE_DEVICE='iPhone 13' node scripts/smoke.mjs
 
   build:
     needs: test
