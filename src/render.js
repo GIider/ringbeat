@@ -70,7 +70,7 @@ export class Renderer {
     this.pressed = new Uint8Array(4);
     // Fixed pools -> no per-frame/per-hit allocations
     this.rings = Array.from({ length: RING_POOL }, () => ({ t: -10, lane: 0, big: false }));
-    this.labels = Array.from({ length: LABEL_POOL }, () => ({ t: -10, lane: 0, text: '' }));
+    this.labels = Array.from({ length: LABEL_POOL }, () => ({ t: -10, lane: 0, text: '', j: 'good' }));
     this.ringI = 0; this.labelI = 0;
     // Juice (all stepped, fixed pools): debris on perfects, receptor punch, tiny shake, combo-break strike, milestone frame.
     this.juice = true;
@@ -120,7 +120,7 @@ export class Renderer {
         }
         for (const o of this.labels) if (o.lane === lane) o.t = -10; // a new judgement replaces the lane's previous label
         const l = this.labels[this.labelI++ % LABEL_POOL];
-        l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j];
+        l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j]; l.j = j;
       },
       banner: text => this._banner(text, performance.now() / 1000),
     };
@@ -232,6 +232,27 @@ export class Renderer {
     c.fillStyle = INK; c.fillRect(x, y, w, h);
     c.fillStyle = PAPER; c.fillRect(x + 1, y + 1, w - 2, h - 2);
     this._text(c, str, x + 1 + padX, y + 1 + padY, INK, bold, scale);
+  }
+
+  // Judgement chip: clear halo, then an ink chip with knocked-out text (Perfect/Great) or a hollow outline (Good/Miss),
+  // so it stays readable over solid ink notes. Perfect is bold with side sparkles; Miss is struck through.
+  _chip(c, str, j, cx, y) {
+    const bold = j === 'perfect', solid = j === 'perfect' || j === 'great';
+    const tw = textWidth(str, bold), w = tw + 4, h = CAP + 4;
+    const x = Math.max(1, Math.min(this.w - w - 1, Math.round(cx - w / 2)));
+    c.clearRect(x - 1, y - 1, w + 2, h + 2);
+    c.fillStyle = INK;
+    if (solid) c.fillRect(x, y, w, h);
+    else {
+      c.fillRect(x, y, w, 1); c.fillRect(x, y + h - 1, w, 1);
+      c.fillRect(x, y, 1, h); c.fillRect(x + w - 1, y, 1, h);
+    }
+    this._text(c, str, x + 2, y + 2, solid ? PAPER : INK, bold);
+    if (j === 'miss') c.fillRect(x + 2, y + (h >> 1), tw, 1);
+    if (j === 'perfect') {
+      const my = y + (h >> 1);
+      for (const sx of [x - 3, x + w + 2]) { c.fillRect(sx, my, 1, 1); c.fillRect(sx, my - 3, 1, 1); c.fillRect(sx, my + 3, 1, 1); }
+    }
   }
 
   // Lanes, hit line and receptors never change between frames: paint them once.
@@ -486,11 +507,10 @@ export class Renderer {
     for (const l of this.labels) {
       const age = now - l.t;
       if (age > 0.45 || age < 0) continue;
-      const x = Math.max(0, Math.min(W - textWidth(l.text, false) - 1, x0 + l.lane * lw + (lw >> 1) - (textWidth(l.text, false) >> 1)));
-      // Typewriter reveal on the first steps, and a miss sinks a pixel instead of rising
+      // Typewriter reveal on the first steps
       const txt = fx && age < 0.1 ? l.text.slice(0, 2 + Math.floor(age / 0.025)) : l.text;
-      const dy = this.reduced ? 0 : l.text === 'MISS' ? (age > 0.2 ? -1 : 0) : (age > 0.2 ? 1 : 0);
-      this._text(c, txt, x, this.recY - 10 - dy, INK, false);
+      // Sits in the key-label row under the receptor (covering the key letter briefly), clear of incoming notes
+      this._chip(c, txt, l.j, x0 + l.lane * lw + (lw >> 1), this.recY + this.recH + 1);
     }
 
     if (sx) c.translate(-sx, 0);
