@@ -240,7 +240,7 @@ Schema changes go into a new numbered file in `server/migrations/`, followed by 
    ```
    GITHUB_CLIENT_ID=...
    GITHUB_CLIENT_SECRET=...
-   ALLOWED_ORIGINS=http://localhost:*,http://192.168.2.130:*
+   ALLOWED_ORIGINS=http://localhost:*,http://<your LAN IP>:*
    ```
 3. Start the API on port 8787 with a local D1:
    ```sh

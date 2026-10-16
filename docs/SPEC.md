@@ -172,6 +172,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Signed in:** the card shows the online player name (at first the GitHub display name or username, else `Player-XXXX`). The screen offers:
   - *Sync now*;
   - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`);
+  - *On leaderboards: On/Off* (Off: the player's runs leave the public boards; they still see their own rank);
   - *Sign out*;
   - *Delete online profile* (press twice; this device keeps its own data).
 
@@ -185,8 +186,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   Highscores and stats from every signed-in device are shown combined: pooled top 5, summed plays and counters, play
   days counted once. Resetting scores & stats while signed in resets every device. Details:
   [CLOUD.md](CLOUD.md).
-- Every finished run is also uploaded (song, difficulty, score, grade, accuracy, combo, FC/AP, mods, time), as the base
-  for future online leaderboards.
+- Every finished run is also uploaded (song, difficulty, score, grade, accuracy, combo, FC/AP, mods, time, and the
+  run's inputs as a replay) for the [world leaderboards](#world-leaderboards).
 
 ## Highscores
 
@@ -196,6 +197,18 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - Custom songs are keyed by a hash of their RTTTL text, so scores follow the melody.
 - Failed (Sudden death) runs and Demo runs are never recorded. Highscores can be reset in Settings (two-step confirm;
   this also clears stats).
+
+## World leaderboards
+
+- One board per song id and difficulty: each player's best run, ranked by score (on a tie, the earlier run first).
+  Built-in and custom songs both have boards.
+- The score on a board is the server's: it re-plays the run's inputs. Runs without a replay (from before 2.1) and
+  runs played under older scoring rules (`RULES`) don't rank. Details: [CLOUD.md › Leaderboards](CLOUD.md#leaderboards).
+- **Results screen:** signed in, the run is uploaded at once and the score page shows *World #n of total* (the
+  player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Signed
+  out: *Sign in for world ranks*.
+- **Song detail** (the difficulty picker): the world top 3 for the focused difficulty, under the local top runs.
+  Boards are readable signed out; they are cached for a minute.
 
 ## Stats
 
@@ -292,7 +305,7 @@ through the Ringbeat API ([CLOUD.md](CLOUD.md), [PRIVACY.md](PRIVACY.md)); `loca
 
 ## Non-goals
 
-Online leaderboards (for now: runs are already uploaded, see [Profile](#profile)), user-authored charts beyond RTTTL, keyboard rebinding (only gamepad buttons are
-rebindable), gamepad rumble (phones can vibrate; see Settings), audio files.
+User-authored charts beyond RTTTL, keyboard rebinding (only gamepad buttons are rebindable), gamepad rumble (phones
+can vibrate; see Settings), audio files.
 
 See also: [CONTROLS.md](CONTROLS.md) · [SONGS.md](SONGS.md) · [ARCHITECTURE.md](ARCHITECTURE.md)

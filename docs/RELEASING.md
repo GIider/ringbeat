@@ -69,6 +69,10 @@ panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
    - Zips `dist/` and replaces the `latest` GitHub pre-release (titled `v<version> (latest build)`) with it.
    - Uploads `dist/` as the Pages artifact.
 3. **deploy**: publishes the artifact to GitHub Pages.
+4. **deploy-api** (not on pull requests; parallel to build): in `server/`, `npm ci`, `npm run migrate` (D1 migrations)
+   and `npm run deploy` (the Worker). It needs the `CLOUDFLARE_API_TOKEN` repository secret and is skipped without it.
+   The Worker re-plays runs with the game's own modules, so it ships from the same commit as the pages (see
+   [CLOUD.md › Leaderboards](CLOUD.md#leaderboards)).
 
 ### Screenshots
 

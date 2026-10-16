@@ -36,6 +36,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - 2 difficulties (Normal, Hard) with bot-measured ratings.
 - **Scoring:**
   - Local highscores (top 5 per song and difficulty).
+  - Optional GitHub sign-in: cloud save across devices and world leaderboards with server-checked scores.
   - Full combo / all perfect indicators.
   - Timing histogram.
   - Holds, rolls, slides and double notes, all derived from the melody.
