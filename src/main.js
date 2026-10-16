@@ -102,7 +102,6 @@ const inPlay = () => state === 'countin' || state === 'playing' || state === 're
 function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
-  $('btn-pause').hidden = !inPlay();
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
   if (name !== 'msgload') clearTimeout(msgTimer);
@@ -1949,7 +1948,6 @@ function wire() {
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('msgload').addEventListener('click', skipMessageLoad);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
-  $('btn-pause').onclick = pauseGame;
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;

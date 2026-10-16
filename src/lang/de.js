@@ -237,7 +237,6 @@ export const de = {
   '{n} COMBO': '{n} COMBO',
   'ALL PERFECT': 'ALLES PERFEKT',
   'FULL COMBO': 'FULL COMBO',
-  'Pause': 'Pause',
   'Resume': 'Weiter',
   'Restart': 'Neustart',
   'Skip tutorial': 'Tutorial überspringen',

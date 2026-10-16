@@ -26,7 +26,7 @@ On the bare LCD (narrow screens) there are no phone keys, so both soft-key label
 (left = action, e.g. Options on the song list; right = Back).
 
 ## Touch
-Tap and hold the lane columns (multi-touch). On small screens the on-screen ❚❚ pauses. Menu items are plain buttons.
+Tap and hold the lane columns (multi-touch). On small screens the soft-key Back pauses. Menu items are plain buttons.
 - Title: tap anywhere. Messages: swipe left / right for next / previous; tap while one loads to skip.
 - Song select: swipe the list left / right (or tap ◄ ►) to change category; tap the sort or difficulty label to cycle it;
   tap a song to select it, tap the selected song again to play.

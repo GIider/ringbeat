@@ -340,13 +340,6 @@ td + td { text-align: right; font-weight: 700; }
   padding: 8px 12px; text-align: center; font-weight: 700; pointer-events: none; }
 .toast.on-lcd { bottom: auto; transform: translate(-50%, -50%); }
 
-.pause-btn { position: fixed; top: calc(env(safe-area-inset-top) + 4px); left: calc(env(safe-area-inset-left) + 4px); z-index: 5;
-  min-height: 30px; padding: 0 10px; line-height: 1; cursor: pointer;
-  background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 3px 3px 0 #0008; }
-body:not(.compact) .pause-btn { display: none; }
-/* the pause button takes the signal icon's corner so it never covers the score line */
-body.compact:is([data-mode="play"], [data-mode="pause"]) #st-signal { visibility: hidden; }
-
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);
   line-height: 1.5; opacity: 0; visibility: hidden; transition: opacity .3s; }
@@ -428,7 +421,6 @@ body.compact input[type=range] { height: 28px; }
 
 /* Larger touch targets (>= 44px) on coarse pointers */
 @media (pointer: coarse) {
-  .softbar button, .menu > button, .pause-btn, .song-row, .comp-pad button, .nudge button { min-height: 44px; }
-  .pause-btn { min-width: 44px; }
+  .softbar button, .menu > button, .song-row, .comp-pad button, .nudge button { min-height: 44px; }
   .seg button { min-height: 44px; padding: 0 6px; }
 }
