@@ -223,6 +223,7 @@ function hideGag() {
   wipe.cancel();
   if ($('gag')) $('gag').hidden = true;
   if ($('gag-link')) $('gag-link').hidden = true;
+  if ($('gag-art')) $('gag-art').hidden = true;
 }
 function showGag(title, text, bar = -1, segments = 0) {
   $('gag').hidden = false;
@@ -237,6 +238,8 @@ function showImei() {
   hideGag();
   showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD, false));
   $('gag-link').hidden = false;
+  setSprite($('gag-art'), SPRITES.avatar, 2);
+  $('gag-art').hidden = false;
   $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
   gagTimer = setTimeout(hideGag, 8000);
 }

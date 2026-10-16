@@ -392,6 +392,7 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .gag-title { font-weight: 700; }
 .gag-text { white-space: pre-line; }
 .gag-link { color: var(--ink); text-decoration: underline; }
+.gag-art[hidden] { display: none; } /* .spr's inline-block would override [hidden] */
 .gag-bar { display: flex; gap: 2px; }
 .gag-bar:empty { display: none; }
 .gag-bar i { width: 10px; height: 14px; border: var(--u) solid var(--ink); }

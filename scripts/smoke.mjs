@@ -23,6 +23,7 @@ async function run(name) {
     await page.waitForFunction(() => /\d+ passed, \d+ failed/.test(document.getElementById('out').textContent), null, { timeout: 90000 });
     const out = await page.evaluate(() => document.getElementById('out').textContent);
     console.log(`[${name}${dev ? ' / ' + dev : ''}]`, out.split('\n').filter(l => !l.startsWith('PASS')).join('\n').trim());
+    for (const l of out.split('\n').filter(l => l.startsWith('WARN'))) console.log(`::warning title=Smoke test (${name})::${l.slice(5)}`);
     if (errors.length) console.log('page errors:', [...new Set(errors)].join(' | '));
     ok = /, 0 failed/.test(out) && !errors.length;
   } catch (e) {

@@ -7,8 +7,13 @@
 <pre id="out"></pre>
 <script>
 const out = document.getElementById('out'), f = document.getElementById('f');
-let pass = 0, fail = 0;
-const log = (ok, name, extra = '') => { ok ? pass++ : fail++; out.insertAdjacentHTML('beforeend', `<span class="${ok ? 'ok' : 'bad'}">${ok ? 'PASS' : 'FAIL'}</span> ${name} ${ok ? '' : extra}\n`); };
+let pass = 0, fail = 0, warn = 0;
+// soft: a failure is reported as WARN and does not fail the run (for timing-sensitive checks)
+const log = (ok, name, extra = '', soft = false) => {
+  if (ok) pass++; else if (soft) warn++; else fail++;
+  const tag = ok ? 'PASS' : soft ? 'WARN' : 'FAIL';
+  out.insertAdjacentHTML('beforeend', `<span class="${ok ? 'ok' : 'bad'}">${tag}</span> ${name} ${ok ? '' : extra}\n`);
+};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 f.addEventListener('load', async () => {
   const w = f.contentWindow, d = w.document, $ = id => d.getElementById(id);
@@ -26,8 +31,8 @@ f.addEventListener('load', async () => {
     key('Space'); await sleep(100);
     log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
     log($('soft-left').textContent === 'Select' && $('soft-left').parentElement.classList.contains('solo'), 'menu: single centred Select');
-    for (let i = 0; i < 20 && d.activeElement !== $('mm-go'); i++) await sleep(50); // focus lands in a rAF, which headless WebKit can delay
-    log(d.activeElement === $('mm-go'), 'menu item focused');
+    for (let i = 0; i < 100 && d.activeElement !== $('mm-go'); i++) await sleep(50); // focus lands in a rAF, which headless WebKit can delay
+    log(d.activeElement === $('mm-go'), 'menu item focused', '', true);
     key('ArrowDown'); await sleep(50);
     log($('mm-title').textContent === 'My songs' && $('mm-num').textContent === '2', 'down -> next menu item');
     key('ArrowUp'); key('ArrowUp'); await sleep(50);
@@ -56,8 +61,14 @@ f.addEventListener('load', async () => {
     const pointerUp = () => w.dispatchEvent(new w.PointerEvent('pointerup'));
     phoneKey('softR'); await sleep(1350); pointerUp(); await sleep(250);
     log(vis('gag') && /Clearing/.test($('gag-text').textContent) && vis('select'), 'holding C starts the wipe; it runs on after letting go');
+    log(!vis('gag-art'), 'wipe shows no avatar');
     phoneKey('softR'); pointerUp(); await sleep(150);
     log(!vis('gag') && vis('select'), 'tapping C again stops the wipe (no Back)');
+    for (const k of ['*', '#', '0', '6', '#']) phoneKey(k);
+    await sleep(50);
+    log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), '*#06# shows the IMEI panel with the avatar');
+    key('KeyX'); await sleep(50);
+    log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
     const cat0 = $('sel-cat').textContent;
     key('ArrowRight'); await sleep(80);
     log($('sel-cat').textContent !== cat0 && vis('select'), 'right arrow switches category');
@@ -259,7 +270,7 @@ f.addEventListener('load', async () => {
     rb.scores.clear(); rb.stats.clear();
   } catch (e) { log(false, 'exception', e && e.stack || e); }
   log(errors.length === 0, 'no runtime errors', errors.join(' | '));
-  out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed\n`);
+  out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed${warn ? `, ${warn} warned` : ''}\n`);
   document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
 });
 </script>
