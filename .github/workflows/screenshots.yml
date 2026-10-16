@@ -1,0 +1,55 @@
+name: Screenshots
+
+# Regenerates the README screenshots and force-pushes them as a single parentless commit to the
+# `screenshots` branch, so they never add to main's history.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y --no-install-recommends imagemagick
+
+      # Seed with the published shots so unchanged ones keep their exact bytes.
+      - name: Fetch published screenshots
+        run: |
+          if git fetch --depth=1 origin screenshots; then
+            git worktree add --detach shots FETCH_HEAD
+          else
+            mkdir shots
+          fi
+
+      - run: SCREENSHOT_DIR="$PWD/shots" npm run screenshots
+
+      - name: Publish if changed
+        run: |
+          cd shots
+          if [ -e .git ] && [ -z "$(git status --porcelain)" ]; then
+            echo "Screenshots unchanged."
+            exit 0
+          fi
+          rm -rf .git
+          git init -q -b screenshots
+          git add -A
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -q -m "Screenshots for ${GITHUB_SHA}"
+          cd ..
+          git fetch -q ./shots screenshots
+          git push --force origin FETCH_HEAD:refs/heads/screenshots

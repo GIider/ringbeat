@@ -1,4 +1,5 @@
-// Regenerates the README screenshots in docs/screenshots/ from the ?demo=<kind> states.
+// Regenerates the README screenshots from the ?demo=<kind> states into docs/screenshots/ (git-ignored;
+// override with SCREENSHOT_DIR). CI publishes them to the history-less `screenshots` branch.
 // Usage: npm run screenshots   (needs `npx playwright install chromium` once)
 import { chromium } from 'playwright';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
@@ -23,15 +24,16 @@ for (const bin of ['magick', 'convert']) {
 }
 if (!magick) console.log('ImageMagick not found: screenshots will not be palette-optimised');
 // Re-encoding changes the bytes (PNG metadata) even when no pixel moved, so a shot is only
-// replaced when its pixels differ from the committed file: `git status` then shows real changes only.
+// replaced when its pixels differ from the existing file: CI seeds the dir with the published branch, so
+// `git status` there shows real changes only.
 // Without ImageMagick there is no pixel compare, so every shot is rewritten.
 const tmp = mkdtempSync(join(tmpdir(), 'rb-shots-'));
 const samePixels = (a, b) => {
   if (!magick) return false;
-  const r = spawnSync(magick, ['compare', '-metric', 'AE', a, b, 'null:'], { encoding: 'utf8' }); // metric goes to stderr
+  const r = spawnSync(magick === 'magick' ? magick : 'compare', [...(magick === 'magick' ? ['compare'] : []), '-metric', 'AE', a, b, 'null:'], { encoding: 'utf8' }); // metric goes to stderr
   return r.status === 0 && r.stderr.trim().startsWith('0'); // status 1 = differs, 2 = error/size mismatch
 };
-const outDir = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
+const outDir = (process.env.SCREENSHOT_DIR ?? fileURLToPath(new URL('../docs/screenshots', import.meta.url))).replace(/\/?$/, '/');
 mkdirSync(outDir, { recursive: true });
 
 const port = 20000 + Math.floor(Math.random() * 10000);
@@ -60,7 +62,7 @@ try {
     await page.close();
     if (existsSync(outDir + name) && samePixels(fresh, outDir + name)) { console.log('unchanged ' + name); continue; }
     copyFileSync(fresh, outDir + name);
-    console.log('wrote docs/screenshots/' + name);
+    console.log('wrote ' + outDir + name);
    }
    await ctx.close();
   }
