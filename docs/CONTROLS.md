@@ -4,7 +4,7 @@
 | Action | Keys |
 |---|---|
 | Lanes (4) | `D` `F` `J` `K` |
-| Main menu | `↑` `↓` (or `←` `→`) browse, `1`–`6` jump to an item, `Enter` open, `Esc` back to the title |
+| Main menu | `↑` `↓` (or `←` `→`) browse, `1`–`6` jump to an item, `Enter` open, `Esc` or `Backspace` back to the title |
 | Menu navigation | `↑` `↓` (spatial focus), `Enter`/`Space` activate, `Tab` also works |
 | Category (song select) | `←` `→`, or `[` `]` |
 | Detail tab (difficulty screen) | `←` `→` |
