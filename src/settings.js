@@ -16,7 +16,7 @@ export const settings = {
   volume: num(raw.volume, 0, 1, 0.7),
   voice: raw.voice === 'smooth' ? 'smooth' : 'buzzer',
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
-  backing: raw.backing !== false,
+  backing: typeof raw.backing === 'boolean' ? raw.backing : false, // off for new players; saved choices are kept
   preview: raw.preview !== false,
   idleGags: raw.idleGags !== false,
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
