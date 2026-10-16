@@ -904,9 +904,8 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, same = entry.only && entry.only !== d; // folded into the other difficulty
-    const n = same ? 0 : entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? ` · same as ${cap(entry.only)}` : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
-      (r && !same ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '') + '</span>';
+    const n = same ? 0 : entry.notes[d] || 0;
+    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? ` · same as ${cap(entry.only)}` : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') + '</span>';
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
     b.onfocus = () => { dpDiff = d; renderDpPanel(); };
