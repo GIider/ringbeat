@@ -16,7 +16,7 @@ const RELOAD = '<script>new EventSource("/__reload").onmessage = () => location.
 if (DEV) {
   let timer;
   watch(ROOT, { recursive: true }, (_, name) => {
-    if (!name || /(^|[\\/])(node_modules|\.git|dist)([\\/]|$)/.test(name)) return;
+    if (!name || /(^|[\\/])(node_modules|\.git|\.wrangler|dist)([\\/]|$)/.test(name)) return;
     clearTimeout(timer);
     timer = setTimeout(() => { for (const c of clients) c.write('data: reload\n\n'); }, 80);
   });
