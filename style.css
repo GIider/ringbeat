@@ -123,6 +123,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .boot { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
 .boot-logo { font-weight: 700; font-size: calc(var(--fs) * 2); letter-spacing: 2px; animation: boot-in .9s steps(6) both; }
 .boot-version { font-size: calc(var(--fs) * .7); opacity: .6; margin: 0; }
+.boot-build { margin-top: 2px; opacity: .45; }
 .boot-version a { color: inherit; text-decoration: none; pointer-events: auto; }
 .boot-version a:hover, .boot-version a:focus-visible { text-decoration: underline; opacity: 1; }
 .boot-art { margin: 6px 0; animation: boot-in .9s .25s steps(6) both; }

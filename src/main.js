@@ -22,7 +22,7 @@ import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tu
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
 import { SPRITES, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
-import { VERSION } from './version.js';
+import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
 import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
@@ -195,7 +195,7 @@ function showGag(title, text, bar = -1, segments = 0) {
 function hideGagIfWipe() { if (gagTick) hideGag(); }
 function showImei() {
   hideGag();
-  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION);
+  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD));
   $('gag-link').hidden = false;
   $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
   gagTimer = setTimeout(hideGag, 8000);
@@ -1541,6 +1541,7 @@ function wire() {
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
+  $('boot-build').textContent = buildLine(BUILD);
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });

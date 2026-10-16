@@ -44,7 +44,7 @@ jobs:
           (cd dist && zip -qr ../ringbeat.zip .)
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
           gh release create latest ringbeat.zip \
-            --title "v1.0.${{ github.run_number }} (latest build)" \
+            --title "v1.1.${{ github.run_number }} (latest build)" \
             --notes "Built from commit ${{ github.sha }} on $(date -u +%Y-%m-%d)" \
             --prerelease
         env:

@@ -13,7 +13,7 @@ import { HOLD_MIN_SEC } from '../src/chart.js';
 import { createPerf } from '../src/perf.js';
 import * as C from '../src/composer.js';
 import { createMySongs, MAX_SONGS, MAX_RTTTL } from '../src/mysongs.js';
-import { VERSION } from '../src/version.js';
+import { VERSION, BUILD, buildLine } from '../src/version.js';
 import { readFileSync } from 'node:fs';
 import { sanitizeBindings, laneForSlot, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
@@ -434,6 +434,12 @@ test('VERSION matches package.json', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   const mm = v => v.split('.').slice(0, 2).join('.');
   assert.equal(mm(VERSION), mm(pkg.version));
+});
+
+test('buildLine formats stamped and dev builds', () => {
+  assert.equal(buildLine({ number: 42, commit: '3a9f1c2', date: '2026-10-16' }), 'build 42 · 3a9f1c2 · 2026-10-16');
+  assert.equal(buildLine({ number: 0, commit: 'dev', date: '' }), 'dev build');
+  assert.equal(buildLine(BUILD), BUILD.number ? buildLine(BUILD) : 'dev build');
 });
 
 test('fast 16th-note song still gets sparse easy/normal charts', () => {
