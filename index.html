@@ -168,7 +168,7 @@
             <button id="dp-easy" data-diff="easy">Easy</button>
             <button id="dp-normal" data-diff="normal">Normal</button>
             <button id="dp-hard" data-diff="hard">Hard</button>
-            <button id="btn-train-mode" aria-pressed="false">Training: Off</button>
+            <button id="btn-mods">Mods: Off</button>
           </div>
           <div class="dp-tabs" role="tablist" aria-label="Song details">
             <span class="arrow" aria-hidden="true">◄</span>
@@ -202,21 +202,21 @@
           </div>
         </section>
 
-        <!-- Training options -->
-        <section id="training" class="screen" data-title="Training" data-soft-left="Select" data-soft-right="Back">
-          <div id="t-song" class="sub"></div>
+        <!-- Modifiers -->
+        <section id="mods" class="screen" data-title="Mods" data-soft-left="Select" data-soft-right="Back">
+          <div class="sub">Score <b id="m-mult">×1.00</b></div>
           <div class="menu">
-            <label class="item">Speed <b id="t-speed-val"></b>
-              <input id="t-speed" type="range" min="50" max="150" step="10"></label>
-            <label class="item check"><input id="t-loop" type="checkbox"> Loop section</label>
-            <label class="item">Loop start <b id="t-a-val"></b>
-              <input id="t-a" type="range" min="0" max="90" step="5"></label>
-            <label class="item">Loop end <b id="t-b-val"></b>
-              <input id="t-b" type="range" min="10" max="100" step="5"></label>
-            <button id="btn-train-start" data-default>▶ Start</button>
-            <button id="btn-train-back">Back</button>
+            <label class="item">Speed <b id="m-speed-val"></b>
+              <input id="m-speed" type="range" min="0" max="5" step="1"></label>
+            <label class="item check"><input id="m-mirror" type="checkbox"> Mirror lanes</label>
+            <label class="item check"><input id="m-hidden" type="checkbox"> Hidden notes</label>
+            <label class="item check"><input id="m-sudden" type="checkbox"> Sudden death</label>
+            <label class="item">Judging <b id="m-judge-val"></b>
+              <input id="m-judge" type="range" min="0" max="2" step="1"></label>
+            <button id="btn-mods-reset">Reset all</button>
+            <button id="btn-mods-back" data-default>Back</button>
           </div>
-          <p class="hint">Practice runs are never saved. Pitch stays the same at any speed.</p>
+          <p id="m-hint" class="hint"></p>
         </section>
 
         <!-- Now playing (shown in the phone while the highway runs) -->
@@ -260,7 +260,7 @@
             </div>
             <div class="r-page" data-page="3" hidden>
               <ol id="r-top" class="top"></ol>
-              <div id="r-top-empty" class="hint center" hidden>Practice runs are not saved</div>
+              <div id="r-top-empty" class="hint center" hidden>Run not saved</div>
             </div>
           </div>
           <div class="menu r-foot">
@@ -276,7 +276,6 @@
             <button id="btn-resume" data-default>Resume</button>
             <button id="btn-restart">Restart</button>
             <button id="btn-pause-settings">Settings</button>
-            <button id="btn-pause-options" hidden>Training options</button>
             <button id="btn-quit">Song select</button>
             <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
           </div>

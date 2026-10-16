@@ -50,7 +50,7 @@ pre-release and deploys it to GitHub Pages ([.github/workflows/deploy.yml](.gith
 ## Features
 
 Song select with 153 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
-full combo / all perfect indicators · training mode (speed 50–150 %, A–B loop, timing display) ·
+full combo / all perfect indicators · timing display · modifiers (speed, mirror, hidden, sudden death, judging; score multiplier) ·
 keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·
 buzzer or smooth instrument voice.
 

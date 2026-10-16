@@ -59,7 +59,7 @@
   "opsPerSec": 24956.2209,
   "allocBytes": 39091.04
  },
- "practice.slice+scale (all)": {
+ "mods.scale (all)": {
   "iters": 702,
   "mean": 0.2851,
   "p50": 0.2718,

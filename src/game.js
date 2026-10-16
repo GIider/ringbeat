@@ -11,8 +11,6 @@ const ACCURACY_WEIGHT = { perfect: 1, great: 2 / 3, good: 1 / 3, miss: 0 };
 const LOOKAHEAD = 0.1, SCHED_INTERVAL = 25; // ms timer that schedules *audio* only, never judges
 const END_PADDING = 0.6;
 
-// Hit window of a note: slide follow-ups (idx > 0) are more forgiving than everything else.
-const windowOf = n => (n.slideIdx > 0 ? SLIDE_WINDOW : WINDOWS.good);
 
 export function gradeFor(acc) {
   return acc >= 95 ? 'S' : acc >= 90 ? 'A' : acc >= 80 ? 'B' : acc >= 70 ? 'C' : 'D';
@@ -26,11 +24,25 @@ export class Game {
     this.fx = { press() {}, judge() {} }; // set by renderer
     this.onFinish = () => {};
     this.timer = null;
+    this._setWindows(1);
+    this.suddenDeath = false;
+    this.failed = false;
   }
 
-  start(chart, { leadIn = 2, backing = true, calibration = 0 } = {}) {
+  // Hit windows for this run (mods can widen or narrow them). All judging reads these, not the exported base values.
+  _setWindows(k) {
+    this.win = { perfect: WINDOWS.perfect * k, great: WINDOWS.great * k, good: WINDOWS.good * k, slide: SLIDE_WINDOW * k };
+    this.reach = Math.max(this.win.good, this.win.slide); // how far ahead of a press a note can still be matched
+  }
+  // Hit window of a note: slide follow-ups (idx > 0) are more forgiving than everything else.
+  _windowOf(n) { return n.slideIdx > 0 ? this.win.slide : this.win.good; }
+
+  start(chart, { leadIn = 2, backing = true, calibration = 0, windowScale = 1, suddenDeath = false } = {}) {
     this.stop();
     const ctx = this.synth.ctx;
+    this._setWindows(windowScale);
+    this.suddenDeath = !!suddenDeath;
+    this.failed = false;
     this.chart = chart;
     this.backing = backing;
     this.calibration = calibration;
@@ -111,7 +123,7 @@ export class Game {
     while (i < list.length && list[i].judged) i++;
     this.lanePtr[lane] = i;
     let best = null, bestAbs = Infinity, roll = null, rollAbs = Infinity;
-    for (; i < list.length && list[i].time <= t + SLIDE_WINDOW; i++) {
+    for (; i < list.length && list[i].time <= t + this.reach; i++) {
       const n = list[i];
       if (n.judged) continue;
       if (n.isRoll) { // a roll takes every press from its window opening until its last tick has passed
@@ -119,17 +131,20 @@ export class Game {
         continue;
       }
       const d = Math.abs(t - n.time);
-      if (d < bestAbs && d <= windowOf(n)) { best = n; bestAbs = d; }
+      if (d < bestAbs && d <= this._windowOf(n)) { best = n; bestAbs = d; }
     }
     if (roll && rollAbs <= bestAbs) { this._rollHit(roll); return; }
     if (!best) { // ghost tap: no score effect, but breaks FC until the last note is played
       // Warm-up taps before the first note can be reached are ignored.
       const first = this.chart.notes[0];
-      const early = this.judgedCount === 0 && first && t < first.time - SLIDE_WINDOW;
-      if (this.notesLeft > 0 && !early) { this.strays++; this.combo = 0; }
+      const early = this.judgedCount === 0 && first && t < first.time - this.reach;
+      if (this.notesLeft > 0 && !early) {
+        this.strays++; this.combo = 0;
+        if (this.suddenDeath) this._fail();
+      }
       return;
     }
-    const j = bestAbs <= WINDOWS.perfect ? 'perfect' : bestAbs <= WINDOWS.great ? 'great' : 'good'; // slides: wide hits are Good
+    const j = bestAbs <= this.win.perfect ? 'perfect' : bestAbs <= this.win.great ? 'great' : 'good'; // slides: wide hits are Good
     this._judge(best, j);
     this.deltas.push(t - best.time);
     best.hit = true;
@@ -169,7 +184,8 @@ export class Game {
         if (n.isRoll) { // resolves once its last tick has passed
           if (t <= n.time + n.duration) break;
           this._finishRoll(n);
-        } else if (n.time + windowOf(n) < t) this._miss(n, true);
+          if (this.state !== 'running') return;
+        } else if (n.time + this._windowOf(n) < t) { this._miss(n, true); if (this.state !== 'running') return; }
         else break;
         i++;
       }
@@ -218,6 +234,18 @@ export class Game {
     this.combo = 0;
     this.synth.playMiss(n.midi);
     this.fx.judge(n.lane, 'miss');
+    if (this.suddenDeath) this._fail();
+  }
+
+  // Sudden Death: the first miss, dropped hold or stray press ends the run.
+  _fail() {
+    if (this.failed || this.state !== 'running') return;
+    this.failed = true;
+    this.state = 'done';
+    clearInterval(this.timer);
+    this.timer = null;
+    this.synth.stopAll();
+    this.onFinish(this.results());
   }
 
   _completeHold(n) {
@@ -271,7 +299,7 @@ export class Game {
       score: this.score, maxCombo: this.maxCombo, counts: { ...this.counts },
       accuracy: this.accuracy, grade: this.grade, ghosts: this.strays,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
-      deltas: this.deltas.slice(),
+      deltas: this.deltas.slice(), failed: this.failed,
     };
   }
 }

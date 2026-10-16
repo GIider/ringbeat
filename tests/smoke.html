@@ -94,28 +94,21 @@ f.addEventListener('load', async () => {
     log(vis('select'), 'my songs back');
 
     d.querySelector('.song-row.cur').click(); await sleep(50);
-    log(vis('diffpick') && !$('btn-train-mode').hidden, 'difficulty screen has the training toggle');
-    $('btn-train-mode').click(); await sleep(30);
-    log($('st-title').textContent === 'Training', 'training mode retitles the difficulty screen');
-    d.querySelector('#diffpick [data-default]').click(); await sleep(50);
-    log(vis('training'), 'training options');
-    $('t-speed').value = 70; $('t-speed').dispatchEvent(new w.Event('input'));
-    $('t-loop').checked = true; $('t-loop').dispatchEvent(new w.Event('change'));
-    $('btn-train-start').click(); await sleep(200);
-    log(['title','select','custom','mysongs','songmenu','composer','settings','training','results','pause','calib'].every(s => !vis(s)), 'in game (all screens hidden)');
-    log(!$('btn-pause').hidden, 'pause button shown');
-    log(vis('nowplaying') && d.body.dataset.mode === 'play', 'now playing in the phone, play mode');
-    key('Escape'); await sleep(150);
-    log(vis('pause') && !$('btn-pause-options').hidden, 'paused shows training options');
-    log(d.body.dataset.mode === 'pause', 'pause mode');
-    key('Escape'); await sleep(200); // resume needs a real user gesture for the AudioContext; not asserted here
-    $('btn-pause').click(); await sleep(100);
-    $('btn-quit').click(); await sleep(100);
-    log(vis('select'), 'quit -> select');
-    d.querySelector('.song-row.cur').click(); await sleep(50);
-    log($('btn-train-mode').getAttribute('aria-pressed') === 'true' && $('st-title').textContent === 'Training', 'training mode is remembered');
-    $('btn-train-mode').click(); // training mode off again
-    log($('btn-train-mode').getAttribute('aria-pressed') === 'false' && $('st-title').textContent === 'Difficulty', 'training mode off');
+    log(vis('diffpick'), 'difficulty screen');
+    // mods: own screen, sticky loadout, summary on the picker button
+    log($('btn-mods').textContent === 'Mods: Off', 'mods button starts Off');
+    $('btn-mods').click(); await sleep(50);
+    log(vis('mods') && !vis('diffpick') && $('m-mult').textContent === '×1.00', 'mods screen opens');
+    $('m-hidden').checked = true; $('m-hidden').dispatchEvent(new w.Event('change'));
+    $('m-speed').value = 4; $('m-speed').dispatchEvent(new w.Event('input'));
+    log($('m-mult').textContent === '×1.32', 'mods multiplier updates live', $('m-mult').textContent);
+    key('Escape'); await sleep(80);
+    log(vis('diffpick') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to difficulty with a mods summary', $('btn-mods').textContent);
+    log(JSON.parse(w.localStorage.getItem('ringbeat.v1')).mods.speed === 1.2, 'mods persist in settings');
+    $('btn-mods').click(); await sleep(50);
+    $('btn-mods-reset').click(); await sleep(30);
+    $('btn-mods-back').click(); await sleep(80);
+    log(vis('diffpick') && $('btn-mods').textContent === 'Mods: Off', 'reset all clears the loadout');
     d.querySelector('#diffpick [data-default]').click(); await sleep(150);
     log(!vis('select') && !vis('diffpick') && !vis('results'), 'normal play starts');
     key('KeyR'); await sleep(150);

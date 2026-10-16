@@ -8,7 +8,7 @@ import { SONGS } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
 import { DIFFICULTIES, buildLibrary } from '../src/library.js';
-import { sliceChart, scaleChart } from '../src/practice.js';
+import { scaleChart } from '../src/mods.js';
 import { applyView, SORTS } from '../src/listview.js';
 import { encodeSong, decodeSong } from '../src/share.js';
 import { createScores } from '../src/scores.js';
@@ -150,7 +150,7 @@ const cases = [
   ...DIFFICULTIES.map(d => [`chart.generate ${d} (all songs)`, () => { for (const p of parsed) generateChart(p, { difficulty: d }); }]),
   ['library.build', () => buildLibrary()],
   ['library.build x2 (boot + rebuild)', () => { buildLibrary(); buildLibrary(); }],
-  ['practice.slice+scale (all)', () => { for (const c of charts) { try { scaleChart(sliceChart(c, 0, c.length * 0.5), 0.75); } catch { /* no notes in that half */ } } }],
+  ['mods.scale (all)', () => { for (const c of charts) scaleChart(c, 0.75); }],
   ['game.simulate (longest, 1 bot run)', () => { runBot(longest, LADDER[2], 1); }],
   ['listview.applyView (all sorts)', () => { for (const s of SORTS) applyView(lib, { sort: s.id }, 'normal', scores); }],
   ['share.encode+decode', () => { decodeSong(encodeSong(memStore)); }],

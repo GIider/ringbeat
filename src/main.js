@@ -1,9 +1,9 @@
 // Bootstrap, screen state machine, wiring.
-// States: title -> select <-> (options | info | custom | settings <-> calibration | training) -> countin -> playing <-> paused -> results -> select
+// States: title -> select <-> (options | info | custom | settings <-> calibration) -> countin -> playing <-> paused -> results -> select
 // Every menu is a <section> inside the phone's LCD; during play the phone moves aside and shows "now playing".
 
 import { generateChart } from './chart.js';
-import { sliceChart, scaleChart } from './practice.js';
+import * as mods from './mods.js';
 import { Synth } from './synth.js';
 import { Game } from './game.js';
 import { Renderer } from './render.js';
@@ -60,7 +60,7 @@ let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
   title: $('title'), select: $('select'), options: $('options'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
-  settings: $('settings'), training: $('training'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
+  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
@@ -302,8 +302,9 @@ function togglePreview(entry) {
 }
 
 // ---- song select screen ----
-function badgeHTML(run) {
-  return run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '';
+function badgeHTML(run, withMods = false) {
+  return (run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '') +
+    (withMods && run && run.mods && run.mods.length ? `<span class="badge mod">${esc(run.mods.join(' '))}</span>` : '');
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
@@ -569,20 +570,22 @@ function renderDpPanel() {
   });
   if (dpTab === 0) {
     const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
-    box.innerHTML = `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span> · ${e.notes[d]} notes</div>${tricky}`;
+    const mod = mods.isActive(settings.mods)
+      ? `<div class="hint">Mods ${esc(mods.summary(settings.mods))} · score ${mods.multText(mods.multiplier(settings.mods))}</div>` : '';
+    box.innerHTML = `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span> · ${e.notes[d]} notes</div>${tricky}${mod}`;
   } else {
     box.textContent = '';
     const ol = document.createElement('ol');
     ol.className = 'top';
     for (const r of (rec ? rec.top : [])) {
       const li = document.createElement('li');
-      li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
+      li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
       ol.appendChild(li);
     }
     if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
   }
 }
-function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
+function askDifficulty(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
   dpEntry = entry;
   dpTab = 0;
@@ -600,8 +603,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
       settings.difficulty = d;
       if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
       save();
-      if (trainable && trainingMode) { openTraining(); return; }
-      startRun({ entry, diff: d, training: null, ret, retLabel });
+      startRun({ entry, diff: d, ret, retLabel });
     };
   }
   if (!$('diffpick').querySelector('[data-default]')) {
@@ -611,8 +613,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid, trainable = false) {
   const def = $('diffpick').querySelector('[data-default]');
   dpDiff = def ? def.dataset.diff : 'normal';
   renderDpPanel();
-  $('btn-train-mode').hidden = !trainable;
-  screens.diffpick.dataset.title = trainable && trainingMode ? 'Training' : 'Difficulty';
+  refreshModsButton();
   setState('diffpick', 'diffpick');
 }
 
@@ -742,39 +743,52 @@ function openCustom(text = '', uid = '') {
   setState('custom', 'custom');
 }
 
-// ---- training mode (toggle under the difficulties on the difficulty screen) ----
-let trainingMode = false;
-function setTrainingMode(on) {
-  trainingMode = on;
-  const b = $('btn-train-mode');
-  b.classList.toggle('sel', on);
-  b.setAttribute('aria-pressed', String(on));
-  b.textContent = 'Training: ' + (on ? 'On' : 'Off');
-  screens.diffpick.dataset.title = on ? 'Training' : 'Difficulty';
-  refreshChrome();
+// ---- mods (sticky loadout, edited on its own screen opened from the difficulty picker) ----
+function refreshModsButton() {
+  const on = mods.isActive(settings.mods);
+  $('btn-mods').textContent = 'Mods: ' + mods.summary(settings.mods) + (on ? ' ▸' : '');
+  $('btn-mods').classList.toggle('sel', on);
 }
-
-// ---- training options ----
-function openTraining() {
-  const e = selectedEntry(), t = settings.training;
-  $('t-song').textContent = `${e.title} · ${settings.difficulty}`;
-  $('t-speed').value = Math.round(t.speed * 100);
-  $('t-loop').checked = t.loop;
-  $('t-a').value = Math.round(t.a * 100);
-  $('t-b').value = Math.round(t.b * 100);
-  updateTrainingLabels();
-  setState('training', 'training');
+const MOD_HINTS = {
+  'm-speed': 'Plays the song faster or slower. Pitch stays the same.',
+  'm-mirror': 'Flips the lanes left to right.',
+  'm-hidden': 'Notes vanish just before the hit line.',
+  'm-sudden': 'The first miss or stray tap ends the run.',
+  'm-judge': 'Lenient widens the timing windows, Strict narrows them.',
+};
+const JUDGE_LABELS = { lenient: 'Lenient', off: 'Normal', strict: 'Strict' };
+function updateModsUI() {
+  const m = settings.mods;
+  $('m-speed').value = mods.SPEEDS.indexOf(m.speed);
+  $('m-speed-val').textContent = m.speed === 1 ? 'Normal' : m.speed.toFixed(1) + '×';
+  $('m-mirror').checked = m.mirror;
+  $('m-hidden').checked = m.hidden;
+  $('m-sudden').checked = m.sudden;
+  $('m-judge').value = mods.JUDGES.indexOf(m.judge);
+  $('m-judge-val').textContent = JUDGE_LABELS[m.judge];
+  $('m-mult').textContent = mods.multText(mods.multiplier(m));
+  paintRanges($('mods'));
 }
-function updateTrainingLabels() {
-  const t = settings.training;
-  $('t-speed-val').textContent = Math.round(t.speed * 100) + '%';
-  $('t-a-val').textContent = Math.round(t.a * 100) + '%';
-  $('t-b-val').textContent = Math.round(t.b * 100) + '%';
-  $('t-a').disabled = $('t-b').disabled = !t.loop;
+function openMods() {
+  updateModsUI();
+  $('m-hint').textContent = MOD_HINTS['m-speed'];
+  setState('mods', 'mods');
+}
+function closeMods() {
+  refreshModsButton();
+  renderDpPanel();
+  setState('diffpick', 'diffpick');
+  // show() focuses the default difficulty on the next frame; land back on the Mods button instead.
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'diffpick') { $('btn-mods').focus({ preventScroll: true }); light($('btn-mods')); } }));
+}
+function setMod(patch) {
+  settings.mods = mods.normalize({ ...settings.mods, ...patch });
+  save();
+  updateModsUI();
 }
 
 // ---- play / pause / results ----
-let run = null; // { entry, diff, training: null | {speed, loop, a, b} }
+let run = null; // { entry, diff, ret, retLabel, tutorial, modsUsed }
 
 function laneLabels(lanes) {
   if (lastDevice === 'pad') {
@@ -803,11 +817,9 @@ function startRun(r) {
     } else {
       chart = perf.time('chartgen', () => generateChart(r.entry.song, { difficulty: r.diff }));
     }
-    if (r.training) {
-      const { speed, loop, a, b } = r.training;
-      if (loop) chart = sliceChart(chart, a * chart.length, b * chart.length);
-      if (speed !== 1) chart = scaleChart(chart, speed);
-    }
+    // Mods apply to normal runs only (not the tutorial). Snapshot them so results match what was played.
+    r.modsUsed = !r.tutorial && mods.isActive(settings.mods) ? mods.normalize(settings.mods) : null;
+    if (r.modsUsed) chart = mods.applyChart(chart, r.modsUsed);
   } catch (e) {
     toast('✗ ' + e.message, 3500);
     return false;
@@ -815,11 +827,9 @@ function startRun(r) {
   synth.ensure();
   synth.setVolume(settings.volume);
   renderer.title = r.tutorial ? STAGES[r.tutorial.stage].title : r.entry.title;
-  renderer.trainingLabel = r.training
-    ? `TRAINING ${Math.round(r.training.speed * 100)}%` +
-      (r.training.loop ? ` · LOOP ${Math.round(r.training.a * 100)}–${Math.round(r.training.b * 100)}%` : '')
-    : '';
   renderer.scrollTime = settings.scrollTime;
+  renderer.hidden = !!(r.modsUsed && r.modsUsed.hidden);
+  renderer.modLabel = r.modsUsed ? mods.tags(r.modsUsed).join(' ') : '';
   renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
   renderer.resetState();
   screens.nowplaying.dataset.title = renderer.title;
@@ -828,7 +838,8 @@ function startRun(r) {
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
   if (r.tutorial) showCaption(r.tutorial.stage);
-  game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, calibration: settings.calibration });
+  game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, calibration: settings.calibration,
+    ...(r.modsUsed && mods.gameOptions(r.modsUsed)) });
   setState('countin', null);
   return true;
 }
@@ -836,7 +847,7 @@ function restartRun() { resumeEnd = 0; renderer.resumeCount = 0; if (run) startR
 
 function playSelected() {
   const e = selectedEntry();
-  if (e) askDifficulty(e, null, null, openSelect, null, true);
+  if (e) askDifficulty(e, null, null, openSelect);
 }
 
 function leaveToSelect() {
@@ -862,7 +873,6 @@ function pauseGame() {
   padHeld.forEach(s => s.clear());
   state = 'paused';
   input.enabled = false;
-  $('btn-pause-options').hidden = !(run && run.training);
   const tut = !!(run && run.tutorial);
   $('btn-quit').hidden = tut;
   $('btn-tut-skip-pause').hidden = !tut;
@@ -917,15 +927,16 @@ game.onFinish = r => {
   input.reset();
   padHeld.forEach(s => s.clear());
   if (run && run.tutorial) { tutorialStageDone(r); return; }
-  const training = run && run.training;
-  if (training && training.loop) { // looped practice: go again immediately
-    toast(`Loop: ${r.score} · ${r.accuracy.toFixed(1)}% · ${r.grade}${r.fc ? ' · FC' : ''}`, 1800);
-    startRun(run);
-    return;
+  // Mods fold their multiplier into the stored score; grade/accuracy stay raw.
+  const used = run && run.modsUsed;
+  if (used) {
+    r.mult = mods.multiplier(used);
+    r.score = Math.round(r.score * r.mult);
+    r.mods = mods.tags(used);
   }
-  $('r-heading').textContent = screens.results.dataset.title = training ? 'Practice' : 'Results';
+  $('r-heading').textContent = screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-song').textContent = run ? `${run.entry.title} · ${run.diff}` +
-    (training && training.speed !== 1 ? ` · ${Math.round(training.speed * 100)}%` : '') : '';
+    (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
   $('r-score').textContent = r.score;
   $('r-grade').textContent = r.grade;
   $('r-grade').dataset.grade = r.grade;
@@ -944,8 +955,8 @@ game.onFinish = r => {
   const best = $('r-best');
   best.hidden = true;
   topRuns = { runs: [], rank: null };
-  if (training) {
-    best.hidden = false; best.textContent = 'Practice runs are not saved'; best.style.color = 'var(--dim)';
+  if (r.failed) {
+    best.hidden = false; best.textContent = 'Sudden death: run not saved'; best.style.color = 'var(--dim)';
   } else if (run) {
     const rec = scores.record(run.entry.id, run.diff, r);
     best.style.color = '';
@@ -966,7 +977,7 @@ function renderTopRuns() {
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
     if (topRuns.rank === i + 1) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r)}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
     ol.appendChild(li);
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
@@ -983,7 +994,7 @@ function nextSong() {
   const e = list[(i + 1) % list.length];
   selectedId = e.id;
   settings.lastSongId = e.id; save();
-  startRun({ entry: e, diff: run ? run.diff : settings.difficulty, training: null, ret: run && run.ret, retLabel: run && run.retLabel });
+  startRun({ entry: e, diff: run ? run.diff : settings.difficulty, ret: run && run.ret, retLabel: run && run.retLabel });
 }
 
 // ---- tutorial ----
@@ -1065,7 +1076,7 @@ function tutorialGo() {
   const t = run && run.tutorial;
   if (t && t.done) finishTutorial();
   else if (t && t.passed) { if (t.stage + 1 < STAGES.length) openLesson(t.stage + 1); else tutorialOutro(); }
-  else if (t && t.stage >= 0) startRun({ entry: null, diff: 'normal', training: null, tutorial: { stage: t.stage } });
+  else if (t && t.stage >= 0) startRun({ entry: null, diff: 'normal', tutorial: { stage: t.stage } });
   else openLesson(0);
 }
 
@@ -1220,7 +1231,7 @@ function back() {
     case 'options': openSelect(); break;
     case 'tutorial': finishTutorial(); break;
     case 'settings': closeSettings(); break;
-    case 'training': openSelect(); break;
+    case 'mods': closeMods(); break;
     case 'mysongs': openSelect(); break;
     case 'diffpick': if (dpBack) dpBack(); else openSelect(); break;
     case 'songmenu': openMySongs(); break;
@@ -1248,11 +1259,12 @@ function menuButton(index) {
     case BTN.B: back(); break;
     case BTN.X:
       if (state === 'select') openOptions();
+      else if (state === 'diffpick') openMods();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
       break;
     case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results') navigate('left'); break;
     case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results') navigate('right'); break;
-    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'diffpick' && !$('btn-train-mode').hidden) setTrainingMode(!trainingMode); break;
+    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
   }
 }
@@ -1378,7 +1390,20 @@ function wire() {
   $('view-sort').onclick = () => setView('sort', SORTS);
   $('view-filter').onclick = () => setView('filter', FILTERS);
   $('view-cat').onclick = () => cycleCategory(1);
-  $('btn-train-mode').onclick = () => setTrainingMode(!trainingMode);
+  $('btn-mods').onclick = openMods;
+
+  // mods
+  $('m-speed').oninput = e => setMod({ speed: mods.SPEEDS[+e.target.value] });
+  $('m-mirror').onchange = e => setMod({ mirror: e.target.checked });
+  $('m-hidden').onchange = e => setMod({ hidden: e.target.checked });
+  $('m-sudden').onchange = e => setMod({ sudden: e.target.checked });
+  $('m-judge').oninput = e => setMod({ judge: mods.JUDGES[+e.target.value] });
+  $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
+  $('btn-mods-back').onclick = closeMods;
+  $('mods').addEventListener('focusin', e => {
+    const h = MOD_HINTS[e.target.id];
+    if (h) $('m-hint').textContent = h;
+  });
 
   // my songs
   $('ms-new').onclick = () => openComposer();
@@ -1480,29 +1505,10 @@ function wire() {
   $('btn-custom-compose').onclick = () => { if (customEntry(area.value)) openComposer(area.value.trim(), txtUid); };
   $('btn-custom-back').onclick = back;
 
-  // training
-  const t = settings.training;
-  $('t-speed').oninput = e => { t.speed = e.target.value / 100; updateTrainingLabels(); save(); };
-  $('t-loop').onchange = e => { t.loop = e.target.checked; updateTrainingLabels(); save(); };
-  $('t-a').oninput = e => {
-    t.a = Math.min(e.target.value / 100, t.b - 0.1);
-    e.target.value = Math.round(t.a * 100); updateTrainingLabels(); save();
-  };
-  $('t-b').oninput = e => {
-    t.b = Math.max(e.target.value / 100, t.a + 0.1);
-    e.target.value = Math.round(t.b * 100); updateTrainingLabels(); save();
-  };
-  $('btn-train-start').onclick = () => {
-    const e = selectedEntry();
-    startRun({ entry: e, diff: settings.difficulty, training: { speed: t.speed, loop: t.loop, a: t.a, b: t.b } });
-  };
-  $('btn-train-back').onclick = openSelect;
-
   // play / pause / results
   $('btn-pause').onclick = pauseGame;
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
-  $('btn-pause-options').onclick = () => { game.stop(); input.reset(); openTraining(); };
   $('btn-quit').onclick = leaveToSelect;
   for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
   { // horizontal swipe flips results pages
@@ -1736,7 +1742,7 @@ function demo(kind) {
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
-    run = { entry: selectedEntry(), diff: settings.difficulty, training: null };
+    run = { entry: selectedEntry(), diff: settings.difficulty };
     game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A', ghosts: demoFc ? 0 : 3,
       fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
   } else if (kind === 'play' || kind === 'pause') {
@@ -1757,7 +1763,7 @@ function demo(kind) {
     for (const [t, down, lane] of ev) { ctx.currentTime = t; g.update(t); if (down) g.press(lane, t); else g.release(lane, t); }
     ctx.currentTime = T;
     g.update(T);
-    run = { entry: e, diff: settings.difficulty, training: null };
+    run = { entry: e, diff: settings.difficulty };
     renderer.title = e.title;
     renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
     screens.nowplaying.dataset.title = e.title;

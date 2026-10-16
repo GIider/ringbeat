@@ -159,6 +159,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-info > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sel-info .stars-bar { margin-right: 6px; }
 .badge { display: inline-block; padding: 0 3px; margin-left: 4px; border: var(--u) solid currentColor; font-size: var(--fs); line-height: 1; }
+.badge.mod { font-size: calc(var(--fs) - 1px); }
 .badge.ap { background: var(--ink); color: var(--lcd); border-color: var(--ink); }
 .song-row.cur .badge.ap { background: var(--lcd); color: var(--ink); border-color: var(--lcd); }
 

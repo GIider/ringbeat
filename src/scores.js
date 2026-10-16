@@ -23,6 +23,9 @@ function cleanRun(r) {
     maxCombo: isNum(r.maxCombo) ? r.maxCombo : 0,
     fc: !!r.fc, ap: !!r.ap,
     date: isNum(r.date) ? r.date : 0,
+    // Mods the run was played with (display only) and the multiplier already folded into `score`.
+    ...(Array.isArray(r.mods) && r.mods.length && { mods: r.mods.filter(t => typeof t === 'string').slice(0, 6).map(t => t.slice(0, 5)) }),
+    ...(isNum(r.mult) && r.mult !== 1 && { mult: r.mult }),
   };
 }
 

@@ -12,6 +12,7 @@ const RING_POOL = 12, LABEL_POOL = 8;
 const SPRITE_MAX = 200;   // cached text strings (each has up to 4 colour/weight variants)
 const LANE_MAX = 40;
 const NOTE_H = 7;
+const HIDE_FRAC = 0.35;  // Hidden mod: share of the approach time (nearest the hit line) where notes are not drawn
 const LABEL_H = CAP + 2;   // key-label row under each receptor
 
 const BOLD = {};
@@ -58,7 +59,8 @@ export class Renderer {
     this._scrollTime = 1.6;
     this.keyLabels = [];
     this.title = '';
-    this.trainingLabel = '';
+    this.modLabel = '';        // active mod chips, shown on the HUD while no FC/AP tag is up
+    this.hidden = false;       // Hidden mod: notes vanish before they reach the hit line
     this.resumeCount = 0;
     this.w = 0; this.h = 0;
     this.reduced = typeof window !== 'undefined' && window.matchMedia
@@ -327,10 +329,12 @@ export class Renderer {
     const below = (H - hitY) / pps + 0.1;
     while (this.vi < notes.length && notes[this.vi].time + notes[this.vi].duration < t - below) this.vi++;
     const bw = lw - 5, hx = Math.floor((lw - bw) / 2);
+    const hideAt = this.hidden ? this.scrollTime * HIDE_FRAC : 0;
     for (let i = this.vi; i < notes.length; i++) {
       const nt = notes[i];
       if (nt.time > t + this.scrollTime + 0.1) break;
       if (nt.done || (nt.hit && !nt.isHold && !nt.isRoll)) continue;
+      if (hideAt > 0 && !nt.holding && nt.time - t < hideAt) continue;
       const missed = nt.judgement === 'miss' || nt.broken;
       const x = x0 + nt.lane * lw + hx;
       if (nt.isRoll) { // rolls: a dotted rail with a thin bar per tick (the head is the first tick)
@@ -450,12 +454,13 @@ export class Renderer {
       this.lastCombo = cmb;
     }
 
-    // Row 1: score + grade/accuracy. Row 2: FC/AP or training label + combo.
+    // Row 1: score + grade/accuracy. Row 2: FC/AP (or the active mod chips) + combo.
     this._text(c, this._scoreTxt, 3, 1, INK, true);
     this._text(c, this._accTxt, W - 2, 1, INK, false, 1, 'right');
     c.fillStyle = INK; c.fillRect(0, 10, W, 1);
-    let tag = this.trainingLabel;
-    if (!tag && game.fcAlive && game.judgedCount >= 5) tag = game.apAlive ? 'ALL PERFECT' : 'FULL COMBO';
+    let tag = '';
+    if (game.fcAlive && game.judgedCount >= 5) tag = game.apAlive ? 'ALL PERFECT' : 'FULL COMBO';
+    if (!tag) tag = this.modLabel;
     if (tag) this._text(c, tag, 3, 12, INK, false);
     if (cmb > 1) this._text(c, cmb + ' COMBO', W - 2, 12, INK, true, 1, 'right');
 

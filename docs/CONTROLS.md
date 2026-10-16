@@ -45,7 +45,7 @@ Menus:
 | Confirm | A (or Start) |
 | Back | B |
 | Category − / + (song select) | LB / RB |
-| Toggle Training mode (difficulty screen) | Y |
+| Open Mods (difficulty screen) | X |
 | Options (song select) | X |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.

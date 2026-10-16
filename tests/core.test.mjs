@@ -6,7 +6,7 @@ import { generateChart } from '../src/chart.js';
 import { SONGS } from '../src/songs.js';
 import { buildLibrary, customEntry, DIFFICULTIES } from '../src/library.js';
 import { createScores, TOP_N } from '../src/scores.js';
-import { sliceChart, scaleChart } from '../src/practice.js';
+import { scaleChart } from '../src/mods.js';
 import { Game } from '../src/game.js';
 import { STAGES, buildStageChart, stagePassed } from '../src/tutorial.js';
 import { HOLD_MIN_SEC } from '../src/chart.js';
@@ -68,7 +68,7 @@ test('scores: ranking, top-N cap, tie ordering, persistence, corruption', () => 
   assert.equal(s.get('a', 'normal'), null);
 });
 
-test('practice: scaleChart keeps order/count, scales times & grid', () => {
+test('speed: scaleChart keeps order/count, scales times & grid', () => {
   const c = generateChart(parseRTTTL(SONGS[0].rtttl), { difficulty: 'normal' });
   const half = scaleChart(c, 0.5);
   assert.equal(half.notes.length, c.notes.length);
@@ -77,22 +77,6 @@ test('practice: scaleChart keeps order/count, scales times & grid', () => {
   assert.equal(half.notes[3].midi, c.notes[3].midi);
   assert.notEqual(half.notes[0], c.notes[0]); // cloned
   assert.throws(() => scaleChart(c, 0));
-});
-
-test('practice: sliceChart window, shift, hold clipping, grid offset', () => {
-  const c = generateChart(parseRTTTL(SONGS[0].rtttl), { difficulty: 'normal' });
-  const a = c.length * 0.3, b = c.length * 0.7;
-  const s = sliceChart(c, a, b);
-  assert.ok(s.notes.length > 0 && s.notes.length < c.notes.length);
-  assert.ok(s.notes[0].time >= 0 && s.notes[0].time < 1);
-  assert.ok(s.notes.every(n => !n.isHold || n.time + n.duration <= b - a + 1e-9));
-  assert.ok(s.notes.every((n, i) => n.id === i));
-  // beat n sits at the same absolute time before and after the shift
-  const beat = 5;
-  const tOrig = (beat - c.firstBeat) * c.beatLen - a;
-  const tNew = (beat - s.firstBeat) * s.beatLen;
-  assert.ok(Math.abs(tOrig - tNew) < 1e-9);
-  assert.throws(() => sliceChart(c, c.length + 5, c.length + 6));
 });
 
 // ---- Game: full combo logic with a stub synth ----
@@ -546,17 +530,12 @@ test('game: roll is judged by share of its goal; each press scores; misses when 
   assert.equal(none.tap, 'perfect');
 });
 
-test('practice: rolls scale with speed and are clipped to the ticks that fit a loop end', () => {
+test('speed: rolls scale with the chart', () => {
   const c = chartOf(ROLL_SONG, 'normal');
   const r = c.notes.find(n => n.isRoll);
   const half = scaleChart(c, 0.5).notes.find(n => n.isRoll);
   assert.ok(Math.abs(half.ticks[3] - r.ticks[3] * 2) < 1e-9);
   assert.ok(Math.abs(half.duration - r.duration * 2) < 1e-9);
-  const cut = sliceChart(c, 0, r.time + r.ticks[4] + 0.08).notes.find(n => n.isRoll);
-  assert.equal(cut.ticks.length, 5);
-  assert.ok(cut.goal <= 5 && cut.time + cut.duration <= r.time + r.ticks[4] + 0.08);
-  const tiny = sliceChart(c, 0, r.time + 0.12).notes.find(n => n.midi === r.midi);
-  assert.ok(!tiny.isRoll && tiny.ticks === undefined);
 });
 
 // ---- slides ----
