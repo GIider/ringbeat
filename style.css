@@ -352,7 +352,7 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 /* ---------- marquee for overlong titles ---------- */
 .scrolls { text-overflow: clip; }
 .mq { display: inline-block; vertical-align: top; }
-.scrolls .mq { animation: mq var(--mq-dur, 4s) linear infinite; }
+.scrolls .mq { animation: mq var(--mq-dur, 2s) linear infinite alternate; }
 @keyframes mq { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(calc(-1 * var(--mq-dist, 0px))); } }
 
 /* ---------- gamepad focus ring for things outside lists ---------- */

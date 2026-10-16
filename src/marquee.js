@@ -14,7 +14,7 @@ export function marquee(el) {
   const over = Math.ceil(inner.scrollWidth - el.clientWidth);
   if (over > 0) {
     el.style.setProperty('--mq-dist', over + 'px');
-    el.style.setProperty('--mq-dur', Math.max(4, over / 30).toFixed(1) + 's');
+    el.style.setProperty('--mq-dur', Math.max(2, over / 60).toFixed(1) + 's');
     el.classList.add('scrolls');
   }
 }
