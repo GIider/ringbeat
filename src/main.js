@@ -90,7 +90,7 @@ const pad = new Pad();
 
 // ---- screen state ----
 let state = 'title';
-let lastDevice = 'kbd'; // decides which labels the lanes show
+let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lanes show
 const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), select: $('select'), custom: $('custom'),
@@ -1367,11 +1367,16 @@ function nextSong() {
 }
 
 // ---- tutorial ----
-function controlsHTML() {
-  const keys = KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ');
-  const pad = [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ');
-  return `<p>${tr('Hit each note as it reaches the glowing line.')}</p>` +
-    tr('<p>Keys: {keys}<br>Pad: {pad}<br>Touch: tap the lanes</p>', { keys, pad });
+// Input hint for the device in use only; refreshed in place when the device changes.
+function controlsHint() {
+  if (lastDevice === 'pad') return tr('Pad: {pad}', { pad: [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ') });
+  if (lastDevice === 'touch') return tr('Touch: tap the lanes');
+  return tr('Keys: {keys}', { keys: KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ') });
+}
+const controlsHTML = () => `<p id="tut-controls">${controlsHint()}</p>`;
+function refreshTutorialCard() {
+  const el = $('tut-controls');
+  if (state === 'tutorial' && el && run && run.tutorial && !run.tutorial.done) el.innerHTML = controlsHint();
 }
 function tutProgress(done, current) {
   const n = STAGES.length;
@@ -1382,37 +1387,17 @@ function tutProgress(done, current) {
 // First time opening Tones: offer the tutorial (it stays reachable from Settings).
 function openTutPrompt() { setState('tutprompt', 'tutprompt'); }
 function skipTutPrompt() { settings.tutorialDone = true; save(); openSelect(); }
-function openTutorial() {
-  $('btn-tut-go').textContent = tr('Start tutorial');
-  $('btn-tut-skip').hidden = false;
-  $('tut-title').textContent = tr('Welcome to Ringbeat');
-  $('tut-body').innerHTML = controlsHTML() +
-    `<p>${tr('{n} short lessons.', { n: STAGES.length })}</p>`;
-  tutProgress(0, -1);
-  run = { tutorial: { stage: -1 } };
-  setState('tutorial', 'tutorial');
-}
 // Lesson card: text + goal, waits for the player to confirm before the round starts.
 function openLesson(i, failed) {
   const st = STAGES[i];
   $('tut-title').textContent = failed ? tr('Try again: {title}', { title: tr(st.title) }) : tr(st.title);
   $('tut-body').innerHTML =
     (failed ? `<p>${tr('<b>Not quite</b> — {why}.', { why: esc(failed) })}</p>` : '') +
-    `<p>${esc(tr(st.text))}</p><p>${esc(goalText(st))}</p>`;
+    `<p>${esc(tr(st.text))}</p><p>${esc(goalText(st))}</p>` + controlsHTML();
   $('btn-tut-go').textContent = failed ? tr('Retry lesson') : tr('Start lesson');
   $('btn-tut-skip').hidden = false;
   tutProgress(i, i);
   run = { tutorial: { stage: i, pending: true } };
-  setState('tutorial', 'tutorial');
-}
-function lessonPassed(i) {
-  const last = i + 1 >= STAGES.length;
-  $('tut-title').textContent = tr('Lesson {i} passed ✓', { i: i + 1 });
-  $('tut-body').innerHTML = `<p>${esc(tr('{title} mastered.', { title: tr(STAGES[i].title) }))}</p>`;
-  $('btn-tut-go').textContent = last ? tr('Continue') : tr('Next lesson');
-  $('btn-tut-skip').hidden = false;
-  tutProgress(i + 1, -1);
-  run = { tutorial: { stage: i, passed: true } };
   setState('tutorial', 'tutorial');
 }
 function tutorialOutro() {
@@ -1434,7 +1419,7 @@ function tutorialStageDone(r) {
   const i = run.tutorial.stage;
   if (!stagePassed(STAGES[i], r)) { game.stop(); openLesson(i, failReason(STAGES[i], r)); return; }
   game.stop();
-  lessonPassed(i);
+  if (i + 1 < STAGES.length) openLesson(i + 1); else tutorialOutro();
 }
 function finishTutorial() {
   game.stop();
@@ -1447,9 +1432,7 @@ function finishTutorial() {
 function tutorialGo() {
   const t = run && run.tutorial;
   if (t && t.done) finishTutorial();
-  else if (t && t.passed) { if (t.stage + 1 < STAGES.length) openLesson(t.stage + 1); else tutorialOutro(); }
   else if (t && t.stage >= 0) startRun({ entry: null, diff: 'normal', tutorial: { stage: t.stage } });
-  else openLesson(0);
 }
 
 // ---- calibration screen ----
@@ -1537,6 +1520,7 @@ function setDevice(d) {
   if (lastDevice === d) return;
   lastDevice = d;
   selectHints();
+  refreshTutorialCard();
 }
 function usePad() { setDevice('pad'); }
 function useMouse() { setDevice('kbd'); }
@@ -1814,12 +1798,12 @@ function wire() {
   $('inbox-list').onclick = e => { const b = e.target.closest('button'); if (b) openMessage(+b.dataset.i); };
 
   // tutorial
-  $('btn-tp-yes').onclick = () => { synth.ensure(); openTutorial(); };
+  $('btn-tp-yes').onclick = () => { synth.ensure(); openLesson(0); };
   $('btn-tp-no').onclick = skipTutPrompt;
   $('btn-tut-go').onclick = tutorialGo;
   $('btn-tut-skip').onclick = finishTutorial;
   $('btn-tut-skip-pause').onclick = finishTutorial;
-  $('btn-tutorial').onclick = () => { synth.ensure(); openTutorial(); };
+  $('btn-tutorial').onclick = () => { synth.ensure(); openLesson(0); };
 
   // title / select
   $('btn-start').onclick = startFromTitle;
@@ -1984,7 +1968,7 @@ function wire() {
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });
 
-  window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
+  window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
   window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); });
