@@ -5,6 +5,14 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '1.4', date: '2026-10-16', title: 'Touch & Deutsch',
+    body: 'Ringbeat speaks German now: Settings -> Language, or it follows your browser.\n' +
+      'Touch screens: swipe through song select and the composer.\n' +
+      'Custom songs can calculate their difficulty, and the rating travels in share links.\n' +
+      'Songs with near-identical Normal and Hard charts get a single difficulty.\n' +
+      'Clearer judgements, a sharper 3-2-1 countdown and a new Auto-play rolls option.',
+  },
+  {
     version: '1.3', date: '2026-10-16', title: 'New menu!',
     body: 'Hi! Your phone got a makeover: silver frame, Menu and C keys and a ▲▼ rocker, plus a proper menu.\n' +
       'Tones: all the songs.\n' +

@@ -376,6 +376,17 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Touch & Deutsch': 'Touch & Deutsch',
+  ['Ringbeat speaks German now: Settings -> Language, or it follows your browser.\n' +
+    'Touch screens: swipe through song select and the composer.\n' +
+    'Custom songs can calculate their difficulty, and the rating travels in share links.\n' +
+    'Songs with near-identical Normal and Hard charts get a single difficulty.\n' +
+    'Clearer judgements, a sharper 3-2-1 countdown and a new Auto-play rolls option.']:
+    'Ringbeat spricht jetzt Deutsch: Einstellungen -> Sprache, oder es folgt deinem Browser.\n' +
+    'Touchscreens: wische durch die Songauswahl und den Komponisten.\n' +
+    'Eigene Songs können ihre Schwierigkeit berechnen, und die Wertung steckt in Teilen-Links.\n' +
+    'Songs mit fast gleichen Normal- und Schwer-Charts bekommen nur eine Schwierigkeit.\n' +
+    'Klarere Wertungen, ein schärferer 3-2-1-Countdown und die neue Option Wirbel automatisch.',
   'New menu!': 'Neues Menü!',
   ['Hi! Your phone got a makeover: silver frame, Menu and C keys and a ▲▼ rocker, plus a proper menu.\n' +
     'Tones: all the songs.\n' +

@@ -15,7 +15,8 @@ async function run(name) {
   try {
     browser = await engines[name].launch();
     const dev = process.env.SMOKE_DEVICE;
-    const page = dev ? await (await browser.newContext({ ...devices[dev] })).newPage() : await browser.newPage();
+    // locale pinned: the app follows the browser language, which otherwise comes from the host's $LANG
+    const page = await (await browser.newContext({ ...(dev ? devices[dev] : {}), locale: 'en-US' })).newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(`http://127.0.0.1:${port}/tests/smoke.html`);
