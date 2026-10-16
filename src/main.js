@@ -405,6 +405,8 @@ function badgeHTML(run, withMods = false) {
   return (run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '') +
     (withMods && run && run.mods && run.mods.length ? `<span class="badge mod">${esc(run.mods.join(' '))}</span>` : '');
 }
+// The developer's leaderboard mark (server-set `dev` flag on the row).
+const devHTML = r => (r && r.dev ? '<span class="badge dev">DEV</span>' : '');
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
 const starsValue = rating => fmt(rating / 2, 1);
@@ -1044,7 +1046,7 @@ async function renderDpWorld(e, d, box) {
   const div = document.createElement('div');
   div.className = 'dp-world';
   div.innerHTML = `<div class="hint">${esc(tr('World'))}</div><ol class="top">${b.runs.slice(0, 3).map(r =>
-    `<li>${esc(r.name)} · ${r.score}${badgeHTML(r, true)}</li>`).join('')}</ol>`;
+    `<li${r.dev ? ' class="dev"' : ''}>${esc(r.name)} · ${r.score}${badgeHTML(r, true)}${devHTML(r)}</li>`).join('')}</ol>`;
   box.appendChild(div);
 }
 function askDifficulty(entry, ret, retLabel, goBack, uid) {
@@ -1504,7 +1506,8 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.textContent = `${r.score} · ${r.grade} · ${r.name || ''}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${esc(r.name || '')}${devHTML(r)}`;
+    if (r.dev) li.classList.add('dev');
     if (cls) li.className = cls;
     ol.appendChild(li);
   };

@@ -408,6 +408,11 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .top li.gap { list-style: none; }
 .top li.cur { background: var(--ink); color: var(--lcd); font-weight: 700; }
+.badge.dev { background: var(--ink); color: var(--lcd); border-color: var(--ink); }
+.top li.dev { animation: dev-blink 1.6s steps(2, jump-none) infinite; }
+.top li.cur.dev .badge.dev { background: var(--lcd); color: var(--ink); border-color: var(--lcd); }
+@keyframes dev-blink { 0%, 90% { opacity: 1; } 95% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .top li.dev { animation: none; } }
 
 /* progress bar (difficulty calculation) */
 .bar { height: 8px; margin: 4px 0; border: var(--u) solid var(--ink); }

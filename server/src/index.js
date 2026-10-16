@@ -313,7 +313,7 @@ export async function rebuildBoards(env, now, { force = false } = {}) {
       FROM runs r JOIN users u ON u.id = r.user_id
       WHERE r.rules = ?1 AND r.verified = 1 AND r.hidden = 0 AND u.hidden = 0 AND u.public = 1
     ), ranked AS (
-      SELECT b.*, u.display_name AS name,
+      SELECT b.*, u.display_name AS name, u.dev,
         ROW_NUMBER() OVER (PARTITION BY b.song_id, b.diff ORDER BY b.score DESC, b.played_at) AS rank,
         COUNT(*) OVER (PARTITION BY b.song_id, b.diff) AS total
       FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
@@ -321,7 +321,8 @@ export async function rebuildBoards(env, now, { force = false } = {}) {
   const boards = {};
   for (const r of results) {
     (boards[r.song_id + '|' + r.diff] ||= []).push({ rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade,
-      accuracy: r.accuracy, maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at });
+      accuracy: r.accuracy, maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at,
+      ...(r.dev && { dev: true }) });
   }
   const next = { rules: String(RULES), doc: JSON.stringify(boards), built: now };
   await env.DB.prepare(`INSERT INTO board_tops (id, rules, doc, built, dirty) VALUES (1, ?1, ?2, ?3, 0)
@@ -469,7 +470,7 @@ async function board(env, songId, diff, { limit = 50, me = '' }) {
       WHERE r.song_id = ?1 AND r.diff = ?2 AND r.rules = ?3 AND r.verified = 1 AND r.hidden = 0
         AND u.hidden = 0 AND (u.public = 1 OR u.id = ?4)
     ), ranked AS (
-      SELECT b.*, u.display_name AS name, ROW_NUMBER() OVER (ORDER BY b.score DESC, b.played_at) AS rank,
+      SELECT b.*, u.display_name AS name, u.dev, ROW_NUMBER() OVER (ORDER BY b.score DESC, b.played_at) AS rank,
         COUNT(*) OVER () AS total
       FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
     )`;
@@ -481,6 +482,7 @@ async function board(env, songId, diff, { limit = 50, me = '' }) {
   return results.map(r => ({
     rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade, accuracy: r.accuracy,
     maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at,
+    ...(r.dev && { dev: true }),
     ...(me && r.user_id === me && { me: true }),
   }));
 }
