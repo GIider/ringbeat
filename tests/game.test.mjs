@@ -233,3 +233,21 @@ test('game: restarting resets per-run state', () => {
     assert.equal(g.fcAlive, false, 'nothing judged yet');
   } finally { g.stop(); }
 });
+
+test('game: rollAudio plays the roll as written from the first press; mashing only scores', () => {
+  const ticks = [0, 0.1, 0.2, 0.3, 0.4];
+  const roll = () => note(0, 0, 1, { isRoll: true, ticks, tickDur: 0.08, goal: 5, duration: 0.45 });
+  const mash = opts => {
+    const { g, synth } = run([roll()], opts);
+    g.synth.ctx.currentTime = g.songStart + 1;
+    for (let i = 0; i < 5; i++) g.press(0, g.songStart + 1 + i * 0.05);
+    for (let t = 1; t <= 1.5; t += 0.05) { g.synth.ctx.currentTime = g.songStart + t; g._schedule(); }
+    const out = { score: g.score, notes: synth.calls.notes.length, n: g.chart.notes[0] };
+    g.stop();
+    return out;
+  };
+  const off = mash({}), on = mash({ rollAudio: true });
+  assert.equal(off.notes, 5, 'one blip per press');
+  assert.equal(on.notes, ticks.length, 'one note per roll tick, regardless of presses');
+  assert.equal(on.score, off.score, 'scoring is unaffected');
+});

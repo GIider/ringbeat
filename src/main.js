@@ -1152,7 +1152,7 @@ function startRun(r) {
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
   if (r.tutorial) showCaption(r.tutorial.stage);
-  game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, calibration: settings.calibration,
+  game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, rollAudio: settings.rollAudio, calibration: settings.calibration,
     ...(r.modsUsed && mods.gameOptions(r.modsUsed)) });
   setState('countin', null);
   return true;
@@ -1716,6 +1716,9 @@ function wire() {
   sc.oninput = () => { settings.scrollTime = +sc.value; renderer.scrollTime = settings.scrollTime; $('scroll-val').textContent = sc.value + 's'; save(); };
   $('scroll-val').textContent = sc.value + 's';
   bk.onchange = () => { settings.backing = bk.checked; game.backing = settings.backing; save(); };
+  const ra = $('pref-rollaudio');
+  ra.checked = settings.rollAudio;
+  ra.onchange = () => { settings.rollAudio = ra.checked; game.rollAudio = settings.rollAudio; save(); };
   const jc = $('pref-juice'), hp = $('pref-haptics');
   jc.checked = settings.juice; hp.checked = settings.haptics;
   const syncJuice = () => { renderer.juice = settings.juice; hp.disabled = !settings.juice; };

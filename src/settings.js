@@ -17,6 +17,7 @@ export const settings = {
   voice: raw.voice === 'smooth' ? 'smooth' : 'buzzer',
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
   backing: typeof raw.backing === 'boolean' ? raw.backing : false, // off for new players; saved choices are kept
+  rollAudio: raw.rollAudio === true, // first press of a roll plays the song's real notes (scoring still follows mashing)
   preview: raw.preview !== false,
   idleGags: raw.idleGags !== false,
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)

@@ -50,6 +50,13 @@ test('settings: numbers are clamped, junk falls back', async () => {
   assert.deepEqual([s.volume, s.scrollTime, s.calibration], [0.25, 2, 0.05]);
 });
 
+test('settings: rollAudio defaults off and loads when saved', async () => {
+  let { settings: s } = await load({});
+  assert.equal(s.rollAudio, false);
+  ({ settings: s } = await load({ rollAudio: true }));
+  assert.equal(s.rollAudio, true);
+});
+
 test('settings: boolean flags default on except backing', async () => {
   let { settings: s } = await load({});
   assert.deepEqual([s.preview, s.idleGags, s.juice, s.haptics, s.backing], [true, true, true, true, false]);

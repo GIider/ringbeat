@@ -38,7 +38,7 @@ export class Game {
   // Hit window of a note: slide follow-ups (idx > 0) are more forgiving than everything else.
   _windowOf(n) { return n.slideIdx > 0 ? this.win.slide : this.win.good; }
 
-  start(chart, { leadIn = 2, backing = true, calibration = 0, windowScale = 1, suddenDeath = false } = {}) {
+  start(chart, { leadIn = 2, backing = true, rollAudio = false, calibration = 0, windowScale = 1, suddenDeath = false } = {}) {
     this.stop();
     const ctx = this.synth.ctx;
     this._setWindows(windowScale);
@@ -46,6 +46,8 @@ export class Game {
     this.failed = false;
     this.chart = chart;
     this.backing = backing;
+    this.rollAudio = rollAudio;
+    this.rollQueue = [];      // auto-play ticks of rolls the player has started: { time, midi, duration }
     this.calibration = calibration;
     this.songStart = ctx.currentTime + leadIn;
     this.lanePtr = new Array(chart.lanes).fill(0);
@@ -103,6 +105,12 @@ export class Game {
         this.synth.tick({ when: t, accent: ((this.nextBeat % 4) + 4) % 4 === 0 });
       }
       this.nextBeat++;
+    }
+    for (let i = this.rollQueue.length - 1; i >= 0; i--) { // started rolls: play the real notes
+      const q = this.rollQueue[i], when = this.songStart + q.time;
+      if (when >= horizon) continue;
+      this.rollQueue.splice(i, 1);
+      if (when >= ctx.currentTime - 0.005) this.synth.playNote({ midi: q.midi, when, duration: q.duration });
     }
     // Auto-play notes that were filtered out of the playable chart so the song sounds complete.
     const bk = c.backing || [];
@@ -205,7 +213,11 @@ export class Game {
     n.hit = true;
     n.rollHits++;
     this.score += Math.round(ROLL_TICK_POINTS * this.multiplier);
-    this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: 0.1 });
+    if (!this.rollAudio) { this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: 0.1 }); return; }
+    if (n.rollHits !== 1) return; // the first press plays the roll as written; mashing only scores
+    this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: n.tickDur }); // first tick sounds right away
+    n.ticks.slice(1).forEach(o => this.rollQueue.push({ time: n.time + o, midi: n.midi, duration: n.tickDur }));
+    this._schedule();
   }
 
   _finishRoll(n) {
