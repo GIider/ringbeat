@@ -234,6 +234,23 @@ export class Synth {
     this._cleanup(o, [o, lp, g]);
   }
 
+  // Rough error buzz for a press on a lane with no note: fixed low pitch per lane, so spamming never forms a melody.
+  playStray(lane, when = 0) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = Math.max(when, ctx.currentTime);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.value = 220 + (lane % 4) * 14;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.004);
+    g.gain.linearRampToValueAtTime(0, t + 0.09);
+    o.connect(lp).connect(g).connect(this.bus);
+    o.start(t); o.stop(t + 0.1);
+    this._cleanup(o, [o, lp, g]);
+  }
+
   // Metronome blip; accent = higher pitch.
   tick({ when, accent = false }) {
     const ctx = this.ctx;

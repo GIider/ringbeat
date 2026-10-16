@@ -149,6 +149,7 @@ export class Game {
       const early = this.judgedCount === 0 && first && t < first.time - this.reach;
       if (this.notesLeft > 0 && !early) {
         this.strays++; this.combo = 0;
+        this.synth.playStray?.(lane);
         if (this.suddenDeath) this._fail();
       }
       return;

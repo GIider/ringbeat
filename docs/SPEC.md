@@ -59,6 +59,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ select ─▶ difficulty ─▶ play 
 - **Grade:** S ≥ 95 %, A ≥ 90 %, B ≥ 80 %, C ≥ 70 %, D below.
 - **Full combo (FC):** no misses in the run (a dropped hold is a miss). **All perfect (AP):** FC and every note Perfect.
   Stray presses break FC, except taps before the first note's hit window opens (warm-up).
+  A stray press also plays a low error buzz, so mashing every lane can't play the song for you.
   During play the HUD shows `FULL COMBO` / `ALL PERFECT` while the streak is alive; it disappears at the first miss.
 - There is no fail state, unless the opt-in *Sudden death* mod is on (see *Modifiers*).
 

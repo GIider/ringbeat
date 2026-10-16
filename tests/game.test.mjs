@@ -10,6 +10,7 @@ function stubSynth() {
     stopAll() { calls.stopAll++; }, tick(o) { calls.ticks.push(o); },
     playNote(o) { calls.notes.push(o); return { release() { calls.released++; } }; },
     playMiss() { calls.miss++; },
+    playStray() { calls.stray = (calls.stray || 0) + 1; },
   };
 }
 const note = (id, lane, time, extra = {}) => ({ id, lane, time, duration: 0.2, midi: 60, ...extra });
@@ -260,4 +261,19 @@ test('game: rollAudio never plays an unbounded tone, even if the roll has no tic
   g.stop();
   assert.equal(synth.calls.notes.length, 3);
   assert.ok(synth.calls.notes.every(o => Number.isFinite(o.duration) && o.duration > 0));
+});
+
+test('game: stray press plays the error tone; warm-up, hits and late taps stay silent', () => {
+  const { g, synth } = run([note(0, 0, 2), note(1, 1, 4)]);
+  try {
+    g.press(2, g.songStart + 0.1); // warm-up: first note not reachable yet
+    assert.equal(synth.calls.stray || 0, 0);
+    g.press(2, g.songStart + 2); // no note in lane 2
+    assert.equal(synth.calls.stray, 1);
+    g.press(0, g.songStart + 2); // real hit
+    assert.equal(synth.calls.stray, 1);
+    g.press(1, g.songStart + 4);
+    g.press(2, g.songStart + 5); // nothing left
+    assert.equal(synth.calls.stray, 1);
+  } finally { g.stop(); }
 });
