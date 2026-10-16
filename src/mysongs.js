@@ -1,6 +1,7 @@
 // "My Songs": the player's saved custom songs. Storage is injectable like scores.js; storage failures degrade to memory.
 import { customEntry } from './library.js';
 import { parseRTTTL } from './rtttl.js';
+import { cleanRating } from './customrating.js';
 
 export const MYSONGS_KEY = 'ringbeat.songs.v1';
 export const MAX_SONGS = 30;
@@ -43,7 +44,7 @@ export function createMySongs(storage = browserStorage()) {
       if (Array.isArray(raw)) {
         for (const r of raw) {
           if (!r || typeof r.rtttl !== 'string' || !isValidRtttl(r.rtttl)) continue;
-          songs.push({ uid: typeof r.uid === 'string' ? r.uid : newUid(), name: cleanName(r.name) || 'Untitled', rtttl: r.rtttl.trim(), updated: isNum(r.updated) ? r.updated : 0 });
+          songs.push({ uid: typeof r.uid === 'string' ? r.uid : newUid(), name: cleanName(r.name) || 'Untitled', rtttl: r.rtttl.trim(), updated: isNum(r.updated) ? r.updated : 0, rating: cleanRating(r.rating) });
           if (songs.length >= MAX_SONGS) break;
         }
       }
@@ -57,11 +58,11 @@ export function createMySongs(storage = browserStorage()) {
     count: () => load().length,
     isFull: () => load().length >= MAX_SONGS,
     // Returns the stored song, or null if invalid / library full.
-    add(name, rtttl, now = Date.now()) {
+    add(name, rtttl, now = Date.now(), rating = null) {
       const l = load();
       rtttl = String(rtttl || '').trim();
       if (l.length >= MAX_SONGS || !isValidRtttl(rtttl)) return null;
-      const s = { uid: newUid(), name: cleanName(name) || 'Untitled', rtttl, updated: now };
+      const s = { uid: newUid(), name: cleanName(name) || 'Untitled', rtttl, updated: now, rating: cleanRating(rating) };
       l.push(s); save();
       return s;
     },
@@ -71,10 +72,18 @@ export function createMySongs(storage = browserStorage()) {
       if (patch.rtttl !== undefined) {
         const r = String(patch.rtttl).trim();
         if (!isValidRtttl(r)) return null;
+        if (r !== s.rtttl) s.rating = null; // a measured rating belongs to the exact melody
         s.rtttl = r;
       }
       if (patch.name !== undefined) s.name = cleanName(patch.name) || s.name;
       s.updated = now; save();
+      return s;
+    },
+    // Stores a rating for the song (null clears it). Does not touch `updated`: it is not an edit.
+    setRating(uid, rating) {
+      const s = api.get(uid);
+      if (!s) return null;
+      s.rating = cleanRating(rating); save();
       return s;
     },
     remove(uid) {
@@ -87,7 +96,7 @@ export function createMySongs(storage = browserStorage()) {
       const s = api.get(uid);
       return s ? api.add(cleanName(s.name + ' 2'), s.rtttl) : null;
     },
-    exportJSON: () => JSON.stringify({ v: 1, songs: load().map(({ name, rtttl }) => ({ name, rtttl })) }, null, 1),
+    exportJSON: () => JSON.stringify({ v: 1, songs: load().map(({ name, rtttl, rating }) => (rating ? { name, rtttl, rating } : { name, rtttl })) }, null, 1),
     exportRtttl: uid => { const s = api.get(uid); return s ? s.rtttl : ''; },
     // Accepts our JSON bundle, a JSON array of strings/{name,rtttl}, or plain text with one RTTTL per line.
     // Duplicates (same melody text) are skipped. Returns {added, skipped}.
@@ -100,7 +109,7 @@ export function createMySongs(storage = browserStorage()) {
           const arr = Array.isArray(j) ? j : Array.isArray(j.songs) ? j.songs : [];
           for (const x of arr) {
             if (typeof x === 'string') items.push({ rtttl: x });
-            else if (x && typeof x.rtttl === 'string') items.push({ name: x.name, rtttl: x.rtttl });
+            else if (x && typeof x.rtttl === 'string') items.push({ name: x.name, rtttl: x.rtttl, rating: x.rating && { ...x.rating, imported: true } });
           }
         } catch { return { added: 0, skipped: 1 }; }
       } else {
@@ -111,7 +120,7 @@ export function createMySongs(storage = browserStorage()) {
         const r = String(it.rtttl).trim();
         if (load().some(s => s.rtttl === r)) { skipped++; continue; }
         const name = it.name || r.split(':')[0];
-        if (api.add(name, r)) added++; else skipped++;
+        if (api.add(name, r, undefined, it.rating)) added++; else skipped++;
       }
       return { added, skipped };
     },

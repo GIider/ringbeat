@@ -395,3 +395,7 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
   padding: 8px; background: #000a; color: #fff; font: 12px/1.2 monospace; border-radius: 6px; }
 .cameo-debug button { font: inherit; padding: 4px 8px; cursor: pointer; text-align: left; }
 .top li.cur { background: var(--ink); color: var(--lcd); font-weight: 700; }
+
+/* progress bar (difficulty calculation) */
+.bar { height: 8px; margin: 4px 0; border: var(--u) solid var(--ink); }
+.bar > i { display: block; height: 100%; width: 0; background: var(--ink); }

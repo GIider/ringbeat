@@ -41,20 +41,23 @@ function derive(rtttl) {
 }
 
 // Build a library entry; returns null if the RTTTL cannot be parsed or charted.
-export function makeEntry({ id, title, tag, category, rtttl }) {
+// `own` is a custom song's stored rating record (customrating.js), used instead of the bundled measurements.
+export function makeEntry({ id, title, tag, category, rtttl, own }) {
   let song, charts;
   try { ({ song, charts } = derive(rtttl)); } catch { return null; }
   const stars = {}, notes = {}, rating = {}, tags = {};
+  let estimated = false; // some difficulty only has the density heuristic, or an unverified imported rating
   let length = 0;
   for (const d of DIFFICULTIES) {
     try {
       const c = charts[d];
       if (!c) throw new Error('no chart');
-      const m = measured[id] && measured[id][d];
+      const m = own ? own[d] : measured[id] && measured[id][d];
       if (m && typeof m.rating === 'number') {
         rating[d] = m.rating; tags[d] = Array.isArray(m.tags) ? m.tags : [];
         stars[d] = starsFromRating(m.rating);
-      } else stars[d] = starsFor(c);
+      } else { stars[d] = starsFor(c); estimated = true; }
+      if (own && own.imported) estimated = true;
       notes[d] = c.notes.length;
       length = Math.max(length, c.length);
     } catch { stars[d] = 0; notes[d] = 0; }
@@ -63,7 +66,7 @@ export function makeEntry({ id, title, tag, category, rtttl }) {
   return {
     id, rtttl, tag: tag || '', category: category || '', song,
     title: title || song.name || 'Untitled',
-    bpm: song.bpm, length, stars, notes, rating, tags,
+    bpm: song.bpm, length, stars, notes, rating, tags, estimated,
   };
 }
 
@@ -71,9 +74,8 @@ export function buildLibrary() {
   return SONGS.map(makeEntry).filter(Boolean);
 }
 
-export function customEntry(rtttl) {
-  const e = makeEntry({ id: 'custom:' + hashString(rtttl.trim()), tag: 'Custom', category: 'custom', rtttl: rtttl.trim() });
-  return e;
+export function customEntry(rtttl, own = null) {
+  return makeEntry({ id: 'custom:' + hashString(rtttl.trim()), tag: 'Custom', category: 'custom', rtttl: rtttl.trim(), own });
 }
 
 export function formatLength(sec) {

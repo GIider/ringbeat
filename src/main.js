@@ -11,7 +11,9 @@ import { planBot, LADDER } from './bot.js';
 import { createAutoplay } from './autoplay.js';
 import { Renderer } from './render.js';
 import { Input, KEY_LABELS, eventAudioTime } from './input.js';
-import { encodeSong, decodeSong } from './share.js';
+import { encodeSong, decodeShare } from './share.js';
+import { measureChartAsync } from './bot.js';
+import { ratingFromMeasured } from './customrating.js';
 import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
@@ -298,7 +300,7 @@ function refreshCustoms() {
   const seen = new Set();
   customs = [];
   for (const s of mysongs.list()) {
-    const e = customEntry(s.rtttl);
+    const e = customEntry(s.rtttl, s.rating);
     if (!e || seen.has(e.id)) continue;
     seen.add(e.id);
     customs.push({ ...e, title: s.name || e.title, uid: s.uid });
@@ -347,6 +349,8 @@ function badgeHTML(run, withMods = false) {
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
 const starsValue = rating => (rating / 2).toFixed(1);
+// `~` in front of a rating that is only a guess (density heuristic, or a rating imported from someone else).
+const estMark = e => (e && e.estimated ? '~' : '');
 // Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
 function starsText(rating) {
   const pct = Math.max(0, Math.min(100, Math.round(rating * 5) * 2));
@@ -438,7 +442,7 @@ function renderDetail() {
   if (!e) return;
   const d = settings.difficulty, rec = scores.get(e.id, d);
   $('sel-info').innerHTML =
-    `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
+    `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
     `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
     (e.tag ? `<div>${esc(e.tag)}</div>` : '');
@@ -811,14 +815,58 @@ function openMySongs(msg = '') {
   const b = cur && list.querySelector(`[data-uid="${cur.uid}"]`);
   if (b) { b.focus({ preventScroll: true }); light(b); }
 }
+// Song menu header: tempo / length plus the difficulty (stars per level; `~` = not measured on this device).
+function renderSongMeta(e) {
+  const stars = d => `${cap(d)} ${estMark(e)}${starsValue(ratingOf(e, d))}`;
+  $('sm-meta').textContent = `${e.bpm} BPM · ${e.notes.normal} notes · ${formatLength(e.length)} · ${stars('normal')} / ${stars('hard')} ★`;
+  $('sm-calc').textContent = curSong() && curSong().rating && !curSong().rating.imported ? 'Recalculate difficulty' : 'Calculate difficulty';
+}
+// Measures the open song with the bot ladder (bot.js) on both difficulties, showing a progress bar; stores the result.
+let calcToken = 0, calcRunning = false;
+async function calcDifficulty() {
+  const song = curSong(), e = curEntry();
+  if (!song || !e) return;
+  if (calcRunning) { // pressing the button again while it runs cancels
+    calcToken++; calcRunning = false;
+    $('sm-bar').hidden = true; $('sm-msg').textContent = 'Calculation stopped';
+    return;
+  }
+  const bar = $('sm-bar'), msg = $('sm-msg');
+  const my = ++calcToken, uid = curUid;
+  const cancelled = () => my !== calcToken || state !== 'songmenu' || curUid !== uid;
+  bar.hidden = false; setBar(0); msg.textContent = 'Calculating difficulty… (press again to stop)'; calcRunning = true;
+  const measured = {};
+  try {
+    for (let i = 0; i < DIFFS.length; i++) {
+      const d = DIFFS[i];
+      const chart = generateChart(e.song, { difficulty: d });
+      measured[d] = await measureChartAsync(chart, {}, p => setBar((i + p) / DIFFS.length), cancelled);
+      if (!measured[d]) break;
+    }
+  } catch { measured.normal = null; }
+  if (my === calcToken) calcRunning = false;
+  if (cancelled() || !measured.normal || !measured.hard) return; // whoever cancelled has already updated the screen
+  setBar(1);
+  const rec = ratingFromMeasured(measured);
+  if (!rec || !mysongs.setRating(uid, rec)) { bar.hidden = true; msg.textContent = "Couldn't store the rating"; return; }
+  refreshCustoms();
+  const fresh = curEntry();
+  if (fresh) renderSongMeta(fresh);
+  bar.hidden = true;
+  msg.textContent = 'Difficulty calculated';
+}
+const setBar = f => { $('sm-bar').firstElementChild.style.width = Math.round(Math.max(0, Math.min(1, f)) * 100) + '%'; };
 function openSongMenu(uid) {
   curUid = uid;
   const e = curEntry();
   if (!e) { openMySongs(); return; }
   $('sm-title').textContent = e.title;
   marquee($('sm-title'));
-  $('sm-meta').textContent = `${e.bpm} BPM · ${e.notes.normal} notes · ${formatLength(e.length)}`;
+  calcToken++; // leaving or re-entering the menu abandons a running calculation
+  calcRunning = false;
+  renderSongMeta(e);
   $('sm-msg').textContent = '';
+  $('sm-bar').hidden = true;
   setState('songmenu', 'songmenu');
 }
 function importSharedText(text) {
@@ -852,7 +900,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))} ${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
+    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
       (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
@@ -1797,9 +1845,10 @@ function wire() {
   };
   $('sm-file').onclick = () => { const s = curSong(); if (s) { download(slug(s.name) + '.rtttl', s.rtttl + '\n'); $('sm-msg').textContent = 'Saved ' + slug(s.name) + '.rtttl'; } };
   $('sm-copy').onclick = () => { const s = curSong(); if (s) copyText(s.rtttl, $('sm-msg'), 'Text'); };
+  $('sm-calc').onclick = calcDifficulty;
   $('sm-share').onclick = async () => {
     const s = curSong(); if (!s) return;
-    const url = location.origin + location.pathname + encodeSong(s.rtttl);
+    const url = location.origin + location.pathname + encodeSong(s.rtttl, s.rating);
     await copyText(url, $('sm-msg'), 'Link');
   };
   let delArmed = 0;
@@ -1914,14 +1963,18 @@ function wire() {
   window.addEventListener('pagehide', commitTime);
 
   // Initial selection: share link > last played > first song
-  const shared = decodeSong(location.hash);
+  const shared = decodeShare(location.hash);
   // The old single custom slot becomes the first saved song.
   if (settings.customRtttl && !mysongs.count()) mysongs.add(settings.customRtttl.split(':')[0] || 'My song', settings.customRtttl);
   if (settings.customRtttl) { settings.customRtttl = ''; save(); }
   refreshCustoms();
-  const takeShared = text => {
+  const takeShared = share => {
+    const text = share && share.rtttl;
     if (!text || !customEntry(text)) return false;
     const r = importSharedText(text);
+    // The sender's rating is unverified: only used when this device has none yet (Recalculate replaces it).
+    const saved = mysongs.list().find(x => x.rtttl === text.trim());
+    if (saved && share.rating && !saved.rating) { mysongs.setRating(saved.uid, share.rating); refreshCustoms(); }
     const e = customs.find(c => c.rtttl === text.trim());
     if (e) { selectedId = e.id; settings.lastSongId = e.id; save(); }
     else if (!r.added) toast('My songs is full');
@@ -1929,7 +1982,7 @@ function wire() {
   };
   if (!takeShared(shared)) selectedId = entryById(settings.lastSongId) ? settings.lastSongId : defaultSongId();
   window.addEventListener('hashchange', () => {
-    const t = decodeSong(location.hash);
+    const t = decodeShare(location.hash);
     if (t && takeShared(t)) { toast('Shared song saved to My songs'); if (state === 'select') openSelect(); }
   });
   showOffset();

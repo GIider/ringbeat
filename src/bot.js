@@ -151,13 +151,32 @@ export function measureProfile(chart, profile, runs = 30, seed = 1) {
   return { fcRate: fc / runs, apRate: ap / runs, acc: acc / runs, grades };
 }
 
+// Changing this (or anything that moves ratings, e.g. chart.js, LADDER) means bumping CALC_VERSION below.
 const RATING_STRETCH = 1.8;
 
-// Full difficulty measurement for a chart.
+// Bumped whenever a change to chart.js / bot.js moves ratings; stored ratings of custom songs from an older version are ignored.
+export const CALC_VERSION = 1;
+
+// Full difficulty measurement for a chart, as a generator: yields the progress (0..1) after each simulated profile and
+// returns the result. measureChart runs it to the end synchronously, measureChartAsync yields to the UI in between.
 // rating (1..10) = 1 + 9 * 1.8 * (ladder position where bots start full-combo-ing at least half the time / ladder size).
 // nps = notes per second, acc = accuracy of the mid-skill bot. tags = weaknesses that hurt a mid-skill bot.
-export function measureChart(chart, { runs = 30, seed = 1 } = {}) {
-  const ladder = LADDER.map(p => measureProfile(chart, p, runs, seed));
+function* measureSteps(chart, { runs = 30, seed = 1 } = {}) {
+  // Weaknesses that cost a mid-skill bot noticeable accuracy. A tag needs the chart to actually contain the
+  // feature, and lane tags only count for a lane carrying at least 40 % of the notes.
+  const n = chart.notes.length || 1;
+  const laneShare = l => chart.notes.filter(x => x.lane === l).length / n;
+  const has = {
+    holds: chart.notes.some(x => x.isHold), rolls: chart.notes.some(x => x.isRoll),
+    slides: chart.notes.some(x => x.slideIdx > 0), doubles: chart.notes.some(x => x.chordLane !== undefined),
+    speed: chart.length > 0 && n / chart.length >= 2.5, stamina: chart.length >= 60,
+    'left lane': laneShare(0) >= 0.4, 'right lane': laneShare(chart.lanes - 1) >= 0.4,
+  };
+  const specialists = SPECIALISTS.filter(s => has[s.tag]);
+  const total = LADDER.length + 1 + specialists.length;
+  let done = 0;
+  const ladder = [];
+  for (const p of LADDER) { ladder.push(measureProfile(chart, p, runs, seed)); yield ++done / total; }
   // Skill needed = where the FC rate crosses 50 % along the ladder (linear interpolation, 0 = below L1, N = above the top).
   let x = LADDER.length;
   for (let i = 0; i < ladder.length; i++) {
@@ -170,19 +189,10 @@ export function measureChart(chart, { runs = 30, seed = 1 } = {}) {
   // The catalogue's hardest charts need about 5/9 of the ladder, so stretch that range to fill 1..10.
   const rating = Math.min(10, Math.round((1 + 9 * RATING_STRETCH * x / LADDER.length) * 10) / 10);
   const base = measureProfile(chart, MID, runs, seed);
-  // Weaknesses that cost a mid-skill bot noticeable accuracy. A tag needs the chart to actually contain the
-  // feature, and lane tags only count for a lane carrying at least 40 % of the notes.
-  const n = chart.notes.length || 1;
-  const laneShare = l => chart.notes.filter(x => x.lane === l).length / n;
-  const has = {
-    holds: chart.notes.some(x => x.isHold), rolls: chart.notes.some(x => x.isRoll),
-    slides: chart.notes.some(x => x.slideIdx > 0), doubles: chart.notes.some(x => x.chordLane !== undefined),
-    speed: chart.length > 0 && n / chart.length >= 2.5, stamina: chart.length >= 60,
-    'left lane': laneShare(0) >= 0.4, 'right lane': laneShare(chart.lanes - 1) >= 0.4,
-  };
-  const tags = SPECIALISTS
-    .filter(s => has[s.tag])
-    .map(s => ({ tag: s.tag, drop: base.acc - measureProfile(chart, s, runs, seed).acc }))
+  yield ++done / total;
+  const drops = [];
+  for (const s of specialists) { drops.push({ tag: s.tag, drop: base.acc - measureProfile(chart, s, runs, seed).acc }); yield ++done / total; }
+  const tags = drops
     .filter(x => x.drop >= 5)
     .sort((a, b) => b.drop - a.drop)
     .slice(0, 2)
@@ -191,4 +201,21 @@ export function measureChart(chart, { runs = 30, seed = 1 } = {}) {
   LADDER.forEach((p, i) => { fc[p.name] = Math.round(ladder[i].fcRate * 100) / 100; });
   return { rating, fc, tags, nps: Math.round(10 * n / Math.max(1, chart.length)) / 10,
     acc: Math.round(base.acc * 10) / 10 };
+}
+
+export function measureChart(chart, opts) {
+  const it = measureSteps(chart, opts);
+  for (let r = it.next(); ; r = it.next()) if (r.done) return r.value;
+}
+
+// Same result as measureChart, but hands the thread back between simulated profiles and reports progress (0..1).
+// `isCancelled` is polled between steps; a cancelled measurement resolves to null.
+export async function measureChartAsync(chart, opts, onProgress = () => {}, isCancelled = () => false) {
+  const it = measureSteps(chart, opts);
+  for (let r = it.next(); ; r = it.next()) {
+    if (r.done) return r.value;
+    onProgress(r.value);
+    await new Promise(res => setTimeout(res, 0));
+    if (isCancelled()) return null;
+  }
 }

@@ -96,6 +96,14 @@ f.addEventListener('load', async () => {
     log(vis('diffpick'), 'play asks for difficulty');
     key('Escape'); await sleep(50);
     log(vis('songmenu'), 'difficulty back to song menu');
+    log(/Normal ~\d\.\d \/ Hard ~\d\.\d/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Calculate difficulty', 'custom song shows an estimated (~) rating', $('sm-meta').textContent);
+    $('sm-calc').click(); await sleep(20);
+    log(!$('sm-bar').hidden && /Calculating/.test($('sm-msg').textContent), 'calculate shows a progress bar');
+    for (let i = 0; i < 100 && !w.__ringbeat.mysongs.list()[0].rating; i++) await sleep(50);
+    log(!!w.__ringbeat.mysongs.list()[0].rating && $('sm-bar').hidden && $('sm-msg').textContent === 'Difficulty calculated', 'calculation stores the rating and hides the bar');
+    log(!/~/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Recalculate difficulty', 'measured rating drops the ~', $('sm-meta').textContent);
+    $('sm-calc').click(); await sleep(5); $('sm-calc').click(); await sleep(150);
+    log($('sm-bar').hidden && $('sm-msg').textContent === 'Calculation stopped', 'pressing again cancels a running calculation');
     $('sm-edit').click(); await sleep(50);
     log(vis('composer'), 'composer opens');
     key('1'); key('3'); key('5'); await sleep(50);
