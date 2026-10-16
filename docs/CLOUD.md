@@ -3,17 +3,15 @@
 # Cloud save and leaderboards
 
 Signing in on the Profile screen is optional. It creates an **online profile**, and that profile keeps settings,
-favourites, my songs, scores and stats the same on every device. Every finished run is also stored on the server,
-and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
+favourites, my songs, scores and stats the same on every device. Runs that make the local top 5 are also stored on
+the server, and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
-- Signed out, nothing changes: `localStorage` is the only store and no request leaves the browser.
-- Signed in, `localStorage` is still the source of truth. Sync happens:
-  - at start,
-  - a few seconds after a run, a settings change or a song edit,
-  - when the tab comes back.
-
-  Whatever is left goes up when the tab is hidden. A failed sync just tries again later.
+- Signed out, nothing changes: `localStorage` is the only store. The only request is the leaderboard snapshot for
+  the difficulty picker (one every 15 minutes at most, never waited for).
+- Signed in, `localStorage` is still the source of truth, and the network is never in the way: no sync starts
+  while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
+  [Requests](#requests).
 
 What is stored online, and how to delete it: [PRIVACY.md](PRIVACY.md).
 
@@ -51,18 +49,22 @@ The data falls into two kinds, which avoids nearly all conflicts.
   - The same melody saved on two devices is kept once.
   - A merge never drops a song: the list can grow past the 30-song limit, which only applies to adding.
 
-The merge is commutative and idempotent. Writes carry the revision they were based on. If another device wrote in
-between, the API answers 409, and the client merges with the newer copy and tries again.
+The merge is commutative and idempotent. A device sends its copy and the Worker runs the same merge
+(`cloudmerge.js`) against the stored one, writing only when that changes it. Writes are guarded by the revision. If
+another device wrote in between, the Worker merges with the newer copy and tries again. The answer carries the
+merged document only when it differs from what the device sent.
 
-**Runs.** Each finished run (not demo, tutorial or failed) goes into an outbox (`ringbeat.cloud.v1`) and is posted to
-`/runs`.
+**Runs.** A finished run (not demo, tutorial or failed) that makes the local top 5 for its song and difficulty goes
+into an outbox (`ringbeat.cloud.v1`). Lower runs never leave the device: they can't be the player's best on any
+board, and the scores and stats they changed travel in the device slot anyway.
 - A run carries song id, difficulty, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
   time.
 - Its id is `device:song:difficulty:time`. The first sync after signing in also uploads the device's existing top
   runs; because the ids match, the server stores each run once.
 - Song ids are stable: library ids for built-in songs, `custom:<hash of the RTTTL>` for custom ones.
-- Runs played since leaderboards also carry their **replay** (below), which the API re-plays. The results screen
-  uploads its run right away and shows the world rank.
+- Runs played since leaderboards also carry their **replay** (below), which the API re-plays. A new best goes up
+  from the results screen right away, and its world rank comes back in the same answer. Other runs wait for the
+  next push, and the results screen shows the rank last seen (`ranks` in `ringbeat.cloud.v1`).
 - The outbox keeps at most 1 000 000 characters of replays. When it would hold more, the oldest runs drop theirs:
   they still go up as history, but can't rank.
 
@@ -84,7 +86,7 @@ run's results bit for bit:
 
 `encodeLog` packs the log into base64url at 9 bytes per event, so a 3-minute song is about 6 KB.
 
-**Verification.** For each uploaded run with a replay, `POST /runs` does this:
+**Verification.** For each uploaded run with a replay, `POST /sync` does this:
 1. It finds the melody. Built-in songs come from `songs.js`. Custom songs bring their RTTTL, which must hash to
    the song id.
 2. It builds the chart (`generateChart`, then `mods.applyChart` with the mods as played).
@@ -109,8 +111,9 @@ Runs without a replay, such as older clients and the backfill, are kept with `ve
 - When `RULES` changes, the boards start empty for the new rules. Old runs stay stored with their replays.
 
 **CPU.** Chart plus replay of the longest song takes about 1.5 ms. The free plan allows 10 ms of CPU per request,
-so each request re-plays at most 4 runs. The others wait with `verified = 0`. A cron trigger (every 15 minutes)
-re-plays waiting runs 20 at a time.
+so each request re-plays at most 4 runs (3 when it also merges the shared document). The others wait with
+`verified = 0`. A cron trigger (every 15 minutes) re-plays waiting runs 20 at a time, then rebuilds the
+[board snapshot](#requests) if anything changed.
 
 **What it does not stop.** Replay verification proves that a score is what its inputs earn. It doesn't prove that a
 person pressed the keys: a script can write a plausible log, and `planBot` already can. Two **flags** mark runs that
@@ -145,6 +148,35 @@ still sees their own rank.
    back a bearer token, valid for one year, which it keeps in `ringbeat.cloud.v1`. Cookies aren't used: the API's
    domain would be third-party on the game's page.
 
+## Requests
+
+The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, so the client sends little:
+
+| When | Request |
+|---|---|
+| Game start, the Sync button, after signing in | One `POST /sync`: push what changed, pull the rest |
+| The tab comes back | Same, but only when the last sync is over 10 minutes old |
+| A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
+| A new best | One push from the results screen; the world rank comes back with it |
+| Scores, stats, other top-5 runs | A push within 10 minutes, or when the tab is hidden, whichever comes first |
+| The tab is hidden | A push, only if something changed (`keepalive` when the body is under 60 KB) |
+| The difficulty picker | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`) |
+
+How it stays small:
+- **Dirty checks.** The client keeps fingerprints of the shared document and of its own slot as last synced. A
+  push sends only the parts that differ. Saving a per-device setting (volume, last selected song) or applying a
+  merged document sends nothing.
+- **One round trip.** `POST /sync` carries the shared document, the device slot and runs together. Device slots
+  come down only when they changed since the last pull (`devicesSince`).
+- **Never in the way.** A sync that comes due during a song (or a pause) waits until the song is over. Requests
+  time out after 8 s, are skipped when the browser is offline, and back off after a failure (1, 2, 4 … 30 minutes;
+  5 after a 429). The Sync button ignores the backoff.
+- **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 3 of every song
+  and difficulty. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
+  changed. A new best shows up there within 15 minutes; the player's own rank is fresh on the results screen.
+- **No preflights for public reads.** `GET /boards` sends no credentials, so the browser needs no CORS preflight.
+  Signed-in requests go to one URL, so one preflight is cached for all of them.
+
 ## API
 
 All JSON. Everything except the auth and public board routes needs `Authorization: Bearer <token>`. A 401 signs the device out, and
@@ -159,13 +191,21 @@ the device keeps its own data.
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
 | `PATCH /me` `{displayName?, public?}` | Name: 3–16 characters (letters, digits, space, `.` `_` `-`); `public`: on leaderboards |
 | `DELETE /me` | Deletes the profile and everything stored with it |
-| `GET /sync` | → `{shared: {doc, rev}, devices: {deviceId: doc}}` |
-| `PUT /sync/shared` `{doc, baseRev}` | 409 when `baseRev` is stale |
-| `PUT /sync/device/:id` `{doc}` | This device's slot; the newest 20 devices are kept |
-| `POST /runs` `{runs: [...]}` | Up to 50 runs; invalid ones are dropped, repeats ignored. → `{accepted, rules, runs: [{clientRunId, verified, score?}]}` |
-| `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}`. Cached 30 s |
+| `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, device?, devicesSince?, runs?}` | The game's one sync request; every part optional (see below) |
+| `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 min |
+| `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
 | `GET /admin/flagged`, `POST /admin/hide`, `POST /admin/verify` | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
+
+`POST /sync`, part by part. The answer always has `{at, rules}`:
+- `shared` (the device's copy) and/or `sharedRev` (the revision it last saw): the Worker merges and stores as above.
+  The answer has `shared: {rev, doc?}` when there is anything new. `doc` is left out when the device already has
+  it. `stampAt` is the device's clock, used to stamp never-changed settings when it fills an empty profile.
+- `device`: this device's slot. The newest 20 devices are kept.
+- `devicesSince`: the answer has `deviceIds` (all slots) and `devices` (the docs of other devices' slots written
+  after that time).
+- `runs`: up to 50. Invalid ones are dropped, repeats ignored. The answer has `runs: [{clientRunId, verified,
+  score?}]`, and `ranks: {"song|diff": {rank, total}}` wherever a run just ranked.
 
 Limits:
 - Request bodies up to 300 000 characters, each stored document up to 256 000.
@@ -174,7 +214,7 @@ Limits:
 
 ## Data model
 
-`server/migrations/` creates these tables (`0001_init.sql`, then `0002_leaderboards.sql`):
+`server/migrations/` creates these tables (`0001_init.sql`, `0002_leaderboards.sql`, then `0003_sync.sql`):
 
 | Table | Holds |
 |---|---|
@@ -185,6 +225,7 @@ Limits:
 | `shared_docs` | The shared document and its revision |
 | `device_slots` | One row per user × device |
 | `runs` | Every uploaded run. Re-playable runs also keep `replay`, `rules`, `loadout` (the mods) and a custom song's `rtttl`. `verified` (1 ranked, 0 waiting or history, −1 invalid), `flags` and `hidden` (moderation). Boards read the partial index `runs_rank` |
+| `board_tops` | One row: the `GET /boards` snapshot, its `rules`, when it was `built`, and `dirty` |
 
 ## Setup and deploy
 

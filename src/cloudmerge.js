@@ -78,8 +78,18 @@ export function mergeShared(a, b) {
 }
 
 // Stable text form, for "did anything change?" checks.
+export const sharedKey = doc => canon(cleanShared(doc));
 export function sameShared(a, b) {
-  return canon(cleanShared(a)) === canon(cleanShared(b));
+  return sharedKey(a) === sharedKey(b);
+}
+
+// The first device to fill an empty profile sets the starting point: its never-changed settings and old favourite
+// marks get a time, so another device's never-changed ones (time 0) don't win a coin toss against them.
+export function stampUnset(doc, t) {
+  const d = cleanShared(doc);
+  for (const k of Object.keys(d.settings)) d.settingsT[k] ||= t;
+  for (const f of Object.values(d.favorites)) f.t ||= t;
+  return d;
 }
 function canon(v) {
   if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';

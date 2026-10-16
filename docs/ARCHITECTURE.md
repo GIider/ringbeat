@@ -15,7 +15,7 @@ assets/                 phone.svg, icon.svg, fonts/rb-pixel{,-bold}.ttf (generat
 
 src/
   main.js         bootstrap, screen state machine, DOM wiring, phone layout / compact mode / soft keys, play and results
-                  flow, tutorial flow, easter eggs and cameo wiring, ?demo / ?perf / ?cameo, share-link import,
+                  flow, tutorial flow, easter eggs and cameo wiring, ?demo / ?dev, share-link import,
                   gamepad lane folding, window.__ringbeat
 
   -- songs and charts --
@@ -73,8 +73,8 @@ src/
   customrating.js validate / encode / decode a custom song's rating record (storage, import, share links)
   composer.js     Nokia-style note editor state (no DOM); toRTTTL / fromRTTTL
   share.js        #s=<base64url>[&r=<rating>] share links
-  cloud.js        optional online profile: sign-in hand-off, sync rounds (pull, merge, push), device slots, run
-                  outbox with replays, leaderboard reads (board / around), API_BASE (see CLOUD.md)
+  cloud.js        optional online profile: sign-in hand-off, POST /sync rounds with dirty checks, scheduling and
+                  backoff, device slots, run outbox with replays, rank cache, board snapshot, API_BASE (see CLOUD.md)
   cloudmerge.js   merging the shared cloud document: settings per field, favourites, my songs with deletes, resetAt
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   version.js      VERSION / BUILD placeholders, stamped by scripts/build-dist.mjs (see RELEASING.md)
@@ -84,6 +84,7 @@ src/
   lang/de.js      the German dictionary
   perf.js         frame / section profiler (ring buffers, percentiles); no-op until enabled
   perfhud.js      the profiler's corner overlay + report copy (see PERFORMANCE.md)
+  netdebug.js     the ?dev request log: every cloud request and held-back sync as a corner panel + console groups
 
 scripts/
   serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload)
@@ -102,7 +103,7 @@ scripts/
 server/           the Ringbeat API, deployed separately (see CLOUD.md)
   src/index.js        Cloudflare Worker: GitHub sign-in, profile, sync, runs, leaderboards, moderation (plain fetch
                       handler over D1); bundles ../src's game modules to re-play runs
-  migrations/         D1 schema (0001_init.sql, 0002_leaderboards.sql)
+  migrations/         D1 schema (0001_init.sql, 0002_leaderboards.sql, 0003_sync.sql)
   wrangler.toml       Worker config: D1 binding, GitHub client id, allowed origins, rate limit, verify cron
 
 tests/
@@ -168,7 +169,8 @@ defaults.
 | `ringbeat.stats.v1` | `stats.js` | Lifetime stats |
 | `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
 | `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |
-| `ringbeat.cloud.v1` | `cloud.js` | Online profile: token, profile, last sync, other devices' scores and stats, run outbox, reset marks |
+| `ringbeat.cloud.v1` | `cloud.js` | Online profile: token, profile, last sync, other devices' scores and stats, run outbox, reset marks, sync fingerprints, last world ranks |
+| `ringbeat.boards.v1` | `cloud.js` | The leaderboard snapshot (`GET /boards`) and when it came, kept 15 minutes |
 | `ringbeat.device.v1` | `cloud.js` | This device's random id |
 | `ringbeat.api` | `main.js` | Developer override of the API address (see [CLOUD.md](CLOUD.md#local-development)) |
 | `ringbeat.perf` | `main.js` | Profiler left on with F3 |

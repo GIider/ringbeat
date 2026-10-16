@@ -25,7 +25,8 @@ try {
     const page = await browser.newPage({ viewport: { width: 700, height: 1000 } });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto(`http://127.0.0.1:${port}/?perf`);
+    await page.addInitScript(() => localStorage.setItem('ringbeat.perf', '1')); // the profiler on, as F3 leaves it
+    await page.goto(`http://127.0.0.1:${port}/`);
     await page.waitForFunction(() => window.__ringbeat, null, { timeout: 15000 });
     const info = await page.evaluate(async ([idx, diff, seconds]) => {
       const sleep = ms => new Promise(r => setTimeout(r, ms));

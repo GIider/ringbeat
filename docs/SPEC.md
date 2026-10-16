@@ -186,8 +186,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   Highscores and stats from every signed-in device are shown combined: pooled top 5, summed plays and counters, play
   days counted once. Resetting scores & stats while signed in resets every device. Details:
   [CLOUD.md](CLOUD.md).
-- Every finished run is also uploaded (song, difficulty, score, grade, accuracy, combo, FC/AP, mods, time, and the
-  run's inputs as a replay) for the [world leaderboards](#world-leaderboards).
+- Every finished run that makes the local top 5 is also uploaded (song, difficulty, score, grade, accuracy, combo,
+  FC/AP, mods, time, and the run's inputs as a replay) for the [world leaderboards](#world-leaderboards).
 
 ## Highscores
 
@@ -204,9 +204,10 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   Built-in and custom songs both have boards.
 - The score on a board is the server's: it re-plays the run's inputs. Runs without a replay (from before 2.1) and
   runs played under older scoring rules (`RULES`) don't rank. Details: [CLOUD.md › Leaderboards](CLOUD.md#leaderboards).
-- **Results screen:** signed in, the run is uploaded at once and the score page shows *World #n of total* (the
-  player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Signed
-  out: *Sign in for world ranks*.
+- **Results screen:** signed in, a new best is uploaded at once and the score page shows *World #n of total* (the
+  player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Any
+  other run shows the world rank last seen for that board, or nothing when there is none yet. Signed out: *Sign in
+  for world ranks*.
 - **Song detail** (the difficulty picker): the world top 3 for the focused difficulty, under the local top runs.
   Boards are readable signed out; they are cached for a minute.
 

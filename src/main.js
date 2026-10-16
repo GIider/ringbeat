@@ -40,6 +40,7 @@ import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
 import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
+import { createNetDebug } from './netdebug.js';
 import { marquee } from './marquee.js';
 
 const $ = id => document.getElementById(id);
@@ -160,12 +161,17 @@ function light(el) {
 }
 const activeScreen = () => screens[state === 'countin' || state === 'playing' || state === 'resuming' ? '' : state];
 
+// ---- dev mode: ?dev turns on the profiler overlay, the cameo panel and the request log; ?dev=<cameo id> (or now)
+// also plays cameos every few seconds (docs/DEVELOPMENT.md › Debug URLs and hooks) ----
+const DEV = new URLSearchParams(location.search).has('dev');
+const DEV_CAMEO = DEV ? new URLSearchParams(location.search).get('dev') || 'debug' : '';
+
 // ---- easter eggs (decorative only: nothing here selects, navigates or touches saved data) ----
 const cameo = createCameoLayer({
   canvas: $('cameo'),
   getState: () => state,
   enabled: () => settings.idleGags,
-  dev: new URLSearchParams(location.search).get('cameo') || '',
+  dev: DEV_CAMEO,
   onStatus: st => {
     if (inPlay()) return;
     if (!st) { phoneIdle(); return; }
@@ -180,7 +186,7 @@ function chirp(midis) {
   if (!synth.ctx || synth.ctx.state !== 'running') return;
   midis.forEach((midi, i) => synth.playNote({ midi, when: synth.ctx.currentTime + 0.02 + i * 0.12, duration: 0.1 }));
 }
-if (new URLSearchParams(location.search).get('cameo') === 'debug') {
+if (DEV) {
   const panel = document.createElement('div');
   panel.className = 'cameo-debug';
   panel.innerHTML = '<b>Cameo debug</b>';
@@ -310,6 +316,8 @@ let selectedId = '';
 // ---- cloud save: optional online profile (see docs/CLOUD.md); `ringbeat.api` in localStorage points at a local API ----
 const cloud = createCloud({
   scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
+  isBusy: () => inPlay() || state === 'paused', // no sync while a song runs
+  debug: DEV ? createNetDebug() : null,
   apiBase: (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })(),
 });
 onSave(() => cloud.schedule());
@@ -1421,11 +1429,12 @@ game.onFinish = r => {
   } else if (run) {
     r.date = Date.now();
     const rec = scores.record(run.entry.id, run.diff, r);
-    const runId = cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
+    // Only runs in the top list go up: a lower one can't be the player's best on any board.
+    const runId = rec.rank ? cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
       replay: game.log ? encodeLog(game.log) : undefined, rules: RULES, loadout: run.modsUsed, // no log: ?demo=results
       rtttl: run.entry.id.startsWith('custom:') ? run.entry.rtttl : undefined,
-    });
-    showWorldRank(run.entry.id, run.diff, runId);
+    }) : null;
+    showWorldRank(run.entry.id, run.diff, runId, rec.isNewBest);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
@@ -1437,24 +1446,32 @@ game.onFinish = r => {
   setState('results', 'results');
 };
 
-// The results screen's world line: uploads the run right away, then asks for the player's rank. The API re-plays the
-// run and ranks its own score (docs/CLOUD.md › Leaderboards).
+// The results screen's world line. A new best goes up right away and its rank comes back with the same request; any
+// other run can't move the player's rank, so the rank last seen shows without a request. The API re-plays each run and
+// ranks its own score (docs/CLOUD.md › Leaderboards).
 let worldToken = 0;
-async function showWorldRank(songId, diff, runId) {
+async function showWorldRank(songId, diff, runId, isNewBest) {
   const el = $('r-world'), token = worldToken;
   if (!cloud.available()) return;
   el.hidden = false;
-  if (!runId) { el.textContent = tr('Sign in for world ranks'); return; }
+  if (!cloud.signedIn()) { el.textContent = tr('Sign in for world ranks'); return; }
+  const known = () => {
+    const k = cloud.rank(songId, diff);
+    return k && tr('World #{n} of {total}', { n: k.rank, total: k.total });
+  };
+  if (!runId || !isNewBest) {
+    const text = known();
+    el.hidden = !text;
+    if (text) el.textContent = text;
+    return;
+  }
   el.textContent = tr('World rank…');
   const verdict = (await cloud.submit())[runId];
-  const around = await cloud.around(songId, diff);
   if (token !== worldToken) return;
-  const me = around && around.runs.find(x => x.me);
-  el.textContent = !around ? tr('World rank: no connection')
-    : around.rules !== RULES ? tr('Not ranked: update the game')
-    : verdict && verdict.verified === -1 ? tr('Not ranked')
-    : me ? tr('World #{n} of {total}', { n: me.rank, total: me.total })
-    : tr('World rank pending');
+  el.textContent = !verdict ? tr('World rank: no connection')
+    : cloud.serverRules() !== RULES ? tr('Not ranked: update the game')
+    : verdict.verified === -1 ? tr('Not ranked')
+    : (verdict.verified === 1 && known()) || tr('World rank pending');
 }
 
 let resultsPage = 0, topRuns = { runs: [], rank: null };
@@ -2003,7 +2020,7 @@ function wire() {
 
   // profile
   $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
-  $('pf-sync').onclick = () => profileAction(async () => { if (!(await cloud.sync()).ok) throw new Error('sync'); }, '');
+  $('pf-sync').onclick = () => profileAction(async () => { if (!(await cloud.sync('Sync button')).ok) throw new Error('sync'); }, '');
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
   $('pf-public').onclick = () => {
     const off = (cloud.profile() || {}).public === false;
@@ -2150,7 +2167,7 @@ function wire() {
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { pauseGame(); cloud.flush(); } else cloud.sync(); // audio clock keeps running when hidden
+    if (document.hidden) { pauseGame(); cloud.flush(); } else cloud.wake(); // audio clock keeps running when hidden
   });
   window.addEventListener('pagehide', commitTime);
 
@@ -2159,8 +2176,8 @@ function wire() {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync(); } }, () => toast('Sign-in failed'));
-  } else cloud.sync();
+    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync('signed in'); } }, () => toast('Sign-in failed'));
+  } else cloud.sync('start');
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
@@ -2411,9 +2428,9 @@ function demo(kind) {
 
 // ---- frame loop ----
 const hud = createHud(perf);
-function setPerf(on) {
+function setPerf(on, remember = true) {
   perf.enable(on);
-  try { localStorage.setItem('ringbeat.perf', on ? '1' : ''); } catch { /* storage blocked */ }
+  if (remember) try { localStorage.setItem('ringbeat.perf', on ? '1' : ''); } catch { /* storage blocked */ }
   if (on) { perf.reset(); hud.show(); } else hud.hide();
 }
 
@@ -2501,8 +2518,8 @@ layout(); // place the phone before the first paint, without the slide
 if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
 const demoKind = new URLSearchParams(location.search).get('demo');
 if (demoKind) demo(demoKind);
-let perfOn = /[?&]perf\b/.test(location.search);
-try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
-if (perfOn) setPerf(true);
+let perfOn = false;
+try { perfOn = !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
+if (DEV || perfOn) setPerf(true, perfOn); // ?dev alone doesn't leave it on for later visits
 requestAnimationFrame(frame);
 window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, get state() { return state; } }; // debug/test hook (tests/smoke.html)

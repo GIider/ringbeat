@@ -1,19 +1,28 @@
 // Cloud save: optional online profile (GitHub sign-in) that syncs settings, favourites, my songs, scores and stats
 // between devices through the Ringbeat API (server/, see docs/CLOUD.md). localStorage stays the source of truth: when
-// signed out nothing here touches the network, and a failed sync just tries again later.
-// Storage, fetch and the clock are injectable so the logic is testable without a browser.
-import { mergeShared, sameShared } from './cloudmerge.js';
+// signed out nothing here touches the network (except the leaderboard snapshot), and a failed sync just tries again
+// later. Requests are few on purpose (docs/CLOUD.md › Requests): one POST /sync does a whole round, it only goes out
+// when something changed or the last pull is old, and never while a song is playing.
+// Storage, fetch, the clock and the timeout are injectable so the logic is testable without a browser.
+import { mergeShared, sameShared, sharedKey } from './cloudmerge.js';
 
 // The deployed Worker (no trailing slash). Empty = online profiles are not offered. `ringbeat.api` in localStorage
 // overrides it for local development (e.g. http://localhost:8787).
 export const API_BASE = 'https://ringbeat-api.mail-9ae.workers.dev';
 export const CLOUD_KEY = 'ringbeat.cloud.v1';
 export const DEVICE_KEY = 'ringbeat.device.v1';
+export const BOARDS_KEY = 'ringbeat.boards.v1';
 export const RUN_BATCH = 50;
 const MAX_OUTBOX = 500;
-const MAX_BATCH_CHARS = 250_000;   // a POST /runs body stays under the API's limit
+const MAX_BATCH_CHARS = 250_000;   // a POST /sync body stays under the API's limit
 const MAX_OUTBOX_REPLAYS = 1_000_000; // replay characters kept waiting; older runs drop theirs (they stay unranked)
-const BOARD_TTL = 60e3;
+const KEEPALIVE_MAX = 60_000;      // browsers drop keepalive bodies over 64 KB
+export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when the last sync is older than this
+export const PUSH_EVERY = 10 * 60e3;   // new scores, stats and runs wait at most this long (or until the tab is hidden)
+export const SHARED_DELAY = 30e3;      // settings, favourites and my songs: changes come in bursts
+export const BOARDS_TTL = 15 * 60e3;   // the leaderboard snapshot (the server rebuilds it every 15 minutes)
+const BUSY_RETRY = 5e3;
+const DEVICE_OVERLAP = 5 * 60e3;       // re-ask for slots a little older than the last pull (writes in flight)
 
 const memoryStorage = () => {
   const m = new Map();
@@ -24,6 +33,16 @@ function browserStorage() {
 }
 const isNum = v => typeof v === 'number' && isFinite(v);
 const randomId = n => [...crypto.getRandomValues(new Uint8Array(n))].map(b => (b % 36).toString(36)).join('');
+// Short fingerprint of a text (FNV-1a), for "did this change since the last upload?".
+const fingerprint = s => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(36) + ':' + s.length;
+};
+const offline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+
+// A timer that doesn't keep Node (the tests) alive; a plain setTimeout in the browser.
+const defaultTimer = (f, ms) => { const t = setTimeout(f, ms); if (t && t.unref) t.unref(); return t; };
 
 class HttpError extends Error {
   constructor(status) { super('HTTP ' + status); this.status = status; }
@@ -31,19 +50,30 @@ class HttpError extends Error {
 
 // scores / stats / mysongs: the stores from scores.js, stats.js, mysongs.js.
 // prefs: { sharedSettings, applyShared } from settings.js.
+// isBusy: true while a song is playing or paused; no sync starts then.
+// debug: called with every request ({ why, method, path, body, sent, status, received, ms, response, error }) and every
+// sync that was held back ({ why, skipped }); the `?dev` request log (netdebug.js). Leave it out and nothing is measured.
 export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE, storage = browserStorage(),
-  fetch = (...a) => globalThis.fetch(...a), now = () => Date.now(), gameVersion = '' }) {
+  fetch = (...a) => globalThis.fetch(...a), now = () => Date.now(), gameVersion = '', isBusy = () => false,
+  timeoutMs = 8000, setTimer = defaultTimer, clearTimer = id => clearTimeout(id), debug = null }) {
   let st;
   try { st = JSON.parse(storage.getItem(CLOUD_KEY)) || {}; } catch { st = {}; }
+  const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
   st = {
     token: typeof st.token === 'string' ? st.token : '',
     profile: st.profile && typeof st.profile === 'object' ? st.profile : null,
     syncedAt: isNum(st.syncedAt) ? st.syncedAt : 0,
     resetAt: isNum(st.resetAt) ? st.resetAt : 0,     // newest "reset scores & stats" this device knows of
     resetSeen: isNum(st.resetSeen) ? st.resetSeen : 0, // ...and the newest one applied to this device's data
-    devices: st.devices && typeof st.devices === 'object' ? st.devices : {}, // other devices' {scores, stats, updated}
+    devices: obj(st.devices),                          // other devices' {scores, stats, updated}
+    devicesAt: isNum(st.devicesAt) ? st.devicesAt : 0, // server time of the last pull of those
     outbox: Array.isArray(st.outbox) ? st.outbox : [], // finished runs not uploaded yet
     backfilled: st.backfilled === true,                // this device's old top runs went up once
+    sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
+    sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
+    deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
+    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, at }: the world rank last seen
+    rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
   };
   const persist = () => { try { storage.setItem(CLOUD_KEY, JSON.stringify(st)); } catch { /* ignore */ } };
 
@@ -63,32 +93,45 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   };
   if (st.token) showRemote();
 
-  async function request(method, path, body, { keepalive = false } = {}) {
-    const res = await fetch(apiBase + path, {
-      method, keepalive,
-      headers: { ...(st.token && { Authorization: 'Bearer ' + st.token }), ...(body !== undefined && { 'Content-Type': 'application/json' }) },
-      ...(body !== undefined && { body: JSON.stringify(body) }),
-    });
+  async function request(method, path, body, { keepalive = false, auth = true, why = '' } = {}) {
+    const text = body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body);
+    const log = debug && { why, method, path, keepalive, body: text === undefined ? null : JSON.parse(text), sent: text ? text.length : 0, t0: Date.now() };
+    const done = (extra) => { if (log) { const { t0, ...e } = log; debug({ ...e, ms: Date.now() - t0, ...extra }); } };
+    if (offline()) { done({ skipped: 'offline' }); throw new HttpError(0); }
+    const signal = timeoutMs && typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+    let res;
+    try {
+      res = await fetch(apiBase + path, {
+        method, keepalive, ...(signal && { signal }),
+        // No Authorization or Content-Type on public reads: a simple request needs no CORS preflight.
+        headers: { ...(auth && st.token && { Authorization: 'Bearer ' + st.token }), ...(text !== undefined && { 'Content-Type': 'application/json' }) },
+        ...(text !== undefined && { body: text }),
+      });
+    } catch (e) { done({ error: String(e && (e.name === 'TimeoutError' ? 'timed out' : e.message || e)) }); throw e; }
     if (res.status === 401 && st.token) { forget(); emit('signedout'); }
-    if (!res.ok) throw new HttpError(res.status);
-    return res.status === 204 ? null : res.json();
+    if (!res.ok) { done({ status: res.status }); throw new HttpError(res.status); }
+    if (res.status === 204) { done({ status: 204, received: 0 }); return null; }
+    if (!log) return res.json();
+    const reply = await res.text();
+    done({ status: res.status, received: reply.length, response: JSON.parse(reply) });
+    return JSON.parse(reply);
   }
 
   // Back to signed out on this device. The device keeps its own data; the other devices' numbers leave the view.
   function forget() {
-    st.token = ''; st.profile = null; st.syncedAt = 0; st.devices = {}; st.outbox = []; st.backfilled = false;
+    Object.assign(st, { token: '', profile: null, syncedAt: 0, devices: {}, devicesAt: 0, outbox: [], backfilled: false,
+      sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {} });
     persist();
     showRemote();
+    clearTimer(timer); timer = 0;
   }
 
   const localShared = () => ({ ...prefs.sharedSettings(), ...mysongs.shared(), resetAt: st.resetAt });
-  // The first device to fill an empty profile sets the starting point: its never-changed settings and old favourite
-  // marks get a time, so another device's never-changed ones (time 0) don't win a coin toss against them.
-  function stampUnset(doc, t) {
-    for (const k of Object.keys(doc.settings || {})) doc.settingsT[k] ||= t;
-    for (const f of Object.values(doc.favorites || {})) f.t ||= t;
-    return doc;
-  }
+  const sharedPrint = doc => fingerprint(sharedKey(doc));
+  const deviceDoc = () => ({ v: 1, scores: scores.own(), stats: stats.own() });
+  const devicePrint = doc => fingerprint(JSON.stringify(doc));
+  const sharedDirty = () => sharedPrint(localShared()) !== st.sharedHash;
+  const dirty = () => st.outbox.length > 0 || sharedDirty() || devicePrint(deviceDoc()) !== st.deviceHash;
 
   // This device's top runs, once per sign-in: the first upload for players who played before signing in.
   function backfillRuns() {
@@ -116,71 +159,132 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (r.replay) { chars -= r.replay.length; delete r.replay; }
     }
   }
-
-  // -> the API's verdicts, { clientRunId: { verified, score? } } (1 = ranked with the server's score). One upload at a
-  // time: a sync and the results screen's submit both send the head of the outbox.
-  let flushing = Promise.resolve();
-  const flushRuns = opts => (flushing = flushing.catch(() => {}).then(() => flushOnce(opts)));
-  async function flushOnce(opts) {
-    const verdicts = {};
-    while (st.outbox.length) {
-      let n = 0, chars = 0;
-      while (n < Math.min(RUN_BATCH, st.outbox.length) && (n === 0 || chars + JSON.stringify(st.outbox[n]).length < MAX_BATCH_CHARS)) {
-        chars += JSON.stringify(st.outbox[n++]).length;
-      }
-      const batch = st.outbox.slice(0, n);
-      const r = await request('POST', '/runs', { runs: batch }, opts);
-      for (const v of (r && r.runs) || []) verdicts[v.clientRunId] = v;
-      st.outbox.splice(0, batch.length);
-      persist();
+  function takeBatch() {
+    let n = 0, chars = 0;
+    while (n < Math.min(RUN_BATCH, st.outbox.length) && (n === 0 || chars + JSON.stringify(st.outbox[n]).length < MAX_BATCH_CHARS)) {
+      chars += JSON.stringify(st.outbox[n++]).length;
     }
-    return verdicts;
+    return st.outbox.slice(0, n);
   }
 
-  const uploadOwn = opts => request('PUT', '/sync/device/' + deviceId, { doc: { v: 1, scores: scores.own(), stats: stats.own(), updated: now() } }, opts);
+  // Takes the answer's shared document (the server's merge of what this device sent with what it had). -> changed parts.
+  function applySharedDoc(remote, changed) {
+    const merged = mergeShared(localShared(), remote); // this device may have changed things while the request ran
+    if (prefs.applyShared(merged)) changed.add('settings');
+    if (mysongs.applyShared(merged)) changed.add('songs');
+    st.resetAt = merged.resetAt;
+    if (st.resetAt > st.resetSeen) {
+      // Scores and stats were reset on another device: this device's own numbers go too.
+      scores.clear(); stats.clear();
+      st.resetSeen = st.resetAt;
+      changed.add('progress');
+    }
+    // Nothing newer here than on the server: remember the document as applied, so a store that tidies values on the
+    // way in doesn't look like a fresh change. Otherwise the server's copy, and the difference goes up next time.
+    st.sharedHash = sameShared(merged, remote) ? sharedPrint(localShared()) : sharedPrint(remote);
+  }
 
-  let running = null;
-  // One full round: pull, merge the shared document both ways, apply a reset from another device, push this device's
-  // data and runs. -> { ok, changed: Set('settings' | 'songs' | 'progress') }
-  async function syncOnce() {
-    const changed = new Set();
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const r = await request('GET', '/sync');
-      const remote = r.shared && r.shared.doc;
-      const merged = mergeShared(remote ? localShared() : stampUnset(localShared(), now()), remote);
-      if (prefs.applyShared(merged)) changed.add('settings');
-      if (mysongs.applyShared(merged)) changed.add('songs');
-      st.resetAt = merged.resetAt;
-      if (st.resetAt > st.resetSeen) {
-        // Scores and stats were reset on another device: this device's own numbers go too.
-        scores.clear(); stats.clear();
-        st.resetSeen = st.resetAt;
-        changed.add('progress');
+  // One round through POST /sync: push what changed, pull what other devices wrote (`pull`), upload the outbox.
+  // -> { ok, changed: Set('settings' | 'songs' | 'progress'), verdicts: { clientRunId: { verified, score? } } }
+  async function round({ pull = true, keepalive = false, why = '' } = {}) {
+    const changed = new Set(), verdicts = {};
+    let first = true;
+    do {
+      const shared = localShared(), dev = deviceDoc();
+      const sendShared = sharedPrint(shared) !== st.sharedHash, devPrint = devicePrint(dev);
+      const sendDevice = devPrint !== st.deviceHash, batch = takeBatch();
+      const askDevices = first && pull;
+      if (!sendShared && !sendDevice && !batch.length && !askDevices) break;
+      const body = {
+        deviceId,
+        ...((pull || sendShared) && { sharedRev: st.sharedRev }),
+        ...(sendShared && { shared, stampAt: now() }),
+        ...(sendDevice && { device: { ...dev, updated: now() } }),
+        ...(askDevices && { devicesSince: st.devicesAt ? Math.max(0, st.devicesAt - DEVICE_OVERLAP) : 0 }),
+        ...(batch.length && { runs: batch }),
+      };
+      const text = JSON.stringify(body);
+      const r = await request('POST', '/sync', text, { keepalive: keepalive && text.length <= KEEPALIVE_MAX, why: first ? why : why + ' (more runs)' });
+      if (isNum(r.rules)) st.rules = r.rules;
+      if (r.shared) {
+        st.sharedRev = r.shared.rev;
+        const remote = r.shared.doc || (sendShared ? shared : null);
+        if (remote) applySharedDoc(remote, changed);
       }
-      persist();
-      if (!remote || !sameShared(merged, remote)) {
-        try { await request('PUT', '/sync/shared', { doc: merged, baseRev: (r.shared && r.shared.rev) || 0 }); } catch (e) {
-          if (e.status === 409) continue; // another device wrote in between: merge with that and try again
-          throw e;
+      if (sendDevice) st.deviceHash = devPrint;
+      if (r.deviceIds) {
+        const devices = {};
+        for (const id of r.deviceIds) {
+          if (id === deviceId) continue;
+          const d = (r.devices && r.devices[id]) || st.devices[id];
+          if (d && typeof d === 'object') devices[id] = d;
         }
+        if (JSON.stringify(devices) !== JSON.stringify(st.devices)) changed.add('progress');
+        st.devices = devices;
+        // A device this one never got the slot of: ask for everything next time.
+        st.devicesAt = r.deviceIds.every(id => id === deviceId || devices[id]) ? r.at : 0;
+        showRemote();
       }
-      await uploadOwn();
-      const devices = {};
-      for (const [id, d] of Object.entries(r.devices || {})) if (id !== deviceId && d && typeof d === 'object') devices[id] = d;
-      if (JSON.stringify(devices) !== JSON.stringify(st.devices)) changed.add('progress');
-      st.devices = devices;
-      showRemote();
-      backfillRuns();
-      await flushRuns();
-      st.syncedAt = now();
+      for (const v of r.runs || []) verdicts[v.clientRunId] = v;
+      for (const [key, v] of Object.entries(r.ranks || {})) st.ranks[key] = { rank: v.rank, total: v.total, at: now() };
+      if (batch.length) st.outbox.splice(0, batch.length);
+      if (pull && first) st.syncedAt = now();
       persist();
-      return { ok: true, changed };
-    }
-    return { ok: false, changed };
+      first = false;
+      if (pull) backfillRuns(); // after the first answer, so a reset from another device is applied first
+    } while (st.outbox.length);
+    return { ok: true, changed, verdicts };
   }
 
-  let timer = 0;
-  const boards = new Map(); // 'songId|diff' -> { at, value }
+  // Failures back off (1, 2, 4 … 30 minutes; "slow down" starts at 5) instead of retrying on every trigger.
+  let backoffUntil = 0, backoffMs = 0;
+  const failed = e => {
+    if (e && e.status === 401) return; // signed out already
+    backoffMs = Math.min(30 * 60e3, Math.max(e && e.status === 429 ? 5 * 60e3 : 60e3, backoffMs * 2));
+    backoffUntil = now() + backoffMs;
+  };
+
+  // Every round goes through one queue: a sync, the results screen's submit and the hide flush never overlap.
+  let chain = Promise.resolve();
+  const enqueue = opts => {
+    const p = chain.then(() => round(opts)).then(r => { backoffMs = 0; backoffUntil = 0; return r; },
+      e => { failed(e); return { ok: false, changed: new Set(), verdicts: {} }; });
+    chain = p;
+    return p.then(r => { if (r.changed.size) emit({ synced: r.changed }); return r; });
+  };
+  let pulling = null;
+
+  // The one timer: fires at the earliest time something asked for, waits out a song and a backoff.
+  let timer = 0, timerAt = 0, wantPull = false, lastNote = '';
+  // A held-back sync, for the request log (the busy retry repeats every few seconds: logged once).
+  const note = (why, skipped) => {
+    if (!debug || lastNote === why + skipped) return;
+    lastNote = why + skipped;
+    debug({ why, skipped });
+  };
+  function kick(ms) {
+    if (!st.token || !apiBase) return;
+    const at = now() + ms;
+    if (timer && timerAt <= at) return;
+    clearTimer(timer);
+    timerAt = at;
+    timer = setTimer(fire, ms);
+  }
+  function fire() {
+    timer = 0;
+    if (!st.token) return;
+    if (isBusy()) { note('push', 'a song is playing'); kick(BUSY_RETRY); return; }
+    if (now() < backoffUntil) { note('push', 'backing off'); kick(backoffUntil - now()); return; }
+    if (wantPull) cloud.sync('tab back');
+    else if (dirty()) enqueue({ pull: false, why: 'push' });
+  }
+
+  const boards = { value: null, at: -Infinity, failedAt: -Infinity, loading: null };
+  try {
+    const b = JSON.parse(storage.getItem(BOARDS_KEY));
+    if (b && isNum(b.at) && b.value && typeof b.value.boards === 'object') Object.assign(boards, { value: b.value, at: b.at });
+  } catch { /* ignore */ }
+
   const cloud = {
     deviceId,
     available: () => !!apiBase,
@@ -203,31 +307,40 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       return true;
     },
 
-    async sync() {
-      clearTimeout(timer); timer = 0;
-      if (!st.token || !apiBase) return { ok: false, changed: new Set() };
-      if (running) return running;
-      running = syncOnce().catch(() => ({ ok: false, changed: new Set() })).finally(() => { running = null; });
-      const r = await running;
-      if (r.changed.size) emit({ synced: r.changed });
-      return r;
+    // A full round now: start of the game, the Sync button, after signing in. Ignores the backoff.
+    sync(why = 'sync') {
+      clearTimer(timer); timer = 0; wantPull = false; lastNote = '';
+      if (!st.token || !apiBase) return Promise.resolve({ ok: false, changed: new Set() });
+      if (!pulling) pulling = enqueue({ pull: true, why }).finally(() => { pulling = null; });
+      return pulling;
     },
-    // A sync a little later (settings changes come in bursts).
-    schedule(ms = 4000) {
+    // The tab is back: pull only when the last sync is old.
+    wake() {
       if (!st.token || !apiBase) return;
-      clearTimeout(timer);
-      timer = setTimeout(() => cloud.sync(), ms);
+      if (now() - st.syncedAt < PULL_EVERY) { note('tab back', `synced ${Math.round((now() - st.syncedAt) / 1000)} s ago`); return; }
+      if (now() < backoffUntil) { note('tab back', 'backing off'); return; }
+      if (isBusy()) { wantPull = true; note('tab back', 'a song is playing'); kick(BUSY_RETRY); return; }
+      cloud.sync('tab back');
     },
-    // The page is going away: push this device's data and runs, nothing that needs an answer to merge.
+    // Something local may have changed (a save, a run, a song edit): a push later, only if anything differs.
+    // Settings, favourites and songs go up within SHARED_DELAY; scores, stats and runs within PUSH_EVERY.
+    schedule(ms) {
+      if (!st.token || !apiBase) return;
+      if (isNum(ms)) { kick(ms); return; }
+      lastNote = '';
+      if (sharedDirty()) kick(SHARED_DELAY);
+      else if (!timer && dirty()) kick(PUSH_EVERY); // a timer already waiting checks everything when it fires
+    },
+    // The page is going away or hidden: push what changed (no answer needed to merge, but taken when it comes).
     flush() {
-      if (!st.token || !apiBase) return;
-      uploadOwn({ keepalive: true }).catch(() => {});
-      flushRuns({ keepalive: true }).catch(() => {});
+      if (!st.token || !apiBase || !dirty()) return;
+      if (now() < backoffUntil) { note('tab hidden', 'backing off'); return; }
+      enqueue({ pull: false, keepalive: true, why: 'tab hidden' });
     },
 
-    // A finished run, for the run history and leaderboards. Pass the result with the `date` the scores store recorded
-    // it under. `play` makes it rankable: { replay (replay.js encodeLog), rules, loadout (the mods as played), rtttl
-    // (custom songs) }; the API re-plays it and ranks its own score. -> the run's id (see submit).
+    // A finished run, for the leaderboards. Pass the result with the `date` the scores store recorded it under. `play`
+    // makes it rankable: { replay (replay.js encodeLog), rules, loadout (the mods as played), rtttl (custom songs) };
+    // the API re-plays it and ranks its own score. It goes up with the next push, or now with submit(). -> its id.
     queueRun(songId, diff, result, mods = [], play = {}) {
       if (!st.token) return null;
       const playedAt = isNum(result.date) ? result.date : now();
@@ -240,31 +353,48 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
           ...(play.rtttl && { rtttl: play.rtttl }) }),
       });
       persist();
+      kick(PUSH_EVERY);
       return id;
     },
-    // Upload waiting runs now (the results screen wants its world rank). -> the verdicts (see flushRuns), {} on failure.
+    // Upload waiting runs (and whatever else changed) now: a new best wants its world rank. One request; the rank comes
+    // back with it (rank()). -> the verdicts, { clientRunId: { verified, score? } }, {} on failure.
     async submit() {
       if (!st.token || !apiBase) return {};
-      try { return await flushRuns(); } catch { cloud.schedule(); return {}; }
+      const r = await enqueue({ pull: false, why: 'new best' });
+      if (!r.ok) cloud.schedule(PUSH_EVERY);
+      return r.verdicts;
     },
+    // The world rank last seen for a song and difficulty: { rank, total, at } or null. No request.
+    rank: (songId, diff) => st.ranks[songId + '|' + diff] || null,
+    // The API's RULES at its last answer (0 = no answer yet).
+    serverRules: () => st.rules,
 
-    // Leaderboards: the best ranked run per player, under the API's current rules. Works signed out.
-    // -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt, me? }] } or null.
-    async board(songId, diff, { fresh = false } = {}) {
+    // The world top runs of one song and difficulty, from the leaderboard snapshot (one request for every song, kept
+    // for BOARDS_TTL). Works signed out. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
+    // ap, mods, playedAt }] } or null.
+    async board(songId, diff) {
       if (!apiBase) return null;
-      const key = songId + '|' + diff, hit = boards.get(key);
-      if (!fresh && hit && now() - hit.at < BOARD_TTL) return hit.value;
-      try {
-        const value = await request('GET', `/board/${encodeURIComponent(songId)}/${diff}`);
-        boards.set(key, { at: now(), value });
-        return value;
-      } catch { return hit ? hit.value : null; }
+      const t = now();
+      if (t - boards.at >= BOARDS_TTL && t - boards.failedAt >= 60e3 && !boards.loading) {
+        boards.loading = request('GET', '/boards', undefined, { auth: false, why: 'boards' }).then(v => {
+          if (!v || typeof v.boards !== 'object') throw new Error('bad boards');
+          Object.assign(boards, { value: v, at: now() });
+          try { storage.setItem(BOARDS_KEY, JSON.stringify({ at: boards.at, value: v })); } catch { /* ignore */ }
+        }).catch(() => { boards.failedAt = now(); }).finally(() => { boards.loading = null; });
+      }
+      if (boards.loading && !boards.value) await boards.loading; // an old snapshot shows while a new one loads
+      const v = boards.value;
+      return v ? { rules: v.rules, runs: v.boards[songId + '|' + diff] || [] } : null;
     },
     // The signed-in player's rank with the two players above and below; runs is empty when they have no ranked run.
     async around(songId, diff) {
       if (!st.token || !apiBase) return null;
-      boards.delete(songId + '|' + diff); // a new run may have changed it
-      try { return await request('GET', `/board/${encodeURIComponent(songId)}/${diff}/me`); } catch { return null; }
+      try {
+        const r = await request('GET', `/board/${encodeURIComponent(songId)}/${diff}/me`);
+        const me = r.runs.find(x => x.me);
+        if (me) { st.ranks[songId + '|' + diff] = { rank: me.rank, total: me.total, at: now() }; persist(); }
+        return r;
+      } catch { return null; }
     },
     async setPublic(on) {
       const r = await request('PATCH', '/me', { public: !!on });
@@ -280,7 +410,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       st.resetAt = st.resetSeen = now();
       persist();
       showRemote();
-      cloud.schedule(500);
+      kick(500);
     },
 
     async rename(name) {

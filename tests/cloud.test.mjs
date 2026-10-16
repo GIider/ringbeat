@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { handle, playerName, verifyPending } from '../server/src/index.js';
+import { handle, playerName, verifyPending, rebuildBoards } from '../server/src/index.js';
 import { RULES, encodeLog, headlessGame } from '../src/replay.js';
 import { planBot, LADDER } from '../src/bot.js';
 import { generateChart } from '../src/chart.js';
@@ -13,6 +13,7 @@ import { SONGS } from '../src/songs.js';
 import { hashString } from '../src/library.js';
 import * as mods from '../src/mods.js';
 import { createCloud } from '../src/cloud.js';
+import { createNetDebug, describe, line } from '../src/netdebug.js';
 import { createScores } from '../src/scores.js';
 import { createStats } from '../src/stats.js';
 import { createMySongs } from '../src/mysongs.js';
@@ -80,7 +81,7 @@ const mem = () => {
 };
 
 // A device: real stores on its own storage, a minimal settings stand-in, the cloud client talking to the Worker.
-function device(srv, t = { now: 1000 }) {
+function device(srv, t = { now: 1000 }, opts = {}) {
   const storage = mem();
   const scores = createScores(storage), stats = createStats(storage, () => t.now), mysongs = createMySongs(storage);
   const prefs = {
@@ -94,9 +95,10 @@ function device(srv, t = { now: 1000 }) {
       return JSON.stringify(this.sharedSettings()) !== before;
     },
   };
-  const fetch = (url, init) => srv.call(url.slice(API.length), init);
-  const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => t.now, gameVersion: '1.6.0' });
-  return { storage, scores, stats, mysongs, prefs, cloud, t };
+  const calls = [];
+  const fetch = (url, init) => { calls.push({ path: url.slice(API.length), init }); return srv.call(url.slice(API.length), init); };
+  const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => t.now, gameVersion: '1.6.0', ...opts });
+  return { storage, scores, stats, mysongs, prefs, cloud, t, calls };
 }
 
 const result = (score, date) => ({ score, date, grade: 'A', accuracy: 0.9, maxCombo: 12, fc: false, ap: false });
@@ -110,8 +112,8 @@ test('worker: CORS only for allowed origins; unknown routes and missing tokens a
   assert.equal(evil.headers.get('Access-Control-Allow-Origin'), null);
   const local = await srv.call('/sync', { method: 'OPTIONS', headers: { Origin: 'http://localhost:8080' } });
   assert.equal(local.headers.get('Access-Control-Allow-Origin'), 'http://localhost:8080');
-  assert.equal((await srv.call('/sync')).status, 401);
-  assert.equal((await srv.call('/sync', { headers: { Authorization: 'Bearer ' + 'x'.repeat(40) } })).status, 401);
+  assert.equal((await srv.call('/sync', { method: 'POST', body: '{}' })).status, 401);
+  assert.equal((await srv.call('/sync', { method: 'POST', body: '{}', headers: { Authorization: 'Bearer ' + 'x'.repeat(40) } })).status, 401);
   assert.equal((await srv.call('/auth/github/start?return=' + encodeURIComponent('https://evil.example/'))).status, 400);
   assert.equal((await srv.call('/auth/github/callback?code=1&state=nope')).status, 400);
 });
@@ -168,19 +170,30 @@ test('worker: the GitHub display name (else the login) becomes the first player 
   assert.equal((await exchange(await githubSignIn(srv, 3, { login: 'other-name' }))).name, 'Mine');
 });
 
-test('worker: the shared document is guarded by its revision; runs are deduplicated and checked', async () => {
+test('worker: POST /sync merges the shared document under its revision; runs are deduplicated and checked', async () => {
   const srv = server();
   const code = (await githubSignIn(srv)).slice('#login='.length);
   const { token } = await (await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) })).json();
   const h = { Authorization: 'Bearer ' + token };
-  const put = (doc, baseRev) => srv.call('/sync/shared', { method: 'PUT', headers: h, body: JSON.stringify({ doc, baseRev }) });
-  assert.equal((await put({ a: 1 }, 0)).status, 200);
-  assert.equal((await put({ a: 2 }, 0)).status, 409);
-  assert.equal((await put({ a: 2 }, 1)).status, 200);
-  assert.equal((await put({ a: 3 }, 1)).status, 409);
-  assert.equal((await put({ big: 'x'.repeat(260_000) }, 2)).status, 400);
-  const sync = await (await srv.call('/sync', { headers: h })).json();
-  assert.deepEqual(sync.shared, { doc: { a: 2 }, rev: 2 });
+  const sync = async body => {
+    const r = await srv.call('/sync', { method: 'POST', headers: h, body: JSON.stringify({ deviceId: 'device0001', ...body }) });
+    return { status: r.status, body: await r.json() };
+  };
+  const doc = (voice, t) => ({ settings: { voice }, settingsT: { voice: t } });
+  // The first copy gets its never-changed settings stamped with the device's clock, so the answer brings it back.
+  let r = await sync({ shared: doc('a', 0), sharedRev: 0, stampAt: 77 });
+  assert.deepEqual([r.body.shared.rev, r.body.shared.doc.settingsT.voice], [1, 77]);
+  // A device that saw no revision yet: its older change loses to the stored one, and the answer brings the merge.
+  r = await sync({ shared: doc('b', 50), sharedRev: 0 });
+  assert.deepEqual([r.body.shared.rev, r.body.shared.doc.settings.voice], [1, 'a'], 'nothing new: no write');
+  r = await sync({ shared: doc('c', 100), sharedRev: 1 });
+  assert.deepEqual(r.body.shared, { rev: 2 });
+  r = await sync({ sharedRev: 1 });
+  assert.deepEqual([r.body.shared.rev, r.body.shared.doc.settings.voice], [2, 'c']);
+  assert.equal((await sync({ sharedRev: 2 })).body.shared, undefined, 'up to date: nothing comes down');
+  assert.equal((await sync({ shared: { settings: { voice: 'x'.repeat(260_000) }, settingsT: { voice: 200 } } })).status, 400);
+  assert.equal((await sync({ shared: [1] })).status, 400);
+  assert.equal((await sync({ device: { v: 1 }, deviceId: 'BAD' })).status, 400);
 
   const runs = [
     { clientRunId: 'r1', songId: 's', diff: 'normal', score: 10 },
@@ -188,8 +201,13 @@ test('worker: the shared document is guarded by its revision; runs are deduplica
     { clientRunId: 'r2', songId: 's', diff: 'insane', score: 10 },
     { clientRunId: 'r3', songId: 's', diff: 'hard', score: -5 },
   ];
-  assert.equal((await (await srv.call('/runs', { method: 'POST', headers: h, body: JSON.stringify({ runs }) })).json()).accepted, 2);
+  assert.equal((await sync({ runs })).body.runs.length, 2);
   assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs').get().n, 1);
+  assert.equal((await sync({ runs: Array(51).fill(runs[0]) })).status, 400);
+  // The routes before 2.2 are gone.
+  for (const [method, path] of [['GET', '/sync'], ['PUT', '/sync/shared'], ['PUT', '/sync/device/device0001'], ['POST', '/runs']]) {
+    assert.equal((await srv.call(path, { method, headers: h, ...(method !== 'GET' && { body: '{}' }) })).status, 404, path);
+  }
 });
 
 test('two devices: scores, stats, settings and songs meet; runs go up once', async () => {
@@ -335,7 +353,7 @@ async function signedIn(srv, githubId, name) {
   const code = (await githubSignIn(srv, githubId, { login: name, name })).slice('#login='.length);
   const { token, profile } = await (await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) })).json();
   const h = { Authorization: 'Bearer ' + token };
-  const post = async runs => (await srv.call('/runs', { method: 'POST', headers: h, body: JSON.stringify({ runs }) })).json();
+  const post = async runs => (await srv.call('/sync', { method: 'POST', headers: h, body: JSON.stringify({ deviceId: 'device0001', runs }) })).json();
   return { h, post, id: profile.id };
 }
 const boardOf = async (srv, song, diff, h) => (await srv.call(`/board/${encodeURIComponent(song)}/${diff}${h ? '/me' : ''}`, h ? { headers: h } : {})).json();
@@ -487,4 +505,241 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
   const v = await a.cloud.submit();
   assert.equal(Object.keys(v).length, 40);
   assert.ok(Object.values(v).every(x => x.verified !== 1), 'junk replays never rank');
+});
+
+// ---- request budget: few requests, none during play, never in the way (docs/CLOUD.md › Requests) ----
+
+// Timers the test fires by hand.
+function fakeTimers() {
+  const list = new Map();
+  let id = 0;
+  return {
+    setTimer: (f, ms) => { list.set(++id, { f, ms }); return id; },
+    clearTimer: i => list.delete(i),
+    pending: () => [...list.values()],
+    fireAll() { const now = [...list.values()]; list.clear(); for (const t of now) t.f(); },
+  };
+}
+const settle = () => new Promise(r => setTimeout(r, 0));
+
+test('requests: a 20-song session with 5 new bests costs one request per best, plus start and hide', async () => {
+  const srv = server();
+  const timers = fakeTimers();
+  const a = device(srv, { now: 1000 }, timers);
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync();
+  a.calls.length = 0;
+  const scoresPlayed = [100, 50, 60, 200, 10, 20, 30, 300, 40, 50, 60, 70, 400, 5, 6, 7, 8, 500, 9, 9];
+  let bests = 0, queued = 0;
+  for (const [i, score] of scoresPlayed.entries()) {
+    a.t.now = 10_000 + i * 60_000;
+    const r = result(score, a.t.now);
+    const rec = a.scores.record('s1', 'normal', r);
+    a.stats.recordRun({ diff: 'normal', result: r });
+    a.cloud.schedule();
+    const id = rec.rank ? a.cloud.queueRun('s1', 'normal', r) : null;
+    if (id) queued++;
+    if (rec.isNewBest) { bests++; assert.ok((await a.cloud.submit())[id]); }
+  }
+  assert.equal(bests, 5);
+  assert.deepEqual(a.calls.map(c => c.path), Array(5).fill('/sync'));
+  assert.ok(timers.pending().every(t => t.ms >= 60_000), 'nothing else waits on a short timer');
+  a.cloud.flush(); // the tab is hidden: the last top-list runs and stats go up
+  await settle(); await settle();
+  assert.equal(a.calls.length, 6);
+  assert.equal(a.cloud.pendingRuns(), 0);
+  a.cloud.flush(); a.cloud.schedule(); await settle();
+  assert.equal(a.calls.length, 6, 'nothing changed: nothing sent');
+  a.cloud.wake();
+  assert.equal(a.calls.length, 6, 'the tab coming back soon after a sync pulls nothing');
+  a.t.now += 11 * 60e3;
+  a.cloud.wake(); await settle(); await settle();
+  assert.equal(a.calls.length, 7);
+  // Top-list runs only (the rest never leave the device); the ones that weren't bests went up with the hide flush.
+  assert.ok(queued < scoresPlayed.length);
+  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs').get().n, queued);
+});
+
+test('requests: nothing while a song plays; settings saves that change nothing send nothing', async () => {
+  const srv = server();
+  const timers = fakeTimers();
+  let busy = false;
+  const a = device(srv, { now: 1000 }, { ...timers, isBusy: () => busy });
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync();
+  a.calls.length = 0;
+  a.cloud.schedule(); // e.g. the last selected song saved: not synced, so not dirty
+  assert.equal(timers.pending().length, 0);
+
+  a.prefs.set('voice', 'smooth');
+  a.cloud.schedule();
+  assert.deepEqual(timers.pending().map(t => t.ms), [30_000]);
+  busy = true;
+  timers.fireAll();
+  await settle();
+  assert.equal(a.calls.length, 0, 'mid-song: waits');
+  assert.equal(timers.pending().length, 1);
+  busy = false;
+  timers.fireAll();
+  await settle(); await settle();
+  assert.equal(a.calls.length, 1);
+  assert.ok(JSON.parse(a.calls[0].init.body).shared, 'the settings went up');
+  assert.ok(!('devicesSince' in JSON.parse(a.calls[0].init.body)), 'a push does not pull');
+  a.cloud.schedule();
+  assert.equal(timers.pending().length, 0, 'the echo of its own change is not a change');
+});
+
+test('requests: a hung request times out and does not block the next; keepalive only for small bodies; backoff', async t => {
+  const srv = server();
+  let hang = false;
+  const calls = [];
+  const storage = mem(), scores = createScores(storage), stats = createStats(storage), mysongs = createMySongs(storage);
+  const prefs = { sharedSettings: () => ({ settings: {}, settingsT: {}, favorites: {} }), applyShared: () => false };
+  let clock = 1000;
+  const fetch = (url, init) => {
+    calls.push(init);
+    if (hang) return new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason)));
+    return srv.call(url.slice(API.length), init);
+  };
+  const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => clock, timeoutMs: 30, ...fakeTimers() });
+  const alive = setInterval(() => {}, 1000); // Node's AbortSignal.timeout doesn't hold the event loop open
+  t.after(() => clearInterval(alive));
+  await cloud.takeLoginHash(await githubSignIn(srv));
+  await cloud.sync();
+  hang = true;
+  cloud.queueRun('s', 'normal', result(1, 5));
+  assert.deepEqual(await cloud.submit(), {});
+  assert.equal(cloud.pendingRuns(), 1, 'kept for later');
+  // Backing off: the automatic flush waits, the Sync button doesn't.
+  hang = false;
+  const n = calls.length;
+  cloud.flush(); await settle();
+  assert.equal(calls.length, n);
+  assert.equal((await cloud.sync()).ok, true);
+  assert.equal(cloud.pendingRuns(), 0);
+
+  cloud.queueRun('s', 'normal', result(2, 6), [], { replay: 'A'.repeat(70_000), rules: RULES });
+  clock += 1;
+  cloud.flush(); await settle(); await settle();
+  assert.equal(calls.at(-1).keepalive, false, 'over 64 KB: a normal request');
+  cloud.queueRun('s', 'normal', result(3, 7));
+  cloud.flush(); await settle(); await settle();
+  assert.equal(calls.at(-1).keepalive, true);
+  assert.equal(cloud.pendingRuns(), 0);
+});
+
+test('requests: signed out, only the leaderboard snapshot, without credentials, once for every song', async () => {
+  const srv = server();
+  const anon = device(srv);
+  anon.cloud.schedule(); anon.cloud.flush(); anon.cloud.wake();
+  await anon.cloud.sync();
+  assert.equal(await anon.cloud.board('ode', 'normal').then(b => b.runs.length), 0);
+  await anon.cloud.board('ode', 'hard');
+  await anon.cloud.board('jingle', 'normal');
+  assert.deepEqual(anon.calls.map(c => c.path), ['/boards']);
+  assert.deepEqual(anon.calls[0].init.headers, {}, 'a simple request: no preflight');
+  // A reload keeps the snapshot.
+  const again = createCloud({ scores: anon.scores, stats: anon.stats, mysongs: anon.mysongs, prefs: anon.prefs, apiBase: API,
+    storage: anon.storage, now: () => anon.t.now, fetch: () => { throw new Error('no request expected'); } });
+  assert.ok(await again.board('ode', 'normal'));
+});
+
+test('POST /sync: ranks come back with a ranked run; the board snapshot is rebuilt only when something changed', async () => {
+  const srv = server();
+  const a = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await a.cloud.sync();
+  assert.equal(a.cloud.rank('ode', 'normal'), null);
+  const { run, result: res } = played('ode', 'normal', LADDER[4]);
+  const id = a.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+  a.calls.length = 0;
+  assert.equal((await a.cloud.submit())[id].verified, 1);
+  assert.equal(a.calls.length, 1, 'upload and rank in one request');
+  assert.deepEqual({ ...a.cloud.rank('ode', 'normal'), at: 0 }, { rank: 1, total: 1, at: 0 });
+  assert.equal(a.cloud.serverRules(), RULES);
+
+  const boards = async () => (await srv.call('/boards')).json();
+  const first = await boards();
+  assert.deepEqual(first.boards['ode|normal'].map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]]);
+  assert.equal((await srv.call('/boards')).headers.get('Cache-Control'), 'public, max-age=600');
+  srv.tick(1000);
+  await rebuildBoards(srv.env, 2_000_000);
+  assert.equal((await boards()).built, first.built, 'nothing changed: no rebuild');
+  await srv.call('/me', { method: 'PATCH', headers: { Authorization: 'Bearer ' + JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).token },
+    body: JSON.stringify({ public: false }) });
+  await rebuildBoards(srv.env, 3_000_000);
+  const later = await boards();
+  assert.equal(later.built, 3_000_000);
+  assert.equal(later.boards['ode|normal'], undefined, 'opted out');
+});
+
+test('POST /sync: only changed device slots come down; the shared document only when it changed', async () => {
+  const srv = server();
+  const a = device(srv), b = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv)); await a.cloud.sync();
+  await b.cloud.takeLoginHash(await githubSignIn(srv)); await b.cloud.sync();
+  srv.tick(10 * 60e3);
+  await a.cloud.sync(); // takes B's slot
+  const answers = [];
+  const real = srv.call;
+  srv.call = async (...x) => { const r = await real(...x); answers.push(await r.clone().json().catch(() => null)); return r; };
+  srv.tick(10 * 60e3);
+  await a.cloud.sync();
+  const quiet = answers.at(-1);
+  assert.deepEqual(quiet.devices, {}, 'no slot changed');
+  assert.equal(quiet.deviceIds.length, 2);
+  assert.ok(!('shared' in quiet), 'shared document unchanged');
+  b.scores.record('s1', 'normal', result(9, 99));
+  srv.tick(1000);
+  await b.cloud.sync();
+  srv.tick(10 * 60e3);
+  await a.cloud.sync();
+  assert.deepEqual(Object.keys(answers.at(-1).devices), [b.cloud.deviceId]);
+  assert.equal(a.scores.get('s1', 'normal').best.score, 9);
+});
+
+test('dev request log: every request with why, what and sizes; held-back syncs; nothing measured without it', async () => {
+  const srv = server();
+  const entries = [];
+  let busy = false;
+  const timers = fakeTimers();
+  const a = device(srv, { now: 1000 }, { ...timers, isBusy: () => busy, debug: e => entries.push(e) });
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync('start');
+  const start = entries.find(e => e.why === 'start');
+  assert.equal(start.method, 'POST');
+  assert.equal(start.path, '/sync');
+  assert.equal(start.status, 200);
+  assert.ok(start.sent > 0 && start.received > 0 && start.body.devicesSince === 0 && start.response.at);
+  assert.match(describe(start), /pull/);
+
+  a.scores.record('s1', 'normal', result(100, 50));
+  const id = a.cloud.queueRun('s1', 'normal', result(100, 50), [], { replay: 'A'.repeat(2048), rules: RULES });
+  await a.cloud.submit();
+  const best = entries.at(-1);
+  assert.equal(best.why, 'new best');
+  assert.equal(describe(best), 'device, 1 run (replays 2.0 KB) → invalid');
+  assert.match(line(best, new Date(0)), /new best +POST \/sync 200 ↑[\d.]+ KB ↓\d+ B \d+ ms · device, 1 run/);
+  assert.ok(id);
+
+  a.prefs.set('voice', 'smooth');
+  a.cloud.schedule();
+  busy = true;
+  timers.fireAll(); timers.fireAll();
+  assert.deepEqual(entries.filter(e => e.skipped).map(e => [e.why, e.skipped]), [['push', 'a song is playing']], 'logged once');
+  a.cloud.wake();
+  assert.match(entries.at(-1).skipped, /synced \d+ s ago/);
+
+  // The panel and the console.
+  const out = [];
+  const con = { groupCollapsed: t => out.push(t), log: () => {}, groupEnd: () => {}, debug: t => out.push(t) };
+  const log = createNetDebug({ doc: null, out: con });
+  for (const e of entries) log(e);
+  assert.equal(log.totals().requests, entries.filter(e => e.method).length);
+  assert.ok(out.every(t => t.startsWith('[cloud] ')));
+
+  // Without a debug callback, answers are read as before.
+  const plain = device(srv);
+  await plain.cloud.takeLoginHash(await githubSignIn(srv));
+  assert.equal((await plain.cloud.sync()).ok, true);
 });

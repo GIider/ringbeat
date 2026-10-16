@@ -11,6 +11,7 @@ import { SONGS } from '../../src/songs.js';
 import { hashString } from '../../src/library.js';
 import { planBot } from '../../src/bot.js';
 import * as mods from '../../src/mods.js';
+import { mergeShared, sameShared, stampUnset } from '../../src/cloudmerge.js';
 
 const SESSION_MS = 365 * 24 * 3600e3;
 const STATE_MS = 10 * 60e3;   // OAuth round trip
@@ -28,11 +29,12 @@ const MAX_RTTTL = 8000;      // mysongs.js MAX_RTTTL
 const VERIFY_PER_REQUEST = 4; // re-plays per request (CPU budget); the rest wait for the cron
 const VERIFY_PER_CRON = 20;
 const BOARD_MAX = 100;
+const BOARD_TOP = 3;          // runs per song and difficulty in the GET /boards snapshot
 const BUILTIN = new Map(SONGS.map(s => [s.id, s.rtttl]));
 
 export default {
   fetch: (req, env) => handle(req, env),
-  scheduled: (ev, env, ctx) => ctx.waitUntil(verifyPending(env)),
+  scheduled: (ev, env, ctx) => ctx.waitUntil(verifyPending(env).then(() => rebuildBoards(env, Date.now()))),
 };
 
 export async function handle(req, env, now = Date.now()) {
@@ -107,6 +109,14 @@ export async function handle(req, env, now = Date.now()) {
     }
 
     // ---- public: leaderboards ----
+    if (route === 'GET /boards') {
+      // Every song's top runs from one stored snapshot (rebuilt by the cron): one row read, however many songs.
+      let row = await env.DB.prepare('SELECT rules, doc, built FROM board_tops WHERE id = 1').first();
+      if (!row || row.rules !== String(RULES)) row = await rebuildBoards(env, now, { force: true });
+      return new Response(`{"rules":${RULES},"built":${row.built},"boards":${row.doc}}`, {
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
+      });
+    }
     const boardRoute = /^\/board\/([^/]+)\/([a-z]+)(\/me)?$/.exec(url.pathname);
     let boardSong = '';
     if (boardRoute && req.method === 'GET') {
@@ -134,6 +144,7 @@ export async function handle(req, env, now = Date.now()) {
         const r = Number.isInteger(body.runId)
           ? await env.DB.prepare('UPDATE runs SET hidden = ? WHERE id = ?').bind(hidden, body.runId).run()
           : await env.DB.prepare('UPDATE users SET hidden = ? WHERE id = ?').bind(hidden, String(body.userId || '')).run();
+        if (r.meta.changes) await boardsChanged(env).run();
         return r.meta.changes ? json(null) : fail(404, 'no such run or user');
       }
       if (route === 'POST /admin/verify') return json({ verified: await verifyPending(env) });
@@ -163,6 +174,7 @@ export async function handle(req, env, now = Date.now()) {
         if (typeof body.public !== 'boolean') return fail(400, 'bad public');
         await env.DB.prepare('UPDATE users SET public = ? WHERE id = ?').bind(body.public ? 1 : 0, uid).run();
       }
+      await boardsChanged(env).run(); // the snapshot shows names
       return json({ profile: await profile(env, uid) });
     }
     if (boardRoute && boardRoute[3] && req.method === 'GET') {
@@ -173,60 +185,49 @@ export async function handle(req, env, now = Date.now()) {
     if (route === 'DELETE /me') {
       await env.DB.batch(['runs', 'device_slots', 'shared_docs', 'login_codes', 'sessions', 'identities']
         .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(uid))
-        .concat(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid)));
+        .concat(env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid), boardsChanged(env)));
       return json(null);
     }
 
-    if (route === 'GET /sync') {
-      const shared = await env.DB.prepare('SELECT doc, rev FROM shared_docs WHERE user_id = ?').bind(uid).first();
-      const { results } = await env.DB.prepare('SELECT device_id, doc FROM device_slots WHERE user_id = ?').bind(uid).all();
-      return json({
-        shared: shared ? { doc: JSON.parse(shared.doc), rev: shared.rev } : { doc: null, rev: 0 },
-        devices: Object.fromEntries(results.map(r => [r.device_id, JSON.parse(r.doc)])),
-      });
-    }
-    if (route === 'PUT /sync/shared') {
-      const doc = docText(body.doc), base = body.baseRev;
-      if (!doc || !Number.isInteger(base) || base < 0) return fail(400, 'bad doc');
-      const r = base === 0
-        ? await env.DB.prepare('INSERT INTO shared_docs (user_id, doc, rev, updated) VALUES (?, ?, 1, ?) ON CONFLICT (user_id) DO NOTHING').bind(uid, doc, now).run()
-        : await env.DB.prepare('UPDATE shared_docs SET doc = ?, rev = rev + 1, updated = ? WHERE user_id = ? AND rev = ?').bind(doc, now, uid, base).run();
-      if (!r.meta.changes) return fail(409, 'stale');
-      return json({ rev: base + 1 });
-    }
-    const dev = /^PUT \/sync\/device\/([^/]+)$/.exec(route);
-    if (dev) {
-      const doc = docText(body.doc);
-      if (!DEVICE.test(dev[1]) || !doc) return fail(400, 'bad doc');
-      await env.DB.prepare(`INSERT INTO device_slots (user_id, device_id, doc, updated) VALUES (?, ?, ?, ?)
-        ON CONFLICT (user_id, device_id) DO UPDATE SET doc = excluded.doc, updated = excluded.updated`).bind(uid, dev[1], doc, now).run();
-      // Devices long gone make room: only the newest MAX_DEVICES are kept.
-      await env.DB.prepare(`DELETE FROM device_slots WHERE user_id = ? AND device_id NOT IN
-        (SELECT device_id FROM device_slots WHERE user_id = ? ORDER BY updated DESC LIMIT ?)`).bind(uid, uid, MAX_DEVICES).run();
-      return json(null);
-    }
-
-    if (route === 'POST /runs') {
-      if (!Array.isArray(body.runs) || body.runs.length > MAX_RUNS) return fail(400, 'bad runs');
-      const runs = body.runs.map(cleanRun).filter(Boolean);
+    // The game's one sync request: push whatever changed, pull what other devices wrote, upload runs and get their
+    // ranks back. Every part is optional (docs/CLOUD.md › Requests).
+    if (route === 'POST /sync') {
+      if (body.runs !== undefined && (!Array.isArray(body.runs) || body.runs.length > MAX_RUNS)) return fail(400, 'bad runs');
+      const out = { at: now, rules: RULES };
       let budget = VERIFY_PER_REQUEST;
-      for (const r of runs) {
-        // The server's own numbers replace the client's; runs over the budget wait for the cron (verified stays 0).
-        if (r.replay && r.rules === String(RULES) && budget-- > 0) Object.assign(r, verifyRun(r));
+      if (body.shared !== undefined || Number.isInteger(body.sharedRev)) {
+        if (body.shared !== undefined) budget--; // the merge takes CPU too
+        const r = await syncShared(env, uid, body, now);
+        if (r === 'bad') return fail(400, 'bad doc');
+        if (r === 'busy') return fail(409, 'stale');
+        if (r) out.shared = r;
       }
-      if (runs.length) {
-        await env.DB.batch(runs.map(r => env.DB.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade,
-          accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (user_id, client_run_id) DO NOTHING`).bind(uid, r.clientRunId, r.songId, r.diff, r.score, r.grade, r.accuracy,
-          r.maxCombo, r.fc, r.ap, r.mods, r.mult, r.gameVersion, r.playedAt, now, r.replay, r.verified, r.rules, r.loadout,
-          r.rtttl, r.flags)));
+      if (body.device !== undefined) {
+        const doc = docText(body.device);
+        if (!DEVICE.test(String(body.deviceId)) || !doc) return fail(400, 'bad doc');
+        await putDevice(env, uid, body.deviceId, doc, now);
       }
-      return json({
-        accepted: runs.length, rules: RULES,
-        runs: runs.map(r => ({ clientRunId: r.clientRunId, verified: r.verified, ...(r.verified === 1 && { score: r.score }) })),
-      });
+      if (isNum(body.devicesSince)) {
+        // Only the slots that changed since the caller last looked; the id list lets it drop pruned devices.
+        const { results } = await env.DB.prepare(`SELECT device_id, CASE WHEN updated > ? AND device_id != ? THEN doc END AS doc
+          FROM device_slots WHERE user_id = ?`).bind(body.devicesSince, String(body.deviceId || ''), uid).all();
+        out.deviceIds = results.map(r => r.device_id);
+        out.devices = Object.fromEntries(results.filter(r => r.doc !== null).map(r => [r.device_id, JSON.parse(r.doc)]));
+      }
+      if (body.runs && body.runs.length) {
+        const runs = await storeRuns(env, uid, body.runs, budget, now);
+        out.runs = verdicts(runs);
+        // The caller's world rank wherever a run just ranked: the results screen needs no second request.
+        out.ranks = {};
+        for (const key of new Set(runs.filter(r => r.verified === 1).map(r => r.songId + '|' + r.diff))) {
+          const [songId, diff] = [key.slice(0, key.lastIndexOf('|')), key.slice(key.lastIndexOf('|') + 1)];
+          const me = (await board(env, songId, diff, { me: uid })).find(r => r.me);
+          if (me) out.ranks[key] = { rank: me.rank, total: me.total };
+        }
+      }
+      return json(out);
     }
+
     return fail(404, 'not found');
   } catch (e) {
     console.error(e);
@@ -235,6 +236,89 @@ export async function handle(req, env, now = Date.now()) {
 }
 
 // ---- helpers ----
+
+async function putDevice(env, uid, deviceId, doc, now) {
+  await env.DB.prepare(`INSERT INTO device_slots (user_id, device_id, doc, updated) VALUES (?, ?, ?, ?)
+    ON CONFLICT (user_id, device_id) DO UPDATE SET doc = excluded.doc, updated = excluded.updated`).bind(uid, deviceId, doc, now).run();
+  // Devices long gone make room: only the newest MAX_DEVICES are kept.
+  await env.DB.prepare(`DELETE FROM device_slots WHERE user_id = ? AND device_id NOT IN
+    (SELECT device_id FROM device_slots WHERE user_id = ? ORDER BY updated DESC LIMIT ?)`).bind(uid, uid, MAX_DEVICES).run();
+}
+
+// POST /sync's shared document. A sent document is merged here with the stored one (the same merge every device
+// runs), written only when that changes it, and guarded by rev. -> { rev, doc? } (doc left out when the caller
+// already has it), null when the caller is up to date, 'bad' or 'busy' (lost the race three times).
+async function syncShared(env, uid, body, now) {
+  const read = () => env.DB.prepare('SELECT doc, rev FROM shared_docs WHERE user_id = ?').bind(uid).first();
+  let row = await read();
+  if (body.shared === undefined) {
+    return row && row.rev !== body.sharedRev ? { rev: row.rev, doc: JSON.parse(row.doc) } : null;
+  }
+  if (!body.shared || typeof body.shared !== 'object' || Array.isArray(body.shared)) return 'bad';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const stored = row && JSON.parse(row.doc);
+    // The first device to fill an empty profile stamps its never-changed settings with its own clock (stampUnset).
+    const merged = stored ? mergeShared(body.shared, stored) : stampUnset(body.shared, isNum(body.stampAt) ? body.stampAt : now);
+    const reply = rev => ({ rev, ...(!sameShared(merged, body.shared) && { doc: merged }) });
+    if (stored && sameShared(merged, stored)) return reply(row.rev);
+    const doc = docText(merged);
+    if (!doc) return 'bad';
+    const r = row
+      ? await env.DB.prepare('UPDATE shared_docs SET doc = ?, rev = rev + 1, updated = ? WHERE user_id = ? AND rev = ?').bind(doc, now, uid, row.rev).run()
+      : await env.DB.prepare('INSERT INTO shared_docs (user_id, doc, rev, updated) VALUES (?, ?, 1, ?) ON CONFLICT (user_id) DO NOTHING').bind(uid, doc, now).run();
+    if (r.meta.changes) return reply(row ? row.rev + 1 : 1);
+    row = await read(); // another device wrote in between: merge with that
+  }
+  return 'busy';
+}
+
+// Cleans, re-plays (up to `budget`; the rest wait for the cron with verified = 0) and stores runs. -> the clean runs.
+async function storeRuns(env, uid, raw, budget, now) {
+  const runs = raw.map(cleanRun).filter(Boolean);
+  for (const r of runs) {
+    // The server's own numbers replace the client's.
+    if (r.replay && r.rules === String(RULES) && budget-- > 0) Object.assign(r, verifyRun(r));
+  }
+  if (!runs.length) return runs;
+  await env.DB.batch(runs.map(r => env.DB.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade,
+    accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, client_run_id) DO NOTHING`).bind(uid, r.clientRunId, r.songId, r.diff, r.score, r.grade, r.accuracy,
+    r.maxCombo, r.fc, r.ap, r.mods, r.mult, r.gameVersion, r.playedAt, now, r.replay, r.verified, r.rules, r.loadout,
+    r.rtttl, r.flags)).concat(runs.some(r => r.verified === 1) ? [boardsChanged(env)] : []));
+  return runs;
+}
+const verdicts = runs => runs.map(r => ({ clientRunId: r.clientRunId, verified: r.verified, ...(r.verified === 1 && { score: r.score }) }));
+
+// The GET /boards snapshot needs a rebuild (a run ranked, a name or a hide changed). Writes nothing when already marked.
+const boardsChanged = env => env.DB.prepare('UPDATE board_tops SET dirty = 1 WHERE id = 1 AND dirty = 0');
+
+// Rebuilds the GET /boards snapshot when something changed (or `force`): the top BOARD_TOP public runs of every song
+// and difficulty under the current RULES. -> the stored row { rules, doc, built }.
+export async function rebuildBoards(env, now, { force = false } = {}) {
+  const row = await env.DB.prepare('SELECT rules, doc, built, dirty FROM board_tops WHERE id = 1').first();
+  if (row && !force && !row.dirty && row.rules === String(RULES)) return row;
+  const { results } = await env.DB.prepare(`WITH best AS (
+      SELECT r.song_id, r.diff, r.user_id, r.score, r.grade, r.accuracy, r.max_combo, r.fc, r.ap, r.mods, r.played_at,
+        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.diff, r.user_id ORDER BY r.score DESC, r.played_at) AS n
+      FROM runs r JOIN users u ON u.id = r.user_id
+      WHERE r.rules = ?1 AND r.verified = 1 AND r.hidden = 0 AND u.hidden = 0 AND u.public = 1
+    ), ranked AS (
+      SELECT b.*, u.display_name AS name,
+        ROW_NUMBER() OVER (PARTITION BY b.song_id, b.diff ORDER BY b.score DESC, b.played_at) AS rank,
+        COUNT(*) OVER (PARTITION BY b.song_id, b.diff) AS total
+      FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
+    ) SELECT * FROM ranked WHERE rank <= ?2 ORDER BY song_id, diff, rank`).bind(String(RULES), BOARD_TOP).all();
+  const boards = {};
+  for (const r of results) {
+    (boards[r.song_id + '|' + r.diff] ||= []).push({ rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade,
+      accuracy: r.accuracy, maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at });
+  }
+  const next = { rules: String(RULES), doc: JSON.stringify(boards), built: now };
+  await env.DB.prepare(`INSERT INTO board_tops (id, rules, doc, built, dirty) VALUES (1, ?1, ?2, ?3, 0)
+    ON CONFLICT (id) DO UPDATE SET rules = ?1, doc = ?2, built = ?3, dirty = 0`).bind(next.rules, next.doc, next.built).run();
+  return next;
+}
 
 function originAllowed(origin, env) {
   if (!origin) return false;
@@ -362,7 +446,7 @@ export async function verifyPending(env, limit = VERIFY_PER_CRON) {
           mods = ?, mult = ?, flags = ? WHERE id = ?`).bind(v.score, v.grade, v.accuracy, v.maxCombo, v.fc, v.ap, v.mods,
           v.mult, v.flags, row.id)
       : env.DB.prepare('UPDATE runs SET verified = -1 WHERE id = ?').bind(row.id);
-  }));
+  }).concat(boardsChanged(env)));
   return results.length;
 }
 

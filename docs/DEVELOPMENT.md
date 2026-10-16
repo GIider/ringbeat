@@ -102,13 +102,21 @@ Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 | Hook | Effect |
 |---|---|
 | `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
-| `?perf` | Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) |
-| `?cameo=<any>` | Idle cameos every 2–4 s instead of every 45–150 s |
-| `?cameo=debug` | Adds a panel with a button per cameo plus stop, IMEI, wipe and Konami |
+| `?dev` | Dev mode. Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)), a panel with a button per cameo plus stop, IMEI, wipe and Konami, and the **request log** (below) |
+| `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
 | `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, cloud, state}` for devtools and `tests/smoke.html` |
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
+
+**Request log.** In dev mode, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
+- why each one went out: `start`, `tab back`, `push`, `new best`, `tab hidden`, `boards`, `Sync button`, `signed in`;
+- what it carried (`shared`, `device`, runs and replay size, `pull`) and what came back (slots, verdicts, ranks);
+- status, characters up and down, and time;
+- syncs that were held back and why (a song playing, backing off, synced recently).
+
+The top line counts requests and characters for the session. Each request is also a collapsed console group with the
+full body sent and received. See [CLOUD.md › Requests](CLOUD.md#requests) for when requests go out.
 
 To start fresh, clear the `ringbeat.*` keys in `localStorage` (list in
 [ARCHITECTURE.md › Persistence](ARCHITECTURE.md#persistence)).

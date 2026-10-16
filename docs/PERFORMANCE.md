@@ -8,7 +8,7 @@ stutter. Four tools measure it. Timings are machine-specific, so always compare 
 ## In the browser
 
 Turn on the profiler with either of these:
-- open the page with `?perf`;
+- open the page with `?dev` (dev mode: also the cameo panel and the request log; not remembered);
 - press **F3** in any screen; this toggles it and remembers the choice in `localStorage` as `ringbeat.perf`.
 
 The overlay shows:
@@ -76,7 +76,7 @@ it, and the time to the next frame, plus the browser's layout and style-recalc t
 
 ## Real play in headless Chromium
 
-`npm run perf:play` (`scripts/perf-play.mjs`) opens `/?perf`, plays songs with a keyboard bot and reads the in-page
+`npm run perf:play` (`scripts/perf-play.mjs`) opens the game with `ringbeat.perf` set, plays songs with a keyboard bot and reads the in-page
 profiler. It reports:
 - fps;
 - the share of long frames;
