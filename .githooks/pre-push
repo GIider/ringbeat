@@ -1,0 +1,5 @@
+#!/bin/sh
+# Block the push if the test suite fails. Bypass in an emergency with: git push --no-verify
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "pre-push: running npm test..."
+npm test || { echo "pre-push: tests failed, push aborted." >&2; exit 1; }

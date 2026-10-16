@@ -6,7 +6,8 @@
   "type": "module",
   "description": "Browser rhythm game with charts generated from RTTTL ringtones, dressed as an old phone",
   "scripts": {
-    "start": "node scripts/serve.mjs",
+    "prepare": "git config core.hooksPath .githooks",
+    "start":"node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs && node scripts/smoke.mjs",
     "dev": "node scripts/serve.mjs --dev",
     "coverage": "node --test --experimental-test-coverage tests/*.test.mjs",
