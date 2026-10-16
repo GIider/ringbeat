@@ -1,0 +1,4 @@
+#!/bin/sh
+# ORIG_HEAD is the pre-merge/pull HEAD.
+cd "$(git rev-parse --show-toplevel)" || exit 0
+exec .githooks/sync-deps ORIG_HEAD HEAD

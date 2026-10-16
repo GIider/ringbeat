@@ -45,7 +45,7 @@ Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
 Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
 Chromium via Playwright (`npm install`, then once `npx playwright install chromium`). `tests/rtttl.test.html` and
 `tests/smoke.html` also run by hand in a browser (title shows PASS/FAIL).
-A `pre-push` git hook (`.githooks/`, enabled by `npm install`) runs `npm test` and blocks the push on failure; skip with `git push --no-verify`.
+Git hooks (`.githooks/`, enabled by `npm install`): `pre-commit` runs the unit tests and checks `assets/fonts` matches `src/pixelfont.js`; `pre-push` runs `npm test`; `post-merge`/`post-checkout` re-run `npm install` when `package-lock.json` changes. Skip with `--no-verify`.
 
 ## Deployment
 

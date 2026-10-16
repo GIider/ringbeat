@@ -1,0 +1,8 @@
+#!/bin/sh
+# Usage: sync-deps <old-rev> <new-rev>. Runs npm install if package-lock.json differs between them.
+# Never fails the git operation that called it.
+if ! git diff --quiet "$1" "$2" -- package-lock.json 2>/dev/null; then
+  echo "package-lock.json changed: running npm install..."
+  npm install --no-audit --no-fund || echo "npm install failed; run it manually." >&2
+fi
+exit 0

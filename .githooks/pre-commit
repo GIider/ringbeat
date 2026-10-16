@@ -1,0 +1,19 @@
+#!/bin/sh
+# Fast checks before each commit. Bypass in an emergency with: git commit --no-verify
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+echo "pre-commit: running unit tests..."
+node --test tests/*.test.mjs >/dev/null 2>&1 || {
+  echo "pre-commit: unit tests failed (run: node --test tests/*.test.mjs), commit aborted." >&2
+  exit 1
+}
+
+# The .ttf files are generated from src/pixelfont.js; make sure they're rebuilt and staged together.
+if git diff --cached --name-only | grep -q -E '^(src/pixelfont\.js|scripts/build-font\.mjs)$'; then
+  echo "pre-commit: checking fonts are in sync..."
+  npm run --silent font >/dev/null || { echo "pre-commit: font build failed, commit aborted." >&2; exit 1; }
+  if ! git diff --quiet -- assets/fonts; then
+    echo "pre-commit: fonts out of date: run 'npm run font' and 'git add assets/fonts', commit aborted." >&2
+    exit 1
+  fi
+fi
