@@ -52,7 +52,7 @@ export const STAGES = [
   },
   {
     id: 'mix', title: 'Combo',
-    text: 'Chain hits to build a combo: every 10 raises your multiplier. A miss resets it.',
+    text: 'Chain hits to build a combo: every 10 raises your multiplier, up to x1.5 at 50. A miss resets it.',
     notes: [[0, 0, 0.5], [1, 1, 0.5], [2, 2, 0.5], [3, 3, 2], [5.5, 2, 0.5], [6.5, 1, 0.5], [7.5, 0, 2],
       [10, 1, 0.5], [11, 2, 0.5], [12, 3, 0.5], [13, 0, 0.5], [14, 1, 2]],
     maxMiss: 0,

@@ -5,6 +5,7 @@ export const HOLD_RELEASE_FORGIVE = 0.15; // releasing this close to the tail en
 export const HOLD_BONUS = 100;
 export const POINTS = { perfect: 300, great: 200, good: 100 };
 export const SLIDE_WINDOW = 0.18;   // slide follow-up notes (not the first) accept presses this far off
+export const COMBO_MULT_CAP = 50;   // combo at which the multiplier stops growing (x1.5)
 export const ROLL_TICK_POINTS = 10;  // per press inside a roll, times the multiplier
 export const ROLL_GRADES = [[0.8, 'perfect'], [0.6, 'great'], [0.4, 'good']]; // share of the roll's goal -> judgement
 const ACCURACY_WEIGHT = { perfect: 1, great: 2 / 3, good: 1 / 3, miss: 0 };
@@ -83,7 +84,7 @@ export class Game {
   // True while no note has been missed and no stray press made (the "full combo" streak is alive).
   get fcAlive() { return this.judgedCount > 0 && this.counts.miss === 0 && this.strays === 0; }
   get apAlive() { return this.fcAlive && this.counts.great + this.counts.good === 0; }
-  get multiplier() { return Math.min(2, 1 + Math.floor(this.combo / 10) * 0.1); }
+  get multiplier() { return 1 + Math.floor(Math.min(this.combo, COMBO_MULT_CAP) / 10) * 0.1; }
 
   // ---- ticks (backing pulse, including the lead-in count-in, only when enabled) ----
   _startScheduler() {

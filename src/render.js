@@ -72,7 +72,7 @@ export class Renderer {
     this.labels = Array.from({ length: LABEL_POOL }, () => ({ t: -10, lane: 0, text: '' }));
     this.ringI = 0; this.labelI = 0;
     this.vi = 0;
-    this.lastCombo = 0;
+    this.lastCombo = 0; this._comboTxt = ''; this._comboShort = '';
     this.banners = Array.from({ length: BANNER_POOL }, () => ({ t: -10, text: '' }));
     this.bannerI = 0;
     this._sprites = new Map();  // string -> [ink, paper, ink bold, paper bold] -> { w, sp }
@@ -141,7 +141,7 @@ export class Renderer {
   }
 
   resetState() {
-    this.vi = 0; this.lastCombo = 0;
+    this.vi = 0; this.lastCombo = 0; this._comboTxt = ''; this._comboShort = '';
     this.rings.forEach(r => r.t = -10); this.labels.forEach(l => l.t = -10); this.banners.forEach(b => b.t = -10);
     this._dispScore = 0; this._shownScore = -1;
   }
@@ -452,6 +452,9 @@ export class Renderer {
     if (cmb !== this.lastCombo) {
       if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) this._banner(cmb + ' COMBO', now);
       this.lastCombo = cmb;
+      const m = game.multiplier > 1 ? ' x' + game.multiplier.toFixed(1) : '';
+      this._comboTxt = cmb + ' COMBO' + m;
+      this._comboShort = cmb + m;
     }
 
     // Row 1: score + grade/accuracy. Row 2: FC/AP (or the active mod chips) + combo.
@@ -462,7 +465,12 @@ export class Renderer {
     if (game.fcAlive && game.judgedCount >= 5) tag = game.apAlive ? 'ALL PERFECT' : 'FULL COMBO';
     if (!tag) tag = this.modLabel;
     if (tag) this._text(c, tag, 3, 12, INK, false);
-    if (cmb > 1) this._text(c, cmb + ' COMBO', W - 2, 12, INK, true, 1, 'right');
+    if (cmb > 1) {
+      // Fall back to the short form when the full string would collide with the left tag.
+      const full = this._comboTxt;
+      const fits = !tag || 3 + textWidth(tag) + 4 + textWidth(full, true) < W - 2;
+      this._text(c, fits ? full : this._comboShort, W - 2, 12, INK, true, 1, 'right');
+    }
 
     // Milestone banners over the highway
     const bx = Math.round(this.x0 + this.laneW * this.lanes / 2);
