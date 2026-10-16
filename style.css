@@ -122,6 +122,13 @@ textarea::placeholder { color: var(--ink-dim); }
 /* ---------- title / boot ---------- */
 .boot { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
 .boot-logo { font-weight: 700; font-size: calc(var(--fs) * 2); letter-spacing: 2px; animation: boot-in .9s steps(6) both; }
+.loading { display: flex; align-items: center; justify-content: center; }
+.ld-bars { display: flex; gap: calc(var(--u) * 2); }
+.ld-bars i { width: calc(var(--u) * 3); height: calc(var(--u) * 6); background: var(--ink); opacity: .15;
+  animation: ld-wave 1s steps(2) infinite; animation-delay: calc(var(--n, 0) * .1s); }
+.ld-bars i:nth-child(2) { --n: 1; } .ld-bars i:nth-child(3) { --n: 2; } .ld-bars i:nth-child(4) { --n: 3; }
+.ld-bars i:nth-child(5) { --n: 4; } .ld-bars i:nth-child(6) { --n: 5; } .ld-bars i:nth-child(7) { --n: 6; } .ld-bars i:nth-child(8) { --n: 7; }
+@keyframes ld-wave { 50% { opacity: 1; height: calc(var(--u) * 10); } }
 .boot-version { font-size: calc(var(--fs) * .7); opacity: .6; margin: 0; }
 .boot-build { margin-top: 2px; opacity: .45; }
 .boot-version a { color: inherit; text-decoration: none; pointer-events: auto; }
@@ -274,7 +281,7 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 
 @media (prefers-reduced-motion: reduce) {
   #phone { transition: none !important; }
-  .boot-logo, .boot-art, .blink { animation: none; }
+  .boot-logo, .boot-art, .blink, .ld-bars i { animation: none; }
   .scrolls { text-overflow: ellipsis; }
   .scrolls .mq { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }

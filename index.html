@@ -41,8 +41,13 @@
       <div class="screens">
         <canvas id="cameo" class="cameo" aria-hidden="true"></canvas>
 
+        <!-- Loading: pure HTML/CSS, visible until main.js removes it -->
+        <section id="loading" class="screen loading" aria-label="Loading">
+          <div class="ld-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </section>
+
         <!-- Title / boot -->
-        <section id="title" class="screen boot" data-title="" data-soft-left="Start" data-soft-right="">
+        <section id="title" class="screen boot" hidden data-title="" data-soft-left="Start" data-soft-right="">
           <div class="boot-logo">RINGBEAT</div>
           <i id="boot-art" class="spr boot-art"></i>
           <p class="blink">Press any key</p>
@@ -52,7 +57,7 @@
         </section>
 
         <!-- Song select: "Ringing tones" -->
-        <section id="select" class="screen" data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
+        <section id="select" class="screen" hidden data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
           <div class="sel-head">
             <span class="arrow" id="sel-arrow-l" aria-hidden="true">◄</span>
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
@@ -65,7 +70,7 @@
         </section>
 
         <!-- Options for the selected song -->
-        <section id="options" class="screen" data-title="Options" data-soft-left="Select" data-soft-right="Back">
+        <section id="options" class="screen" hidden data-title="Options" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
             <button id="btn-custom" data-default>My songs…</button>
             <button id="btn-settings">Settings</button>
@@ -76,7 +81,7 @@
         </section>
 
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
-        <section id="tutorial" class="screen" data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
+        <section id="tutorial" class="screen" hidden data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
           <h2 id="tut-title">Welcome to Ringbeat</h2>
           <div id="tut-progress" class="tut-progress" aria-live="polite"></div>
           <div id="tut-body"></div>
@@ -87,7 +92,7 @@
         </section>
 
         <!-- My songs -->
-        <section id="mysongs" class="screen" data-title="My songs" data-soft-left="Select" data-soft-right="Back">
+        <section id="mysongs" class="screen" hidden data-title="My songs" data-soft-left="Select" data-soft-right="Back">
           <div id="ms-list" class="menu"></div>
           <div class="menu">
             <button id="ms-new" data-default>New song</button>
@@ -101,7 +106,7 @@
         </section>
 
         <!-- One saved song -->
-        <section id="songmenu" class="screen" data-title="Song" data-soft-left="Select" data-soft-right="Back">
+        <section id="songmenu" class="screen" hidden data-title="Song" data-soft-left="Select" data-soft-right="Back">
           <h2 id="sm-title"></h2>
           <div id="sm-meta" class="hint"></div>
           <div class="menu">
@@ -119,7 +124,7 @@
         </section>
 
         <!-- Composer (Nokia-style note entry) -->
-        <section id="composer" class="screen" data-title="Composer" data-soft-left="Menu" data-soft-right="Clear">
+        <section id="composer" class="screen" hidden data-title="Composer" data-soft-left="Menu" data-soft-right="Clear">
           <div id="comp-edit" tabindex="0" data-default>
             <div id="comp-info" class="hint"></div>
             <div id="comp-notes" class="comp-notes" aria-live="polite"></div>
@@ -145,7 +150,7 @@
         </section>
 
         <!-- Custom song as text (paste / type RTTTL) -->
-        <section id="custom" class="screen" data-title="RTTTL text" data-soft-left="Select" data-soft-right="Back">
+        <section id="custom" class="screen" hidden data-title="RTTTL text" data-soft-left="Select" data-soft-right="Back">
           <label class="lbl" for="rtttl">Paste RTTTL</label>
           <textarea id="rtttl" rows="3" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
           <div id="status" class="status"></div>
@@ -161,7 +166,7 @@
         </section>
 
         <!-- Difficulty picker for custom songs -->
-        <section id="diffpick" class="screen" data-title="Difficulty" data-soft-left="Select" data-soft-right="Back">
+        <section id="diffpick" class="screen" hidden data-title="Difficulty" data-soft-left="Select" data-soft-right="Back">
           <i id="dp-cover" class="spr cover"></i>
           <h2 id="dp-title"></h2>
           <div id="dp-meta" class="hint"></div>
@@ -181,7 +186,7 @@
         </section>
 
         <!-- Settings -->
-        <section id="settings" class="screen" data-title="Settings" data-soft-left="Select" data-soft-right="Back">
+        <section id="settings" class="screen" hidden data-title="Settings" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
             <button id="set-voice">Tone: Buzzer</button>
             <label class="item">Volume <input id="volume" type="range" min="0" max="100" step="10"></label>
@@ -206,7 +211,7 @@
         </section>
 
         <!-- Modifiers -->
-        <section id="mods" class="screen" data-title="Mods" data-soft-left="Select" data-soft-right="Back">
+        <section id="mods" class="screen" hidden data-title="Mods" data-soft-left="Select" data-soft-right="Back">
           <div class="sub">Score <b id="m-mult">×1.00</b></div>
           <div class="menu">
             <label class="item">Speed <b id="m-speed-val"></b>
@@ -223,13 +228,13 @@
         </section>
 
         <!-- Now playing (shown in the phone while the highway runs) -->
-        <section id="nowplaying" class="screen np" data-title="" data-soft-left="Options" data-soft-right="Back">
+        <section id="nowplaying" class="screen np" hidden data-title="" data-soft-left="Options" data-soft-right="Back">
           <canvas id="stage" aria-label="Playfield"></canvas>
           <div id="np-caption" class="np-caption" hidden></div>
         </section>
 
         <!-- Results -->
-        <section id="results" class="screen" data-title="Results" data-soft-left="Select" data-soft-right="Back">
+        <section id="results" class="screen" hidden data-title="Results" data-soft-left="Select" data-soft-right="Back">
           <h2 id="r-heading" class="sr">Results</h2>
           <div id="r-song" class="hint center"></div>
           <div id="r-tabs" class="seg r-tabs" role="tablist">
@@ -274,7 +279,7 @@
         </section>
 
         <!-- Pause -->
-        <section id="pause" class="screen" data-title="Paused" data-soft-left="Select" data-soft-right="Back">
+        <section id="pause" class="screen" hidden data-title="Paused" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
             <button id="btn-resume" data-default>Resume</button>
             <button id="btn-restart">Restart</button>
@@ -285,7 +290,7 @@
         </section>
 
         <!-- Calibration -->
-        <section id="calib" class="screen" data-title="Latency" data-soft-left="Select" data-soft-right="Back">
+        <section id="calib" class="screen" hidden data-title="Latency" data-soft-left="Select" data-soft-right="Back">
           <p id="calib-msg" class="hint"></p>
           <div id="calib-pad" class="pad" role="button" aria-label="Tap here">TAP</div>
           <div class="hint center" id="calib-count">0 taps</div>

@@ -1913,6 +1913,7 @@ fetch(new URL('./difficulty.json', import.meta.url))
   })
   .catch(() => { /* offline / file missing */ });
 
+$('loading')?.remove();
 wire();
 phoneIdle();
 setMode();
