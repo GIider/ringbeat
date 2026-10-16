@@ -37,6 +37,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ select ─▶ difficulty ─▶ play 
 ## Gameplay
 
 - **Difficulty:** Normal (4 lanes), Hard (4 lanes, every note).
+  A song whose Normal and Hard charts differ by at most 2 notes (`COLLAPSE_MAX`, `src/library.js`) has a single difficulty (`entry.only`): Hard if its Hard rating is at least 5.0 (2.5 stars), else Normal. It stays in both lists; on the other difficulty its row is dimmed with "Only on X" in the footer, the difficulty screen disables that row ("same as X"), and starting it plays `only`. Applies to custom songs too (their rating, calculated or estimated, decides).
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
   Also derived from the RTTTL text, no authoring needed:
   - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and

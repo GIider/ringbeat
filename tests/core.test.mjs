@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRTTTL } from '../src/rtttl.js';
-import { generateChart } from '../src/chart.js';
+import { generateChart, chartDistance } from '../src/chart.js';
 import { SONGS } from '../src/songs.js';
-import { buildLibrary, customEntry, DIFFICULTIES } from '../src/library.js';
+import { buildLibrary, customEntry, DIFFICULTIES, COLLAPSE_MAX, setMeasured } from '../src/library.js';
 import { createScores, TOP_N } from '../src/scores.js';
 import { scaleChart } from '../src/mods.js';
 import { Game } from '../src/game.js';
@@ -18,6 +18,27 @@ import { readFileSync } from 'node:fs';
 import { sanitizeBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
+
+test('library: songs whose Normal and Hard charts barely differ get one difficulty', () => {
+  setMeasured(JSON.parse(readFileSync(new URL('../src/difficulty.json', import.meta.url))));
+  const lib = buildLibrary(), by = id => lib.find(e => e.id === id);
+  setMeasured({});
+  assert.equal(by('ode').only, 'normal');     // identical charts, Hard rating below 5
+  assert.equal(by('zelda').only, 'hard');     // identical charts, Hard rating 6.4
+  assert.equal(by('tetris').only, 'hard');    // two notes apart, Hard rating 8.1
+  assert.equal(by('ode').notes.hard, by('ode').notes.normal);
+  assert.equal(by('ode').rating.hard, by('ode').rating.normal);
+  for (const e of lib) {
+    const d = chartDistance(generateChart(e.song, { difficulty: 'normal' }), generateChart(e.song, { difficulty: 'hard' }));
+    assert.equal(!!e.only, d <= COLLAPSE_MAX, e.id);
+  }
+  assert.ok(lib.filter(e => e.only).length >= 40);
+  const rich = parseRTTTL('a:d=16,o=5,b=180:c,c7,d,d7,e,e7,f,f7,g,g7,a,a7,b,b7,c6,c4');
+  assert.ok(chartDistance(generateChart(rich, { difficulty: 'normal' }), generateChart(rich, { difficulty: 'hard' })) > 0);
+  assert.equal(chartDistance(generateChart(rich, { difficulty: 'hard' }), generateChart(rich, { difficulty: 'hard' })), 0);
+  assert.equal(customEntry('t:d=4,o=5,b=120:c,d,e,f,g,a,b,c6').only, 'normal'); // custom songs follow the same rule
+  assert.equal(customEntry('a:d=16,o=5,b=180:c,c7,d,d7,e,e7,f,f7,g,g7,a,a7,b,b7,c6,c4').only, undefined);
+});
 
 test('library: every built-in parses cleanly and charts at all difficulties', () => {
   assert.ok(SONGS.length >= 15);

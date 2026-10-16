@@ -83,6 +83,7 @@ test('mysongs: rating persists, survives export/import as unverified, is cleared
 });
 
 test('customEntry: own rating replaces the heuristic; imported or missing ratings are marked estimated', () => {
+  const TUNE = 'a:d=16,o=5,b=180:c,c7,d,d7,e,e7,f,f7,g,g7,a,a7,b,b7,c6,c4'; // Hard differs from Normal, so both ratings show
   const heur = customEntry(TUNE);
   assert.equal(heur.estimated, true);
   const own = customEntry(TUNE, cleanRating(rec()));

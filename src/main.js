@@ -400,10 +400,12 @@ function renderList() {
   }
   for (const e of list) {
     const b = document.createElement('button');
-    b.className = 'song-row';
+    const away = e.only && e.only !== settings.difficulty; // single-difficulty song, played on the other one
+    b.className = away ? 'song-row unavail' : 'song-row';
     b.dataset.id = e.id;
     b.setAttribute('role', 'option');
-    const rec = scores.get(e.id, settings.difficulty);
+    if (away) b.title = `Only on ${cap(e.only)}`;
+    const rec = away ? null : scores.get(e.id, settings.difficulty);
     const best = rec && rec.best;
     b.innerHTML =
       spriteHTML(SPRITES[e.category] || SPRITES.custom, 2) +
@@ -440,10 +442,10 @@ function renderDetail() {
   selectHints();
   const e = selectedEntry();
   if (!e) return;
-  const d = settings.difficulty, rec = scores.get(e.id, d);
+  const d = settings.difficulty, away = e.only && e.only !== d, rec = away ? null : scores.get(e.id, d);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
-    (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
+    (away ? ` · <span class="hint">Only on ${cap(e.only)}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
     `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
     (e.tag ? `<div>${esc(e.tag)}</div>` : '');
 }
@@ -651,7 +653,7 @@ function renderStats() {
       : empty || '<p class="hint center">No songs played yet.</p>';
   } else if (page === 'Grades') {
     const t = gradeTally(list, statDiff), max = Math.max(1, ...GRADES.map(g => t[g]));
-    const total = statDiff === 'all' ? entries().length : entries().filter(e => e.notes[statDiff] > 0).length;
+    const total = statDiff === 'all' ? entries().length : entries().filter(e => e.only ? e.only === statDiff : e.notes[statDiff] > 0).length;
     box.innerHTML =
       `<div class="center"><b>${statDiff === 'all' ? 'All' : cap(statDiff)}</b> · ${t.played}/${total} played</div>` +
       `<div class="gbars">${GRADES.map(g =>
@@ -881,7 +883,7 @@ let dpBack = null, dpEntry = null, dpDiff = 'normal';
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
   if (!e) return;
-  const rec = scores.get(e.id, d), box = $('dp-panel');
+  const rec = scores.get(e.id, e.only || d), box = $('dp-panel');
   box.textContent = '';
   const ol = document.createElement('ol');
   ol.className = 'top';
@@ -899,9 +901,10 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
   $('dp-title').textContent = entry.title;
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
-    const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
-      (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
+    const d = b.dataset.diff, same = entry.only && entry.only !== d; // folded into the other difficulty
+    const n = same ? 0 : entry.notes[d] || 0, r = scores.get(entry.id, d);
+    b.innerHTML = cap(d) + (same ? ` · same as ${cap(entry.only)}` : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
+      (r && !same ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
     b.onfocus = () => { dpDiff = d; renderDpPanel(); };
@@ -1110,6 +1113,7 @@ function laneLabels(lanes) {
 function startRun(r) {
   // A melody can have no playable notes at the chosen difficulty (e.g. only very short notes on Normal):
   // charts exist for every difficulty it can be played at, so use the nearest one that has notes.
+  if (r.entry && r.entry.only) r.diff = r.entry.only; // Normal and Hard barely differ: one difficulty
   if (r.entry && r.entry.notes && !r.entry.notes[r.diff]) {
     const alt = ['normal', 'hard'].find(d => r.entry.notes[d] > 0);
     if (alt) { toast(`No notes on ${r.diff}: playing ${alt}`); r.diff = alt; }

@@ -1,6 +1,6 @@
 // Song library: built-in songs plus the user's custom (pasted / shared) song, with derived metadata.
 import { parseRTTTL } from './rtttl.js';
-import { generateChart } from './chart.js';
+import { generateChart, chartDistance } from './chart.js';
 import { SONGS } from './songs.js';
 
 export const DIFFICULTIES = ['normal', 'hard'];
@@ -8,6 +8,10 @@ export const DIFFICULTIES = ['normal', 'hard'];
 // Bot-measured difficulty ({songId: {diff: {rating, tags}}}, from scripts/bench.mjs); set once at startup.
 let measured = {};
 export function setMeasured(data) { measured = data && typeof data === 'object' ? data : {}; }
+// Normal and Hard charts at most this many notes apart are the same experience: the song gets one difficulty.
+export const COLLAPSE_MAX = 2;
+// ...Hard when its rating (1..10) is at least this (2.5 stars), else Normal.
+export const COLLAPSE_HARD_RATING = 5;
 // Stars 1..5 from a bot rating 1..10.
 const starsFromRating = r => Math.max(1, Math.min(5, Math.round(r / 1.4)));
 
@@ -63,10 +67,21 @@ export function makeEntry({ id, title, tag, category, rtttl, own }) {
     } catch { stars[d] = 0; notes[d] = 0; }
   }
   if (!length) return null;
+  // Songs whose two charts barely differ are playable at one difficulty only; the other mirrors it so sorting and
+  // the info line stay sensible, and starting a run on it plays `only`.
+  let only;
+  if (charts.normal && charts.hard && chartDistance(charts.normal, charts.hard) <= COLLAPSE_MAX) {
+    const hardRating = rating.hard != null ? rating.hard : stars.hard * 1.4;
+    only = hardRating >= COLLAPSE_HARD_RATING ? 'hard' : 'normal';
+    const other = only === 'hard' ? 'normal' : 'hard';
+    notes[other] = notes[only]; stars[other] = stars[only];
+    if (rating[only] != null) rating[other] = rating[only]; else delete rating[other];
+    tags[other] = tags[only];
+  }
   return {
     id, rtttl, tag: tag || '', category: category || '', song,
     title: title || song.name || 'Untitled',
-    bpm: song.bpm, length, stars, notes, rating, tags, estimated,
+    bpm: song.bpm, length, stars, notes, rating, tags, estimated, only,
   };
 }
 

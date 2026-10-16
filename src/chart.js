@@ -55,6 +55,15 @@ export function assignLanesContour(midis, lanes) {
   });
 }
 
+// How many notes the two charts do not share (time, lane, type and duration all equal counts as shared).
+export function chartDistance(a, b) {
+  const key = n => `${n.time.toFixed(3)}|${n.lane}|${n.type || ''}|${n.duration.toFixed(3)}`;
+  const A = new Set(a.notes.map(key)), B = new Set(b.notes.map(key));
+  let common = 0;
+  for (const k of A) if (B.has(k)) common++;
+  return (A.size - common) + (B.size - common);
+}
+
 export function generateChart(song, opts = {}) {
   const diff = DIFFICULTY[opts.difficulty] || DIFFICULTY.normal;
   const lanes = opts.lanes || diff.lanes;
