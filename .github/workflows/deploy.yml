@@ -1,5 +1,6 @@
 name: Test & Deploy
 
+# Runs on push to main, pull requests and manual dispatch.
 on:
   push:
     branches: [main]
