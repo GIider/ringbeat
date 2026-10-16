@@ -118,6 +118,7 @@ export class Renderer {
         } else if (this.lastCombo >= 10) { // combo break: strike the old counter, jitter the field
           this.breakT = now; this.shakeT = now; this._brokenTxt = this._comboTxt;
         }
+        for (const o of this.labels) if (o.lane === lane) o.t = -10; // a new judgement replaces the lane's previous label
         const l = this.labels[this.labelI++ % LABEL_POOL];
         l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j];
       },
