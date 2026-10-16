@@ -21,6 +21,7 @@ export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when th
 export const PUSH_EVERY = 10 * 60e3;   // new scores, stats and runs wait at most this long (or until the tab is hidden)
 export const SHARED_DELAY = 30e3;      // settings, favourites and my songs: changes come in bursts
 export const BOARDS_TTL = 15 * 60e3;   // the leaderboard snapshot (the server rebuilds it every 15 minutes)
+export const SYNC_COOLDOWN = 30e3;     // the Sync button: once per this, counted from the last sync or press
 const BUSY_RETRY = 5e3;
 const DEVICE_OVERLAP = 5 * 60e3;       // re-ask for slots a little older than the last pull (writes in flight)
 
@@ -252,7 +253,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     chain = p;
     return p.then(r => { if (r.changed.size) emit({ synced: r.changed }); return r; });
   };
-  let pulling = null;
+  let pulling = null, pressedAt = -Infinity;
 
   // The one timer: fires at the earliest time something asked for, waits out a song and a backoff.
   let timer = 0, timerAt = 0, wantPull = false, lastNote = '';
@@ -314,6 +315,15 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (!pulling) pulling = enqueue({ pull: true, why }).finally(() => { pulling = null; });
       return pulling;
     },
+    // The Sync button: a full round, at most once per SYNC_COOLDOWN (counted from the last sync too, so a press right
+    // after the game started waits). -> sync()'s answer, or { ok: true, cooling: true } without a request.
+    syncNow() {
+      if (cloud.syncCooldown() > 0) { note('Sync button', 'cooling down'); return Promise.resolve({ ok: true, changed: new Set(), cooling: true }); }
+      pressedAt = now();
+      return cloud.sync('Sync button');
+    },
+    // Milliseconds until the Sync button works again (0 = now).
+    syncCooldown: () => (st.token ? Math.max(0, Math.max(st.syncedAt, pressedAt) + SYNC_COOLDOWN - now()) : 0),
     // The tab is back: pull only when the last sync is old.
     wake() {
       if (!st.token || !apiBase) return;

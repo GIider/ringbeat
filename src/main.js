@@ -825,12 +825,22 @@ function renderProfile() {
   $('pf-public').textContent = tr(p && p.public === false ? 'On leaderboards: Off' : 'On leaderboards: On');
   $('pf-signin').toggleAttribute('data-default', !on);
   $('pf-sync').toggleAttribute('data-default', on);
+  syncButton();
   const at = cloud.lastSync();
   $('pf-msg').textContent = pfMsg ||
     (!cloud.available() ? tr('Online profiles are not available yet.')
     : !on ? tr('Sign in to keep settings, scores and songs in sync on all your devices. Stored online: your GitHub user number, a player name and your game data.')
     : at ? tr('Synced {time}', { time: new Date(at).toLocaleString(getLang(), { dateStyle: 'short', timeStyle: 'short' }) })
     : tr('Not synced yet'));
+}
+// The Sync button counts down its cooldown (aria-disabled, not disabled: the focus stays on it).
+let syncTimer = 0;
+function syncButton() {
+  clearTimeout(syncTimer);
+  const b = $('pf-sync'), left = cloud.syncCooldown();
+  b.textContent = left ? tr('Sync again in {n} s', { n: Math.ceil(left / 1000) }) : tr('Sync now');
+  b.toggleAttribute('aria-disabled', left > 0);
+  if (left && state === 'profile') syncTimer = setTimeout(syncButton, Math.min(1000, left % 1000 || 1000));
 }
 async function profileAction(fn, okMsg) {
   pfMsg = tr('Working…'); renderProfile();
@@ -2020,7 +2030,10 @@ function wire() {
 
   // profile
   $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
-  $('pf-sync').onclick = () => profileAction(async () => { if (!(await cloud.sync('Sync button')).ok) throw new Error('sync'); }, '');
+  $('pf-sync').onclick = () => {
+    if (cloud.syncCooldown() > 0) return;
+    profileAction(async () => { if (!(await cloud.syncNow()).ok) throw new Error('sync'); }, '');
+  };
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
   $('pf-public').onclick = () => {
     const off = (cloud.profile() || {}).public === false;

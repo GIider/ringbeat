@@ -95,8 +95,8 @@ b { font-weight: 700; }
 .menu > button:hover, .menu > .item:hover { box-shadow: inset 0 0 0 var(--u) var(--ink); }
 .menu > button:focus, .menu > .item:focus-within, .menu > .hl { background: var(--ink); color: var(--lcd); outline: none; }
 .menu > .hl input[type=checkbox]:checked { box-shadow: inset 0 0 0 3px var(--ink); }
-.menu > button:disabled { opacity: .45; cursor: default; }
-.menu > button:disabled:focus { opacity: .7; }
+.menu > button:disabled, .menu > button[aria-disabled] { opacity: .45; cursor: default; }
+.menu > button:disabled:focus, .menu > button[aria-disabled]:focus { opacity: .7; }
 .item input[type=range] { flex-basis: 100%; }
 .item b, .item span { margin-left: auto; }
 

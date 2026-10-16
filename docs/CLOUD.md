@@ -154,7 +154,8 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 
 | When | Request |
 |---|---|
-| Game start, the Sync button, after signing in | One `POST /sync`: push what changed, pull the rest |
+| Game start, after signing in | One `POST /sync`: push what changed, pull the rest |
+| The Sync button | Same, at most once per 30 s (counted from the last sync too); the button counts down meanwhile |
 | The tab comes back | Same, but only when the last sync is over 10 minutes old |
 | A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
 | A new best | One push from the results screen; the world rank comes back with it |

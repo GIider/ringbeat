@@ -743,3 +743,23 @@ test('dev request log: every request with why, what and sizes; held-back syncs; 
   await plain.cloud.takeLoginHash(await githubSignIn(srv));
   assert.equal((await plain.cloud.sync()).ok, true);
 });
+
+test('the Sync button: once per cooldown, counted from the last sync; no request while cooling', async () => {
+  const srv = server();
+  const a = device(srv, { now: 1000 }, fakeTimers());
+  assert.equal(a.cloud.syncCooldown(), 0, 'signed out: nothing to wait for');
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync('start');
+  a.calls.length = 0;
+  assert.equal(a.cloud.syncCooldown(), 30_000);
+  assert.deepEqual(await a.cloud.syncNow(), { ok: true, changed: new Set(), cooling: true });
+  assert.equal(a.calls.length, 0);
+  a.t.now += 30_000;
+  assert.equal(a.cloud.syncCooldown(), 0);
+  assert.equal((await a.cloud.syncNow()).ok, true);
+  assert.equal(a.calls.length, 1);
+  a.t.now += 10_000;
+  assert.equal(a.cloud.syncCooldown(), 20_000);
+  await a.cloud.syncNow();
+  assert.equal(a.calls.length, 1);
+});

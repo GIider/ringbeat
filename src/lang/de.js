@@ -81,6 +81,7 @@ export const de = {
   // ---- online profile ----
   'Sign in with GitHub': 'Mit GitHub anmelden',
   'Sync now': 'Jetzt synchronisieren',
+  'Sync again in {n} s': 'Wieder in {n} s',
   'Save name': 'Name speichern',
   'Sign out': 'Abmelden',
   'Delete online profile': 'Online-Profil löschen',
