@@ -28,7 +28,7 @@ import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
-import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tutorial.js';
+import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
 import { SPRITES, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
@@ -106,8 +106,6 @@ function show(name) {
   if (name !== 'stats') statsCountStop();
   if (name !== 'msgload') clearTimeout(msgTimer);
   if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
-  const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
-  $('np-caption').hidden = !tut;
   const el = screens[name];
   if (el) {
     refreshChrome(el);
@@ -143,7 +141,11 @@ function paintRanges(root) { root.querySelectorAll('input[type=range]').forEach(
 function focusDefault(el) {
   const cur = el === screens.select && Array.from($('song-list').children).find(b => b.dataset.id === selectedId);
   const d = cur || el.querySelector('[data-default]:not([disabled])') || nav.focusables(el)[0];
-  if (d && !el.hidden) { d.focus({ preventScroll: true }); light(d); }
+  if (d && !el.hidden) {
+    d.focus({ preventScroll: true }); light(d);
+    // A screen keeps its scroll position while hidden; bring the focused default into view so the next arrow press doesn't jump.
+    if (d === nav.focusables(el)[0]) el.scrollTop = 0; else d.scrollIntoView({ block: 'nearest' });
+  }
 }
 // The highlighted list item follows focus but stays lit while focus is elsewhere (e.g. on a phone key).
 let lit = null;
@@ -1162,7 +1164,6 @@ function startRun(r) {
   phoneCache.key = '';
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
-  if (r.tutorial) showCaption(r.tutorial.stage);
   game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, rollAudio: settings.rollAudio, calibration: settings.calibration,
     ...(r.modsUsed && mods.gameOptions(r.modsUsed)) });
   setState('countin', null);
@@ -1202,7 +1203,7 @@ function pauseGame() {
   input.enabled = false;
   const tut = !!(run && run.tutorial);
   $('btn-quit').hidden = tut;
-  $('btn-tut-skip-pause').hidden = !tut;
+  $('btn-tut-back-pause').hidden = !tut;
   show('paused');
 }
 // Resume shows a 3-2-1 countdown first. The audio context stays suspended meanwhile, so song time is frozen.
@@ -1289,7 +1290,7 @@ function juiceResults(r) {
 game.onFinish = r => {
   input.reset();
   padHeld.forEach(s => s.clear());
-  if (run && run.tutorial) { tutorialStageDone(r); return; }
+  if (run && run.tutorial) { tutorialStageDone(); return; }
   // Mods fold their multiplier into the stored score; grade/accuracy stay raw.
   const used = run && run.modsUsed;
   if (used) {
@@ -1378,24 +1379,27 @@ function refreshTutorialCard() {
   const el = $('tut-controls');
   if (state === 'tutorial' && el && run && run.tutorial && !run.tutorial.done) el.innerHTML = controlsHint();
 }
+// One fixed-size box per lesson (not glyphs, whose widths differ), so the row never shifts between cards.
 function tutProgress(done, current) {
   const n = STAGES.length;
-  const boxes = STAGES.map((_, i) => (i < done ? '■' : i === current ? '▣' : '□')).join(' ');
-  $('tut-progress').hidden = false;
-  $('tut-progress').textContent = `${boxes}   ${current >= 0 ? tr('Lesson {i} of {n}', { i: current + 1, n }) : tr('{n} lessons', { n })}`;
+  const el = $('tut-progress');
+  el.hidden = false;
+  el.innerHTML = STAGES.map((_, i) => `<i${i < done ? ' class="done"' : i === current ? ' class="cur"' : ''}></i>`).join('');
+  el.setAttribute('aria-label', tr('Lesson {i} of {n}', { i: current >= 0 ? current + 1 : done, n }));
 }
+let tutDone = 0; // lessons played so far (seeded from the saved count when the tutorial starts)
 // First time opening Tones: offer the tutorial (it stays reachable from Settings).
 function openTutPrompt() { setState('tutprompt', 'tutprompt'); }
 function skipTutPrompt() { settings.tutorialDone = true; save(); openSelect(); }
-// Lesson card: text + goal, waits for the player to confirm before the round starts.
-function openLesson(i, failed) {
+// Lesson card: diagram + text, waits for the player to confirm before the round starts.
+function openLesson(i) {
   const st = STAGES[i];
-  $('tut-title').textContent = failed ? tr('Try again: {title}', { title: tr(st.title) }) : tr(st.title);
-  $('tut-body').innerHTML =
-    (failed ? `<p>${tr('<b>Not quite</b> — {why}.', { why: esc(failed) })}</p>` : '') +
-    `<p>${esc(tr(st.text))}</p><p>${esc(goalText(st))}</p>` + controlsHTML();
-  $('btn-tut-go').textContent = failed ? tr('Retry lesson') : tr('Start lesson');
-  $('btn-tut-skip').hidden = false;
+  $('tut-title').textContent = tr(st.title);
+  $('tut-body').innerHTML = stageDemoHTML(st) + tr(st.text).split('\n').map(p => `<p>${esc(p)}</p>`).join('') +
+    (i === 0 ? controlsHTML() : '');
+  $('btn-tut-go').textContent = tr('Start lesson');
+  $('btn-tut-skip').textContent = tr('Skip tutorial');
+  $('btn-tut-skip').hidden = i === 0 && !settings.tutorialDone; // the first-visit prompt already offered "No thanks"
   tutProgress(i, i);
   run = { tutorial: { stage: i, pending: true } };
   setState('tutorial', 'tutorial');
@@ -1404,30 +1408,46 @@ function tutorialOutro() {
   game.stop();
   $('tut-title').textContent = tr("You're ready!");
   $('tut-body').innerHTML =
-    `<p>${tr('Hit every note for a <b>Full Combo</b>.')}</p>` +
-    `<p>${tr('Early or late? Try <b>Settings → Calibrate</b>.')}</p>`;
+    `<p>${tr('Chain hits to build a combo: every 10 raises your multiplier, up to x1.5 at 50. A miss resets it.')}</p>` +
+    `<p>${tr('Hit every note for a <b>Full Combo</b>.')}</p>`;
   $('btn-tut-go').textContent = tr('Pick a song');
-  $('btn-tut-skip').hidden = true;
+  $('btn-tut-skip').textContent = tr('Calibrate');
+  $('btn-tut-skip').hidden = false;
   tutProgress(STAGES.length, -1);
   run = { tutorial: { done: true } };
   setState('tutorial', 'tutorial');
 }
-function showCaption(i) {
-  $('np-caption').textContent = `${i + 1}/${STAGES.length} · ${goalText(STAGES[i])}`;
-}
-function tutorialStageDone(r) {
+// Every finished round counts: the next lesson follows (no pass/fail).
+function tutorialStageDone() {
   const i = run.tutorial.stage;
-  if (!stagePassed(STAGES[i], r)) { game.stop(); openLesson(i, failReason(STAGES[i], r)); return; }
   game.stop();
-  if (i + 1 < STAGES.length) openLesson(i + 1); else tutorialOutro();
+  tutDone = Math.max(tutDone, i + 1);
+  if (tutDone > settings.tutorialLessons) { settings.tutorialLessons = tutDone; save(); }
+  tutorialNext(i);
 }
-function finishTutorial() {
+function tutorialNext(i) { if (i + 1 < STAGES.length) openLesson(i + 1); else tutorialOutro(); }
+function tutorialPrev() {
+  const t = run && run.tutorial;
+  if (t && t.done) openLesson(STAGES.length - 1); else if (t && t.stage > 0) openLesson(t.stage - 1);
+}
+// Left/right and swipes: back any time, forward only over lessons already played.
+function tutorialStep(dir) {
+  const t = run && run.tutorial;
+  if (!t || game.active) return;
+  if (dir < 0) tutorialPrev(); else if (!t.done && t.stage < tutDone) tutorialNext(t.stage);
+}
+function startTutorial() { tutDone = Math.min(settings.tutorialLessons, STAGES.length); openLesson(0); }
+function finishTutorial(then = openSelect) {
   game.stop();
   input.reset();
   run = null;
   $('tut-progress').hidden = true;
   settings.tutorialDone = true; save();
-  openSelect();
+  then();
+}
+// The outro reuses the Skip button as "Calibrate".
+function tutorialSkip() {
+  if (run && run.tutorial && run.tutorial.done) finishTutorial(startCalibration); else finishTutorial();
 }
 function tutorialGo() {
   const t = run && run.tutorial;
@@ -1643,6 +1663,7 @@ function navigate(dir) {
   if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
+  if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     const p = resultsPage;
@@ -1798,12 +1819,18 @@ function wire() {
   $('inbox-list').onclick = e => { const b = e.target.closest('button'); if (b) openMessage(+b.dataset.i); };
 
   // tutorial
-  $('btn-tp-yes').onclick = () => { synth.ensure(); openLesson(0); };
+  $('btn-tp-yes').onclick = () => { synth.ensure(); startTutorial(); };
   $('btn-tp-no').onclick = skipTutPrompt;
   $('btn-tut-go').onclick = tutorialGo;
-  $('btn-tut-skip').onclick = finishTutorial;
-  $('btn-tut-skip-pause').onclick = finishTutorial;
-  $('btn-tutorial').onclick = () => { synth.ensure(); openLesson(0); };
+  $('btn-tut-skip').onclick = tutorialSkip;
+  $('btn-tut-back-pause').onclick = () => {
+    const i = run.tutorial.stage;
+    game.stop();
+    input.reset();
+    padHeld.forEach(s => s.clear());
+    openLesson(i);
+  };
+  $('btn-tutorial').onclick = () => { synth.ensure(); startTutorial(); };
 
   // title / select
   $('btn-start').onclick = startFromTitle;
@@ -1941,6 +1968,8 @@ function wire() {
   for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
   // horizontal swipe flips results pages
   onSwipe($('results'), dir => navigate(dir === 'left' ? 'right' : 'left'));
+  // swipe through the tutorial lessons (swipe left = next)
+  onSwipe($('tutorial'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('btn-retry').onclick = restartRun;
   $('btn-next').onclick = nextSong;
   $('btn-menu').onclick = leaveToSelect;

@@ -1,7 +1,6 @@
 // First-run tutorial: hand-authored mini-charts played through the normal game loop.
 
 import { ROLL_TAIL_SEC } from './chart.js';
-import { t, tn } from './i18n.js';
 
 const BPM = 100;
 const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch per lane
@@ -11,54 +10,51 @@ const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch p
 //         { double: lane } adds a partner tap in that lane at the same time.
 export const STAGES = [
   {
-    id: 'tap', title: 'Tap notes',
-    text: 'Hit the lane as the note touches the line.',
-    notes: [[0, 0, 0.25], [2, 1, 0.25], [4, 2, 0.25], [6, 3, 0.25]],
-    maxMiss: 0,
+    id: 'tap', title: 'Tap notes', demo: ['tap'],
+    text: 'Hit the lane as the note touches the line. Closer scores higher: PERFECT, GREAT, GOOD. Too early or late is a MISS.',
+    notes: [[0, 0, 0.25], [2, 1, 0.25], [4, 2, 0.25], [6, 3, 0.25],
+      [8, 1, 0.25], [9, 2, 0.25], [10, 0, 0.25], [11, 3, 0.25]],
   },
   {
-    id: 'timing', title: 'Timing',
-    text: 'Closer to the line scores higher: PERFECT, GREAT, GOOD. Too early or late is a MISS.',
-    notes: [[0, 1, 0.25], [1, 2, 0.25], [2, 0, 0.25], [3, 3, 0.25], [4, 1, 0.25], [5, 2, 0.25], [6, 0, 0.25], [7, 3, 0.25]],
-    maxMiss: 0, minGreatPct: 50,
-  },
-  {
-    id: 'hold', title: 'Hold notes',
+    id: 'hold', title: 'Hold notes', demo: ['hold'],
     text: 'Long notes have a tail. HOLD the lane until the tail reaches the line, then release.',
     notes: [[0, 0, 2], [3, 3, 2], [6, 1, 3]],
-    maxMiss: 0,
   },
   {
-    id: 'roll', title: 'Roll notes',
+    id: 'roll', title: 'Roll notes', demo: ['roll'],
     text: 'A ROLL is a bar of fast ticks. Mash the lane while it passes the line.',
     notes: [[0, 1, 0, { roll: 8 }], [5, 2, 0, { roll: 8 }], [10, 0, 0, { roll: 10 }]],
-    maxMiss: 0,
   },
   {
-    id: 'slide', title: 'Slides',
-    text: 'Notes joined by a dotted line are a SLIDE. Hit the first on time, then sweep along.',
+    id: 'chain', title: 'Slides and doubles', demo: ['slide', 'double'],
+    text: 'Notes joined by a dotted line are a SLIDE: hit the first on time, then sweep along.\nNotes joined by a bridge fall together: hit both lanes at once.',
     notes: [
       [0, 0, 0.5, { slide: 1, idx: 0 }], [0.5, 1, 0.5, { slide: 1, idx: 1 }], [1, 2, 0.5, { slide: 1, idx: 2 }], [1.5, 3, 0.5, { slide: 1, idx: 3 }],
-      [4, 3, 0.5, { slide: 2, idx: 0 }], [4.5, 2, 0.5, { slide: 2, idx: 1 }], [5, 1, 0.5, { slide: 2, idx: 2 }],
-      [8, 0, 0.5, { slide: 3, idx: 0 }], [8.5, 1, 0.5, { slide: 3, idx: 1 }], [9, 2, 0.5, { slide: 3, idx: 2 }],
+      [3.5, 3, 0.5, { slide: 2, idx: 0 }], [4, 2, 0.5, { slide: 2, idx: 1 }], [4.5, 1, 0.5, { slide: 2, idx: 2 }],
+      [6.5, 1, 0.5, { double: 0 }], [8, 2, 0.5, { double: 1 }], [9.5, 3, 0.5, { double: 2 }],
     ],
-    maxMiss: 0,
-  },
-  {
-    id: 'double', title: 'Double notes',
-    text: 'Notes joined by a bridge fall together. Hit both lanes at once.',
-    notes: [[0, 1, 0.5, { double: 0 }], [2, 2, 0.5, { double: 1 }], [4, 3, 0.5, { double: 2 }], [6, 0, 0.5],
-      [7, 2, 0.5, { double: 1 }], [9, 3, 0.5, { double: 2 }]],
-    maxMiss: 0,
-  },
-  {
-    id: 'mix', title: 'Combo',
-    text: 'Chain hits to build a combo: every 10 raises your multiplier, up to x1.5 at 50. A miss resets it.',
-    notes: [[0, 0, 0.5], [1, 1, 0.5], [2, 2, 0.5], [3, 3, 2], [5.5, 2, 0.5], [6.5, 1, 0.5], [7.5, 0, 2],
-      [10, 1, 0.5], [11, 2, 0.5], [12, 3, 0.5], [13, 0, 0.5], [14, 1, 2]],
-    maxMiss: 0,
   },
 ];
+
+// Tiny lane diagrams for the lesson cards: four faint lanes, a hit line, and the note shape being taught.
+const LANE_X = [10, 26, 42, 58];
+const note = (lane, y, w = 10) => `<rect x="${LANE_X[lane] - w / 2}" y="${y}" width="${w}" height="5"/>`;
+const DEMOS = {
+  tap: () => note(0, 8) + note(2, 18) + note(1, 28),
+  hold: () => `<rect x="${LANE_X[1] - 2}" y="4" width="4" height="22" opacity=".5"/>` + note(1, 26),
+  roll: () => `<rect x="${LANE_X[2] - 6}" y="6" width="12" height="22" fill="none" stroke="currentColor" stroke-width="1.5"/>` +
+    [9, 13, 17, 21, 25].map(y => `<rect x="${LANE_X[2] - 3}" y="${y}" width="6" height="2"/>`).join(''),
+  slide: () => `<polyline points="${[[0, 26], [1, 20], [2, 14], [3, 8]].map(([l, y]) => `${LANE_X[l]},${y + 2.5}`).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>` +
+    note(0, 26) + note(1, 20) + note(2, 14) + note(3, 8),
+  double: () => `<rect x="${LANE_X[1]}" y="14" width="${LANE_X[2] - LANE_X[1]}" height="2" opacity=".6"/>` + note(1, 12) + note(2, 12),
+};
+export function stageDemoHTML(stage) {
+  if (!stage.demo) return '';
+  const svg = d => `<svg viewBox="0 0 68 38" aria-hidden="true" fill="currentColor">` +
+    LANE_X.map(x => `<rect x="${x - 0.5}" y="0" width="1" height="38" opacity=".2"/>`).join('') +
+    `<rect x="0" y="33" width="68" height="1.5" opacity=".7"/>${DEMOS[d]()}</svg>`;
+  return `<div class="tut-demo">${stage.demo.map(svg).join('')}</div>`;
+}
 
 export function buildStageChart(stage) {
   const beatLen = 60 / BPM;
@@ -90,27 +86,4 @@ export function buildStageChart(stage) {
     notes, lanes: 4, bpm: BPM, beatLen, firstBeat: 0,
     length: Math.max(...notes.map(n => n.time + n.duration)),
   };
-}
-
-const greatPct = c => {
-  const total = c.perfect + c.great + c.good + c.miss;
-  return total ? (100 * (c.perfect + c.great)) / total : 0;
-};
-
-// Mastery: few enough misses and (optionally) enough PERFECT/GREAT hits.
-export function stagePassed(stage, results) {
-  const c = results.counts;
-  return c.miss <= stage.maxMiss && greatPct(c) >= (stage.minGreatPct || 0);
-}
-
-export function goalText(stage) {
-  const parts = [stage.maxMiss === 0 ? t('no misses') : tn(stage.maxMiss, 'at most {n} miss', 'at most {n} misses')];
-  if (stage.minGreatPct) parts.push(t('{pct}% PERFECT or GREAT', { pct: stage.minGreatPct }));
-  return t('Goal: {parts}', { parts: parts.join(', ') });
-}
-
-export function failReason(stage, results) {
-  const c = results.counts;
-  if (c.miss > stage.maxMiss) return tn(c.miss, '{n} miss', '{n} misses');
-  return t('only {pct}% PERFECT or GREAT', { pct: Math.round(greatPct(c)) });
 }

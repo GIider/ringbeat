@@ -63,7 +63,7 @@ Menus:
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
 
 ## Tutorial
-Offered the first time you open Tones (never shown to players who already picked a song); say no and it's marked done. Seven short lessons teach taps, timing, holds, rolls, slides, doubles and combo. Each lesson opens with a text card that waits for you to confirm, shows "Lesson n of N" progress, and only unlocks the next lesson once you meet its goal (no misses, plus an accuracy target on some). Replay it from Settings → Replay tutorial.
+Offered the first time you open Tones (never shown to players who already picked a song); say no and it's marked done. Four short lessons teach taps and timing, holds, rolls, and slides and doubles; the closing card explains combos. Each lesson opens with a card (a small diagram, a sentence and the hint for the input device in use) that waits for you to confirm. There is no pass/fail: finishing a round moves on to the next card, with left / swipe right to go back and right / swipe left to move forward over lessons already played. The last card offers Calibrate. Replay it from Settings → Replay tutorial.
 
 ## Song select hints
 The song list shows each song's note count for the selected difficulty, and a hint line under it lists

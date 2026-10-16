@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { createMySongs, rtttlProblem, isValidRtttl, splitRtttl, MAX_RTTTL, MYSONGS_KEY } from '../src/mysongs.js';
 import * as C from '../src/composer.js';
 import { planBot, runBot, measureProfile, LADDER, SPECIALISTS, mulberry32 } from '../src/bot.js';
-import { goalText, failReason, STAGES } from '../src/tutorial.js';
 import { applyView, nextOf, prevOf, ratingOf, SORTS } from '../src/listview.js';
 import { formatLength, starsFor, hashString } from '../src/library.js';
 import { assignLanesQuantile, assignLanesContour } from '../src/chart.js';
@@ -250,20 +249,6 @@ test('bot: runBot always returns a result and leaves the input chart untouched',
   const res = runBot(chart, LADDER[7], 2);
   assert.ok(res.accuracy >= 0 && res.accuracy <= 100);
   assert.equal(JSON.stringify(chart.notes), copy);
-});
-
-// ---- tutorial text ----
-test('tutorial: goalText and failReason pluralize correctly', () => {
-  assert.equal(goalText({ maxMiss: 0 }), 'Goal: no misses');
-  assert.equal(goalText({ maxMiss: 1 }), 'Goal: at most 1 miss');
-  assert.equal(goalText({ maxMiss: 3 }), 'Goal: at most 3 misses');
-  assert.equal(goalText({ maxMiss: 2, minGreatPct: 60 }), 'Goal: at most 2 misses, 60% PERFECT or GREAT');
-  const res = c => ({ counts: { perfect: 0, great: 0, good: 0, miss: 0, ...c } });
-  assert.equal(failReason({ maxMiss: 0 }, res({ miss: 1 })), '1 miss');
-  assert.equal(failReason({ maxMiss: 0 }, res({ miss: 4 })), '4 misses');
-  assert.equal(failReason({ maxMiss: 5, minGreatPct: 60 }, res({ perfect: 1, good: 3 })), 'only 25% PERFECT or GREAT');
-  assert.equal(failReason({ maxMiss: 5, minGreatPct: 60 }, res({})), 'only 0% PERFECT or GREAT');
-  for (const s of STAGES) assert.ok(goalText(s).startsWith('Goal: '));
 });
 
 // ---- listview / library ----

@@ -141,12 +141,12 @@
 
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
         <section id="tutorial" class="screen" hidden data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
+          <div id="tut-progress" class="tut-progress" role="img"></div>
           <h2 id="tut-title">Tutorial</h2>
-          <div id="tut-progress" class="tut-progress" aria-live="polite"></div>
           <div id="tut-body"></div>
           <div class="menu">
             <button id="btn-tut-go" data-default>Start lesson</button>
-            <button id="btn-tut-skip" data-i18n>Skip</button>
+            <button id="btn-tut-skip" data-i18n>Skip tutorial</button>
           </div>
         </section>
 
@@ -293,7 +293,6 @@
         <!-- Now playing (shown in the phone while the highway runs) -->
         <section id="nowplaying" class="screen np" hidden data-title="" data-soft-left="Options" data-soft-right="Back">
           <canvas id="stage" role="img" aria-label="Playfield" data-i18n-attr="aria-label"></canvas>
-          <div id="np-caption" class="np-caption" hidden></div>
           <div id="np-count" class="np-count" hidden aria-live="assertive"><span class="np-count-lbl" data-i18n>GET READY</span><span id="np-count-n" class="np-count-n"></span></div>
         </section>
 
@@ -349,7 +348,7 @@
             <button id="btn-restart" data-i18n>Restart</button>
             <button id="btn-pause-settings" data-i18n>Settings</button>
             <button id="btn-quit">Tones</button>
-            <button id="btn-tut-skip-pause" hidden data-i18n>Skip tutorial</button>
+            <button id="btn-tut-back-pause" hidden data-i18n>Back to lesson</button>
           </div>
         </section>
 

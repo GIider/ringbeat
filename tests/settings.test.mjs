@@ -27,6 +27,7 @@ test('settings: empty or corrupt storage gives defaults', async () => {
     assert.equal(s.difficulty, 'normal');
     assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
     assert.equal(s.tutorialDone, false);
+    assert.equal(s.tutorialLessons, 0);
     assert.deepEqual(s.padBindings, DEFAULT_BINDINGS);
   }
 });
@@ -75,6 +76,13 @@ test('settings: difficulty, sort and category only accept known values', async (
   assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
   ({ settings: s } = await load({ view: 'oops' }));
   assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
+});
+
+test('settings: tutorialLessons is a clamped whole number', async () => {
+  for (const [raw, want] of [[3, 3], [2.7, 2], [-1, 0], ['x', 0], [500, 99]]) {
+    const { settings: s } = await load({ tutorialLessons: raw });
+    assert.equal(s.tutorialLessons, want, String(raw));
+  }
 });
 
 test('settings: lastSongId implies the tutorial was done', async () => {

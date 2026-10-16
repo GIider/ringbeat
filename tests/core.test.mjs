@@ -8,7 +8,7 @@ import { buildLibrary, customEntry, DIFFICULTIES, COLLAPSE_MAX, setMeasured } fr
 import { createScores, TOP_N } from '../src/scores.js';
 import { scaleChart } from '../src/mods.js';
 import { Game } from '../src/game.js';
-import { STAGES, buildStageChart, stagePassed } from '../src/tutorial.js';
+import { STAGES, buildStageChart } from '../src/tutorial.js';
 import { HOLD_MIN_SEC } from '../src/chart.js';
 import { createPerf } from '../src/perf.js';
 import * as C from '../src/composer.js';
@@ -233,12 +233,6 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
   for (const kind of ['isRoll', 'chordLane', 'slide']) {
     assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n[kind])), `a stage teaches ${kind}`);
   }
-  assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 1 } }), true);
-  assert.equal(stagePassed({ maxMiss: 1 }, { counts: { miss: 2 } }), false);
-  const c = (perfect, good, miss) => ({ counts: { perfect, great: 0, good, miss } });
-  assert.equal(stagePassed({ maxMiss: 0, minGreatPct: 50 }, c(4, 4, 0)), true);
-  assert.equal(stagePassed({ maxMiss: 0, minGreatPct: 50 }, c(3, 5, 0)), false);
-  assert.equal(stagePassed({ maxMiss: 0 }, c(8, 0, 1)), false);
 });
 
 // ---- bots + list view ----

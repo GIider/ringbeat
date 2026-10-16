@@ -270,14 +270,10 @@ textarea::placeholder { color: var(--ink-dim); }
 
 /* ---------- now playing ---------- */
 .np { padding: 0; overflow: hidden; }
-.np-caption { position: absolute; left: 6px; right: 6px; top: calc(var(--u) * 21); z-index: 2; text-align: left; background: var(--lcd);
-  border: var(--u) solid var(--ink); padding: 4px 6px; pointer-events: none; }
 .np-count { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column;
   align-items: center; gap: calc(var(--u) * 2); background: var(--lcd); border: var(--u) solid var(--ink); padding: calc(var(--u) * 3) calc(var(--u) * 6);
   pointer-events: none; white-space: nowrap; font-weight: 700; -webkit-font-smoothing: auto; font-smooth: auto; }
 .np-count-n { font-size: calc(var(--u) * 24); line-height: 1; }
-.np-caption b { display: block; }
-.np-caption .step { color: var(--ink-dim); margin-top: 4px; }
 
 /* ---------- results ---------- */
 #results { display: flex; flex-direction: column; overflow: hidden; }
@@ -332,7 +328,13 @@ td + td { text-align: right; font-weight: 700; }
 /* ---------- tutorial ---------- */
 #tut-body p, #tp-body p { margin: 4px 0; }
 #tut-body b, #tp-body b { font-weight: 700; }
-.tut-progress { letter-spacing: 1px; margin: 2px 0 6px; color: var(--ink-dim); }
+.tut-demo { display: flex; justify-content: center; gap: 12px; margin: 4px 0 6px; color: var(--ink); }
+.tut-demo svg { width: 38%; max-width: 110px; height: auto; border: 1px solid var(--ink-dim); }
+/* progress row sits above the title and uses fixed-size boxes, so nothing shifts between lessons */
+.tut-progress { display: flex; gap: calc(var(--u) * 3); height: calc(var(--u) * 5); margin: 2px 0 6px; }
+.tut-progress i { width: calc(var(--u) * 5); height: calc(var(--u) * 5); border: var(--u) solid var(--ink); box-sizing: border-box; }
+.tut-progress i.done { background: var(--ink); }
+.tut-progress i.cur { background: var(--ink); box-shadow: inset 0 0 0 var(--u) var(--lcd); }
 
 /* ---------- pop-ups ---------- */
 .toast { position: fixed; z-index: 20; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: min(90vw, 320px);
