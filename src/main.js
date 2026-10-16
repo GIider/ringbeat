@@ -2329,6 +2329,7 @@ fetch(new URL('./difficulty.json', import.meta.url))
     if (!settings.lastSongId && selectedId === fallback) selectedId = defaultSongId();
     renderList();
     renderDetail();
+    if (state === 'select') focusCurrentRow(); // the re-sort moved the cursor row
   })
   .catch(() => { /* offline / file missing */ });
 
