@@ -4,6 +4,6 @@ export const BUILD = { number: 0, commit: 'dev', date: '' };
 
 // "build 42 · 3a9f1c2 · 2026-10-16" ("3a9f1c2 · 2026-10-16" without the number), or "dev build" when unstamped.
 export function buildLine(b = BUILD, withNumber = true) {
-  if (!b.number) return 'dev build';
+  if (!b.number) return withNumber ? 'dev build' : 'dev';
   return [withNumber && 'build ' + b.number, b.commit, b.date].filter(Boolean).join(' · ');
 }

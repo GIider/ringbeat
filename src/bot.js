@@ -40,20 +40,11 @@ export const SPECIALISTS = [
   { ...MID, name: 'rightLane', tag: 'right lane', laneMiss: { last: 0.4 } },
 ];
 
-// Play one chart. The chart is cloned (Game mutates notes). Returns Game.results().
-export function runBot(chart, profile, seed = 1) {
+// Decide when the bot presses / releases each note. Pure and seeded: returns [{ t, type, lane }] sorted by song time.
+export function planBot(chart, profile, seed = 1) {
   const p = { ...BASE, ...profile };
   const rnd = mulberry32(seed);
-  const notes = chart.notes.map(n => ({ ...n }));
-  const c = { ...chart, notes };
-  const ctx = { currentTime: 0, suspend() {}, resume() {} };
-  const synth = { ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} };
-  const g = new Game(synth);
-  let result = null;
-  g.onFinish = r => { result = r; };
-  g.start(c, { leadIn: 1, backing: false });
-
-  // Decide when the bot presses / releases each note (song time, seconds).
+  const c = chart, notes = chart.notes;
   const ev = [];
   let lastPress = -Infinity;
   const lastInLane = new Array(c.lanes).fill(-Infinity);
@@ -119,6 +110,21 @@ export function runBot(chart, profile, seed = 1) {
     }
   }
   ev.sort((a, b) => a.t - b.t || (a.type === 'release' ? -1 : 1));
+
+  return ev;
+}
+
+// Play one chart. The chart is cloned (Game mutates notes). Returns Game.results().
+export function runBot(chart, profile, seed = 1) {
+  const notes = chart.notes.map(n => ({ ...n }));
+  const c = { ...chart, notes };
+  const ev = planBot(c, profile, seed);
+  const ctx = { currentTime: 0, suspend() {}, resume() {} };
+  const synth = { ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} };
+  const g = new Game(synth);
+  let result = null;
+  g.onFinish = r => { result = r; };
+  g.start(c, { leadIn: 1, backing: false });
 
   const at = t => g.songStart + t;
   for (const e of ev) {

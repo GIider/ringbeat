@@ -6,6 +6,7 @@ import { generateChart } from './chart.js';
 import * as mods from './mods.js';
 import { Synth } from './synth.js';
 import { Game } from './game.js';
+import { planBot, LADDER } from './bot.js';
 import { Renderer } from './render.js';
 import { Input, KEY_LABELS, eventAudioTime } from './input.js';
 import { encodeSong, decodeSong } from './share.js';
@@ -195,7 +196,7 @@ function showGag(title, text, bar = -1, segments = 0) {
 function hideGagIfWipe() { if (gagTick) hideGag(); }
 function showImei() {
   hideGag();
-  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD));
+  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD, false));
   $('gag-link').hidden = false;
   $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
   gagTimer = setTimeout(hideGag, 8000);
@@ -1733,7 +1734,9 @@ function updatePhones(g, t) {
 }
 
 // ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|fc|settings ----
-let demoRun = null;
+let demoRun = null, demoLabels = [];
+const DEMO_SEED = 11;
+const DEMO_JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
 function demo(kind) {
   settings.tutorialDone = true;
   selectedId = entryById('nokia') ? 'nokia' : selectedId;
@@ -1754,16 +1757,21 @@ function demo(kind) {
     g.fx = game.fx;
     g.start(chart, { leadIn: 0, backing: false });
     clearInterval(g.timer);
-    const T = chart.length * 0.09 + 0.3;
-    const ev = [];
-    for (const n of chart.notes) {
-      const end = n.time + (n.isHold ? n.duration : 0.05);
-      if (end < T - 0.15) ev.push([n.time + 0.004, 1, n.lane], [end, 0, n.lane]);
+    // Seeded mid-skill bot plays up to T; judgements are recorded so labels can be re-stamped with realistic ages.
+    const T = chart.notes[Math.floor(chart.notes.length / 2)].time + 0.12; // just after a hit, so a fresh label shows
+    const judged = [];
+    let at = 0;
+    g.fx = { press: game.fx.press, judge: (lane, j) => { judged.push({ lane, j, t: at }); game.fx.judge(lane, j); }, banner: game.fx.banner };
+    for (const ev of planBot(chart, LADDER[3], DEMO_SEED)) {
+      if (ev.t > T) break;
+      at = ev.t; ctx.currentTime = ev.t; g.update(ev.t);
+      if (ev.type === 'press') g.press(ev.lane, ev.t); else g.release(ev.lane, ev.t);
     }
-    ev.sort((a, b) => a[0] - b[0]);
-    for (const [t, down, lane] of ev) { ctx.currentTime = t; g.update(t); if (down) g.press(lane, t); else g.release(lane, t); }
-    ctx.currentTime = T;
+    at = T; ctx.currentTime = T;
     g.update(T);
+    const recent = new Map(); // newest judgement per lane that is still on screen
+    for (const x of judged) if (T - x.t < 0.45) recent.set(x.lane, { ...x, age: T - x.t });
+    demoLabels = [...recent.values()];
     run = { entry: e, diff: settings.difficulty };
     renderer.title = e.title;
     renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
@@ -1804,7 +1812,14 @@ function frame() {
     return;
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
-  if (demoRun) { renderer.draw(demoRun.g, demoRun.T); updatePhones(demoRun.g, demoRun.T); return; }
+  if (demoRun) {
+    const now = performance.now() / 1000;
+    renderer.labels.forEach((l, i) => {
+      const d = demoLabels[i];
+      if (d) { l.t = now - d.age; l.lane = d.lane; l.text = DEMO_JUDGE_TEXT[d.j]; } else l.t = -10;
+    });
+    renderer.draw(demoRun.g, demoRun.T); updatePhones(demoRun.g, demoRun.T); return;
+  }
   if (!game.active) {
     perf.begin('drawIdle');
     renderer.drawIdle();
