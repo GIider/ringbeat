@@ -16,7 +16,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
                │                                                          │          │           | settings | back to select
                │                                                          └─ Mods ─▶ mods screen ─▶ back to difficulty
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
-               ├─ 3 Stats (Time / Score / Top / Grades / Notes)
+               ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
                ├─ 4 Messages ─▶ inbox ─▶ opening… ─▶ message
                ├─ 5 Profile (optional online profile)
                └─ 6 Settings ─▶ calibration
@@ -26,6 +26,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 |---|---|
 | Title | Boot screen with "Press any key", the version (linking to GitHub) and the build line. The first boot plays a short power-on jingle. The key press also satisfies the browser's audio-gesture requirement. |
 | Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (folder card + symbol + a hand pressing a key), a numbered scrollbar on the right and a centred *Select*. You can browse with ↑↓/←→, keypad 2/8, digits 1–6, swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
+| Login prompt | Shown once per device after the tutorial (played or skipped, or *No thanks* on the tutorial prompt) to a player who isn't signed in: *Sign in with GitHub* / *Not now*. |
 | Tutorial prompt | Shown the first time Tones is opened, unless the player has already picked a song: *Play tutorial* / *No thanks*. See [Tutorial](#tutorial). |
 | Song select | Covered in the [Song select](#song-select) section below. |
 | Difficulty | Song art, BPM and length; one row each for Normal and Hard (stars + rating, note count; the last-played difficulty is preselected); the focused difficulty's top runs below ("No plays yet" until played). A *Mods* button (gamepad X) shows the active loadout, e.g. `Mods: 1.2x HD ▸`, and opens the Mods screen. |
@@ -84,7 +85,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Score:** grade, score, FULL COMBO / ALL PERFECT banner, NEW BEST / rank.
   - **Stats:** accuracy, max combo, judgement counts, ghost hits.
   - **Timing:** early/late histogram, average offset.
-  - **Top:** the song's top runs, or "Run not saved".
+  - **Top:** the song's top runs on this device, or "Run not saved".
+  - **World:** the world top 3 and the players around the player's rank (signed in); no request of its own.
 - **Buttons:** *Retry* / *Next song* (the next song in the current filtered list) / *Tones* (or the screen the run came
   from: *My song*, *Composer*, *RTTTL text*).
 - **Failed runs:** a Sudden-death fail is titled *Failed*.
@@ -233,6 +235,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Grades:** songs per best grade S–D as bars, FC/AP counts, played/total. The left soft key *Diff* cycles
     All / Normal / Hard.
   - **Notes:** lifetime judgement mix, accuracy, ghost taps, FC/AP runs.
+  - **Online:** signed in: average world rank, boards, world #1s, top 10s and the best boards. Signed out: a sign-in hint.
 
 ## Modifiers
 

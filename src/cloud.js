@@ -21,6 +21,7 @@ export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when th
 export const PUSH_EVERY = 10 * 60e3;   // new scores, stats and runs wait at most this long (or until the tab is hidden)
 export const SHARED_DELAY = 30e3;      // settings, favourites and my songs: changes come in bursts
 export const BOARDS_TTL = 15 * 60e3;   // the leaderboard snapshot (the server rebuilds it every 15 minutes)
+export const RANKS_TTL = 10 * 60e3;    // the stats screen's overview of the player's ranks
 export const SYNC_COOLDOWN = 30e3;     // the Sync button: once per this, counted from the last sync or press
 const BUSY_RETRY = 5e3;
 const DEVICE_OVERLAP = 5 * 60e3;       // re-ask for slots a little older than the last pull (writes in flight)
@@ -73,7 +74,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
     sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
-    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, at }: the world rank last seen
+    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, near?, at }: the world rank last seen
+    myRanks: st.myRanks && Array.isArray(st.myRanks.rows) && isNum(st.myRanks.at) ? st.myRanks : { at: 0, rows: [] }, // every board the player is on
     rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
     pendingProfile: obj(st.pendingProfile),            // { displayName?, public? } waiting for the next push
   };
@@ -122,7 +124,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   // Back to signed out on this device. The device keeps its own data; the other devices' numbers leave the view.
   function forget() {
     Object.assign(st, { token: '', profile: null, syncedAt: 0, devices: {}, devicesAt: 0, outbox: [], backfilled: false,
-      sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {}, pendingProfile: {} });
+      sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {}, myRanks: { at: 0, rows: [] }, pendingProfile: {} });
     persist();
     showRemote();
     clearTimer(timer); timer = 0;
@@ -206,7 +208,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
 
   // One round through POST /sync: push what changed, pull what other devices wrote (`pull`), upload the outbox.
   // -> { ok, changed: Set('settings' | 'songs' | 'progress'), verdicts: { clientRunId: { verified, score? } } }
-  async function round({ pull = true, keepalive = false, why = '' } = {}) {
+  async function round({ pull = true, keepalive = false, why = '', wantRanks = false } = {}) {
     const changed = new Set(), verdicts = {};
     let first = true;
     do {
@@ -215,7 +217,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       const sendDevice = devPrint !== st.deviceHash, batch = takeBatch();
       const sendProfile = first && profileDirty() ? { ...st.pendingProfile } : null;
       const askDevices = first && pull;
-      if (!sendShared && !sendDevice && !sendProfile && !batch.length && !askDevices) break;
+      const askRanks = first && wantRanks;
+      if (!sendShared && !sendDevice && !sendProfile && !batch.length && !askDevices && !askRanks) break;
       const body = {
         deviceId,
         ...((pull || sendShared) && { sharedRev: st.sharedRev }),
@@ -224,6 +227,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         ...(sendProfile && { profile: sendProfile }),
         ...(askDevices && { devicesSince: st.devicesAt ? Math.max(0, st.devicesAt - DEVICE_OVERLAP) : 0 }),
         ...(batch.length && { runs: batch }),
+        ...(askRanks && { wantRanks: true }),
       };
       const text = JSON.stringify(body);
       setNet(sendShared || sendDevice || sendProfile || batch.length ? 'send' : 'recv');
@@ -252,7 +256,9 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         showRemote();
       }
       for (const v of r.runs || []) verdicts[v.clientRunId] = v;
-      for (const [key, v] of Object.entries(r.ranks || {})) st.ranks[key] = { rank: v.rank, total: v.total, at: now() };
+      for (const [key, v] of Object.entries(r.ranks || {})) st.ranks[key] = { rank: v.rank, total: v.total, near: v.near, at: now() };
+      if (Array.isArray(r.myRanks)) st.myRanks = { at: now(), rows: r.myRanks };
+      else if (Object.keys(r.ranks || {}).length) st.myRanks.at = 0; // a run just ranked: the overview is out of date
       if (batch.length) st.outbox.splice(0, batch.length);
       if (pull && first) st.syncedAt = now();
       persist();
@@ -282,7 +288,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     chain = p;
     return p.then(r => { if (r.changed.size) emit({ synced: r.changed }); return r; });
   };
-  let pulling = null, pressedAt = -Infinity;
+  let pulling = null, pressedAt = -Infinity, ranksLoading = false;
 
   // The one timer: fires at the earliest time something asked for, waits out a song and a backoff.
   let timer = 0, timerAt = 0, wantPull = false, lastNote = '';
@@ -408,6 +414,20 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     },
     // The world rank last seen for a song and difficulty: { rank, total, at } or null. No request.
     rank: (songId, diff) => st.ranks[songId + '|' + diff] || null,
+    // The players around the player on one board, from the sync that ranked their run: [{ rank, name, score, grade,
+    // me? }] or null. No request.
+    rankNear: (songId, diff) => (st.ranks[songId + '|' + diff] || {}).near || null,
+    // The player's rank on every board they are on, for the stats screen: { rows: [{ songId, diff, score, rank, total }],
+    // at, loading }. Served from the last answer; asks (one sync, with whatever else is waiting) only when it is older
+    // than `max` and nothing is on its way. `onChange({ranks:true})` fires when it arrives.
+    myRanks({ max = RANKS_TTL } = {}) {
+      const stale = !st.myRanks.at || now() - st.myRanks.at >= max; // 0: never asked, or a run just ranked
+      if (stale && st.token && apiBase && !ranksLoading && now() >= backoffUntil) {
+        ranksLoading = true;
+        enqueue({ pull: false, why: 'ranks', wantRanks: true }).then(r => { ranksLoading = false; if (r.ok) emit({ ranks: true }); });
+      }
+      return { rows: st.myRanks.rows, at: st.myRanks.at, loading: ranksLoading };
+    },
     // The API's RULES at its last answer (0 = no answer yet).
     serverRules: () => st.rules,
 

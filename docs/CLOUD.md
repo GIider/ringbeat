@@ -162,6 +162,9 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | A new best | One push from the results screen; the world rank comes back with it |
 | Scores, stats, other top-5 runs | A push within 10 minutes, or when the tab is hidden, whichever comes first |
 | The tab is hidden | A push, only if something changed (`keepalive` when the body is under 60 KB) |
+| The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (or a run just ranked); it goes with whatever else is waiting |
+| The results screen's World page | Nothing: the top 3 come from `GET /boards`, the players around the player from the push that ranked the run |
+| After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
 | The difficulty picker | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`) |
 
 How it stays small:
@@ -192,7 +195,7 @@ the device keeps its own data.
 | `POST /auth/logout` | Ends this token |
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
 | `DELETE /me` | Deletes the profile and everything stored with it |
-| `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?}` | The game's one sync request; every part optional (see below) |
+| `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?, wantRanks?}` | The game's one sync request; every part optional (see below) |
 | `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 min |
 | `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
@@ -209,7 +212,11 @@ the device keeps its own data.
 - `devicesSince`: the answer has `deviceIds` (all slots), `devices` (the docs of other devices' slots written
   after that time) and the `profile`, so a rename on another device shows here.
 - `runs`: up to 50. Invalid ones are dropped, repeats ignored. The answer has `runs: [{clientRunId, verified,
-  score?}]`, and `ranks: {"song|diff": {rank, total}}` wherever a run just ranked.
+  score?}]`, and `ranks: {"song|diff": {rank, total, near}}` wherever a run just ranked. `near` is the player and the
+  two players above and below ([{rank, name, score, grade, me?}]), already read to find the rank.
+- `wantRanks: true`: the answer has `myRanks: [{songId, diff, score, rank, total}]`, the caller's rank on every board
+  they have a verified run on, best percentile first (at most 500). Only those boards are read (`runs_user`, then
+  `runs_rank`), not the whole table.
 
 Limits:
 - Request bodies up to 300 000 characters, each stored document up to 256 000.

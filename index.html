@@ -144,6 +144,19 @@
           </div>
         </section>
 
+        <!-- After the tutorial: offer the online features -->
+        <section id="loginprompt" class="screen" hidden data-title="Play online" data-soft-left="Select" data-soft-right="Back">
+          <h2 data-i18n-html>Sign in to play <b>online</b>?</h2>
+          <div>
+            <p data-i18n>Compare scores on world leaderboards and keep your progress on every device.</p>
+            <p data-i18n-html>You can also do this later in <b>Profile</b>.</p>
+          </div>
+          <div class="menu">
+            <button id="btn-lp-yes" data-default data-i18n>Sign in with GitHub</button>
+            <button id="btn-lp-no" data-i18n>Not now</button>
+          </div>
+        </section>
+
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
         <section id="tutorial" class="screen" hidden data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
           <div id="tut-progress" class="tut-progress" role="img"></div>
@@ -310,6 +323,7 @@
             <button type="button" data-page="1" role="tab" tabindex="-1" data-i18n>Stats</button>
             <button type="button" data-page="2" role="tab" tabindex="-1" data-i18n>Timing</button>
             <button type="button" data-page="3" role="tab" tabindex="-1" data-i18n>Top</button>
+            <button type="button" data-page="4" role="tab" tabindex="-1" data-i18n>World</button>
           </div>
           <div class="r-pages">
             <div class="r-page" data-page="0">
@@ -338,6 +352,10 @@
             <div class="r-page" data-page="3" hidden>
               <ol id="r-top" class="top"></ol>
               <div id="r-top-empty" class="hint center" hidden data-i18n>Run not saved</div>
+            </div>
+            <div class="r-page" data-page="4" hidden>
+              <ol id="r-world-list" class="top"></ol>
+              <div id="r-world-empty" class="hint center" hidden></div>
             </div>
           </div>
           <div class="menu r-foot">

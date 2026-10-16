@@ -657,7 +657,7 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   a.calls.length = 0;
   assert.equal((await a.cloud.submit())[id].verified, 1);
   assert.equal(a.calls.length, 1, 'upload and rank in one request');
-  assert.deepEqual({ ...a.cloud.rank('ode', 'normal'), at: 0 }, { rank: 1, total: 1, at: 0 });
+  assert.deepEqual({ ...a.cloud.rank('ode', 'normal'), at: 0 }, { rank: 1, total: 1, near: [{ rank: 1, name: 'Alice', score: res.score, grade: res.grade, me: true }], at: 0 });
   assert.equal(a.cloud.serverRules(), RULES);
 
   const boards = async () => (await srv.call('/boards')).json();
@@ -673,6 +673,48 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   const later = await boards();
   assert.equal(later.built, 3_000_000);
   assert.equal(later.boards['ode|normal'], undefined, 'opted out');
+});
+
+test('POST /sync: the players around a new rank come back; the ranks overview is one request, then cached', async () => {
+  const srv = server();
+  const a = device(srv), b = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await b.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
+  for (const [d, skill, song] of [[b, LADDER[4], 'ode'], [a, LADDER[2], 'ode'], [a, LADDER[2], 'jingle']]) {
+    const { run, result: res } = played(song, 'normal', skill);
+    d.cloud.queueRun(song, 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    await d.cloud.submit();
+    srv.tick(1000);
+  }
+  const near = a.cloud.rankNear('ode', 'normal');
+  assert.deepEqual(near.map(r => [r.rank, r.name, !!r.me]), [[1, 'Bob', false], [2, 'Alice', true]]);
+
+  a.calls.length = 0;
+  const first = a.cloud.myRanks();
+  assert.deepEqual(first.rows, [], 'nothing cached yet');
+  await settle(); await settle();
+  assert.equal(a.calls.length, 1, 'one sync asks for the overview');
+  const mine = a.cloud.myRanks();
+  assert.deepEqual(mine.rows.map(r => [r.songId, r.rank, r.total]).sort(), [['jingle', 1, 1], ['ode', 2, 2]]);
+  a.cloud.myRanks(); a.cloud.myRanks();
+  await settle();
+  assert.equal(a.calls.length, 1, 'cached: no further request');
+  assert.equal(b.cloud.myRanks().rows.length, 0, 'each player gets their own boards');
+});
+
+test('POST /sync: wantRanks lists only the caller\'s boards; an opted-out player still sees their own', async () => {
+  const srv = server();
+  const a = await signedIn(srv, 1, 'Alice'), b = await signedIn(srv, 2, 'Bob');
+  const { run } = played('ode', 'normal', LADDER[3]);
+  const post = (who, body) => srv.call('/sync', { method: 'POST', headers: who.h, body: JSON.stringify({ deviceId: 'device0001', ...body }) }).then(r => r.json());
+  const runBody = id => ({ runs: [{ ...run, clientRunId: id }] });
+  await post(a, runBody('a:1'));
+  await post(b, { runs: [{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'b:1' }], profile: { public: false } });
+  const mineA = await post(a, { wantRanks: true });
+  assert.deepEqual(mineA.myRanks.map(r => [r.songId, r.rank, r.total]), [['ode', 1, 1]], 'Bob is off the board');
+  const mineB = await post(b, { wantRanks: true });
+  assert.deepEqual(mineB.myRanks.map(r => [r.rank, r.total]), [[1, 2]], 'Bob sees himself');
+  assert.ok(!('myRanks' in await post(a, {})), 'only when asked');
 });
 
 test('POST /sync: only changed device slots come down; the shared document only when it changed', async () => {

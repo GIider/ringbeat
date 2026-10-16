@@ -189,3 +189,10 @@ test('topSongs: sums plays across difficulties, orders by plays then id, limits,
   assert.deepEqual(favourite(list), { id: 'a', plays: 5 });
   assert.equal(favourite([]), null);
 });
+
+test('rankSummary: boards, #1s, top 10 and the average rank percentile', async () => {
+  const { rankSummary } = await import('../src/stats.js');
+  assert.deepEqual(rankSummary([]), { boards: 0, first: 0, top10: 0, avgPct: 0 });
+  const rows = [{ rank: 1, total: 4 }, { rank: 3, total: 4 }, { rank: 12, total: 100 }];
+  assert.deepEqual(rankSummary(rows), { boards: 3, first: 1, top10: 2, avgPct: 37 });
+});

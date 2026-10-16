@@ -23,7 +23,7 @@ import { CATEGORIES } from './songs.js';
 import { onSwipe } from './swipe.js';
 import { SORTS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
-import { createStats, gradeTally, favourite, topSongs, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
+import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
@@ -100,7 +100,7 @@ const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), select: $('select'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
-  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), results: $('results'), paused: $('pause'),
+  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
@@ -349,6 +349,7 @@ cloud.onChange(e => {
     else if (state === 'mysongs') openMySongs();
     else if (state === 'menu') renderMenu();
   }
+  if (e.ranks && state === 'stats') renderStats();
   if (e === 'profile' || e === 'signedin') $('pf-name-input').value = (cloud.profile() || {}).name || '';
   if (state === 'profile') renderProfile();
 });
@@ -663,8 +664,8 @@ function menuAnim(now) {
   paintMenuIcon();
 }
 
-// ---- stats: lifetime numbers on five pages (◄►) ----
-const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes'];
+// ---- stats: lifetime numbers on six pages (◄►) ----
+const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes', 'Online'];
 const STAT_DIFFS = ['all', 'normal', 'hard'];
 let statPage = 0, statDiff = 'all', statTimer = 0;
 const fmtNum = n => fmt(Math.round(n));
@@ -676,8 +677,8 @@ function knownScores() {
 }
 function openStats() {
   statPage = 0;
+  setState('stats', 'stats'); // shown first, so the marquee can measure the rows
   renderStats();
-  setState('stats', 'stats');
 }
 function setStatPage(n) {
   const p = Math.max(0, Math.min(STAT_PAGES.length - 1, n));
@@ -709,6 +710,19 @@ function statsCountUp(el, final) {
 function scrollStats(dir) {
   const b = $('stat-page');
   b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.6);
+}
+// The Online page: from the ranks last seen (cloud.myRanks asks for them, at most once in a while, in one sync).
+function onlineStatsHTML() {
+  if (!cloud.available()) return `<p class="hint center">${tr('Online features are unavailable.')}</p>`;
+  if (!cloud.signedIn()) return `<p class="hint center">${tr('Sign in on the profile screen for world ranks.')}</p>`;
+  const mr = cloud.myRanks(), known = new Set(entries().map(e => e.id));
+  const rows = mr.rows.filter(r => known.has(r.songId) && DIFFS.includes(r.diff));
+  if (!rows.length) return `<p class="hint center">${tr(mr.loading || !mr.at ? 'Loading…' : 'No world ranks yet.')}</p>`;
+  const sum = rankSummary(rows);
+  return `<div class="st-big">${tr('Top {n}%', { n: Math.max(1, sum.avgPct) })}</div><div class="hint center">${tr('average world rank')}</div>` +
+    `<table>${statRow(tr('Boards'), fmtNum(sum.boards))}${statRow(tr('World #1'), fmtNum(sum.first))}${statRow(tr('Top 10'), fmtNum(sum.top10))}</table>` +
+    `<div class="st-top">${rows.slice(0, 5).map(r => `<div class="st-row"><b class="st-name">${esc(entryById(r.songId).title)}</b>` +
+      `<span class="n">${cap(r.diff)[0]} #${r.rank}/${r.total}</span></div>`).join('')}</div>`;
 }
 function renderStats() {
   statsCountStop();
@@ -747,6 +761,9 @@ function renderStats() {
       `<div class="gbars">${GRADES.map(g =>
         `<div class="gbar"><span>${t[g]}</span><i style="--h:${(t[g] / max).toFixed(3)}"></i><b>${g}</b></div>`).join('')}</div>` +
       `<div class="center"><span class="badge">FC</span> ${t.fc} &nbsp; <span class="badge ap">AP</span> ${t.ap}</div>`;
+  } else if (page === 'Online') {
+    box.innerHTML = onlineStatsHTML();
+    for (const el of box.querySelectorAll('.st-name')) marquee(el);
   } else {
     const n = s.notes, hits = n.perfect + n.great + n.good, all = hits + n.miss;
     const acc = all ? fmt((n.perfect + n.great * 2 / 3 + n.good / 3) / all * 100, 1) + '%' : '—';
@@ -1445,6 +1462,7 @@ game.onFinish = r => {
   best.hidden = true;
   $('r-world').hidden = true;
   worldToken++;
+  paintWorld(null);
   topRuns = { runs: [], rank: null };
   if (demo) {
     // demo runs are never saved and show no best/rank line
@@ -1474,10 +1492,40 @@ game.onFinish = r => {
 // other run can't move the player's rank, so the rank last seen shows without a request. The API re-plays each run and
 // ranks its own score (docs/CLOUD.md › Leaderboards).
 let worldToken = 0;
+// The World page: the top three from the leaderboard snapshot, then the players around the player's rank (they came
+// back with the sync that ranked the run). Nothing here makes a request of its own.
+function paintWorld(songId, diff, token = worldToken) {
+  const ol = $('r-world-list'), msg = $('r-world-empty');
+  ol.textContent = '';
+  const say = text => { msg.hidden = !text; msg.textContent = text || ''; };
+  if (!songId || !cloud.available()) return say(tr('Run not saved'));
+  if (!cloud.signedIn()) return say(tr('Sign in for world ranks'));
+  const add = (r, cls) => {
+    const li = document.createElement('li');
+    li.value = r.rank;
+    if (r.me) li.className = 'cur';
+    li.textContent = `${r.score} · ${r.grade} · ${r.name || ''}`;
+    if (cls) li.className = cls;
+    ol.appendChild(li);
+  };
+  const near = cloud.rankNear(songId, diff) || [];
+  const paint = top => {
+    if (token !== worldToken) return;
+    ol.textContent = '';
+    let last = 0;
+    for (const r of top.filter(r => !near.some(n => n.rank === r.rank))) { add(r); last = r.rank; }
+    if (near.length && near[0].rank > last + 1) add({ rank: 0, score: '…', grade: '', name: '' }, 'gap');
+    for (const r of near) add(r);
+    say(ol.children.length ? '' : tr('No world ranks yet.'));
+  };
+  if (near.length) paint([]); else say(tr('Loading…'));
+  cloud.board(songId, diff).then(b => paint((b && b.runs) || []));
+}
 async function showWorldRank(songId, diff, runId, isNewBest) {
   const el = $('r-world'), token = worldToken;
   if (!cloud.available()) return;
   el.hidden = false;
+  paintWorld(songId, diff, token);
   if (!cloud.signedIn()) { el.textContent = tr('Sign in for world ranks'); return; }
   const known = () => {
     const k = cloud.rank(songId, diff);
@@ -1492,6 +1540,7 @@ async function showWorldRank(songId, diff, runId, isNewBest) {
   el.textContent = tr('World rank…');
   const verdict = (await cloud.submit())[runId];
   if (token !== worldToken) return;
+  paintWorld(songId, diff, token);
   el.textContent = !verdict ? tr('World rank: no connection')
     : cloud.serverRules() !== RULES ? tr('Not ranked: update the game')
     : verdict.verified === -1 ? tr('Not ranked')
@@ -1511,7 +1560,7 @@ function renderTopRuns() {
   $('r-top-empty').hidden = topRuns.runs.length > 0;
 }
 function setResultsPage(n) {
-  resultsPage = Math.max(0, Math.min(3, n));
+  resultsPage = Math.max(0, Math.min(4, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
 }
@@ -1548,7 +1597,16 @@ function tutProgress(done, current) {
 let tutDone = 0; // lessons played so far (seeded from the saved count when the tutorial starts)
 // First time opening Tones: offer the tutorial (it stays reachable from Settings).
 function openTutPrompt() { setState('tutprompt', 'tutprompt'); }
-function skipTutPrompt() { settings.tutorialDone = true; save(); openSelect(); }
+function skipTutPrompt() { settings.tutorialDone = true; save(); askLogin(openSelect); }
+// Once per device, after the tutorial (played or skipped): offer the online features to a player who isn't signed in.
+let afterLogin = openSelect;
+function askLogin(then) {
+  if (settings.loginAsked || !cloud.available() || cloud.signedIn()) { then(); return; }
+  settings.loginAsked = true; save(); // before the page can leave for the sign-in
+  afterLogin = then;
+  setState('loginprompt', 'loginprompt');
+}
+function loginPromptYes() { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); }
 // Lesson card: diagram + text, waits for the player to confirm before the round starts.
 function openLesson(i) {
   const st = STAGES[i];
@@ -1601,7 +1659,7 @@ function finishTutorial(then = openSelect) {
   run = null;
   $('tut-progress').hidden = true;
   settings.tutorialDone = true; save();
-  then();
+  askLogin(then);
 }
 // The outro reuses the Skip button as "Calibrate".
 function tutorialSkip() {
@@ -1769,6 +1827,7 @@ function back() {
     case 'message': openInbox(MESSAGES[msgIdx].version); break;
     case 'tutorial': finishTutorial(); break;
     case 'tutprompt': skipTutPrompt(); break;
+    case 'loginprompt': afterLogin(); break;
     case 'settings': closeSettings(); break;
     case 'mods': closeMods(); break;
     case 'mysongs': openMenu('mysongs'); break;
@@ -1988,6 +2047,8 @@ function wire() {
   // tutorial
   $('btn-tp-yes').onclick = () => { synth.ensure(); startTutorial(); };
   $('btn-tp-no').onclick = skipTutPrompt;
+  $('btn-lp-yes').onclick = loginPromptYes;
+  $('btn-lp-no').onclick = () => afterLogin();
   $('btn-tut-go').onclick = tutorialGo;
   $('btn-tut-skip').onclick = tutorialSkip;
   $('btn-tut-back-pause').onclick = () => {

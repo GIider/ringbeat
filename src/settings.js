@@ -38,6 +38,7 @@ function fromRaw(raw) {
   // Existing players (who already picked a song) are not shown the tutorial.
   tutorialDone: raw.tutorialDone === true || (typeof raw.lastSongId === 'string' && raw.lastSongId !== ''),
   tutorialLessons: Math.floor(num(raw.tutorialLessons, 0, 99, 0)), // tutorial lessons played so far (replays can jump to any of them)
+  loginAsked: raw.loginAsked === true, // the post-tutorial "play online?" prompt was shown (this device only)
   customRtttl: typeof raw.customRtttl === 'string' ? raw.customRtttl.slice(0, 4000)
     : typeof raw.lastSong === 'string' ? raw.lastSong.slice(0, 4000) : '', // migrate v1 "lastSong"
   padBindings: sanitizeBindings(raw.padBindings),

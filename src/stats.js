@@ -254,3 +254,15 @@ export function formatDuration(sec) {
   if (s < 3600) return `${Math.floor(s / 60)}m ${pad2(s % 60)}s`;
   return `${Math.floor(s / 3600)}h ${pad2(Math.floor(s / 60) % 60)}m`;
 }
+
+// The online overview from the player's ranks, [{ songId, diff, score, rank, total }] (cloud.myRanks): how many boards
+// they are on, how many they lead / have in the top 10, and the average of rank / total (a percentile: lower is better).
+export function rankSummary(rows) {
+  let first = 0, top10 = 0, sum = 0;
+  for (const r of rows) {
+    if (r.rank === 1) first++;
+    if (r.rank <= 10) top10++;
+    sum += r.total > 0 ? r.rank / r.total : 1;
+  }
+  return { boards: rows.length, first, top10, avgPct: rows.length ? Math.round(sum / rows.length * 100) : 0 };
+}

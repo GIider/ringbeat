@@ -28,6 +28,7 @@ test('settings: empty or corrupt storage gives defaults', async () => {
     assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
     assert.equal(s.tutorialDone, false);
     assert.equal(s.tutorialLessons, 0);
+    assert.equal(s.loginAsked, false);
     assert.deepEqual(s.padBindings, DEFAULT_BINDINGS);
   }
 });
@@ -95,6 +96,13 @@ test('settings: lastSongId implies the tutorial was done', async () => {
   assert.equal(s.tutorialDone, true);
   ({ settings: s } = await load({ tutorialDone: 'true', lastSongId: 7 }));
   assert.deepEqual([s.tutorialDone, s.lastSongId], [false, '']);
+});
+
+test('settings: loginAsked is kept on this device and never synced', async () => {
+  assert.equal((await load({ loginAsked: true })).settings.loginAsked, true);
+  assert.equal((await load({ loginAsked: 'yes' })).settings.loginAsked, false);
+  const { settings: s, sharedSettings } = await load({ loginAsked: true });
+  assert.ok(!('loginAsked' in sharedSettings().settings));
 });
 
 test('settings: customRtttl is capped and migrates from lastSong', async () => {

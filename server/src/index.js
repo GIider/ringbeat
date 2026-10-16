@@ -225,10 +225,15 @@ export async function handle(req, env, now = Date.now()) {
         out.ranks = {};
         for (const key of new Set(runs.filter(r => r.verified === 1).map(r => r.songId + '|' + r.diff))) {
           const [songId, diff] = [key.slice(0, key.lastIndexOf('|')), key.slice(key.lastIndexOf('|') + 1)];
-          const me = (await board(env, songId, diff, { me: uid })).find(r => r.me);
-          if (me) out.ranks[key] = { rank: me.rank, total: me.total };
+          const rows = await board(env, songId, diff, { me: uid });
+          const me = rows.find(r => r.me);
+          // The players around them come along (already read for the rank): the results screen's World page.
+          if (me) out.ranks[key] = { rank: me.rank, total: me.total,
+            near: rows.map(r => ({ rank: r.rank, name: r.name, score: r.score, grade: r.grade, ...(r.me && { me: true }) })) };
         }
       }
+      // The stats screen's online page: the caller's rank on every board they are on, in this same round trip.
+      if (body.wantRanks === true) out.myRanks = await ranks(env, uid);
       return json(out);
     }
 
@@ -478,6 +483,27 @@ async function board(env, songId, diff, { limit = 50, me = '' }) {
     maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at,
     ...(me && r.user_id === me && { me: true }),
   }));
+}
+
+// The caller's rank on every board they are on (best verified run per player, current RULES, as in board()). Only the
+// boards the caller has a verified run on are ranked (runs_user, then runs_rank), not the whole table.
+async function ranks(env, me) {
+  const { results } = await env.DB.prepare(`WITH mine AS (
+      SELECT DISTINCT song_id, diff FROM runs WHERE user_id = ?2 AND rules = ?1 AND verified = 1 AND hidden = 0
+    ), best AS (
+      SELECT r.user_id, r.song_id, r.diff, r.score, r.played_at,
+        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.diff, r.user_id ORDER BY r.score DESC, r.played_at) AS n
+      FROM mine m JOIN runs r ON r.song_id = m.song_id AND r.diff = m.diff
+      JOIN users u ON u.id = r.user_id
+      WHERE r.rules = ?1 AND r.verified = 1 AND r.hidden = 0 AND u.hidden = 0 AND (u.public = 1 OR u.id = ?2)
+    ), ranked AS (
+      SELECT user_id, song_id, diff, score,
+        ROW_NUMBER() OVER (PARTITION BY song_id, diff ORDER BY score DESC, played_at) AS rank,
+        COUNT(*) OVER (PARTITION BY song_id, diff) AS total
+      FROM best WHERE n = 1
+    ) SELECT song_id, diff, score, rank, total FROM ranked WHERE user_id = ?2
+      ORDER BY CAST(rank AS REAL) / total, song_id LIMIT 500`).bind(String(RULES), me).all();
+  return results.map(r => ({ songId: r.song_id, diff: r.diff, score: r.score, rank: r.rank, total: r.total }));
 }
 
 // A provider's display name -> a valid player name (accents dropped, other characters removed, long names cut at a

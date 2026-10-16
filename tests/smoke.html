@@ -192,8 +192,12 @@ f.addEventListener('load', async () => {
     log(vis('stats') && /Time/.test($('stat-tab').textContent), 'menu -> stats on the Time page');
     log(rb.stats.get().runs >= 3 && rb.stats.get().score >= 1234, 'finished runs counted: ' + rb.stats.get().runs);
     log(!/Since|counted from/.test($('stat-page').textContent), 'Time page has no "Since"/"counted from" hints');
+    for (let i = 0; i < 5; i++) { key('ArrowRight'); await sleep(40); }
+    log(/Online/.test($('stat-tab').textContent) && /Sign in|unavailable/.test($('stat-page').textContent), 'stats: Online page asks a signed-out player to sign in');
+    log(d.querySelectorAll('#r-tabs button').length === 5, 'results: Score / Stats / Timing / Top / World tabs');
+    for (let i = 0; i < 5; i++) { key('ArrowLeft'); await sleep(40); }
     key('ArrowRight'); await sleep(60);
-    log(/Score 2\/5/.test($('stat-tab').textContent), 'Score page');
+    log(/Score 2\/6/.test($('stat-tab').textContent), 'Score page');
     // the most-played song must stay inside its row, clear of the note icon, even with a huge title
     const { marquee } = await import(new URL('../src/marquee.js', f.src));
     const inside = (inner, outer) => inner.left >= outer.left - 0.5 && inner.right <= outer.right + 0.5;
@@ -211,7 +215,7 @@ f.addEventListener('load', async () => {
       log(nm.scrollWidth >= nm.clientWidth && Math.round(box.width) < Math.round(mq.width), 'title is clipped by its own box');
     }
     key('ArrowRight'); await sleep(60);
-    log(/Top 3\/5/.test($('stat-tab').textContent), 'Top page');
+    log(/Top 3\/6/.test($('stat-tab').textContent), 'Top page');
     const trows = [...d.querySelectorAll('#stat-page .st-row')];
     log(trows.length >= 1 && /^1\./.test(trows[0].textContent) && /\d+×$/.test(trows[0].textContent), 'Top lists numbered songs with play counts');
     const tn = trows[0].querySelector('.st-name');
