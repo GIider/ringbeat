@@ -20,6 +20,7 @@ src/
   composer.js     Nokia-style note editor state; toRTTTL / fromRTTTL
   scores.js       highscores store (injectable storage)
   stats.js        lifetime stats store (playtime, runs, notes, score, day streak) + derived grade tally; backfills once from scores
+  version.js      VERSION/BUILD placeholders, stamped by scripts/build-dist.mjs using scripts/version-lib.mjs (changelog minor + commits since)
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   menuicons.js    animated 1-bit main-menu icons (folder card + symbol + pressing hand), drawn with tiny raster helpers
   settings.js     persisted settings incl. controller bindings, mods and language

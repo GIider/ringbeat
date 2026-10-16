@@ -1,5 +1,6 @@
-// Keep major.minor in sync with package.json "version" (tests/core.test.mjs checks this); CI stamps the patch with the build number and fills BUILD (scripts/build-dist.mjs).
-export const VERSION = '1.4.0';
+// major.minor = newest changelog entry; the patch is commits since it was added. The build stamps the real value (scripts/version-lib.mjs, scripts/build-dist.mjs).
+import { MESSAGES } from './changelog.js';
+export const VERSION = MESSAGES[0].version + '.0-dev';
 export const BUILD = { number: 0, commit: 'dev', date: '' };
 
 // "build 42 · 3a9f1c2 · 2026-10-16" ("3a9f1c2 · 2026-10-16" without the number), or "dev build" when unstamped.

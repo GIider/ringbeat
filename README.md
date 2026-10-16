@@ -39,7 +39,7 @@ npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in sr
 Screenshot states for development: `index.html?demo=play` (also `pause`, `menu`, `select`, `info`, `results`, `fc`,
 `settings`, `stats`, `message`) loads the Nokia Tune and freezes a frame at ~10 %.
 
-Versioning: `1.0.<build>` — major.minor from `package.json`, patch = the GitHub Actions run number (stamped by `npm run build` via `BUILD_NUMBER`).
+Versioning: `<major>.<minor>.<patch>` is derived, never edited by hand — major.minor = the newest entry in `src/changelog.js`, patch = commits since that entry was added (`scripts/version-lib.mjs`). To release a minor, add its changelog message. The GitHub Actions run number is shown separately as the build number.
 Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
 
 Tests: `npm test` (node: core logic, font builder, sprites); `npm run smoke` drives the UI (`tests/smoke.html`) in headless
@@ -49,7 +49,7 @@ Git hooks (`.githooks/`, enabled by `npm install`): `pre-commit` runs the unit t
 
 ## Deployment
 
-Every push to `main` runs the tests, builds `dist/` (version `1.0.<run number>`), publishes it as the `latest`
+Every push to `main` runs the tests, builds `dist/` (version from the changelog, see Versioning), publishes it as the `latest`
 pre-release and deploys it to GitHub Pages ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 
 ## Features

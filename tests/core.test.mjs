@@ -14,7 +14,12 @@ import { createPerf } from '../src/perf.js';
 import * as C from '../src/composer.js';
 import { createMySongs, MAX_SONGS, MAX_RTTTL } from '../src/mysongs.js';
 import { VERSION, BUILD, buildLine } from '../src/version.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { MESSAGES } from '../src/changelog.js';
+import { computeVersion } from '../scripts/version-lib.mjs';
 import { sanitizeBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
@@ -446,10 +451,26 @@ test('composer: stepPitch crosses octaves and clamps; controller add', () => {
   C.addRest(s); assert.equal(C.stepPitch(s, 1), false);
 });
 
-test('VERSION matches package.json', () => {
-  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  const mm = v => v.split('.').slice(0, 2).join('.');
-  assert.equal(mm(VERSION), mm(pkg.version));
+test('computeVersion: minor from the newest changelog entry, patch = commits since it was added', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rb-ver-'));
+  const sh = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
+  const entry = v => writeFileSync(join(dir, 'src/changelog.js'), `export const MESSAGES = [\n  {\n    version: '${v}', date: 'x',\n  },\n];\n`);
+  mkdirSync(join(dir, 'src'));
+  sh('init', '-q');
+  entry('1.0'); sh('add', '.'); sh('commit', '-qm', 'one');
+  writeFileSync(join(dir, 'a.txt'), '1'); sh('add', '.'); sh('commit', '-qm', 'two');
+  writeFileSync(join(dir, 'a.txt'), '2'); sh('add', '.'); sh('commit', '-qm', 'three');
+  assert.equal(computeVersion(dir).version, '1.0.2');
+  entry('1.1'); sh('add', '.'); sh('commit', '-qm', 'four');
+  assert.equal(computeVersion(dir).version, '1.1.0');
+  writeFileSync(join(dir, 'a.txt'), '3'); sh('add', '.'); sh('commit', '-qm', 'five');
+  assert.equal(computeVersion(dir).version, '1.1.1');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('the newest changelog entry is major.minor and VERSION starts with it', () => {
+  assert.match(MESSAGES[0].version, /^\d+\.\d+$/);
+  assert.ok(VERSION.startsWith(MESSAGES[0].version + '.'));
 });
 
 test('buildLine formats stamped and dev builds', () => {
