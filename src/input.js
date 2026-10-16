@@ -63,6 +63,7 @@ export class Input {
     };
     canvas.addEventListener('pointerup', up);
     canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('lostpointercapture', up);
   }
 
   _time(e) {

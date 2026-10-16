@@ -30,6 +30,25 @@ test('bold cut grows by one column and keeps every ink pixel', () => {
   g.rows.forEach((r, y) => [...r].forEach((p, x) => { if (p === '#') assert.equal(b.rows[y][x], '#'); }));
 });
 
+test('umlauts: base letter metrics kept, dots centred in the bold cut', () => {
+  const rowAt = (g, y) => g.rows[CAP - 1 + (g.up || 0) - y]; // y measured up from the baseline
+  for (const [u, base] of [['Ä', 'A'], ['Ö', 'O'], ['Ü', 'U']]) {
+    const g = GLYPHS[u], b = GLYPHS[base];
+    assert.equal(g.w, b.w, u);
+    assert.equal(rowAt(g, 0), rowAt(b, 0), `${u} baseline row`);
+  }
+  assert.equal(rowAt(GLYPHS['Ä'], 3), '#####', 'Ä crossbar level with A');
+  assert.equal(rowAt(GLYPHS.A, 3), '#####');
+  for (const [u, base] of [['ä', 'a'], ['ö', 'o'], ['ü', 'u']]) {
+    assert.deepEqual(GLYPHS[u].rows.slice(2), GLYPHS[base].rows.slice(2), u);
+    assert.equal(GLYPHS[u].rows[1], '.#.#.', `${u} dots on the body`);
+  }
+  for (const u of 'äöüÄÖÜ') {
+    const g = GLYPHS[u];
+    assert.equal(boldGlyph(g).rows[g.rows.indexOf('.#.#.')], '##..##', `${u} bold dots`);
+  }
+});
+
 test('glyphRects covers exactly the ink pixels', () => {
   for (const ch of ['A', 'g', '@', '★', '%']) {
     const rows = GLYPHS[ch].rows, ink = new Set(), drawn = new Set();

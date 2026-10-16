@@ -1352,7 +1352,7 @@ function renderTopRuns() {
 function setResultsPage(n) {
   resultsPage = Math.max(0, Math.min(3, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
-  for (const el of document.querySelectorAll('#r-tabs button')) el.classList.toggle('sel', +el.dataset.page === resultsPage);
+  for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
 }
 
 function nextSong() {

@@ -7,7 +7,7 @@ export const CAP = 7;      // rows above the baseline
 export const DESC = 2;     // rows below it
 // Glyphs whose first row sits in the headroom row above the cap line (capital umlauts).
 export const RAISED = new Set(['Ä', 'Ö', 'Ü']);
-// Glyphs with two separate dots in row 0 ('.#.#.'): the bold cut widens every pixel, which would fuse them into a bar.
+// Glyphs with a row of two separate dots ('.#.#.'): the bold cut widens every pixel, which would fuse them into a bar.
 const DOTTED = new Set(['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü']);
 export const ASC = 8;      // ascent incl. one row of headroom (line = ASC + DESC = 10 pixels)
 
@@ -108,14 +108,15 @@ const G = {
   '}': '#..|.#.|.#.|..#|.#.|.#.|#..',
   '~': '.....|.....|.#...|#.#.#|...#.|.....|.....',
   // ---- German ----
-  // capitals: dots one row above the cap line (see RAISED), a gap row, then a 6-row body
-  'Ä': '.#.#.|.....|.###.|#...#|#...#|#####|#...#|#...#',
+  // capitals: dots one row above the cap line (see RAISED), a gap row, then a 6-row body (Ä's crossbar level with A's)
+  'Ä': '.#.#.|.....|.###.|#...#|#####|#...#|#...#|#...#',
   'Ö': '.#.#.|.....|.###.|#...#|#...#|#...#|#...#|.###.',
   'Ü': '.#.#.|.....|#...#|#...#|#...#|#...#|#...#|.###.',
-  'ä': '.#.#.|.....|.###.|....#|.####|#...#|.####',
-  'ö': '.#.#.|.....|.###.|#...#|#...#|#...#|.###.',
-  'ü': '.#.#.|.....|#...#|#...#|#...#|#..##|.##.#',
-  'ß': '.##.|#..#|#..#|#.#.|#..#|#..#|#.#.',
+  // lowercase: dots sit directly on the x-height body
+  'ä': '.....|.#.#.|.###.|....#|.####|#...#|.####',
+  'ö': '.....|.#.#.|.###.|#...#|#...#|#...#|.###.',
+  'ü': '.....|.#.#.|#...#|#...#|#...#|#..##|.##.#',
+  'ß': '.##..|#..#.|#..#.|#.#..|#..#.|#...#|#.##.',
   // ---- symbols used by the UI ----
   '·': '.|.|.|#|.|.|.',
   '–': '.....|.....|.....|#####|.....|.....|.....',
@@ -161,7 +162,7 @@ export function boldGlyph(g) {
     for (let x = 0; x <= r.length; x++) out += (r[x] === '#' || r[x - 1] === '#') ? '#' : '.';
     return out;
   });
-  if (g.dotted) rows[0] = '.##.##';
+  if (g.dotted) rows[g.rows.indexOf('.#.#.')] = '##..##'; // centred on the 6-wide bold body
   return g.up ? { w: g.w + 1, rows, up: g.up, dotted: g.dotted } : { w: g.w + 1, rows, dotted: g.dotted };
 }
 
