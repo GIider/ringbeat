@@ -16,7 +16,6 @@
     <div class="lg-play">
       <b>Playing</b>
       <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> lanes</div>
-      <div><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> lanes (Easy)</div>
       <div><kbd>Esc</kbd> pause</div>
       <div><kbd>R</kbd> restart</div>
     </div>
@@ -24,7 +23,7 @@
     <b>Keys</b>
     <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move, adjust</div>
     <div><kbd>Enter</kbd> select</div>
-    <div><kbd>O</kbd> options</div>
+    <div><kbd>1</kbd>–<kbd>6</kbd> menu item</div>
     <div><kbd>Esc</kbd> back · pause</div>
     <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> play (in song)</div>
     <div><kbd>R</kbd> restart</div>
@@ -56,8 +55,62 @@
           <button id="btn-start" class="sr" data-default>Start</button>
         </section>
 
-        <!-- Song select: "Ringing tones" -->
-        <section id="select" class="screen" hidden data-title="Ringing tones" data-soft-left="Options" data-soft-right="Back">
+        <!-- Main menu: one item per screen with a big animated icon, like the 3310 -->
+        <section id="menu" class="screen mm" hidden data-title="" data-soft-left="Select" data-soft-right="">
+          <div id="mm-body" class="mm-body">
+            <div id="mm-title" class="mm-title"></div>
+            <div class="mm-art">
+              <button id="mm-prev" class="mm-arrow" tabindex="-1" aria-label="Previous item">◄</button>
+              <i id="mm-icon" class="spr mm-icon"></i>
+              <button id="mm-next" class="mm-arrow" tabindex="-1" aria-label="Next item">►</button>
+            </div>
+            <div id="mm-hint" class="mm-hint" aria-live="polite"></div>
+          </div>
+          <button id="mm-go" class="sr" data-default>Select</button>
+          <div class="mm-scroll" aria-hidden="true"><b id="mm-num">1</b><div class="mm-rail"><i id="mm-thumb"></i></div></div>
+        </section>
+
+        <!-- Stats: lifetime numbers, paged with left/right -->
+        <section id="stats" class="screen" hidden data-title="Stats" data-soft-left="" data-soft-right="Back">
+          <div class="dp-tabs st-tabs" aria-hidden="true">
+            <span class="arrow">◄</span><span id="stat-tab" class="sel"></span><span class="arrow">►</span>
+          </div>
+          <div id="stat-page" class="stat-page" aria-live="polite"></div>
+          <button id="stat-go" class="sr" data-default>Change difficulty</button>
+        </section>
+
+        <!-- Messages: the changelog as an SMS inbox -->
+        <section id="inbox" class="screen" hidden data-title="Inbox" data-soft-left="Read" data-soft-right="Back">
+          <div id="inbox-list" class="menu inbox"></div>
+        </section>
+        <section id="msgload" class="screen msgload" hidden data-title="Inbox" data-soft-left="" data-soft-right="Back">
+          <i id="ml-icon" class="spr"></i>
+          <div>Opening message</div>
+          <div id="ml-bar" class="gag-bar"></div>
+        </section>
+        <section id="message" class="screen sms" hidden data-title="Message" data-soft-left="Next" data-soft-right="Back">
+          <div class="sms-head">
+            <div>From: <b id="sms-from"></b></div>
+            <div id="sms-date" class="hint"></div>
+          </div>
+          <div id="sms-body" class="sms-body" tabindex="0" data-default></div>
+        </section>
+
+        <!-- Profile (placeholder until profiles can be switched) -->
+        <section id="profile" class="screen" hidden data-title="Profile" data-soft-left="" data-soft-right="Back">
+          <div class="pf-card">
+            <i id="pf-icon" class="spr"></i>
+            <div><b>Player 1</b><div id="pf-meta" class="hint"></div></div>
+          </div>
+          <div class="menu">
+            <button id="pf-switch" disabled>Switch profile</button>
+            <button id="pf-new" disabled>New profile</button>
+          </div>
+          <p class="hint center">Profiles are coming soon.</p>
+        </section>
+
+        <!-- Song select: "Tones" -->
+        <section id="select" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
           <div class="sel-head">
             <span class="arrow" id="sel-arrow-l" aria-hidden="true">◄</span>
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
@@ -67,17 +120,6 @@
           <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
           <div id="sel-info" class="sel-info" aria-live="polite"></div>
           <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
-        </section>
-
-        <!-- Options for the selected song -->
-        <section id="options" class="screen" hidden data-title="Options" data-soft-left="Select" data-soft-right="Back">
-          <div class="menu">
-            <button id="btn-custom" data-default>My songs…</button>
-            <button id="btn-settings">Settings</button>
-            <button id="view-cat">Category: All</button>
-            <button id="view-sort">Sort: Default</button>
-            <button id="view-filter">Show: All</button>
-          </div>
         </section>
 
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
@@ -171,7 +213,6 @@
           <h2 id="dp-title"></h2>
           <div id="dp-meta" class="hint"></div>
           <div class="menu">
-            <button id="dp-easy" data-diff="easy">Easy</button>
             <button id="dp-normal" data-diff="normal">Normal</button>
             <button id="dp-hard" data-diff="hard">Hard</button>
             <button id="btn-mods">Mods: Off</button>
@@ -205,7 +246,7 @@
           <div class="menu">
             <button id="btn-bind-reset">Reset buttons</button>
             <button id="btn-tutorial" class="menu-only">Replay tutorial</button>
-            <button id="btn-reset-scores" class="menu-only">Reset highscores</button>
+            <button id="btn-reset-scores" class="menu-only">Reset scores &amp; stats</button>
             <button id="btn-settings-back">Back</button>
           </div>
         </section>
@@ -219,6 +260,7 @@
             <label class="item check"><input id="m-mirror" type="checkbox"> Mirror lanes</label>
             <label class="item check"><input id="m-hidden" type="checkbox"> Hidden notes</label>
             <label class="item check"><input id="m-sudden" type="checkbox"> Sudden death</label>
+            <label class="item check"><input id="m-demo" type="checkbox"> Demo (autoplay)</label>
             <label class="item">Judging <b id="m-judge-val"></b>
               <input id="m-judge" type="range" min="0" max="2" step="1"></label>
             <button id="btn-mods-reset">Reset all</button>
@@ -274,7 +316,7 @@
           <div class="menu r-foot">
             <button id="btn-retry" data-default>Retry</button>
             <button id="btn-next">Next song</button>
-            <button id="btn-menu">Song select</button>
+            <button id="btn-menu">Tones</button>
           </div>
         </section>
 
@@ -284,7 +326,7 @@
             <button id="btn-resume" data-default>Resume</button>
             <button id="btn-restart">Restart</button>
             <button id="btn-pause-settings">Settings</button>
-            <button id="btn-quit">Song select</button>
+            <button id="btn-quit">Tones</button>
             <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
           </div>
         </section>
@@ -323,21 +365,22 @@
 
     <!-- The phone's keys (hit areas over the artwork) -->
     <div class="keys" aria-label="Phone keys">
-      <button class="k k-soft" style="--x:60;--y:502;--w:86;--h:92" data-key="softL" tabindex="-1" aria-label="Left soft key"></button>
-      <button class="k k-navi" style="--x:156;--y:506;--w:128;--h:52" data-key="ok" tabindex="-1" aria-label="Select"></button>
-      <button class="k k-soft" style="--x:294;--y:502;--w:86;--h:92" data-key="softR" tabindex="-1" aria-label="Back"></button>
-      <button class="k" style="--x:64;--y:616" data-key="1" tabindex="-1" aria-label="1"></button>
-      <button class="k" style="--x:172;--y:610" data-key="2" tabindex="-1" aria-label="2 (up)"></button>
-      <button class="k" style="--x:280;--y:616" data-key="3" tabindex="-1" aria-label="3"></button>
-      <button class="k" style="--x:64;--y:674" data-key="4" tabindex="-1" aria-label="4 (left)"></button>
-      <button class="k" style="--x:172;--y:668" data-key="5" tabindex="-1" aria-label="5 (select)"></button>
-      <button class="k" style="--x:280;--y:674" data-key="6" tabindex="-1" aria-label="6 (right)"></button>
-      <button class="k" style="--x:64;--y:732" data-key="7" tabindex="-1" aria-label="7"></button>
-      <button class="k" style="--x:172;--y:726" data-key="8" tabindex="-1" aria-label="8 (down)"></button>
-      <button class="k" style="--x:280;--y:732" data-key="9" tabindex="-1" aria-label="9"></button>
-      <button class="k" style="--x:64;--y:790" data-key="*" tabindex="-1" aria-label="Star"></button>
-      <button class="k" style="--x:172;--y:784" data-key="0" tabindex="-1" aria-label="0"></button>
-      <button class="k" style="--x:280;--y:790" data-key="#" tabindex="-1" aria-label="Hash"></button>
+      <button class="k k-soft" style="--x:52;--y:540;--w:88;--h:56;--r:22deg" data-key="softR" tabindex="-1" aria-label="Clear / Back"></button>
+      <button class="k k-navi" style="--x:140;--y:508;--w:160;--h:48" data-key="softL" tabindex="-1" aria-label="Menu"></button>
+      <button class="k k-soft" style="--x:295;--y:541;--w:88;--h:28;--r:-22deg" data-key="up" tabindex="-1" aria-label="Up"></button>
+      <button class="k k-soft" style="--x:305;--y:567;--w:88;--h:28;--r:-22deg" data-key="down" tabindex="-1" aria-label="Down"></button>
+      <button class="k" style="--x:64;--y:631;--r:10deg" data-key="1" tabindex="-1" aria-label="1"></button>
+      <button class="k" style="--x:174;--y:639" data-key="2" tabindex="-1" aria-label="2 (up)"></button>
+      <button class="k" style="--x:284;--y:631;--r:-10deg" data-key="3" tabindex="-1" aria-label="3"></button>
+      <button class="k" style="--x:64;--y:685;--r:10deg" data-key="4" tabindex="-1" aria-label="4 (left)"></button>
+      <button class="k" style="--x:174;--y:693" data-key="5" tabindex="-1" aria-label="5 (select)"></button>
+      <button class="k" style="--x:284;--y:685;--r:-10deg" data-key="6" tabindex="-1" aria-label="6 (right)"></button>
+      <button class="k" style="--x:64;--y:739;--r:10deg" data-key="7" tabindex="-1" aria-label="7"></button>
+      <button class="k" style="--x:174;--y:747" data-key="8" tabindex="-1" aria-label="8 (down)"></button>
+      <button class="k" style="--x:284;--y:739;--r:-10deg" data-key="9" tabindex="-1" aria-label="9"></button>
+      <button class="k" style="--x:64;--y:793;--r:10deg" data-key="*" tabindex="-1" aria-label="Star"></button>
+      <button class="k" style="--x:174;--y:801" data-key="0" tabindex="-1" aria-label="0"></button>
+      <button class="k" style="--x:284;--y:793;--r:-10deg" data-key="#" tabindex="-1" aria-label="Hash"></button>
     </div>
   </div>
 

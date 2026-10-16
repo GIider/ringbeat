@@ -53,7 +53,5 @@ export function createWipeGag() {
       if (t < WIPE_MS + DONE_MS) return { text: 'Memory cleared', bar: SEGMENTS, segments: SEGMENTS };
       return { text: 'Just kidding.', bar: -1, segments: SEGMENTS };
     },
-    // Releasing the key only cancels while the bar is still filling.
-    release() { if (t >= 0 && t < WIPE_MS) t = -1; },
   };
 }

@@ -8,28 +8,35 @@ green LCD (status bar, inverted highlight, two soft keys), the play screen puts 
 ## Screens & flow
 
 ```
-title ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
-            │  ▲        │          ▲ │
-            │  │        │          │ └─ pause ─▶ resume | restart | settings | select
-            │  │        └─ Mods ─▶ mods screen ─▶ back to difficulty
-            └──▶ Options ─┬─▶ my songs (composer / paste / import-export)
-                          ├─▶ settings ─▶ calibration
-                          └─▶ category / sort / show
+title ─▶ menu ─┬─ 1 Tones ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
+               │               │  ▲        │          ▲ │
+               │               │  │        │          │ └─ pause ─▶ resume | restart | settings | select
+               │               │  │        └─ Mods ─▶ mods screen ─▶ back to difficulty
+               │               └──▶ Options: category / sort / show
+               ├─ 2 My songs (composer / paste / import-export)
+               ├─ 3 Stats (Time / Score / Grades / Notes)
+               ├─ 4 Messages ─▶ inbox ─▶ opening… ─▶ message
+               ├─ 5 Profile (placeholder)
+               └─ 6 Settings ─▶ calibration
 ```
 
 | Screen | Purpose |
 |---|---|
 | Title | Boot screen, "Press any key" (plays a short power-on jingle). Satisfies the browser's audio-gesture requirement. |
-| Song select | 153 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. The difficulty screen also has a Mods button (gamepad X) that opens the Mods screen. Options (left soft key, `O`, gamepad X): My songs, Settings, Category, Sort (default / easiest / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC). Rating = 1 + 16.2 × the position (share of the ladder, capped at 10) on an eight-level simulated skill ladder where bots start full-combo-ing the chart at least half the time (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
+| Main menu | 3310-style: one item per screen — big title, animated 1-bit icon (folder card + symbol + a hand pressing a key), numbered scrollbar on the right, centred *Select*. ↑↓/←→, keypad 2/8, digits 1–6, swipe, wheel or the ◄► arrows browse; Back returns to the title. Remembers the last item used. |
+| Song select | 153 built-in songs (11 of them full-length, 1–2 min, classical or folk) in 7 categories (Classical, Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids; Options → Category, ←/→ or `[` / `]` cycles) + the user's Custom song. "Ringing tones" list: category icon, title, best grade, FC/AP badge; `◄ Category ►` header (←/→, LB/RB); footer with stars + rating, best, BPM, length. Confirming a song opens the difficulty screen (last-played difficulty preselected) with BPM/length and Info / Top runs tabs (dimmed until the song has been played) (←/→) for the focused difficulty. The difficulty screen also has a Mods button (gamepad X) that opens the Mods screen. Options (left soft key, `O`, gamepad X): Category, Sort (easiest first by default / hardest / title / BPM / length; `D` / `F`, gamepad LT), Show (all / unplayed / no FC). Rating = 1 + 16.2 × the position (share of the ladder, capped at 10) on an eight-level simulated skill ladder where bots start full-combo-ing the chart at least half the time (`src/bot.js`). Auto-preview (10 s) after selection, toggle in settings. | RTTTL sources are credited in the README ("Song sources & credits").
 | My songs | Up to 30 saved songs (`ringbeat.songs.v1`). Nokia-style composer: keys 1–7 = c…b, 0 rest, 8/9 length, `*` dot, `#` sharp, repeating a key cycles the octave, ▲▼ pitch step, ◀▶ cursor, left soft key = menu. Controller: A adds a copy of the last note, d-pad up/down tunes it. Also paste/edit RTTTL text, export a song (`.rtttl`), export/import all (`.json`, or RTTTL lines), copy text or share link (`#s=<base64url>`, saved to My songs when opened). |
-| Settings | Tone (buzzer / smooth), volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, replay tutorial, reset highscores. |
+| Stats | Four pages (←→): **Time** (total playtime, runs, days played, play-day streak), **Score** (lifetime score count-up, best combo, average, favourite song), **Grades** (songs per best grade S–D as bars, FC/AP counts, played/total; left soft key *Diff* cycles All/Normal/Hard), **Notes** (lifetime judgement mix, accuracy, ghost taps, FC/AP runs). See *Stats*. |
+| Messages | The changelog as an SMS inbox: one message per version (bold = unread), a short "Opening message" envelope animation, then an SMS view (↑↓ scroll, *Next*). An update leaves exactly one new message; the menu shows "1 new message". |
+| Profile | Placeholder: one player card (since, playtime); switching profiles comes later. |
+| Settings | Tone (buzzer / smooth), volume, scroll time, backing pulse, song preview, latency calibration, controller rebinding, replay tutorial, reset scores & stats. |
 | Mods | Opened from the *Mods* button on the difficulty screen (gamepad X). Speed, Mirror, Hidden, Sudden death, Judging; live score multiplier; Reset all. See *Modifiers*. |
 | Play | Highway canvas with a HUD column (score, accuracy + live grade, combo with multiplier, notes-left box, timing meter, judgement mix), between the side phone (signal bars = recent hit quality, progress %, time) and the front phone's now-playing LCD (title, ringing animation, progress bar, battery = time left; soft keys pause). Narrow screens: full-screen canvas with a top strip + bottom progress bar. FC/AP streak line, milestone banners. |
 | Results | Grade, score, FULL COMBO / ALL PERFECT banner, NEW BEST / rank, judgement counts, timing histogram, average offset. Retry / Next song / Menu. |
 
 ## Gameplay
 
-- **Difficulty:** Easy (3 lanes, beats and holds only), Normal (4 lanes), Hard (4 lanes, every note).
+- **Difficulty:** Normal (4 lanes), Hard (4 lanes, every note).
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
   Also derived from the RTTTL text, no authoring needed:
   - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
@@ -59,7 +66,18 @@ title ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
 - Stored locally (`localStorage`, key `ringbeat.scores.v1`), per song id and difficulty: top 5 runs, play count.
 - Run: score, grade, accuracy, max combo, fc, ap, date, and (modded runs) `mods` tags + `mult`. Ranking by score; ties rank below the older run.
 - Custom songs are keyed by a hash of their RTTTL text, so scores follow the melody.
-- Failed (Sudden death) runs are never recorded. Highscores can be reset in Settings (two-step confirm).
+- Failed (Sudden death) runs are never recorded. Highscores can be reset in Settings (two-step confirm; also clears stats).
+
+## Stats
+
+- Stored locally (`ringbeat.stats.v1`): playtime (song time actually played, pauses excluded; banked at pause, quit,
+  restart and finish), runs (finished / failed), quits, restarts, lifetime score (after mods), best combo, judgement
+  totals, ghost taps, FC/AP runs, modded and My-songs runs, per-difficulty runs + playtime, first/last play, days played,
+  current and best play-day streak (consecutive local days). The tutorial is not counted.
+- Grade counts are derived from the highscores (best grade per song), so they always match the song list.
+- Players with highscores from before 1.3 get a one-time backfill (runs, FCs/APs, best combo, a lower bound of lifetime
+  score, days played); playtime and note totals start at 0.
+- Pages (◄►): Time, Score (with the most-played song), Top (every played song by play count, scrollable with ▲▼), Grades, Notes.
 
 ## Modifiers
 

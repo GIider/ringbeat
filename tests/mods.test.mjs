@@ -32,7 +32,7 @@ test('mods: normalize drops junk and fills defaults', () => {
   assert.deepEqual(M.normalize(null), M.DEFAULT_MODS);
   assert.deepEqual(M.normalize({ speed: 7, mirror: 'yes', judge: 'x', extra: 1 }), M.DEFAULT_MODS);
   assert.deepEqual(M.normalize({ speed: 1.2, hidden: true, judge: 'strict' }),
-    { speed: 1.2, mirror: false, hidden: true, sudden: false, judge: 'strict' });
+    { speed: 1.2, mirror: false, hidden: true, sudden: false, judge: 'strict', demo: false });
   assert.equal(M.isActive(M.DEFAULT_MODS), false);
   assert.equal(M.isActive({ mirror: true }), true);
 });
@@ -123,4 +123,28 @@ test('scores: legacy runs load; mods and mult are kept and ranked by score', () 
   assert.equal(rec.top[1].mult, undefined);
   // persists through a reload
   assert.deepEqual(createScores(storage).get('s', 'normal').best.mods, ['1.2x', 'HD']);
+});
+
+test('demo mod: x0 multiplier, DEMO tag, active, in game options', () => {
+  const d = { demo: true, speed: 1.3, hidden: true };
+  assert.equal(M.normalize({}).demo, false);
+  assert.equal(M.normalize(d).demo, true);
+  assert.ok(M.isActive({ demo: true }));
+  assert.equal(M.multiplier(d), 0);
+  assert.ok(M.tags(d).includes('DEMO'));
+  assert.equal(M.gameOptions(d).demo, true);
+});
+
+test('demo autoplay plays every note perfectly, also with mirror, speed and strict judging', async () => {
+  const { createAutoplay } = await import('../src/autoplay.js');
+  for (const m of [{ demo: true }, { demo: true, mirror: true, speed: 1.3, judge: 'strict', sudden: true }]) {
+    const chart = M.applyChart(chartOf('hard'), M.normalize(m));
+    const r = run(chart, M.gameOptions(m), (g, c) => {
+      const ap = createAutoplay(c);
+      for (let t = 0; t < c.length + 2; t += 0.01) { ap.step(t, g); g.update(t); }
+    });
+    assert.equal(r.counts.miss, 0);
+    assert.equal(r.ghosts, 0);
+    assert.ok(r.fc && r.ap && !r.failed);
+  }
 });

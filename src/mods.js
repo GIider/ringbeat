@@ -9,7 +9,7 @@ export const HIDDEN_MULT = 1.1;
 export const SUDDEN_MULT = 1.2;
 export const MULT_MIN = 0.5, MULT_MAX = 2;
 
-export const DEFAULT_MODS = Object.freeze({ speed: 1, mirror: false, hidden: false, sudden: false, judge: 'off' });
+export const DEFAULT_MODS = Object.freeze({ speed: 1, mirror: false, hidden: false, sudden: false, judge: 'off', demo: false });
 
 // Validate a stored/foreign loadout -> a complete, fresh object (unknown keys and bad values dropped).
 export function normalize(raw) {
@@ -20,17 +20,19 @@ export function normalize(raw) {
     hidden: r.hidden === true,
     sudden: r.sudden === true,
     judge: JUDGES.includes(r.judge) ? r.judge : 'off',
+    demo: r.demo === true,
   };
 }
 
 export function isActive(mods) {
   const m = normalize(mods);
-  return m.speed !== 1 || m.mirror || m.hidden || m.sudden || m.judge !== 'off';
+  return m.speed !== 1 || m.mirror || m.hidden || m.sudden || m.judge !== 'off' || m.demo;
 }
 
 // Combined score multiplier (product of the active mods, clamped).
 export function multiplier(mods) {
   const m = normalize(mods);
+  if (m.demo) return 0; // autoplay: never scores
   const k = SPEED_MULT[m.speed] * JUDGE_MULT[m.judge] * (m.hidden ? HIDDEN_MULT : 1) * (m.sudden ? SUDDEN_MULT : 1);
   return Math.max(MULT_MIN, Math.min(MULT_MAX, Math.round(k * 100) / 100));
 }
@@ -38,6 +40,7 @@ export function multiplier(mods) {
 // Short tags in a stable order, e.g. ['1.2x', 'HD', 'SD'] (stored on score records and shown as chips).
 export function tags(mods) {
   const m = normalize(mods), t = [];
+  if (m.demo) t.push('DEMO');
   if (m.speed !== 1) t.push(m.speed + 'x');
   if (m.judge === 'lenient') t.push('EZ');
   if (m.judge === 'strict') t.push('ST');
@@ -90,5 +93,5 @@ export function applyChart(chart, mods) {
 // Options for Game.start().
 export function gameOptions(mods) {
   const m = normalize(mods);
-  return { windowScale: JUDGE_SCALE[m.judge], suddenDeath: m.sudden };
+  return { windowScale: JUDGE_SCALE[m.judge], suddenDeath: m.sudden, demo: m.demo };
 }

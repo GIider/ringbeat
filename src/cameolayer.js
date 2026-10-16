@@ -85,7 +85,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
 
   function arm() {
     if (timer || sim) return;
-    if (!allowed() || !['title', 'select', 'options'].includes(getState())) return;
+    if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) return;
     const ms = remaining || sched.gap() * 1000;
     remaining = 0;
     due = performance.now() + ms;
@@ -94,7 +94,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
 
   // Called after every screen change: cancel instantly when leaving the places cameos may appear.
   function sync() {
-    if (!allowed() || !['title', 'select', 'options'].includes(getState())) pause();
+    if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) pause();
     else arm();
   }
 
@@ -119,7 +119,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
     stop() { cancel(); },
     // Konami reward: a parade of snakes right now (only where cameos are allowed).
     parade() {
-      if (!allowed() || !['select', 'options', 'title'].includes(getState())) return;
+      if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) return;
       cancel();
       if (measure()) runCanvas(createParade(rng, gridW, gridH));
     },

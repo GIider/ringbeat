@@ -24,7 +24,18 @@ f.addEventListener('load', async () => {
     w.__ringbeat.settings.tutorialDone = true;
     log(vis('title') && !vis('select'), 'title screen visible');
     key('Space'); await sleep(100);
-    log(vis('select') && !vis('title'), 'any key -> song select');
+    log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
+    log($('soft-left').textContent === 'Select' && $('soft-left').parentElement.classList.contains('solo'), 'menu: single centred Select');
+    log(d.activeElement === $('mm-go'), 'menu item focused');
+    key('ArrowDown'); await sleep(50);
+    log($('mm-title').textContent === 'My songs' && $('mm-num').textContent === '2', 'down -> next menu item');
+    key('ArrowUp'); key('ArrowUp'); await sleep(50);
+    log($('mm-title').textContent === 'Settings' && $('mm-num').textContent === '6', 'menu wraps around');
+    key('4'); await sleep(50);
+    log($('mm-title').textContent === 'Messages' && $('mm-hint').textContent.includes('new message'), 'digit jumps to an item; unread hint');
+    key('1'); await sleep(50);
+    $('mm-go').click(); await sleep(100);
+    log(vis('select') && !vis('menu'), 'Select on Tones -> song select');
     const rows = d.querySelectorAll('.song-row');
     log(rows.length >= 15, `song list has ${rows.length} rows`);
     log($('sel-cat').textContent.length > 0, 'category header: ' + $('sel-cat').textContent);
@@ -37,16 +48,21 @@ f.addEventListener('load', async () => {
     const phoneKey = k => d.querySelector(`#phone .k[data-key="${k}"]`).dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
     phoneKey('8'); await sleep(50);
     log(d.activeElement === rows2[5], 'keypad 8 moves down');
+    phoneKey('up'); await sleep(50);
+    log(d.activeElement === rows2[4], 'rocker up moves up');
+    phoneKey('down'); await sleep(50);
+    log(d.activeElement === rows2[5], 'rocker down moves down');
+    const pointerUp = () => w.dispatchEvent(new w.PointerEvent('pointerup'));
+    phoneKey('softR'); await sleep(1350); pointerUp(); await sleep(250);
+    log(vis('gag') && /Clearing/.test($('gag-text').textContent) && vis('select'), 'holding C starts the wipe; it runs on after letting go');
+    phoneKey('softR'); pointerUp(); await sleep(150);
+    log(!vis('gag') && vis('select'), 'tapping C again stops the wipe (no Back)');
     const cat0 = $('sel-cat').textContent;
     key('ArrowRight'); await sleep(80);
     log($('sel-cat').textContent !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
     log($('sel-cat').textContent === cat0, 'left arrow switches back');
-    log($('soft-left').textContent === 'Options' && $('st-title').textContent === 'Ringing tones', 'soft keys + status title');
-    phoneKey('softL'); await sleep(80);
-    log(vis('options') && $('soft-left').textContent === 'Select', 'left soft key opens Options');
-    key('Backspace'); await sleep(80);
-    log(vis('select'), 'Backspace -> back to select');
+    log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones', 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
     key('ArrowRight'); await sleep(50);
@@ -59,17 +75,19 @@ f.addEventListener('load', async () => {
     $('set-voice').click();
     log(d.body.dataset.mode === 'menu', 'menu mode');
 
-    $('btn-settings').click(); await sleep(50);
-    log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'settings + 4 bindings');
+    key('Escape'); await sleep(80);
+    log(vis('menu') && $('mm-title').textContent === 'Tones', 'back from Tones -> menu');
+    key('6'); await sleep(30); $('mm-go').click(); await sleep(80);
+    log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'menu -> settings + 4 bindings');
     d.querySelector('#bind-grid button').click();
     log(d.querySelector('#bind-grid button').classList.contains('capture'), 'rebind capture mode');
     key('Escape'); await sleep(50);
     log(vis('settings'), 'Esc cancels capture only');
     key('Escape'); await sleep(100);
-    log(vis('select'), 'Esc -> back to select');
+    log(vis('menu') && $('mm-title').textContent === 'Settings', 'Esc -> back to the menu on Settings');
 
-    $('btn-custom').click(); await sleep(50);
-    log(vis('mysongs'), 'my songs opens');
+    key('2'); await sleep(30); $('mm-go').click(); await sleep(80);
+    log(vis('mysongs'), 'menu -> my songs');
     $('ms-paste').click(); await sleep(50);
     log(vis('custom'), 'paste screen opens');
     $('rtttl').value = 'Zed:d=4,o=5,b=120:c,d,e,f,g'; $('rtttl').dispatchEvent(new w.Event('input'));
@@ -91,7 +109,8 @@ f.addEventListener('load', async () => {
     log(vis('songmenu'), 'composer exit');
     $('sm-back').click(); await sleep(50);
     $('ms-back').click(); await sleep(50);
-    log(vis('select'), 'my songs back');
+    log(vis('menu') && $('mm-title').textContent === 'My songs', 'my songs back -> menu');
+    key('1'); await sleep(30); $('mm-go').click(); await sleep(100);
 
     d.querySelector('.song-row.cur').click(); await sleep(50);
     log(vis('diffpick'), 'difficulty screen');
@@ -149,8 +168,90 @@ f.addEventListener('load', async () => {
     key('ArrowRight'); await sleep(50);
     log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
     key('Backspace'); await sleep(80);
-    rb.scores.clear();
     log(vis('select'), 'back to select again');
+
+    // stats: the fake runs above were counted
+    key('Escape'); await sleep(80);
+    key('3'); await sleep(30); $('mm-go').click(); await sleep(100);
+    log(vis('stats') && /Time/.test($('stat-tab').textContent), 'menu -> stats on the Time page');
+    log(rb.stats.get().runs >= 3 && rb.stats.get().score >= 1234, 'finished runs counted: ' + rb.stats.get().runs);
+    log(!/Since|counted from/.test($('stat-page').textContent), 'Time page has no "Since"/"counted from" hints');
+    key('ArrowRight'); await sleep(60);
+    log(/Score 2\/5/.test($('stat-tab').textContent), 'Score page');
+    // the most-played song must stay inside its row, clear of the note icon, even with a huge title
+    const { marquee } = await import(new URL('../src/marquee.js', f.src));
+    const inside = (inner, outer) => inner.left >= outer.left - 0.5 && inner.right <= outer.right + 0.5;
+    const nm = d.querySelector('#stat-page .st-fav .st-name');
+    log(!!nm, 'favourite song shown on Score page');
+    nm.textContent = 'An absurdly long song title that cannot possibly fit on the little phone LCD screen at all';
+    marquee(nm);
+    log(nm.classList.contains('scrolls'), 'long favourite title scrolls', `sw=${nm.scrollWidth} cw=${nm.clientWidth} cls=${nm.className} kids=${nm.children.length} mqsw=${nm.firstElementChild && nm.firstElementChild.scrollWidth} dist=${nm.style.getPropertyValue('--mq-dist')}`);
+    for (const wait of [0, 700, 1500]) {
+      await sleep(wait);
+      const row = d.querySelector('#stat-page .st-fav').getBoundingClientRect(), ic = d.querySelector('.st-fav .ic').getBoundingClientRect(),
+        box = nm.getBoundingClientRect(), mq = nm.querySelector('.mq').getBoundingClientRect();
+      log(inside(box, row) && box.left >= ic.right - 0.5, `favourite title box stays right of the icon and inside the row (+${wait}ms)`);
+      log(mq.left >= box.left - 0.5 - parseFloat(nm.style.getPropertyValue('--mq-dist')) && ic.right <= box.left + 0.5, 'scrolling text never passes the icon');
+      log(nm.scrollWidth >= nm.clientWidth && Math.round(box.width) < Math.round(mq.width), 'title is clipped by its own box');
+    }
+    key('ArrowRight'); await sleep(60);
+    log(/Top 3\/5/.test($('stat-tab').textContent), 'Top page');
+    const trows = [...d.querySelectorAll('#stat-page .st-row')];
+    log(trows.length >= 1 && /^1\./.test(trows[0].textContent) && /\d+×$/.test(trows[0].textContent), 'Top lists numbered songs with play counts');
+    const tn = trows[0].querySelector('.st-name');
+    tn.textContent = 'An absurdly long song title that cannot possibly fit on the little phone LCD screen at all';
+    const trr = trows[0].getBoundingClientRect(), tnr = tn.getBoundingClientRect(), cnt = trows[0].querySelector('.n').getBoundingClientRect();
+    log(inside(tnr, trr) && tnr.right <= cnt.left + 0.5 && tn.scrollWidth > tn.clientWidth, 'long Top title is ellipsised before the count');
+    // many played songs: the Top page lists them all, starts at #1, and scrolls with Up/Down
+    {
+      const { SONGS } = await import(new URL('../src/songs.js', f.src));
+      SONGS.slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, 'normal', { score: 100, grade: 'C' }); });
+      key('ArrowLeft'); await sleep(40); key('ArrowRight'); await sleep(60);
+      const pg = $('stat-page'), rows = () => [...pg.querySelectorAll('.st-row')];
+      const seen = r => { const b = pg.getBoundingClientRect(), x = r.getBoundingClientRect(); return x.top >= b.top - 1 && x.bottom <= b.bottom + 1; };
+      log(rows().length >= 40, 'Top lists every played song: ' + rows().length);
+      log(pg.scrollHeight > pg.clientHeight, 'Top page overflows and can scroll');
+      log(pg.scrollTop === 0 && seen(rows()[0]) && /^1\./.test(rows()[0].textContent), 'Top starts at #1', `scrollTop=${pg.scrollTop} pg=${JSON.stringify(pg.getBoundingClientRect())} row0=${JSON.stringify(rows()[0].getBoundingClientRect())} first=${pg.firstElementChild.className}`);
+      key('ArrowDown'); await sleep(40);
+      log(pg.scrollTop > 0, 'Down scrolls the Top page');
+      for (let i = 0; i < 40; i++) key('ArrowDown');
+      await sleep(60);
+      log(seen(rows()[rows().length - 1]), 'last song reachable');
+      for (let i = 0; i < 40; i++) key('ArrowUp');
+      await sleep(60);
+      log(pg.scrollTop === 0 && seen(rows()[0]), 'Up scrolls back to #1');
+      key('ArrowLeft'); await sleep(40); key('ArrowRight'); await sleep(60);
+      log(pg.scrollTop === 0 && seen(rows()[0]), 'revisiting Top starts at #1 again');
+    }
+    key('ArrowRight'); await sleep(60);
+    log(/Grades/.test($('stat-tab').textContent) && $('soft-left').textContent === 'Diff', 'Grades page with a Diff soft key');
+    log(+d.querySelector('#stat-page .gbar span').textContent >= 1, 'S bar counts the S run');
+    phoneKey('softL'); await sleep(50);
+    log($('stat-page').textContent.includes('Normal'), 'Diff cycles the difficulty');
+    key('ArrowRight'); await sleep(50);
+    log(/Notes/.test($('stat-tab').textContent) && $('stat-page').textContent.includes('Accuracy'), 'Notes page');
+    key('Escape'); await sleep(80);
+
+    // messages: inbox -> opening animation -> SMS -> read
+    rb.settings.msgSeen = [];
+    key('4'); await sleep(30); $('mm-go').click(); await sleep(80);
+    const rowsMsg = d.querySelectorAll('#inbox-list button');
+    log(vis('inbox') && rowsMsg.length >= 2 && rowsMsg[0].classList.contains('new'), 'inbox lists unread messages');
+    rowsMsg[0].click(); await sleep(60);
+    log(vis('msgload'), 'opening-message animation');
+    await sleep(1200);
+    log(vis('message') && $('sms-body').textContent.length > 20 && $('sms-from').textContent === 'Ringbeat', 'message shown');
+    phoneKey('softL'); await sleep(1300);
+    log(vis('message') && $('sms-date').textContent.includes(rb.settings.msgSeen[1] || '?'), 'Next opens the following message');
+    key('Escape'); await sleep(80);
+    log(vis('inbox') && !d.querySelectorAll('#inbox-list button')[0].classList.contains('new'), 'back to inbox, message read');
+    key('Escape'); await sleep(80);
+    key('5'); await sleep(30); $('mm-go').click(); await sleep(80);
+    log(vis('profile'), 'profile placeholder');
+    key('Escape'); await sleep(80);
+    key('Escape'); await sleep(80);
+    log(vis('title'), 'back from the menu -> title');
+    rb.scores.clear(); rb.stats.clear();
   } catch (e) { log(false, 'exception', e && e.stack || e); }
   log(errors.length === 0, 'no runtime errors', errors.join(' | '));
   out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed\n`);

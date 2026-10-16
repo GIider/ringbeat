@@ -11,7 +11,7 @@ const views = {
   compact: { width: 480, height: 800 },
 };
 // [demo state, view] pairs used by the README
-const shots = [['select', 'desktop'], ['play', 'desktop'], ['play', 'compact']];
+const shots = [['menu', 'desktop'], ['select', 'desktop'], ['play', 'desktop'], ['play', 'compact']];
 const outDir = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
 mkdirSync(outDir, { recursive: true });
 

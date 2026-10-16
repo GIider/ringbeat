@@ -10,9 +10,9 @@ the few assets (pixel font, phone artwork) are made in-repo — see below.
 
 ## Screenshots
 
-| Song list | Playing | Playing (compact) |
-| --- | --- | --- |
-| ![Song list](docs/screenshots/select-desktop.png) | ![Playing](docs/screenshots/play-desktop.png) | ![Playing, compact](docs/screenshots/play-compact.png) |
+| Main menu | Song list | Playing | Playing (compact) |
+| --- | --- | --- | --- |
+| ![Main menu](docs/screenshots/menu-desktop.png) | ![Song list](docs/screenshots/select-desktop.png) | ![Playing](docs/screenshots/play-desktop.png) | ![Playing, compact](docs/screenshots/play-compact.png) |
 
 On narrow screens (under 600 px wide) the phone body is dropped and the LCD fills the window.
 
@@ -32,8 +32,8 @@ npm run screenshots  # regenerate docs/screenshots/*.png from the ?demo= states 
 npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in src/pixelfont.js
 ```
 
-Screenshot states for development: `index.html?demo=play` (also `pause`, `select`, `options`, `info`, `results`,
-`settings`) loads the Nokia Tune and freezes a frame at ~10 %.
+Screenshot states for development: `index.html?demo=play` (also `pause`, `menu`, `select`, `options`, `info`, `results`,
+`settings`, `stats`, `message`) loads the Nokia Tune and freezes a frame at ~10 %.
 
 Versioning: `1.0.<build>` — major.minor from `package.json`, patch = the GitHub Actions run number (stamped by `npm run build` via `BUILD_NUMBER`).
 Coverage: `node --test --experimental-test-coverage tests/*.test.mjs`.
@@ -49,8 +49,10 @@ pre-release and deploys it to GitHub Pages ([.github/workflows/deploy.yml](.gith
 
 ## Features
 
-Song select with 153 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
-full combo / all perfect indicators · timing display · modifiers (speed, mirror, hidden, sudden death, judging; score multiplier) ·
+3310-style main menu (Tones, My songs, Stats, Messages, Profile, Settings) with animated icons · lifetime stats (playtime,
+score, grades, streaks) · changelog delivered as SMS ·
+song select with 153 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
+full combo / all perfect indicators · timing display · modifiers (speed, mirror, hidden, sudden death, judging; score multiplier; demo autoplay, x0 and never saved) ·
 keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·
 buzzer or smooth instrument voice.
 
@@ -62,12 +64,13 @@ Everything visual is made here, no external fonts or images:
   TrueType (`assets/fonts/rb-pixel.ttf` + a bold cut); text is crisp at multiples of 10 px.
 - `assets/phone.svg` — the phone shells; the LCD and key hit areas are DOM laid over them.
 - `src/pixelart.js` — 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
+- `src/menuicons.js` — the animated main-menu icons (folder card + symbol + pressing hand), drawn in code.
 - `src/cover.js` — per-song 72×28 "picture message" art, generated from the song id.
 
 ## Controls
 
-`D F J K` (4 lanes) · `F J K` (easy) · tap lanes on touch · gamepad d-pad/face buttons/shoulders · `Esc` pause · `R` restart.
-Menus: arrows, `Enter`, `Esc`/`Backspace`, `O` options — or click the phone's soft keys and keypad.
+`D F J K` (4 lanes) · tap lanes on touch · gamepad d-pad/face buttons/shoulders · `Esc` pause · `R` restart.
+Menus: arrows, `Enter`, `Esc`/`Backspace`, `1`–`6` main-menu items, `O` song-list options — or click the phone's Menu, C and ▲▼ keys and keypad.
 Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.md). Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## RTTTL format notes
@@ -83,7 +86,7 @@ Full list: [docs/CONTROLS.md](docs/CONTROLS.md). Spec: [docs/SPEC.md](docs/SPEC.
 
 ## Sharing
 
-"My songs… → (song) → Copy share link" puts the song in the URL hash (`#s=<base64url>`). Opening it selects the custom song (no autoplay).
+"My songs → (song) → Copy share link" puts the song in the URL hash (`#s=<base64url>`). Opening it selects the custom song (no autoplay).
 
 ## Song sources & credits
 

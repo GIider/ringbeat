@@ -68,7 +68,7 @@ const throws = f => { try { f(); return false; } catch { return true; } };
 for (const s of SONGS) {
   const song = parseRTTTL(s.rtttl);
   check(`${song.name}: zero warnings`, song.warnings.length === 0, JSON.stringify(song.warnings));
-  for (const difficulty of ['easy', 'normal', 'hard']) {
+  for (const difficulty of ['normal', 'hard']) {
     const c = generateChart(song, { difficulty });
     let ok = c.notes.length > 0 && c.notes.every(n => n.lane >= 0 && n.lane < c.lanes);
     for (let i = 1; i < c.notes.length; i++) if (c.notes[i].time - c.notes[i - 1].time < 0.09 - 1e-9) ok = false;

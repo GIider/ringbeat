@@ -20,7 +20,7 @@ const KEYS = {
   3: ['KeyF', 'KeyJ', 'KeyK'],
   4: ['KeyD', 'KeyF', 'KeyJ', 'KeyK'],
 };
-export const KEY_LABELS = { 3: ['F', 'J', 'K'], 4: ['D', 'F', 'J', 'K'] };
+export const KEY_LABELS = { 4: ['D', 'F', 'J', 'K'] };
 
 export class Input {
   constructor({ getCtx, canvas, laneAt }) {

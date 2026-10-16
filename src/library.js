@@ -3,7 +3,7 @@ import { parseRTTTL } from './rtttl.js';
 import { generateChart } from './chart.js';
 import { SONGS } from './songs.js';
 
-export const DIFFICULTIES = ['easy', 'normal', 'hard'];
+export const DIFFICULTIES = ['normal', 'hard'];
 
 // Bot-measured difficulty ({songId: {diff: {rating, tags}}}, from scripts/bench.mjs); set once at startup.
 let measured = {};

@@ -15,7 +15,7 @@ import * as C from '../src/composer.js';
 import { createMySongs, MAX_SONGS, MAX_RTTTL } from '../src/mysongs.js';
 import { VERSION, BUILD, buildLine } from '../src/version.js';
 import { readFileSync } from 'node:fs';
-import { sanitizeBindings, laneForSlot, DEFAULT_BINDINGS } from '../src/gamepad.js';
+import { sanitizeBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
 
@@ -57,8 +57,8 @@ test('scores: ranking, top-N cap, tie ordering, persistence, corruption', () => 
   assert.equal(s.get('a', 'normal').best.score, 100);
   assert.equal(s.get('a', 'normal').plays, 14);
   // fc flags survive
-  s.record('b', 'easy', { ...run(5), fc: true, ap: true });
-  assert.equal(createScores(st).get('b', 'easy').best.ap, true);
+  s.record('b', 'normal', { ...run(5), fc: true, ap: true });
+  assert.equal(createScores(st).get('b', 'normal').best.ap, true);
   // corruption
   for (const bad of ['{{{', 'null', '[]', '{"a":{"normal":{"top":[{"score":"x"}]}}}', '{"a":5}']) {
     const c = mem(); c.setItem('ringbeat.scores.v1', bad);
@@ -187,8 +187,6 @@ test('gamepad: bindings sanitize, lane folding', () => {
   assert.deepEqual(sanitizeBindings(null), DEFAULT_BINDINGS);
   assert.deepEqual(sanitizeBindings({ 0: 'x', 1: [99], 2: [1, 2], 3: [] })[2], [1, 2]);
   assert.deepEqual(sanitizeBindings({ 1: [99] })[1], DEFAULT_BINDINGS[1]);
-  assert.deepEqual([0, 1, 2, 3].map(s => laneForSlot(s, 4)), [0, 1, 2, 3]);
-  assert.deepEqual([0, 1, 2, 3].map(s => laneForSlot(s, 3)), [0, 0, 1, 2]);
 });
 
 test('tutorial: stages build valid, non-overlapping charts', () => {
@@ -303,26 +301,23 @@ test('difficulty.json: complete, in range, tags plausible, tiers sane', () => {
       assert.deepEqual(Object.keys(m.fc), levels, s.id + ' ' + k + ' ladder keys (run npm run bench)');
       assert.ok(m.tags.length <= 2);
     }
-    // Easy must not be much harder than Hard, and Normal must not outrate Hard by a wide margin.
-    assert.ok(r[0] <= r[2] + 1.8, s.id + ' easy vs hard ' + r);
-    assert.ok(r[1] <= r[2] + 1.8, s.id + ' normal vs hard ' + r);
-    assert.ok(r[0] <= r[1] + 1.8, s.id + ' easy vs normal ' + r);
+    // Normal must not outrate Hard by a wide margin.
+    assert.ok(r[0] <= r[1] + 1.8, s.id + ' normal vs hard ' + r);
   }
 });
 
-test('listview: filter and sort', () => {
+test('listview: sort', () => {
   const mk = (id, rating, bpm) => ({ id, title: id, bpm, stars: { normal: 1 }, rating: { normal: rating } });
   const es = [mk('a', 5, 100), mk('b', 2, 140), mk('custom:x', 1, 90), mk('c', 8, 80)];
   const sc = { get: (id) => id === 'a' ? { top: [{ fc: true }] } : id === 'b' ? { top: [{ fc: false }] } : null };
   const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
-  assert.deepEqual(ids({}), ['a', 'b', 'c', 'custom:x']);
+  assert.deepEqual(ids({}), ['b', 'a', 'c', 'custom:x']);
   assert.deepEqual(ids({ sort: 'diff-desc' }), ['c', 'a', 'b', 'custom:x']);
-  assert.deepEqual(ids({ filter: 'unplayed' }), ['c', 'custom:x']);
-  assert.deepEqual(ids({ filter: 'nofc' }), ['b', 'c', 'custom:x']);
+  assert.deepEqual(ids({ sort: 'title' }), ['a', 'b', 'c', 'custom:x']);
 });
 
 test('listview: category filter', () => {
-  const es = [{ id: 'a', category: 'pop' }, { id: 'b', category: 'classical' }, { id: 'custom:x', category: 'custom' }];
+  const es = [{ id: 'a', category: 'pop' }, { id: 'b', category: 'classical' }, { id: 'custom:x', category: 'custom' }].map(e => ({ ...e, title: e.id, stars: {} }));
   const sc = { get: () => null };
   const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
   assert.deepEqual(ids({ category: 'pop' }), ['a']);
@@ -346,7 +341,7 @@ test('scores: fc/ap flags are sticky per difficulty', () => {
   assert.equal(s.get('x', 'hard').fc, true);
   assert.equal(s.get('x', 'hard').ap, false);
   assert.equal(createScores(st).get('x', 'hard').fc, true); // persisted
-  assert.equal(s.get('x', 'easy'), null);
+  assert.equal(s.get('x', 'normal'), null);
 });
 
 test('chart: every pitched note is either playable or backing', () => {
@@ -443,11 +438,11 @@ test('buildLine formats stamped and dev builds', () => {
   assert.equal(buildLine(BUILD), BUILD.number ? buildLine(BUILD) : 'dev build');
 });
 
-test('fast 16th-note song still gets sparse easy/normal charts', () => {
+test('fast 16th-note song still gets sparse normal chart', () => {
   const seq = [];
   for (let i = 0; i < 60; i++) { const n = ['d#', 'f', 'f#', 'g#', 'a#'][i % 5]; seq.push(`16${n}`, `16${n}`); }
   const song = parseRTTTL(`Fast:d=4,o=5,b=147:${seq.join(',')}`);
-  for (const d of ['easy', 'normal']) {
+  for (const d of ['normal']) {
     const c = generateChart(song, { difficulty: d });
     assert.ok(c.notes.length >= 20, `${d} has ${c.notes.length} notes`);
   }
@@ -465,11 +460,10 @@ test('composer: a full-length song at the note cap fits the saved-song size limi
 // ---- Phase A: short holds, doubles ----
 const chartOf = (r, d = 'hard') => generateChart(parseRTTTL(r), { difficulty: d });
 
-test('chart: dotted-then-short notes become short holds on normal/hard, not easy', () => {
+test('chart: dotted-then-short notes become short holds on normal/hard', () => {
   const r = 't:d=8,o=5,b=120:8c.,16d,8e.,16f,8g.,16a,8c6.,16b,8a.,16g';
   const isShort = n => n.isHold && n.duration < HOLD_MIN_SEC;
   assert.ok(chartOf(r, 'normal').notes.some(isShort));
-  assert.ok(!chartOf(r, 'easy').notes.some(isShort));
   // a plain dotted note (no short follower) stays a tap
   assert.ok(!chartOf('t:d=8,o=5,b=200:8c.,8d,8e.,8f,8g.,8a', 'normal').notes.some(n => n.isHold));
 });

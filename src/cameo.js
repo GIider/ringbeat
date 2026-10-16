@@ -142,7 +142,7 @@ export function createParade(rng, w, h, n = 5) {
 }
 
 // ---- Registry + scheduler ----
-const ALL = ['title', 'select', 'options'];
+const ALL = ['title', 'menu', 'select', 'options'];
 export const CAMEOS = [
   { id: 'snake', weight: 5, kind: 'canvas', states: ALL, create: createSnake },
   { id: 'space-impact', weight: 2, kind: 'canvas', states: ['select', 'options'], create: createSpaceImpact },

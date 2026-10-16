@@ -1,6 +1,7 @@
 // Persisted user settings (localStorage may be blocked; everything degrades to defaults).
 import { sanitizeBindings } from './gamepad.js';
 import { normalize as normalizeMods } from './mods.js';
+import { defaultSeen } from './changelog.js';
 
 const STORE_KEY = 'ringbeat.v1';
 
@@ -21,11 +22,10 @@ export const settings = {
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
   haptics: raw.haptics !== false,   // vibration on supporting devices (needs juice)
   calibration: num(raw.calibration, -0.5, 0.5, 0),
-  difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
+  difficulty: ['normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
-    sort: ['default', 'diff-asc', 'diff-desc', 'title', 'bpm', 'length'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'default',
+    sort: ['diff-asc', 'diff-desc', 'title', 'bpm', 'length'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
     category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
-    filter: ['all', 'unplayed', 'nofc'].includes(raw.view && raw.view.filter) ? raw.view.filter : 'all',
   },
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',
   // Existing players (who already picked a song) are not shown the tutorial.
@@ -34,6 +34,8 @@ export const settings = {
     : typeof raw.lastSong === 'string' ? raw.lastSong.slice(0, 4000) : '', // migrate v1 "lastSong"
   padBindings: sanitizeBindings(raw.padBindings),
   mods: normalizeMods(raw.mods),
+  // Changelog versions read in Messages; before the Inbox existed, everything but the newest counts as read.
+  msgSeen: Array.isArray(raw.msgSeen) ? raw.msgSeen.filter(v => typeof v === 'string').slice(0, 100) : defaultSeen(),
 };
 
 export function saveSettings() {

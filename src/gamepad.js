@@ -9,7 +9,7 @@ export const BTN = {
 const NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', '↑', '↓', '←', '→'];
 export const buttonName = i => NAMES[i] || 'Btn ' + i;
 
-// Lane slot -> buttons. Slots are the 4-lane layout; 3-lane charts fold slot 0 onto lane 0 (see laneForSlot).
+// Lane slot -> buttons. Slots are the 4 lanes.
 export const DEFAULT_BINDINGS = {
   0: [BTN.LEFT, BTN.X, BTN.LB, BTN.LT],
   1: [BTN.DOWN, BTN.A],
@@ -29,7 +29,6 @@ export function sanitizeBindings(b) {
 }
 
 // Lane for a binding slot given the chart's lane count (3-lane mode uses keys F J K = slots 1..3).
-export const laneForSlot = (slot, lanes) => (lanes === 3 ? Math.max(0, slot - 1) : slot);
 
 const STICK = 0.6, REPEAT_FIRST = 350, REPEAT_NEXT = 110;
 

@@ -1,5 +1,6 @@
 // Bootstrap, screen state machine, wiring.
-// States: title -> select <-> (options | info | custom | settings <-> calibration) -> countin -> playing <-> paused -> results -> select
+// States: title -> menu -> (select | mysongs | stats | inbox -> msgload -> message | profile | settings <-> calibration)
+//   select <-> (diffpick <-> mods) -> countin -> playing <-> paused -> results -> select
 // Every menu is a <section> inside the phone's LCD; during play the phone moves aside and shows "now playing".
 
 import { generateChart } from './chart.js';
@@ -7,6 +8,7 @@ import * as mods from './mods.js';
 import { Synth } from './synth.js';
 import { Game } from './game.js';
 import { planBot, LADDER } from './bot.js';
+import { createAutoplay } from './autoplay.js';
 import { Renderer } from './render.js';
 import { Input, KEY_LABELS, eventAudioTime } from './input.js';
 import { encodeSong, decodeSong } from './share.js';
@@ -14,11 +16,14 @@ import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
-import { SORTS, FILTERS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
+import { SORTS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
+import { createStats, gradeTally, favourite, topSongs, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
+import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
+import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import * as comp from './composer.js';
-import { Pad, BTN, buttonName, laneForSlot, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
+import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stagePassed, goalText, failReason } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
@@ -70,17 +75,20 @@ game.fx = {
   },
 };
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
-input.onPress = (lane, t) => { setDevice('kbd'); game.press(lane, t); };
-input.onRelease = (lane, t) => game.release(lane, t);
+input.onPress = (lane, t) => { setDevice('kbd'); if (!isDemo()) game.press(lane, t); };
+input.onRelease = (lane, t) => { if (!isDemo()) game.release(lane, t); };
 const calibration = new Calibration(synth);
 const scores = createScores();
+const stats = createStats();
+stats.backfill(scores.all()); // once, for players who had highscores before stats existed
 const pad = new Pad();
 
 // ---- screen state ----
 let state = 'title';
 let lastDevice = 'kbd'; // decides which labels the lanes show
 const screens = {
-  title: $('title'), select: $('select'), options: $('options'), custom: $('custom'),
+  title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
+  profile: $('profile'), select: $('select'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
@@ -91,7 +99,9 @@ function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   $('btn-pause').hidden = !inPlay();
   if (name !== 'results') juiceResultsStop();
-  if (!['select', 'custom', 'options', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
+  if (name !== 'stats') statsCountStop();
+  if (name !== 'msgload') clearTimeout(msgTimer);
+  if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
   const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
   $('np-caption').hidden = !tut;
   const el = screens[name];
@@ -103,16 +113,22 @@ function show(name) {
   }
   setMode();
   cameo.sync();
-  if (!['title', 'select', 'options'].includes(state)) hideGag();
+  if (!gagStates()) hideGag();
 }
+const phoneMode = () => !document.body.classList.contains('compact');
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
 // Status bar title + soft-key labels come from the visible screen's data attributes.
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
   $('st-title').textContent = el.dataset.title || '';
   marquee($('st-title'));
-  $('soft-left').textContent = el.dataset.softLeft || '';
-  $('soft-right').textContent = el.dataset.softRight || '';
+  // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
+  // single "Select"; a screen can name a different Menu action there. The bare LCD keeps both tappable labels.
+  const phone = phoneMode();
+  const left = (phone && el.dataset.softLeftPhone) || el.dataset.softLeft || '', right = phone ? '' : el.dataset.softRight || '';
+  $('soft-left').textContent = left;
+  $('soft-right').textContent = right;
+  $('soft-left').parentElement.classList.toggle('solo', !!left && !right);
 }
 // Sliders paint their filled segments from --p.
 function paintRange(el) {
@@ -184,7 +200,8 @@ const konami = createSequenceMatcher(KONAMI);
 const imeiCode = createSequenceMatcher(IMEI_CODE);
 const wipe = createWipeGag();
 let gagTimer = 0, gagHold = 0, gagTick = 0, holdFired = false, dialTimer = 0, dialBuf = '';
-// Hold gesture (C key or the right phone key): fires the wipe gag after HOLD_MS.
+// Hold gesture (C key, keyboard or phone): fires the wipe gag after HOLD_MS. It then runs on after the key is let go;
+// the next C press stops it.
 const HOLD_MS = 1200;
 function beginHold(onFire) {
   endHold();
@@ -192,11 +209,9 @@ function beginHold(onFire) {
   gagHold = setTimeout(() => { gagHold = 0; holdFired = true; onFire(); }, HOLD_MS);
 }
 function endHold() { clearTimeout(gagHold); gagHold = 0; return holdFired; }
-// Letting go while the bar is still filling cancels the fake wipe.
-function releaseGag() { wipe.release(); if (!wipe.active) hideGagIfWipe(); }
 // While the number view is up the phone acts as a dialer: nothing underneath can be selected or navigated.
 const dialing = () => !!dialTimer;
-const gagStates = () => ['title', 'select', 'options'].includes(state);
+const gagStates = () => ['title', 'menu', 'select'].includes(state);
 function hideGag() {
   clearTimeout(gagTimer); clearTimeout(gagHold); clearInterval(gagTick); clearTimeout(dialTimer);
   gagTimer = gagHold = gagTick = dialTimer = 0; dialBuf = '';
@@ -214,8 +229,6 @@ function showGag(title, text, bar = -1, segments = 0) {
   else if (b.children.length !== segments) b.innerHTML = '<i></i>'.repeat(segments);
   Array.from(b.children).forEach((c, i) => c.classList.toggle('on', i < bar));
 }
-// Only the wipe gag (not the IMEI panel) is cancelled by releasing C.
-function hideGagIfWipe() { if (gagTick) hideGag(); }
 function showImei() {
   hideGag();
   showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD, false));
@@ -244,7 +257,7 @@ function konamiReward() {
   chirp([72, 76, 79, 84]);
   cameo.parade();
 }
-// Fed passively from every key source; consumes nothing. Armed only on title/select/options.
+// Fed passively from every key source; consumes nothing. Armed only on title/select.
 function eggToken(code, key) {
   if (!gagStates()) { konami.reset(); imeiCode.reset(); return; }
   if (code && konami.feed(code)) konamiReward();
@@ -350,10 +363,9 @@ function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
   const t = tabs.find(x => x.id === settings.view.category);
-  $('view-cat').textContent = `Category: ${t.label} (${t.count})`;
   $('sel-cat').textContent = `${t.label} (${t.count})`;
-  const sort = SORTS.find(x => x.id === settings.view.sort), filter = FILTERS.find(x => x.id === settings.view.filter);
-  $('sel-sub').textContent = `${sort.label} · ${cap(settings.difficulty)}${filter.id === 'all' ? '' : ' · ' + filter.label}`;
+  const sort = SORTS.find(x => x.id === settings.view.sort);
+  $('sel-sub').textContent = `${sort.label} · ${cap(settings.difficulty)}`;
 }
 function setCategory(id) {
   settings.view.category = id; save();
@@ -374,8 +386,6 @@ function renderList() {
   const box = $('song-list');
   box.textContent = '';
   const list = visible();
-  $('view-sort').textContent = 'Sort: ' + SORTS.find(x => x.id === settings.view.sort).label;
-  $('view-filter').textContent = 'Show: ' + FILTERS.find(x => x.id === settings.view.filter).label;
   if (!list.length) {
     const p = document.createElement('p');
     p.className = 'hint empty';
@@ -463,7 +473,7 @@ function setView(key, list, step = 1) {
   renderDetail();
   if (state === 'select') focusCurrentRow();
 }
-const DIFFS = ['easy', 'normal', 'hard'];
+const DIFFS = ['normal', 'hard'];
 // Switch the difficulty the list shows (scores / FC badges / sort / filter are all per difficulty).
 function cycleDifficulty(step) {
   const i = DIFFS.indexOf(settings.difficulty);
@@ -494,7 +504,246 @@ function openSelect() {
   focusCurrentRow();
   scheduleAutoPreview();
 }
-function openOptions() { renderCategories(); setState('options', 'options'); }
+
+// ---- main menu: one item per screen, big animated icon, numbered scrollbar (3310 style) ----
+const MENU = [
+  { id: 'tones', title: 'Tones', open: () => openSelect() },
+  { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
+  { id: 'stats', title: 'Stats', open: () => openStats() },
+  { id: 'messages', title: 'Messages', open: () => openInbox() },
+  { id: 'profile', title: 'Profile', open: () => openProfile() },
+  { id: 'settings', title: 'Settings', open: () => openSettings('menu') },
+];
+const MENU_FRAME_MS = 300;
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+let menuIdx = 0, menuTick = 0, menuNext = 0;
+let unit = 2; // CSS px per LCD pixel (set by layout)
+const unreadCount = () => unread(settings.msgSeen).length;
+// The icon is drawn at 2-4 LCD pixels per sprite pixel, as big as the screen comfortably allows.
+let iconPx = 0;
+function paintMenuIcon() {
+  const it = MENU[menuIdx], box = screens.menu, el = $('mm-icon');
+  const k = Math.max(2, Math.min(4, Math.floor(Math.min(box.clientWidth * 0.8 / ICON_W, box.clientHeight * 0.45 / ICON_H) / unit)));
+  if (k * unit !== iconPx) { iconPx = k * unit; el._spr = ''; } // setSprite only resizes when the image changes
+  setSprite(el, menuFrame(it.id, menuTick, { unread: it.id === 'messages' && unreadCount() > 0 }), iconPx);
+}
+function renderMenu(dir = 0) {
+  const it = MENU[menuIdx], n = unreadCount();
+  $('mm-title').textContent = it.title;
+  $('mm-go').textContent = it.title;
+  $('mm-num').textContent = menuIdx + 1;
+  $('mm-thumb').style.setProperty('--p', (menuIdx / (MENU.length - 1)).toFixed(3));
+  $('mm-hint').textContent = it.id === 'messages' && n ? `${n} new message${n > 1 ? 's' : ''}` : '';
+  paintMenuIcon();
+  if (dir) {
+    const b = $('mm-body');
+    b.classList.remove('slide-up', 'slide-down'); void b.offsetWidth;
+    b.classList.add(dir > 0 ? 'slide-up' : 'slide-down');
+  }
+}
+function openMenu(id) {
+  if (id) menuIdx = Math.max(0, MENU.findIndex(m => m.id === id));
+  menuTick = 0; menuNext = performance.now() + MENU_FRAME_MS;
+  setState('menu', 'menu');
+  renderMenu(); // after showing: the icon is sized from the visible screen
+}
+function menuJump(i) {
+  const to = (i + MENU.length) % MENU.length;
+  if (to === menuIdx) return;
+  const dir = i > menuIdx ? 1 : -1;
+  menuIdx = to;
+  menuTick = 0; menuNext = performance.now() + MENU_FRAME_MS;
+  renderMenu(dir);
+}
+const menuStep = step => menuJump(menuIdx + step);
+function menuSelect() {
+  MENU[menuIdx].open();
+}
+// Called every frame while the menu is up: steps the icon animation (held still for reduced motion).
+function menuAnim(now) {
+  if (now < menuNext || still.matches) return;
+  menuNext = now + MENU_FRAME_MS;
+  menuTick++;
+  paintMenuIcon();
+}
+
+// ---- stats: lifetime numbers on four pages (◄►) ----
+const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes'];
+const STAT_DIFFS = ['all', 'normal', 'hard'];
+let statPage = 0, statDiff = 'all', statTimer = 0;
+const fmtNum = n => Math.round(n).toLocaleString('en-US');
+const statRow = (label, value) => `<tr><td>${label}</td><td>${value}</td></tr>`;
+// Highscore entries for songs that still exist (a deleted custom song no longer counts).
+function knownScores() {
+  const ids = new Set(entries().map(e => e.id));
+  return scores.all().filter(e => ids.has(e.id) && DIFFS.includes(e.diff)); // drops scores from removed difficulties
+}
+function openStats() {
+  statPage = 0;
+  renderStats();
+  setState('stats', 'stats');
+}
+function setStatPage(n) {
+  const p = Math.max(0, Math.min(STAT_PAGES.length - 1, n));
+  if (p === statPage) return;
+  statPage = p;
+  synth.keyClick();
+  renderStats();
+}
+function cycleStatDiff() {
+  if (STAT_PAGES[statPage] !== 'Grades') return;
+  statDiff = STAT_DIFFS[(STAT_DIFFS.indexOf(statDiff) + 1) % STAT_DIFFS.length];
+  renderStats();
+}
+function statsCountStop() { clearInterval(statTimer); statTimer = 0; }
+// Lifetime score ticks up like the results screen.
+function statsCountUp(el, final) {
+  statsCountStop();
+  el.textContent = fmtNum(final);
+  if (!settings.juice || still.matches || final < 1) return;
+  const STEPS = 12;
+  let i = 0;
+  el.textContent = '0';
+  statTimer = setInterval(() => {
+    i++;
+    el.textContent = fmtNum(i >= STEPS ? final : final * i / STEPS);
+    if (i >= STEPS) statsCountStop(); else synth.tickUp(i);
+  }, 45);
+}
+function scrollStats(dir) {
+  const b = $('stat-page');
+  b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.6);
+}
+function renderStats() {
+  statsCountStop();
+  const s = stats.get(), list = knownScores(), page = STAT_PAGES[statPage], box = $('stat-page');
+  box.scrollTop = 0;
+  $('stat-tab').textContent = `${page} ${statPage + 1}/${STAT_PAGES.length}`;
+  screens.stats.dataset.softLeft = page === 'Grades' ? 'Diff' : '';
+  if (state === 'stats') refreshChrome(screens.stats);
+  const empty = s.runs === 0 ? '<p class="hint center">Play a song to start counting.</p>' : '';
+  if (page === 'Time') {
+    box.innerHTML =
+      `<div class="st-big">${formatDuration(s.playtime)}</div><div class="hint center">total playtime</div>` +
+      `<table>${statRow('Runs', fmtNum(s.runs))}${statRow('Finished', fmtNum(s.finished))}` +
+      `${statRow('Days played', fmtNum(s.daysPlayed))}${statRow('Streak', `${currentStreak(s)} · best ${s.bestStreak}`)}</table>` +
+      empty;
+  } else if (page === 'Score') {
+    const fav = favourite(list), fe = fav && entryById(fav.id);
+    box.innerHTML =
+      `<div class="st-big" id="stat-score"></div><div class="hint center">lifetime score</div>` +
+      `<table>${statRow('Best combo', fmtNum(s.bestCombo))}${statRow('Avg / run', s.runs ? fmtNum(s.score / s.runs) : '—')}` +
+      `${statRow('Modded runs', fmtNum(s.moddedRuns))}${statRow('My songs runs', fmtNum(s.customRuns))}</table>` +
+      (fe ? `<div class="st-fav"><span class="ic">♪</span><b class="st-name">${esc(fe.title)}</b><span class="n">${fav.plays}×</span></div>` : empty);
+    statsCountUp($('stat-score'), s.score);
+    marquee(box.querySelector('.st-name'));
+  } else if (page === 'Top') {
+    const rows = topSongs(list, Infinity).map(t => ({ e: entryById(t.id), plays: t.plays })).filter(r => r.e);
+    box.innerHTML = rows.length
+      ? `<div class="hint center">${rows.length} song${rows.length === 1 ? '' : 's'} played</div><div class="st-top">${rows.map((r, i) =>
+        `<div class="st-row"><span class="rk">${i + 1}.</span><b class="st-name">${esc(r.e.title)}</b><span class="n">${r.plays}×</span></div>`).join('')}</div>`
+      : empty || '<p class="hint center">No songs played yet.</p>';
+  } else if (page === 'Grades') {
+    const t = gradeTally(list, statDiff), max = Math.max(1, ...GRADES.map(g => t[g]));
+    const total = statDiff === 'all' ? entries().length : entries().filter(e => e.notes[statDiff] > 0).length;
+    box.innerHTML =
+      `<div class="center"><b>${statDiff === 'all' ? 'All' : cap(statDiff)}</b> · ${t.played}/${total} played</div>` +
+      `<div class="gbars">${GRADES.map(g =>
+        `<div class="gbar"><span>${t[g]}</span><i style="--h:${(t[g] / max).toFixed(3)}"></i><b>${g}</b></div>`).join('')}</div>` +
+      `<div class="center"><span class="badge">FC</span> ${t.fc} &nbsp; <span class="badge ap">AP</span> ${t.ap}</div>`;
+  } else {
+    const n = s.notes, hits = n.perfect + n.great + n.good, all = hits + n.miss;
+    const acc = all ? ((n.perfect + n.great * 2 / 3 + n.good / 3) / all * 100).toFixed(1) + '%' : '—';
+    const seg = k => (all ? (n[k] / all * 100).toFixed(2) : 0);
+    box.innerHTML =
+      `<div class="mixbar">${['perfect', 'great', 'good', 'miss'].map(k => `<i class="${k}" style="width:${seg(k)}%"></i>`).join('')}</div>` +
+      `<table>${['perfect', 'great', 'good', 'miss'].map(k => statRow(`<i class="sw ${k}"></i>${cap(k)}`, fmtNum(n[k]))).join('')}` +
+      `${statRow('Accuracy', acc)}${statRow('Ghost taps', fmtNum(s.ghosts))}` +
+      `${statRow('FC runs', fmtNum(s.fcRuns))}${statRow('AP runs', fmtNum(s.apRuns))}</table>` + empty;
+  }
+}
+
+// ---- messages: the changelog as an SMS inbox ----
+let msgIdx = 0, msgTimer = 0;
+function openInbox(focusVersion = '') {
+  clearTimeout(msgTimer);
+  const list = $('inbox-list');
+  list.textContent = '';
+  for (const [i, m] of MESSAGES.entries()) {
+    const isNew = !settings.msgSeen.includes(m.version), b = document.createElement('button');
+    b.dataset.i = i;
+    b.className = 'msg-row' + (isNew ? ' new' : '');
+    b.toggleAttribute('data-default', focusVersion ? m.version === focusVersion : i === 0);
+    b.innerHTML = spriteHTML(isNew ? envelope() : ENVELOPE_SMALL_OPEN, 2) +
+      `<span class="t">${esc(m.title)}</span><span class="v">v${esc(m.version)}</span>`;
+    list.append(b);
+  }
+  setState('inbox', 'inbox');
+}
+// Short "opening" animation (envelope + segment bar), then the message itself.
+function openMessage(i) {
+  if (!MESSAGES[i]) return;
+  msgIdx = i;
+  clearTimeout(msgTimer);
+  const STEPS = still.matches ? 1 : 8, bar = $('ml-bar');
+  bar.innerHTML = '<i></i>'.repeat(8);
+  let k = 0;
+  const step = () => {
+    setSprite($('ml-icon'), letterFrame(Math.floor(k * 3 / (STEPS + 1))), unit * 2);
+    Array.from(bar.children).forEach((c, j) => c.classList.toggle('on', j < Math.round(k * 8 / STEPS)));
+    if (k++ >= STEPS) { msgTimer = setTimeout(() => showMessage(i), still.matches ? 150 : 120); return; }
+    msgTimer = setTimeout(step, 85);
+  };
+  setState('msgload', 'msgload');
+  step();
+}
+// The 3310's "Special" SMS alert: ... -- ... (only once audio is running).
+function smsTone() {
+  if (!synth.ctx || synth.ctx.state !== 'running') return;
+  let t = synth.ctx.currentTime + 0.02;
+  for (const d of [0.05, 0.05, 0.05, 0.14, 0.14, 0.05, 0.05, 0.05]) { synth.playNote({ midi: 88, when: t, duration: d }); t += d + 0.05; }
+}
+function showMessage(i) {
+  const m = MESSAGES[i];
+  msgIdx = i;
+  settings.msgSeen = markRead(settings.msgSeen, m.version); save();
+  $('sms-from').textContent = SENDER;
+  $('sms-date').textContent = `v${m.version} · ${m.date}`;
+  $('sms-body').innerHTML = `<b>${esc(m.title)}</b>\n${esc(m.body)}`;
+  $('sms-body').scrollTop = 0;
+  screens.message.dataset.softLeft = i + 1 < MESSAGES.length ? 'Next' : '';
+  setState('message', 'message');
+  smsTone();
+}
+function scrollMessage(dir) {
+  const b = $('sms-body');
+  b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.4);
+}
+
+// ---- profile (placeholder: one player until profiles can be switched) ----
+function openProfile() {
+  const s = stats.get();
+  setSprite($('pf-icon'), PERSON_ART, unit * 2);
+  $('pf-meta').textContent = s.firstPlayed ? `Since ${dayKey(s.firstPlayed)} · ${formatDuration(s.playtime)} played` : 'New player';
+  setState('profile', 'profile');
+}
+
+// ---- per-run playtime for stats: song time actually played (pauses and menus excluded) ----
+let runTime = 0, lastSongT = null;
+// Demo mod: autoplay run, nothing it does is recorded and the player's own input is ignored.
+const isDemo = () => !!(run && run.modsUsed && run.modsUsed.demo);
+function commitTime() {
+  if (runTime > 0 && run && run.entry && !run.tutorial && !isDemo()) stats.addPlaytime(runTime, run.diff);
+  runTime = 0;
+  lastSongT = null;
+}
+// A run left before its results (quit or restart) still counts its time.
+function abortRun(kind) {
+  if (!run || !run.entry || run.tutorial || !['running', 'paused'].includes(game.state)) return;
+  commitTime();
+  if (isDemo()) return;
+  stats.recordAbort(kind);
+}
 
 // ---- my songs: library list, per-song menu, composer, text/paste screen ----
 const area = $('rtttl');
@@ -781,6 +1030,7 @@ const MOD_HINTS = {
   'm-mirror': 'Flips the lanes left to right.',
   'm-hidden': 'Notes vanish just before the hit line.',
   'm-sudden': 'The first miss or stray tap ends the run.',
+  'm-demo': 'Plays the song perfectly. Score ×0, nothing is saved.',
   'm-judge': 'Lenient widens the timing windows, Strict narrows them.',
 };
 const JUDGE_LABELS = { lenient: 'Lenient', off: 'Normal', strict: 'Strict' };
@@ -791,6 +1041,7 @@ function updateModsUI() {
   $('m-mirror').checked = m.mirror;
   $('m-hidden').checked = m.hidden;
   $('m-sudden').checked = m.sudden;
+  $('m-demo').checked = m.demo;
   $('m-judge').value = mods.JUDGES.indexOf(m.judge);
   $('m-judge-val').textContent = JUDGE_LABELS[m.judge];
   $('m-mult').textContent = mods.multText(mods.multiplier(m));
@@ -820,22 +1071,22 @@ let run = null; // { entry, diff, ret, retLabel, tutorial, modsUsed }
 function laneLabels(lanes) {
   if (lastDevice === 'pad') {
     return Array.from({ length: lanes }, (_, i) => {
-      const slot = lanes === 3 ? i + 1 : i;
-      return buttonName(settings.padBindings[slot][0]);
+      return buttonName(settings.padBindings[i][0]);
     });
   }
   return KEY_LABELS[lanes];
 }
 
 function startRun(r) {
-  // A melody can have no playable notes at the chosen difficulty (e.g. only very short notes on Easy):
+  // A melody can have no playable notes at the chosen difficulty (e.g. only very short notes on Normal):
   // charts exist for every difficulty it can be played at, so use the nearest one that has notes.
   if (r.entry && r.entry.notes && !r.entry.notes[r.diff]) {
-    const alt = ['normal', 'hard', 'easy'].find(d => r.entry.notes[d] > 0);
+    const alt = ['normal', 'hard'].find(d => r.entry.notes[d] > 0);
     if (alt) { toast(`No notes on ${r.diff}: playing ${alt}`); r.diff = alt; }
   }
   run = r;
-  for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = r.retLabel || 'Song select';
+  runTime = 0; lastSongT = null;
+  for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = r.retLabel || 'Tones';
   stopPreview();
   let chart;
   try {
@@ -847,6 +1098,7 @@ function startRun(r) {
     // Mods apply to normal runs only (not the tutorial). Snapshot them so results match what was played.
     r.modsUsed = !r.tutorial && mods.isActive(settings.mods) ? mods.normalize(settings.mods) : null;
     if (r.modsUsed) chart = mods.applyChart(chart, r.modsUsed);
+    if (r.modsUsed && r.modsUsed.demo) r.autoplay = createAutoplay(chart);
   } catch (e) {
     toast('✗ ' + e.message, 3500);
     return false;
@@ -870,7 +1122,7 @@ function startRun(r) {
   setState('countin', null);
   return true;
 }
-function restartRun() { resumeEnd = 0; renderer.resumeCount = 0; if (run) startRun(run); }
+function restartRun() { abortRun('restart'); resumeEnd = 0; renderer.resumeCount = 0; if (run) startRun(run); }
 
 function playSelected() {
   const e = selectedEntry();
@@ -878,6 +1130,7 @@ function playSelected() {
 }
 
 function leaveToSelect() {
+  abortRun('quit');
   resumeEnd = 0;
   renderer.resumeCount = 0;
   game.stop();
@@ -896,6 +1149,7 @@ function pauseGame() {
   resumeEnd = 0;
   renderer.resumeCount = 0;
   game.pause();
+  commitTime(); // bank the time so far (the tab may be closed while paused)
   input.reset();
   padHeld.forEach(s => s.clear());
   state = 'paused';
@@ -990,6 +1244,9 @@ game.onFinish = r => {
     r.score = Math.round(r.score * r.mult);
     r.mods = mods.tags(used);
   }
+  commitTime();
+  const demo = isDemo();
+  if (run && run.entry && !demo) stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used });
   $('r-heading').textContent = screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-song').textContent = run ? `${run.entry.title} · ${cap(run.diff)}` +
     (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
@@ -1004,14 +1261,16 @@ game.onFinish = r => {
   $('r-m').textContent = r.counts.miss;
   $('r-ghost').textContent = r.ghosts ?? 0;
   const banner = $('r-banner');
-  banner.hidden = !r.fc;
+  banner.hidden = !r.fc || demo;
   banner.className = 'banner' + (r.ap ? ' ap' : '');
   banner.textContent = r.ap ? 'ALL PERFECT' : r.fc ? 'FULL COMBO' : '';
-  if (r.fc) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
+  if (r.fc && !demo) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
   const best = $('r-best');
   best.hidden = true;
   topRuns = { runs: [], rank: null };
-  if (r.failed) {
+  if (demo) {
+    // demo runs are never saved and show no best/rank line
+  } else if (r.failed) {
     best.hidden = false; best.textContent = 'Sudden death: run not saved'; best.style.color = 'var(--dim)';
   } else if (run) {
     const rec = scores.record(run.entry.id, run.diff, r);
@@ -1193,8 +1452,8 @@ function bindButton(index) {
   settings.padBindings[s] = [index];
   save(); renderBindings();
 }
-let settingsFrom = 'select';
-function openSettings(from = 'select') {
+let settingsFrom = 'menu';
+function openSettings(from = 'menu') {
   settingsFrom = from;
   document.querySelectorAll('#settings .menu-only').forEach(el => { el.hidden = from === 'paused'; });
   capturingSlot = -1;
@@ -1205,7 +1464,7 @@ function openSettings(from = 'select') {
 
 function closeSettings() {
   capturingSlot = -1;
-  if (settingsFrom === 'paused') setState('paused', 'paused'); else openSelect();
+  if (settingsFrom === 'paused') setState('paused', 'paused'); else openMenu('settings');
 }
 
 // ---- gamepad routing ----
@@ -1263,10 +1522,10 @@ pad.onButton = (index, down, ts) => {
 };
 
 function pressPad(index, ts) {
-  const lanes = game.chart.lanes;
+  if (isDemo()) return;
   const time = eventAudioTime(synth.ctx, { timeStamp: ts });
   for (const slot of slotsFor(index)) {
-    const lane = laneForSlot(slot, lanes);
+    const lane = slot;
     const set = padHeld[lane];
     const was = set.size;
     set.add(index);
@@ -1274,6 +1533,7 @@ function pressPad(index, ts) {
   }
 }
 function releasePad(index, ts) {
+  if (isDemo()) return;
   const time = eventAudioTime(synth.ctx, { timeStamp: ts });
   padHeld.forEach((set, lane) => {
     if (set.delete(index) && set.size === 0) game.release(lane, time);
@@ -1283,12 +1543,15 @@ function releasePad(index, ts) {
 function back() {
   switch (state) {
     case 'title': break;
-    case 'select': stopPreview(); setState('title', 'title'); break;
-    case 'options': openSelect(); break;
+    case 'menu': setState('title', 'title'); break;
+    case 'select': stopPreview(); openMenu('tones'); break;
+    case 'stats': case 'inbox': case 'profile': openMenu(); break;
+    case 'msgload': openInbox(MESSAGES[msgIdx].version); break;
+    case 'message': openInbox(MESSAGES[msgIdx].version); break;
     case 'tutorial': finishTutorial(); break;
     case 'settings': closeSettings(); break;
     case 'mods': closeMods(); break;
-    case 'mysongs': openSelect(); break;
+    case 'mysongs': openMenu('mysongs'); break;
     case 'diffpick': if (dpBack) dpBack(); else openSelect(); break;
     case 'songmenu': openMySongs(); break;
     case 'custom': if (txtUid) openSongMenu(txtUid); else openMySongs(); break;
@@ -1314,12 +1577,11 @@ function menuButton(index) {
       break;
     case BTN.B: back(); break;
     case BTN.X:
-      if (state === 'select') openOptions();
-      else if (state === 'diffpick') openMods();
+      if (state === 'diffpick') openMods();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
       break;
-    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results') navigate('left'); break;
-    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results') navigate('right'); break;
+    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results' || state === 'stats') navigate('left'); break;
+    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results' || state === 'stats') navigate('right'); break;
     case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
   }
@@ -1334,6 +1596,10 @@ function navigate(dir) {
   const root = activeScreen();
   if (!root || state === 'title') return;
   if (state === 'composer' && !csMenu) { compInput(dir); return; }
+  if (state === 'menu') { menuStep(dir === 'up' || dir === 'left' ? -1 : 1); return; }
+  if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
+  if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
+  if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); return; }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'diffpick' && (dir === 'left' || dir === 'right')) { setDpTab(dpTab + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
@@ -1349,19 +1615,22 @@ function navigate(dir) {
 function softLeft() {
   switch (state) {
     case 'title': startFromTitle(); break;
-    case 'select': openOptions(); break;
+    case 'select': nav.confirm(activeScreen()); break; // the Menu key picks the song
+    case 'message': if (msgIdx + 1 < MESSAGES.length) openMessage(msgIdx + 1); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
   }
 }
-// Right soft key: Back fires on release; holding it ~1.2 s runs the fake memory wipe instead (title/select/options).
+// C key (right soft label on the bare LCD): Back fires on release; holding it ~1.2 s runs the fake memory wipe
+// instead (title/menu/select), and the next press stops the wipe.
 function softRightDown() {
-  if (!gagStates() || wipe.active) { phoneKey('softR'); return; }
+  if (wipe.active) { hideGag(); return; }
+  if (!gagStates()) { phoneKey('softR'); return; }
   beginHold(startWipe);
   const up = () => {
     window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
-    if (endHold()) releaseGag(); else phoneKey('softR');
+    if (!endHold()) phoneKey('softR');
   };
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', up);
@@ -1384,8 +1653,8 @@ function phoneKey(key) {
     case 'softL': softLeft(); break;
     case 'softR': back(); break;
     case 'ok': case '5': if (inPlay()) pauseGame(); else { const root = activeScreen(); if (root) nav.confirm(root); } break;
-    case '2': navigate('up'); break;
-    case '8': navigate('down'); break;
+    case '2': case 'up': navigate('up'); break;
+    case '8': case 'down': navigate('down'); break;
     case '4': navigate('left'); break;
     case '6': navigate('right'); break;
   }
@@ -1396,7 +1665,7 @@ let booted = false;
 function startFromTitle() {
   synth.ensure();
   if (!booted) { booted = true; synth.jingle(); }
-  if (!settings.tutorialDone) openTutorial(); else openSelect();
+  if (!settings.tutorialDone) openTutorial(); else openMenu('tones');
 }
 
 function wire() {
@@ -1425,7 +1694,6 @@ function wire() {
   };
   document.addEventListener('input', e => { if (e.target.type === 'range') paintRange(e.target); });
   $('btn-calibrate').onclick = startCalibration;
-  $('btn-settings').onclick = () => openSettings();
   $('btn-pause-settings').onclick = () => openSettings('paused');
   $('btn-settings-back').onclick = closeSettings;
   $('btn-bind-reset').onclick = () => { settings.padBindings = cloneBindings(DEFAULT_BINDINGS); capturingSlot = -1; save(); renderBindings(); toast('Controller buttons reset'); };
@@ -1434,12 +1702,52 @@ function wire() {
     const b = e.currentTarget;
     if (resetTimer) {
       clearTimeout(resetTimer); resetTimer = 0;
-      scores.clear(); b.textContent = 'Reset highscores'; toast('Highscores cleared');
+      scores.clear(); stats.clear(); b.textContent = 'Reset scores & stats'; toast('Scores and stats cleared');
     } else {
       b.textContent = 'Really reset? Press again';
-      resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = 'Reset highscores'; }, 3000);
+      resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = 'Reset scores & stats'; }, 3000);
     }
   };
+
+  // main menu: tap the item to open it, arrows / swipe / wheel to browse
+  $('mm-go').onclick = menuSelect;
+  $('mm-prev').onclick = e => { e.stopPropagation(); synth.keyClick(); menuStep(-1); };
+  $('mm-next').onclick = e => { e.stopPropagation(); synth.keyClick(); menuStep(1); };
+  for (const b of [$('mm-prev'), $('mm-next')]) b.addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the item
+  {
+    let sx = null, sy = 0, swiped = false, wheelAt = 0;
+    const m = $('menu');
+    m.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; swiped = false; });
+    m.addEventListener('pointerup', e => {
+      if (sx === null) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      sx = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > 30) { swiped = true; synth.keyClick(); menuStep((Math.abs(dy) > Math.abs(dx) ? -dy : -dx) > 0 ? 1 : -1); }
+    });
+    $('mm-body').addEventListener('click', () => { if (!swiped) { synth.keyClick(); menuSelect(); } swiped = false; });
+    m.addEventListener('wheel', e => {
+      e.preventDefault();
+      const now = performance.now();
+      if (now - wheelAt < 180 || !e.deltaY) return;
+      wheelAt = now; synth.keyClick(); menuStep(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+  }
+  // stats: Diff (left soft key / Enter on the Grades page), swipe or tap the arrows for pages
+  $('stat-go').onclick = cycleStatDiff;
+  {
+    let sx = null;
+    const st = $('stats');
+    st.addEventListener('pointerdown', e => { sx = e.clientX; });
+    st.addEventListener('pointerup', e => {
+      if (sx !== null && Math.abs(e.clientX - sx) > 40) navigate(e.clientX < sx ? 'right' : 'left');
+      sx = null;
+    });
+    const arrows = st.querySelectorAll('.st-tabs .arrow');
+    arrows[0].addEventListener('click', () => navigate('left'));
+    arrows[1].addEventListener('click', () => navigate('right'));
+  }
+  // messages
+  $('inbox-list').onclick = e => { const b = e.target.closest('button'); if (b) openMessage(+b.dataset.i); };
 
   // tutorial
   $('btn-tut-go').onclick = tutorialGo;
@@ -1449,9 +1757,6 @@ function wire() {
 
   // title / select
   $('btn-start').onclick = startFromTitle;
-  $('view-sort').onclick = () => setView('sort', SORTS);
-  $('view-filter').onclick = () => setView('filter', FILTERS);
-  $('view-cat').onclick = () => cycleCategory(1);
   $('btn-mods').onclick = openMods;
 
   // mods
@@ -1459,6 +1764,7 @@ function wire() {
   $('m-mirror').onchange = e => setMod({ mirror: e.target.checked });
   $('m-hidden').onchange = e => setMod({ hidden: e.target.checked });
   $('m-sudden').onchange = e => setMod({ sudden: e.target.checked });
+  $('m-demo').onchange = e => setMod({ demo: e.target.checked });
   $('m-judge').oninput = e => setMod({ judge: mods.JUDGES[+e.target.value] });
   $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
   $('btn-mods-back').onclick = closeMods;
@@ -1470,7 +1776,7 @@ function wire() {
   // my songs
   $('ms-new').onclick = () => openComposer();
   $('ms-paste').onclick = () => openCustom();
-  $('ms-back').onclick = openSelect;
+  $('ms-back').onclick = () => openMenu('mysongs');
   $('ms-list').onclick = e => { const b = e.target.closest('button'); if (b) openSongMenu(b.dataset.uid); };
   $('ms-import').onclick = () => $('ms-file').click();
   $('ms-file').onchange = async e => {
@@ -1538,7 +1844,6 @@ function wire() {
   $('comp-exit').onclick = leaveComposer;
 
   // text / paste
-  $('btn-custom').onclick = () => openMySongs();
   area.addEventListener('input', () => {
     stopPreview(); updateCustomStatus();
     const e = customEntry(area.value);
@@ -1610,14 +1915,14 @@ function wire() {
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); });
   window.addEventListener('keydown', onKey);
-  const releaseC = () => { endHold(); releaseGag(); };
-  window.addEventListener('keyup', e => { if (e.code === 'KeyC') releaseC(); });
-  window.addEventListener('blur', releaseC);
+  window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
+  window.addEventListener('blur', endHold);
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
   const wake = () => { if (synth.ctx && synth.ctx.state === 'suspended' && game.state !== 'paused') synth.ctx.resume(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); }); // audio clock keeps running when hidden
+  window.addEventListener('pagehide', commitTime);
 
   // Initial selection: share link > last played > first song
   const shared = decodeSong(location.hash);
@@ -1650,7 +1955,8 @@ function onKey(e) {
   if (!typing && !e.repeat) {
     if (!$('gag').hidden && gagTimer) hideGag(); // any key dismisses the IMEI panel
     eggToken(e.code, e.key.length === 1 ? e.key : '');
-    if (e.code === 'KeyC' && gagStates() && !gagHold && !wipe.active) beginHold(startWipe);
+    if (e.code === 'KeyC' && wipe.active) hideGag();
+    else if (e.code === 'KeyC' && gagStates() && !gagHold) beginHold(startWipe);
   }
   if (dialing()) {
     e.preventDefault();
@@ -1718,7 +2024,9 @@ function onKey(e) {
     cycleDifficulty(e.code === 'KeyK' ? 1 : -1);
     return;
   }
-  if (state === 'select' && !typing && e.code === 'KeyO') { e.preventDefault(); synth.keyClick(); openOptions(); return; }
+  if (state === 'menu' && !typing && !e.repeat && /^[1-9]$/.test(e.key) && +e.key <= MENU.length) {
+    e.preventDefault(); synth.keyClick(); menuJump(+e.key - 1); return;
+  }
   if (menu && !e.repeat && (e.code === 'Enter' || e.code === 'Space') && !typing) synth.keyClick();
   if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'resuming', 'paused', 'results'].includes(state)) { restartRun(); return; }
   if (state === 'calibration' && !e.repeat) {
@@ -1750,7 +2058,7 @@ function setMode() {
 function layout(animate = false) {
   const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
   const compact = vw < 600 || vh < 520;
-  body.classList.toggle('compact', compact);
+  if (phoneMode() === compact) { body.classList.toggle('compact', compact); refreshChrome(); selectHints(); } // labels differ per mode
   let x, y, w, h;
   if (compact) { x = 0; y = 0; w = vw; h = vh; }
   else {
@@ -1766,6 +2074,11 @@ function layout(animate = false) {
   ph.style.setProperty('--fs', fs + 'px');
   ph.style.setProperty('--u', fs / 10 + 'px');
   renderer.setPixelScale(fs / 10);
+  if (unit !== fs / 10) {
+    unit = fs / 10;
+    if (state === 'profile') { $('pf-icon')._spr = ''; setSprite($('pf-icon'), PERSON_ART, unit * 2); }
+  }
+  if (state === 'menu') paintMenuIcon();
   const lg = $('legend');
   body.classList.toggle('legend-on', !compact && x >= 286);
   lg.style.left = Math.max(16, x - 270) + 'px';
@@ -1794,7 +2107,7 @@ function updatePhones(g, t) {
   setSprite($('st-battery'), battery(bat), 2);
 }
 
-// ---- dev-only screenshot states: ?demo=play|pause|select|options|info|results|fc|settings ----
+// ---- dev-only screenshot states: ?demo=play|pause|select|info|results|fc|settings ----
 let demoRun = null, demoLabels = [];
 const DEMO_SEED = 11;
 const DEMO_JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
@@ -1802,7 +2115,9 @@ function demo(kind) {
   settings.tutorialDone = true;
   selectedId = entryById('nokia') ? 'nokia' : selectedId;
   openSelect();
-  if (kind === 'options') openOptions();
+  if (kind === 'menu') openMenu('tones');
+  else if (kind === 'stats') openStats();
+  else if (kind === 'message') showMessage(0);
   else if (kind === 'info') askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
@@ -1873,6 +2188,7 @@ function frame() {
     return;
   }
   if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
+  if (state === 'menu') menuAnim(performance.now());
   if (demoRun) {
     const now = performance.now() / 1000;
     renderer.labels.forEach((l, i) => {
@@ -1894,6 +2210,11 @@ function frame() {
   }
   perf.begin('update');
   const t = game.songTime(); // one clock read per frame: update and draw see the same time
+  if (state === 'countin' || state === 'playing') {
+    if (lastSongT !== null) runTime += Math.max(0, Math.min(0.25, t - lastSongT));
+    lastSongT = t;
+  } else lastSongT = null;
+  if (run && run.autoplay && game.state === 'running') run.autoplay.step(t, game, game.calibration);
   game.update(t);
   perf.end('update');
   if (!game.active || game.state === 'done') return;
@@ -1930,4 +2251,4 @@ let perfOn = /[?&]perf\b/.test(location.search);
 try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
 if (perfOn) setPerf(true);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, settings, perf, mysongs, get state() { return state; } }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, stats, settings, perf, mysongs, get state() { return state; } }; // debug/test hook (tests/smoke.html)

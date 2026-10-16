@@ -100,7 +100,7 @@ test('fake IMEI: 15 digits, valid Luhn, reserved prefix, stable', () => {
   assert.notEqual(a, fakeImei('9.9.9'));
 });
 
-test('wipe gag: plays out, cancels on early release, never touches storage', () => {
+test('wipe gag: plays out, cancels, never touches storage', () => {
   const calls = [];
   globalThis.localStorage = new Proxy({}, { get: (_, k) => { calls.push(k); return () => null; } });
   const g = createWipeGag();
@@ -109,12 +109,12 @@ test('wipe gag: plays out, cancels on early release, never touches storage', () 
   assert.equal(g.view().text, 'Clearing memory...');
   g.step(1500);
   assert.equal(g.view().bar, 6);
-  g.release();
+  g.cancel();
   assert.equal(g.view(), null);
+  assert.ok(!g.active);
   g.start();
   g.step(3000);
   assert.equal(g.view().text, 'Memory cleared');
-  g.release(); // too late to cancel
   assert.ok(g.active);
   g.step(1000);
   assert.equal(g.view().text, 'Just kidding.');

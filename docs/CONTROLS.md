@@ -4,20 +4,26 @@
 | Action | Keys |
 |---|---|
 | Lanes (4) | `D` `F` `J` `K` |
-| Lanes (Easy, 3) | `F` `J` `K` |
+| Main menu | `↑` `↓` (or `←` `→`) browse, `1`–`6` jump to an item, `Enter` open, `Esc` back to the title |
 | Menu navigation | `↑` `↓` (spatial focus), `Enter`/`Space` activate, `Tab` also works |
 | Category (song select) | `←` `→`, or `[` `]` |
 | Detail tab (difficulty screen) | `←` `→` |
-| Options (song select) | `O` |
+| Options (song select: category, sort, show) | `O` or `#` |
+| Stats pages | `←` `→` |
+| Message | `↑` `↓` scroll |
 | Sort (song select) | play keys `D` `F` (prev / next) |
 | Back / pause / resume | `Esc` or `Backspace` |
 | Restart (play, pause, results) | `R` |
 | Sliders | `←` `→` |
 
 ## Phone keys (mouse / touch)
-The drawn phone's keys work: left soft key (green call key) = the left label on the LCD (Options / Select / Play…),
-right soft key (red end key) = Back, the centre key or `5` = select, `2` `8` `4` `6` = up / down / left / right.
-The soft-key labels on the LCD are tappable too. During play, either soft key or the centre key pauses.
+The drawn phone's keys work, laid out like a 3310: the **Menu** key (wide oval under the LCD) does what the single
+centred label says (Select / Read / Next…), **C** (left) = Back (Del in the composer), the **▲▼ rocker** (right) =
+up / down; on the keypad `5` = select and `2` `8` `4` `6` = up / down / left / right. On the song list the Menu key
+picks the song and `#` opens Options. The LCD label is tappable too. In the main menu, swipe or scroll the wheel to
+browse, tap the icon or the ◄ ► arrows. During play, Menu or C pauses.
+On the bare LCD (narrow screens) there are no phone keys, so both soft-key labels are shown and tappable
+(left = action, e.g. Options on the song list; right = Back).
 
 ## Touch
 Tap and hold the lane columns (multi-touch). On small screens the on-screen ❚❚ pauses. Menu items are plain buttons.
@@ -32,7 +38,6 @@ Gameplay — defaults, each lane has several buttons:
 | 3 | D-pad ↑, Y |
 | 4 (right) | D-pad →, B, RB, RT |
 
-Easy (3 lanes) folds lane 1 and 2 onto the left lane, so every button stays live.
 `Start` pauses, `Back/Select` restarts. Buttons are rebindable in Settings → Controller
 (press the lane, then the button; a button belongs to at most one lane). Bindings are saved.
 
@@ -47,6 +52,7 @@ Menus:
 | Category − / + (song select) | LB / RB |
 | Open Mods (difficulty screen) | X |
 | Options (song select) | X |
+| Stats page − / + | LB / RB (or ← →) |
 
 A disconnect during play pauses the game. Notes: controllers appear to the browser only after the first button press.
 

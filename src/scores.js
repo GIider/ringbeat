@@ -61,6 +61,14 @@ export function createScores(storage = browserStorage()) {
       const e = load()[songId] && load()[songId][diff];
       return e ? { best: e.top[0], top: e.top.slice(), plays: e.plays, fc: e.fc, ap: e.ap } : null;
     },
+    // Every played song + difficulty -> [{ id, diff, best, top, plays, fc, ap }] (for lifetime stats).
+    all() {
+      const out = [];
+      for (const [id, diffs] of Object.entries(load())) {
+        for (const [diff, e] of Object.entries(diffs)) out.push({ id, diff, best: e.top[0], top: e.top.slice(), plays: e.plays, fc: e.fc, ap: e.ap });
+      }
+      return out;
+    },
     // Records a finished run. -> { rank (1-based or null if outside top N), isNewBest }
     record(songId, diff, result) {
       const run = cleanRun({ ...result, date: result.date ?? Date.now() });

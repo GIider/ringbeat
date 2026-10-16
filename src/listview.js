@@ -1,35 +1,21 @@
-// Song-list sorting and filtering (pure; `scores` is the object from createScores()).
+// Song-list sorting and category filtering (pure; `scores` is the object from createScores()).
 
 export const SORTS = [
-  { id: 'default', label: 'Default' },
   { id: 'diff-asc', label: 'Easiest first' },
   { id: 'diff-desc', label: 'Hardest first' },
   { id: 'title', label: 'Title' },
   { id: 'bpm', label: 'BPM' },
   { id: 'length', label: 'Duration' },
 ];
-export const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'unplayed', label: 'Unplayed' },
-  { id: 'nofc', label: 'No FC' },
-];
 
 // Bot-measured rating (1..10, internal; players see it as rating/2 stars) when available, else the star heuristic scaled to the same range.
 export const ratingOf = (e, d) => (e.rating && e.rating[d] != null ? e.rating[d] : (e.stars[d] || 0) * 1.4);
 
-function hasFC(scores, id, d) {
-  const rec = scores.get(id, d);
-  return !!rec && (rec.fc === true || rec.top.some(r => r.fc));
-}
-
-export function applyView(entries, { sort = 'default', filter = 'all', category = 'all' }, diff, scores) {
+export function applyView(entries, { sort = 'diff-asc', category = 'all' }, diff, scores) {
   let list = entries.map((e, i) => ({ e, i }));
   if (category !== 'all') list = list.filter(x => x.e.category === category);
-  if (filter === 'unplayed') list = list.filter(x => !scores.get(x.e.id, diff));
-  else if (filter === 'nofc') list = list.filter(x => !hasFC(scores, x.e.id, diff));
   // Custom songs always stay at the end of the list.
   const cmp = {
-    default: () => 0,
     'diff-asc': (a, b) => ratingOf(a.e, diff) - ratingOf(b.e, diff),
     'diff-desc': (a, b) => ratingOf(b.e, diff) - ratingOf(a.e, diff),
     title: (a, b) => a.e.title.localeCompare(b.e.title),
