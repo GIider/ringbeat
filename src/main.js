@@ -410,7 +410,7 @@ function renderList() {
     b.innerHTML =
       spriteHTML(SPRITES[e.category] || SPRITES.custom, 2) +
       `<span class="t">${esc(e.title)}</span>` +
-      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(best)}` : ''}</span>`;
+      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span>`;
     box.appendChild(b);
   }
   markSelected();
@@ -445,7 +445,7 @@ function renderDetail() {
   const d = settings.difficulty, away = e.only && e.only !== d, rec = away ? null : scores.get(e.id, d);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
-    (away ? ` · <span class="hint">Only on ${cap(e.only)}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec.best)}` : ' · New') + `</div>` +
+    (away ? ` · <span class="hint">Only on ${cap(e.only)}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · New') + `</div>` +
     `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
     (e.tag ? `<div>${esc(e.tag)}</div>` : '');
 }
