@@ -198,7 +198,7 @@ textarea::placeholder { color: var(--ink-dim); }
 /* 1-bit fills: solid, checker dither, sparse dots, empty */
 .mixbar .perfect, .sw.perfect { background: var(--ink); }
 .mixbar .great, .sw.great { background: repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%) 0 0 / calc(var(--u) * 2) calc(var(--u) * 2); }
-.mixbar .good, .sw.good { background: conic-gradient(from 90deg, var(--ink) 0 25%, transparent 0) 0 0 / calc(var(--u) * 3) calc(var(--u) * 3); }
+.mixbar .good, .sw.good { background: repeating-linear-gradient(180deg, var(--ink) 0 var(--u), transparent 0 calc(var(--u) * 2)); } /* horizontal lines vs. great's checker */
 .mixbar .miss { background: transparent; }
 
 /* ---------- messages ---------- */
