@@ -137,3 +137,22 @@ test('settings: num helper', async () => {
   assert.equal(num(Infinity, 0, 1, 9), 9);
   assert.equal(num('1', 0, 2, 9), 9);
 });
+
+test('settings: language is kept only when supported; otherwise the browser language decides', async () => {
+  const orig = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const browser = languages => Object.defineProperty(globalThis, 'navigator', { value: { languages }, configurable: true });
+  try {
+    browser(['fr-FR', 'en']);
+    let { settings: s, effectiveLang } = await load({ lang: 'de' });
+    assert.equal(s.lang, 'de');
+    assert.equal(effectiveLang(), 'de', 'a saved choice wins over the browser');
+    ({ settings: s, effectiveLang } = await load({ lang: 'klingon' }));
+    assert.equal(s.lang, '');
+    assert.equal(effectiveLang(), 'en');
+    browser(['de-DE', 'en']);
+    ({ effectiveLang } = await load({}));
+    assert.equal(effectiveLang(), 'de');
+  } finally {
+    if (orig) Object.defineProperty(globalThis, 'navigator', orig); else delete globalThis.navigator;
+  }
+});

@@ -12,21 +12,21 @@
 </head>
 <body data-mode="menu">
   <!-- Keyboard legend beside the phone (wide screens; menu keys in menus, lane keys while playing) -->
-  <aside id="legend" class="legend" aria-label="Keys">
+  <aside id="legend" class="legend" aria-label="Keys" data-i18n-attr="aria-label">
     <div class="lg-play">
-      <b>Playing</b>
-      <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> lanes</div>
-      <div><kbd>Esc</kbd><kbd>Bksp</kbd> pause</div>
-      <div><kbd>R</kbd> restart</div>
+      <b data-i18n>Playing</b>
+      <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> <span data-i18n>lanes</span></div>
+      <div><kbd data-i18n>Esc</kbd><kbd data-i18n>Bksp</kbd> <span data-i18n>pause</span></div>
+      <div><kbd>R</kbd> <span data-i18n>restart</span></div>
     </div>
     <div class="lg-menu">
-    <b>Keys</b>
-    <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move, adjust</div>
-    <div><kbd>Enter</kbd> select</div>
-    <div><kbd>1</kbd>–<kbd>6</kbd> menu item</div>
-    <div><kbd>Esc</kbd><kbd>Bksp</kbd> back · pause</div>
-    <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> play (in song)</div>
-    <div><kbd>R</kbd> restart</div>
+    <b data-i18n>Keys</b>
+    <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> <span data-i18n>move, adjust</span></div>
+    <div><kbd data-i18n>Enter</kbd> <span data-i18n>select</span></div>
+    <div><kbd>1</kbd>–<kbd>6</kbd> <span data-i18n>menu item</span></div>
+    <div><kbd data-i18n>Esc</kbd><kbd data-i18n>Bksp</kbd> <span data-i18n>back · pause</span></div>
+    <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> <span data-i18n>play (in song)</span></div>
+    <div><kbd>R</kbd> <span data-i18n>restart</span></div>
     </div>
   </aside>
 
@@ -41,7 +41,7 @@
         <canvas id="cameo" class="cameo" aria-hidden="true"></canvas>
 
         <!-- Loading: pure HTML/CSS, visible until main.js removes it -->
-        <section id="loading" class="screen loading" aria-label="Loading">
+        <section id="loading" class="screen loading" aria-label="Loading" data-i18n-attr="aria-label">
           <div class="ld-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </section>
 
@@ -49,10 +49,10 @@
         <section id="title" class="screen boot" hidden data-title="" data-soft-left="Start" data-soft-right="">
           <div class="boot-logo">RINGBEAT</div>
           <i id="boot-art" class="spr boot-art"></i>
-          <p class="blink">Press any key or tap</p>
-          <p class="boot-version"><a id="boot-version" href="https://github.com/GIider/ringbeat" target="_blank" rel="noopener" title="Ringbeat on GitHub"></a></p>
+          <p class="blink" data-i18n>Press any key or tap</p>
+          <p class="boot-version"><a id="boot-version" href="https://github.com/GIider/ringbeat" target="_blank" rel="noopener" title="Ringbeat on GitHub" data-i18n-attr="title"></a></p>
           <p id="boot-build" class="boot-version boot-build"></p>
-          <button id="btn-start" class="sr" data-default>Start</button>
+          <button id="btn-start" class="sr" data-default data-i18n>Start</button>
         </section>
 
         <!-- Main menu: one item per screen with a big animated icon, like the 3310 -->
@@ -60,9 +60,9 @@
           <div id="mm-body" class="mm-body">
             <div id="mm-title" class="mm-title"></div>
             <div class="mm-art">
-              <button id="mm-prev" class="mm-arrow" tabindex="-1" aria-label="Previous item">◄</button>
+              <button id="mm-prev" class="mm-arrow" tabindex="-1" aria-label="Previous item" data-i18n-attr="aria-label">◄</button>
               <i id="mm-icon" class="spr mm-icon"></i>
-              <button id="mm-next" class="mm-arrow" tabindex="-1" aria-label="Next item">►</button>
+              <button id="mm-next" class="mm-arrow" tabindex="-1" aria-label="Next item" data-i18n-attr="aria-label">►</button>
             </div>
             <div id="mm-hint" class="mm-hint" aria-live="polite"></div>
           </div>
@@ -76,7 +76,7 @@
             <span class="arrow">◄</span><span id="stat-tab" class="sel"></span><span class="arrow">►</span>
           </div>
           <div id="stat-page" class="stat-page" aria-live="polite"></div>
-          <button id="stat-go" class="sr" data-default>Change difficulty</button>
+          <button id="stat-go" class="sr" data-default data-i18n>Change difficulty</button>
         </section>
 
         <!-- Messages: the changelog as an SMS inbox -->
@@ -85,12 +85,12 @@
         </section>
         <section id="msgload" class="screen msgload" hidden data-title="Inbox" data-soft-left="" data-soft-right="Back">
           <i id="ml-icon" class="spr"></i>
-          <div>Opening message</div>
+          <div data-i18n>Opening message</div>
           <div id="ml-bar" class="gag-bar"></div>
         </section>
         <section id="message" class="screen sms" hidden data-title="Message" data-soft-left="Next" data-soft-right="Back">
           <div class="sms-head">
-            <div>From: <b id="sms-from"></b></div>
+            <div><span data-i18n>From:</span> <b id="sms-from"></b></div>
             <div id="sms-date" class="hint"></div>
           </div>
           <div id="sms-body" class="sms-body" tabindex="0" data-default></div>
@@ -100,38 +100,38 @@
         <section id="profile" class="screen" hidden data-title="Profile" data-soft-left="" data-soft-right="Back">
           <div class="pf-card">
             <i id="pf-icon" class="spr"></i>
-            <div><b>Player 1</b><div id="pf-meta" class="hint"></div></div>
+            <div><b data-i18n>Player 1</b><div id="pf-meta" class="hint"></div></div>
           </div>
           <div class="menu">
-            <button id="pf-switch" disabled>Switch profile</button>
-            <button id="pf-new" disabled>New profile</button>
+            <button id="pf-switch" disabled data-i18n>Switch profile</button>
+            <button id="pf-new" disabled data-i18n>New profile</button>
           </div>
-          <p class="hint center">Profiles are coming soon.</p>
+          <p class="hint center" data-i18n>Profiles are coming soon.</p>
         </section>
 
         <!-- Song select: "Tones" -->
         <section id="select" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
           <div class="sel-head">
-            <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1">◄</button>
+            <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1" data-i18n-attr="aria-label">◄</button>
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
-            <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1">►</button>
+            <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1" data-i18n-attr="aria-label">►</button>
           </div>
-          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1"></button></div>
-          <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
+          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1" data-i18n-attr="aria-label"></button></div>
+          <div id="song-list" class="song-list" role="listbox" aria-label="Songs" data-i18n-attr="aria-label"></div>
           <div id="sel-info" class="sel-info" aria-live="polite"></div>
           <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
         </section>
 
         <!-- First visit to Tones: offer the tutorial -->
         <section id="tutprompt" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
-          <h2>First time?</h2>
+          <h2 data-i18n>First time?</h2>
           <div id="tp-body">
-            <p>Play the <b>tutorial</b> first? 7 short lessons.</p>
-            <p>Find it later in <b>Settings → Replay tutorial</b>.</p>
+            <p data-i18n-html>Play the <b>tutorial</b> first? 7 short lessons.</p>
+            <p data-i18n-html>Find it later in <b>Settings → Replay tutorial</b>.</p>
           </div>
           <div class="menu">
-            <button id="btn-tp-yes" data-default>Play tutorial</button>
-            <button id="btn-tp-no">No thanks</button>
+            <button id="btn-tp-yes" data-default data-i18n>Play tutorial</button>
+            <button id="btn-tp-no" data-i18n>No thanks</button>
           </div>
         </section>
 
@@ -142,7 +142,7 @@
           <div id="tut-body"></div>
           <div class="menu">
             <button id="btn-tut-go" data-default>Start tutorial</button>
-            <button id="btn-tut-skip">Skip</button>
+            <button id="btn-tut-skip" data-i18n>Skip</button>
           </div>
         </section>
 
@@ -150,11 +150,11 @@
         <section id="mysongs" class="screen" hidden data-title="My songs" data-soft-left="Select" data-soft-right="Back">
           <div id="ms-list" class="menu"></div>
           <div class="menu">
-            <button id="ms-new" data-default>New song</button>
-            <button id="ms-paste">Paste RTTTL…</button>
-            <button id="ms-import">Import file…</button>
-            <button id="ms-export">Export all</button>
-            <button id="ms-back">Back</button>
+            <button id="ms-new" data-default data-i18n>New song</button>
+            <button id="ms-paste" data-i18n>Paste RTTTL…</button>
+            <button id="ms-import" data-i18n>Import file…</button>
+            <button id="ms-export" data-i18n>Export all</button>
+            <button id="ms-back" data-i18n>Back</button>
           </div>
           <input id="ms-file" type="file" accept=".json,.rtttl,.txt,text/plain,application/json" hidden>
           <div id="ms-msg" class="hint"></div>
@@ -165,18 +165,18 @@
           <h2 id="sm-title"></h2>
           <div id="sm-meta" class="hint"></div>
           <div class="menu">
-            <button id="sm-play" data-default>Play</button>
+            <button id="sm-play" data-default data-i18n>Play</button>
             <button id="sm-preview">Preview</button>
-            <button id="sm-edit">Edit in composer</button>
-            <button id="sm-dup">Duplicate</button>
-            <button id="sm-file">Export file</button>
-            <button id="sm-copy">Copy RTTTL text</button>
+            <button id="sm-edit" data-i18n>Edit in composer</button>
+            <button id="sm-dup" data-i18n>Duplicate</button>
+            <button id="sm-file" data-i18n>Export file</button>
+            <button id="sm-copy" data-i18n>Copy RTTTL text</button>
             <button id="sm-calc">Calculate difficulty</button>
-            <button id="sm-share">Copy share link</button>
+            <button id="sm-share" data-i18n>Copy share link</button>
             <button id="sm-del">Delete</button>
-            <button id="sm-back">Back</button>
+            <button id="sm-back" data-i18n>Back</button>
           </div>
-          <div id="sm-bar" class="bar" role="progressbar" aria-label="Difficulty calculation" hidden><i></i></div>
+          <div id="sm-bar" class="bar" role="progressbar" aria-label="Difficulty calculation" hidden data-i18n-attr="aria-label"><i></i></div>
           <div id="sm-msg" class="hint"></div>
         </section>
 
@@ -187,43 +187,43 @@
             <div id="comp-notes" class="comp-notes" aria-live="polite"></div>
             <div id="comp-status" class="status"></div>
             <div class="seg comp-move">
-              <button id="comp-left" aria-label="Cursor left">◀</button>
-              <button id="comp-right" aria-label="Cursor right">▶</button>
+              <button id="comp-left" aria-label="Cursor left" data-i18n-attr="aria-label">◀</button>
+              <button id="comp-right" aria-label="Cursor right" data-i18n-attr="aria-label">▶</button>
             </div>
             <div class="comp-pad" id="comp-pad">
               <button data-k="1">C</button><button data-k="2">D</button><button data-k="3">E</button><button data-k="4">F</button>
-              <button data-k="5">G</button><button data-k="6">A</button><button data-k="7">B</button><button data-k="0" aria-label="Rest">Rest</button>
-              <button data-k="8" aria-label="Shorter">Len -</button><button data-k="9" aria-label="Longer">Len +</button><button data-k="*" aria-label="Dot">Dot</button><button data-k="#" aria-label="Sharp">#</button>
-              <button data-k="up" aria-label="Pitch up">▲</button><button data-k="down" aria-label="Pitch down">▼</button><button data-k="del" aria-label="Delete note">Del</button>
+              <button data-k="5">G</button><button data-k="6">A</button><button data-k="7">B</button><button data-k="0" aria-label="Rest" data-i18n data-i18n-attr="aria-label">Rest</button>
+              <button data-k="8" aria-label="Shorter" data-i18n data-i18n-attr="aria-label">Len -</button><button data-k="9" aria-label="Longer" data-i18n data-i18n-attr="aria-label">Len +</button><button data-k="*" aria-label="Dot" data-i18n data-i18n-attr="aria-label">Dot</button><button data-k="#" aria-label="Sharp" data-i18n-attr="aria-label">#</button>
+              <button data-k="up" aria-label="Pitch up" data-i18n-attr="aria-label">▲</button><button data-k="down" aria-label="Pitch down" data-i18n-attr="aria-label">▼</button><button data-k="del" aria-label="Delete note" data-i18n data-i18n-attr="aria-label">Del</button>
             </div>
-            <div class="hint comp-help keys-only">1-7 notes · 0 rest · 8/9 length · * dot · # sharp · repeat key = octave · ▲▼ pitch</div>
+            <div class="hint comp-help keys-only" data-i18n>1-7 notes · 0 rest · 8/9 length · * dot · # sharp · repeat key = octave · ▲▼ pitch</div>
           </div>
           <div id="comp-menu" class="menu" hidden>
-            <button id="comp-play">Play</button>
+            <button id="comp-play" data-i18n>Play</button>
             <button id="comp-preview">Preview</button>
-            <button id="comp-save">Save</button>
-            <label class="item">Name <input id="comp-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
-            <label class="item">Tempo <span id="comp-bpm-val"></span>
+            <button id="comp-save" data-i18n>Save</button>
+            <label class="item"><span data-i18n>Name</span> <input id="comp-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
+            <label class="item"><span data-i18n>Tempo</span> <span id="comp-bpm-val"></span>
               <input id="comp-bpm" type="range" min="40" max="250" step="5"></label>
-            <button id="comp-text">Edit as text</button>
-            <button id="comp-clear">Clear all</button>
-            <button id="comp-resume">Back to notes</button>
-            <button id="comp-exit">Exit</button>
+            <button id="comp-text" data-i18n>Edit as text</button>
+            <button id="comp-clear" data-i18n>Clear all</button>
+            <button id="comp-resume" data-i18n>Back to notes</button>
+            <button id="comp-exit" data-i18n>Exit</button>
           </div>
         </section>
 
         <!-- Custom song as text (paste / type RTTTL) -->
         <section id="custom" class="screen" hidden data-title="RTTTL text" data-soft-left="Select" data-soft-right="Back">
-          <label class="lbl" for="rtttl">Paste RTTTL</label>
-          <textarea id="rtttl" rows="3" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..."></textarea>
+          <label class="lbl" for="rtttl" data-i18n>Paste RTTTL</label>
+          <textarea id="rtttl" rows="3" spellcheck="false" placeholder="Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,..." data-i18n-attr="placeholder"></textarea>
           <div id="status" class="status"></div>
           <div class="menu">
-            <label class="item">Name <input id="custom-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
-            <button id="btn-custom-save">Save to My songs</button>
-            <button id="btn-custom-play">Play</button>
+            <label class="item"><span data-i18n>Name</span> <input id="custom-name" type="text" maxlength="24" spellcheck="false" autocomplete="off"></label>
+            <button id="btn-custom-save" data-i18n>Save to My songs</button>
+            <button id="btn-custom-play" data-i18n>Play</button>
             <button id="btn-custom-preview">Preview</button>
-            <button id="btn-custom-compose">Open in composer</button>
-            <button id="btn-custom-back">Back</button>
+            <button id="btn-custom-compose" data-i18n>Open in composer</button>
+            <button id="btn-custom-back" data-i18n>Back</button>
           </div>
           <div id="share-msg" class="hint"></div>
         </section>
@@ -245,51 +245,52 @@
         <section id="settings" class="screen" hidden data-title="Settings" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
             <button id="set-voice">Tone: Buzzer</button>
-            <label class="item">Volume <input id="volume" type="range" min="0" max="100" step="10"></label>
-            <label class="item">Scroll time <span id="scroll-val"></span>
+            <button id="set-lang">Language: English</button>
+            <label class="item"><span data-i18n>Volume</span> <input id="volume" type="range" min="0" max="100" step="10"></label>
+            <label class="item"><span data-i18n>Scroll time</span> <span id="scroll-val"></span>
               <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
-            <label class="item check"><input id="backing" type="checkbox"> Backing pulse</label>
-            <label class="item check"><input id="pref-rollaudio" type="checkbox"> Auto-play rolls</label>
-            <label class="item check"><input id="pref-preview" type="checkbox"> Song preview</label>
-            <label class="item check"><input id="pref-gags" type="checkbox"> Idle animations</label>
-            <label class="item check"><input id="pref-juice" type="checkbox"> Hit effects</label>
-            <label class="item check"><input id="pref-haptics" type="checkbox"> Vibration</label>
-            <button id="btn-calibrate" class="menu-only">Latency: <b id="menu-offset">0 ms</b></button>
+            <label class="item check"><input id="backing" type="checkbox"> <span data-i18n>Backing pulse</span></label>
+            <label class="item check"><input id="pref-rollaudio" type="checkbox"> <span data-i18n>Auto-play rolls</span></label>
+            <label class="item check"><input id="pref-preview" type="checkbox"> <span data-i18n>Song preview</span></label>
+            <label class="item check"><input id="pref-gags" type="checkbox"> <span data-i18n>Idle animations</span></label>
+            <label class="item check"><input id="pref-juice" type="checkbox"> <span data-i18n>Hit effects</span></label>
+            <label class="item check"><input id="pref-haptics" type="checkbox"> <span data-i18n>Vibration</span></label>
+            <button id="btn-calibrate" class="menu-only"><span data-i18n>Latency:</span> <b id="menu-offset">0 ms</b></button>
           </div>
-          <div class="lbl">Controller</div>
+          <div class="lbl" data-i18n>Controller</div>
           <div id="pad-status" class="hint"></div>
           <div id="bind-grid" class="menu bind-grid"></div>
           <div class="menu">
-            <button id="btn-bind-reset">Reset buttons</button>
-            <button id="btn-tutorial" class="menu-only">Replay tutorial</button>
+            <button id="btn-bind-reset" data-i18n>Reset buttons</button>
+            <button id="btn-tutorial" class="menu-only" data-i18n>Replay tutorial</button>
             <button id="btn-reset-scores" class="menu-only">Reset scores &amp; stats</button>
-            <button id="btn-settings-back">Back</button>
+            <button id="btn-settings-back" data-i18n>Back</button>
           </div>
         </section>
 
         <!-- Modifiers -->
         <section id="mods" class="screen" hidden data-title="Mods" data-soft-left="Select" data-soft-right="Back">
-          <div class="sub">Score <b id="m-mult">×1.00</b></div>
+          <div class="sub"><span data-i18n>Score</span> <b id="m-mult">×1.00</b></div>
           <div class="menu">
-            <label class="item">Speed <b id="m-speed-val"></b>
+            <label class="item"><span data-i18n>Speed</span> <b id="m-speed-val"></b>
               <input id="m-speed" type="range" min="0" max="5" step="1"></label>
-            <label class="item check"><input id="m-mirror" type="checkbox"> Mirror lanes</label>
-            <label class="item check"><input id="m-hidden" type="checkbox"> Hidden notes</label>
-            <label class="item check"><input id="m-sudden" type="checkbox"> Sudden death</label>
-            <label class="item check"><input id="m-demo" type="checkbox"> Demo (autoplay)</label>
-            <label class="item">Judging <b id="m-judge-val"></b>
+            <label class="item check"><input id="m-mirror" type="checkbox"> <span data-i18n>Mirror lanes</span></label>
+            <label class="item check"><input id="m-hidden" type="checkbox"> <span data-i18n>Hidden notes</span></label>
+            <label class="item check"><input id="m-sudden" type="checkbox"> <span data-i18n>Sudden death</span></label>
+            <label class="item check"><input id="m-demo" type="checkbox"> <span data-i18n>Demo (autoplay)</span></label>
+            <label class="item"><span data-i18n>Judging</span> <b id="m-judge-val"></b>
               <input id="m-judge" type="range" min="0" max="2" step="1"></label>
-            <button id="btn-mods-reset">Reset all</button>
-            <button id="btn-mods-back" data-default>Back</button>
+            <button id="btn-mods-reset" data-i18n>Reset all</button>
+            <button id="btn-mods-back" data-default data-i18n>Back</button>
           </div>
           <p id="m-hint" class="hint"></p>
         </section>
 
         <!-- Now playing (shown in the phone while the highway runs) -->
         <section id="nowplaying" class="screen np" hidden data-title="" data-soft-left="Options" data-soft-right="Back">
-          <canvas id="stage" aria-label="Playfield"></canvas>
+          <canvas id="stage" aria-label="Playfield" data-i18n-attr="aria-label"></canvas>
           <div id="np-caption" class="np-caption" hidden></div>
-          <div id="np-count" class="np-count" hidden aria-live="assertive"><span class="np-count-lbl">GET READY</span><span id="np-count-n" class="np-count-n"></span></div>
+          <div id="np-count" class="np-count" hidden aria-live="assertive"><span class="np-count-lbl" data-i18n>GET READY</span><span id="np-count-n" class="np-count-n"></span></div>
         </section>
 
         <!-- Results -->
@@ -297,10 +298,10 @@
           <h2 id="r-heading" class="sr">Results</h2>
           <div id="r-song" class="hint center"></div>
           <div id="r-tabs" class="seg r-tabs" role="tablist">
-            <button type="button" class="sel" data-page="0" role="tab" tabindex="-1">Score</button>
-            <button type="button" data-page="1" role="tab" tabindex="-1">Stats</button>
-            <button type="button" data-page="2" role="tab" tabindex="-1">Timing</button>
-            <button type="button" data-page="3" role="tab" tabindex="-1">Top</button>
+            <button type="button" class="sel" data-page="0" role="tab" tabindex="-1" data-i18n>Score</button>
+            <button type="button" data-page="1" role="tab" tabindex="-1" data-i18n>Stats</button>
+            <button type="button" data-page="2" role="tab" tabindex="-1" data-i18n>Timing</button>
+            <button type="button" data-page="3" role="tab" tabindex="-1" data-i18n>Top</button>
           </div>
           <div class="r-pages">
             <div class="r-page" data-page="0">
@@ -311,28 +312,28 @@
             </div>
             <div class="r-page" data-page="1" hidden>
               <table>
-                <tr><td>Accuracy</td><td id="r-acc"></td></tr>
-                <tr><td>Max combo</td><td id="r-combo"></td></tr>
-                <tr><td>Perfect</td><td id="r-p"></td></tr>
-                <tr><td>Great</td><td id="r-g"></td></tr>
-                <tr><td>Good</td><td id="r-o"></td></tr>
-                <tr><td>Miss</td><td id="r-m"></td></tr>
-                <tr><td>Ghost hits</td><td id="r-ghost"></td></tr>
+                <tr><td data-i18n>Accuracy</td><td id="r-acc"></td></tr>
+                <tr><td data-i18n>Max combo</td><td id="r-combo"></td></tr>
+                <tr><td data-i18n>Perfect</td><td id="r-p"></td></tr>
+                <tr><td data-i18n>Great</td><td id="r-g"></td></tr>
+                <tr><td data-i18n>Good</td><td id="r-o"></td></tr>
+                <tr><td data-i18n>Miss</td><td id="r-m"></td></tr>
+                <tr><td data-i18n>Ghost hits</td><td id="r-ghost"></td></tr>
               </table>
             </div>
             <div class="r-page" data-page="2" hidden>
-              <div class="hist-label hint">Early ◄ timing ► Late</div>
+              <div class="hist-label hint" data-i18n>Early ◄ timing ► Late</div>
               <div id="r-hist" class="hist"></div>
               <div id="r-offset" class="hint center"></div>
             </div>
             <div class="r-page" data-page="3" hidden>
               <ol id="r-top" class="top"></ol>
-              <div id="r-top-empty" class="hint center" hidden>Run not saved</div>
+              <div id="r-top-empty" class="hint center" hidden data-i18n>Run not saved</div>
             </div>
           </div>
           <div class="menu r-foot">
-            <button id="btn-retry" data-default>Retry</button>
-            <button id="btn-next">Next song</button>
+            <button id="btn-retry" data-default data-i18n>Retry</button>
+            <button id="btn-next" data-i18n>Next song</button>
             <button id="btn-menu">Tones</button>
           </div>
         </section>
@@ -340,18 +341,18 @@
         <!-- Pause -->
         <section id="pause" class="screen" hidden data-title="Paused" data-soft-left="Select" data-soft-right="Back">
           <div class="menu">
-            <button id="btn-resume" data-default>Resume</button>
-            <button id="btn-restart">Restart</button>
-            <button id="btn-pause-settings">Settings</button>
+            <button id="btn-resume" data-default data-i18n>Resume</button>
+            <button id="btn-restart" data-i18n>Restart</button>
+            <button id="btn-pause-settings" data-i18n>Settings</button>
             <button id="btn-quit">Tones</button>
-            <button id="btn-tut-skip-pause" hidden>Skip tutorial</button>
+            <button id="btn-tut-skip-pause" hidden data-i18n>Skip tutorial</button>
           </div>
         </section>
 
         <!-- Calibration -->
         <section id="calib" class="screen" hidden data-title="Latency" data-soft-left="Select" data-soft-right="Back">
           <p id="calib-msg" class="hint"></p>
-          <div id="calib-pad" class="pad" role="button" aria-label="Tap here">TAP</div>
+          <div id="calib-pad" class="pad" role="button" aria-label="Tap here" data-i18n data-i18n-attr="aria-label">TAP</div>
           <div class="hint center" id="calib-count">0 taps</div>
           <div class="nudge">
             <button id="nudge-minus">−5</button>
@@ -359,9 +360,9 @@
             <button id="nudge-plus">+5</button>
           </div>
           <div class="menu">
-            <button id="calib-done" data-default>Done</button>
-            <button id="calib-again">Again</button>
-            <button id="calib-reset">Reset</button>
+            <button id="calib-done" data-default data-i18n>Done</button>
+            <button id="calib-again" data-i18n>Again</button>
+            <button id="calib-reset" data-i18n>Reset</button>
           </div>
         </section>
 
@@ -370,7 +371,7 @@
           <div id="gag-title" class="gag-title"></div>
           <div id="gag-text" class="gag-text"></div>
           <div id="gag-bar" class="gag-bar"></div>
-          <a id="gag-link" class="gag-link" href="https://github.com/GIider" target="_blank" rel="noopener noreferrer" tabindex="-1" hidden>Made by Blackjack</a>
+          <a id="gag-link" class="gag-link" href="https://github.com/GIider" target="_blank" rel="noopener noreferrer" tabindex="-1" hidden data-i18n>Made by Blackjack</a>
         </div>
 
       </div>
@@ -381,27 +382,27 @@
     </div>
 
     <!-- The phone's keys (hit areas over the artwork) -->
-    <div class="keys" aria-label="Phone keys">
-      <button class="k k-soft" style="--x:52;--y:540;--w:88;--h:56;--r:22deg" data-key="softR" tabindex="-1" aria-label="Clear / Back"></button>
-      <button class="k k-navi" style="--x:140;--y:508;--w:160;--h:48" data-key="softL" tabindex="-1" aria-label="Menu"></button>
-      <button class="k k-soft" style="--x:295;--y:541;--w:88;--h:28;--r:-22deg" data-key="up" tabindex="-1" aria-label="Up"></button>
-      <button class="k k-soft" style="--x:305;--y:567;--w:88;--h:28;--r:-22deg" data-key="down" tabindex="-1" aria-label="Down"></button>
+    <div class="keys" aria-label="Phone keys" data-i18n-attr="aria-label">
+      <button class="k k-soft" style="--x:52;--y:540;--w:88;--h:56;--r:22deg" data-key="softR" tabindex="-1" aria-label="Clear / Back" data-i18n-attr="aria-label"></button>
+      <button class="k k-navi" style="--x:140;--y:508;--w:160;--h:48" data-key="softL" tabindex="-1" aria-label="Menu" data-i18n-attr="aria-label"></button>
+      <button class="k k-soft" style="--x:295;--y:541;--w:88;--h:28;--r:-22deg" data-key="up" tabindex="-1" aria-label="Up" data-i18n-attr="aria-label"></button>
+      <button class="k k-soft" style="--x:305;--y:567;--w:88;--h:28;--r:-22deg" data-key="down" tabindex="-1" aria-label="Down" data-i18n-attr="aria-label"></button>
       <button class="k" style="--x:64;--y:631;--r:10deg" data-key="1" tabindex="-1" aria-label="1"></button>
-      <button class="k" style="--x:174;--y:639" data-key="2" tabindex="-1" aria-label="2 (up)"></button>
+      <button class="k" style="--x:174;--y:639" data-key="2" tabindex="-1" aria-label="2 (up)" data-i18n-attr="aria-label"></button>
       <button class="k" style="--x:284;--y:631;--r:-10deg" data-key="3" tabindex="-1" aria-label="3"></button>
-      <button class="k" style="--x:64;--y:685;--r:10deg" data-key="4" tabindex="-1" aria-label="4 (left)"></button>
-      <button class="k" style="--x:174;--y:693" data-key="5" tabindex="-1" aria-label="5 (select)"></button>
-      <button class="k" style="--x:284;--y:685;--r:-10deg" data-key="6" tabindex="-1" aria-label="6 (right)"></button>
+      <button class="k" style="--x:64;--y:685;--r:10deg" data-key="4" tabindex="-1" aria-label="4 (left)" data-i18n-attr="aria-label"></button>
+      <button class="k" style="--x:174;--y:693" data-key="5" tabindex="-1" aria-label="5 (select)" data-i18n-attr="aria-label"></button>
+      <button class="k" style="--x:284;--y:685;--r:-10deg" data-key="6" tabindex="-1" aria-label="6 (right)" data-i18n-attr="aria-label"></button>
       <button class="k" style="--x:64;--y:739;--r:10deg" data-key="7" tabindex="-1" aria-label="7"></button>
-      <button class="k" style="--x:174;--y:747" data-key="8" tabindex="-1" aria-label="8 (down)"></button>
+      <button class="k" style="--x:174;--y:747" data-key="8" tabindex="-1" aria-label="8 (down)" data-i18n-attr="aria-label"></button>
       <button class="k" style="--x:284;--y:739;--r:-10deg" data-key="9" tabindex="-1" aria-label="9"></button>
-      <button class="k" style="--x:64;--y:793;--r:10deg" data-key="*" tabindex="-1" aria-label="Star"></button>
+      <button class="k" style="--x:64;--y:793;--r:10deg" data-key="*" tabindex="-1" aria-label="Star" data-i18n-attr="aria-label"></button>
       <button class="k" style="--x:174;--y:801" data-key="0" tabindex="-1" aria-label="0"></button>
-      <button class="k" style="--x:284;--y:793;--r:-10deg" data-key="#" tabindex="-1" aria-label="Hash"></button>
+      <button class="k" style="--x:284;--y:793;--r:-10deg" data-key="#" tabindex="-1" aria-label="Hash" data-i18n-attr="aria-label"></button>
     </div>
   </div>
 
-  <button id="btn-pause" class="pause-btn" hidden aria-label="Pause">❚❚</button>
+  <button id="btn-pause" class="pause-btn" hidden aria-label="Pause" data-i18n-attr="aria-label">❚❚</button>
   <div id="toast" class="toast" hidden role="status"></div>
 
   <script type="module" src="src/main.js"></script>

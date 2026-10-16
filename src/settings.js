@@ -2,6 +2,7 @@
 import { sanitizeBindings } from './gamepad.js';
 import { normalize as normalizeMods } from './mods.js';
 import { defaultSeen } from './changelog.js';
+import { LANGS, detect } from './i18n.js';
 
 const STORE_KEY = 'ringbeat.v1';
 
@@ -14,6 +15,8 @@ function load() {
 const raw = load();
 export const settings = {
   volume: num(raw.volume, 0, 1, 0.7),
+  // '' = follow the browser language until the player picks one in Settings
+  lang: LANGS[raw.lang] ? raw.lang : '',
   voice: raw.voice === 'smooth' ? 'smooth' : 'buzzer',
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
   backing: typeof raw.backing === 'boolean' ? raw.backing : false, // off for new players; saved choices are kept
@@ -38,6 +41,9 @@ export const settings = {
   // Changelog versions read in Messages; before the Inbox existed, everything but the newest counts as read.
   msgSeen: Array.isArray(raw.msgSeen) ? raw.msgSeen.filter(v => typeof v === 'string').slice(0, 100) : defaultSeen(),
 };
+
+// The language to show: the saved choice, else the browser's.
+export const effectiveLang = () => settings.lang || detect(typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []);
 
 export function saveSettings() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch { /* ignore */ }

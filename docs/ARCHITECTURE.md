@@ -22,7 +22,8 @@ src/
   stats.js        lifetime stats store (playtime, runs, notes, score, day streak) + derived grade tally; backfills once from scores
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   menuicons.js    animated 1-bit main-menu icons (folder card + symbol + pressing hand), drawn with tiny raster helpers
-  settings.js     persisted settings incl. controller bindings and mods
+  settings.js     persisted settings incl. controller bindings, mods and language
+  i18n.js         translations: t()/tn()/tm()/fmt(), browser-language detection; dictionaries in lang/<code>.js
   game.js         judging, scoring, holds, FC/AP, pause/restart; audio-clock only
   input.js        keyboard + pointer -> lane events with audio-clock timestamps
   gamepad.js      Gamepad API poller, default bindings, lane folding
@@ -74,6 +75,20 @@ tests/
 - **Main menu.** Title → `menu`, a single screen showing one item at a time (3310 style). Every top-level screen's Back
   returns to it, on the item it was opened from. Icon frames advance from the frame loop (~300 ms), held still with
   reduced motion; the icon scale (2–4 LCD px per sprite px) follows the available space.
+
+## Translations
+
+The English source text is the key: `tr('Back')` (`t` in modules without a local `t`), `tn(n, '{n} note', '{n} notes')` for
+plurals, `tm(msg)` for finished messages built from a template. Static markup carries `data-i18n` / `data-i18n-attr` /
+`data-i18n-html`; screen titles and soft keys (`data-title`, `data-soft-*`) are translated in `refreshChrome`. English needs no
+dictionary. The language is `settings.lang` or, until the player picks one in Settings, the first supported entry of
+`navigator.languages`.
+
+To add a language: create `src/lang/<code>.js`, register it in `LANGS`/`DICTS` in `src/i18n.js`, then run
+`node scripts/i18n-keys.mjs --lang=<code>` for the missing keys; `tests/i18n.test.mjs` fails on gaps, stale entries,
+mismatched `{placeholders}` and characters missing from the LCD font (`src/pixelfont.js`, then `npm run font`).
+A new UI string needs a literal inside `tr()`/`tn()`/`toast()` (or one of the tables listed in `scripts/i18n-keys.mjs`)
+so the checker sees it. Song titles, note names and the Ringbeat name stay untranslated.
 
 ## Profiling
 

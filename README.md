@@ -55,7 +55,7 @@ pre-release and deploys it to GitHub Pages ([.github/workflows/deploy.yml](.gith
 ## Features
 
 3310-style main menu (Tones, My songs, Stats, Messages, Profile, Settings) with animated icons · lifetime stats (playtime,
-score, grades, streaks) · changelog delivered as SMS ·
+score, grades, streaks) · changelog delivered as SMS · English and German (follows the browser language, switchable in Settings) ·
 song select with 153 built-in songs (11 full-length) + custom/share links · 3 difficulties · local highscores (top 5 per song/difficulty) ·
 full combo / all perfect indicators · timing display · modifiers (speed, mirror, hidden, sudden death, judging; score multiplier; demo autoplay, x0 and never saved) ·
 keyboard, touch and gamepad (rebindable) · latency calibration · Nokia-style phone UI with clickable phone keys ·

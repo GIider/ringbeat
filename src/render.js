@@ -2,6 +2,7 @@
 // The canvas backing store is one pixel per LCD pixel (CSS size = logical size x --u), two colours only: LCD ink on the
 // transparent LCD, so the DOM's green backlight and pixel grid show through. All coordinates are whole pixels.
 import { GLYPHS, boldGlyph, CAP } from './pixelfont.js';
+import { t as tr } from './i18n.js';
 import { WINDOWS } from './game.js';
 
 const INK = '#1d2b12';
@@ -119,7 +120,7 @@ export class Renderer {
         }
         for (const o of this.labels) if (o.lane === lane) o.t = -10; // a new judgement replaces the lane's previous label
         const l = this.labels[this.labelI++ % LABEL_POOL];
-        l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j]; l.j = j;
+        l.t = now; l.lane = lane; l.text = tr(JUDGE_TEXT[j]); l.j = j;
       },
       banner: text => this._banner(text, performance.now() / 1000),
     };
@@ -539,13 +540,13 @@ export class Renderer {
     const cmb = game.combo;
     if (cmb !== this.lastCombo) {
       if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) {
-        this._banner(cmb + ' COMBO', now);
+        this._banner(tr('{n} COMBO', { n: cmb }), now);
         this.frameT = now; this.shakeT = now;
       }
       if (cmb > this.lastCombo && cmb >= 10 && cmb % 10 === 0) this.popT = now;
       this.lastCombo = cmb;
       const m = game.multiplier > 1 ? ' x' + game.multiplier.toFixed(1) : '';
-      this._comboTxt = cmb + ' COMBO' + m;
+      this._comboTxt = tr('{n} COMBO', { n: cmb }) + m;
       this._comboShort = cmb + m;
     }
 
@@ -556,7 +557,7 @@ export class Renderer {
     this._text(c, this._accTxt, W - 2, 1, INK, false, 1, 'right');
     c.fillStyle = INK; c.fillRect(0, 10, W, 1);
     let tag = '';
-    if (game.fcAlive && game.judgedCount >= 5) tag = game.apAlive ? 'ALL PERFECT' : 'FULL COMBO';
+    if (game.fcAlive && game.judgedCount >= 5) tag = tr(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO');
     if (!tag) tag = this.modLabel;
     if (tag) this._text(c, tag, 3, 12, INK, false);
     if (cmb > 1) {

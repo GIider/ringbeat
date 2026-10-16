@@ -1,6 +1,7 @@
 // First-run tutorial: hand-authored mini-charts played through the normal game loop.
 
 import { ROLL_TAIL_SEC } from './chart.js';
+import { t, tn } from './i18n.js';
 
 const BPM = 100;
 const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch per lane
@@ -103,13 +104,13 @@ export function stagePassed(stage, results) {
 }
 
 export function goalText(stage) {
-  const parts = [stage.maxMiss === 0 ? 'no misses' : `at most ${stage.maxMiss} miss${stage.maxMiss > 1 ? 'es' : ''}`];
-  if (stage.minGreatPct) parts.push(`${stage.minGreatPct}% PERFECT or GREAT`);
-  return 'Goal: ' + parts.join(', ');
+  const parts = [stage.maxMiss === 0 ? t('no misses') : tn(stage.maxMiss, 'at most {n} miss', 'at most {n} misses')];
+  if (stage.minGreatPct) parts.push(t('{pct}% PERFECT or GREAT', { pct: stage.minGreatPct }));
+  return t('Goal: {parts}', { parts: parts.join(', ') });
 }
 
 export function failReason(stage, results) {
   const c = results.counts;
-  if (c.miss > stage.maxMiss) return `${c.miss} miss${c.miss > 1 ? 'es' : ''}`;
-  return `only ${Math.round(greatPct(c))}% PERFECT or GREAT`;
+  if (c.miss > stage.maxMiss) return tn(c.miss, '{n} miss', '{n} misses');
+  return t('only {pct}% PERFECT or GREAT', { pct: Math.round(greatPct(c)) });
 }

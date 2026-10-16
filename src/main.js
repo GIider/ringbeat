@@ -15,7 +15,8 @@ import { encodeSong, decodeShare } from './share.js';
 import { measureChartAsync } from './bot.js';
 import { ratingFromMeasured } from './customrating.js';
 import { Calibration } from './calibration.js';
-import { settings, saveSettings as save, num } from './settings.js';
+import { settings, saveSettings as save, num, effectiveLang } from './settings.js';
+import { t as tr, tn, tm, fmt, setLang, applyStatic, LANGS, getLang } from './i18n.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
 import { onSwipe } from './swipe.js';
@@ -39,6 +40,7 @@ import { createHud, copyReport } from './perfhud.js';
 import { marquee } from './marquee.js';
 
 const $ = id => document.getElementById(id);
+setLang(effectiveLang());
 
 // ---- core objects ----
 const synth = new Synth();
@@ -123,12 +125,12 @@ function setState(s, screen) { state = s; show(screen); input.enabled = s === 'c
 // Status bar title + soft-key labels come from the visible screen's data attributes.
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
-  $('st-title').textContent = el.dataset.title || '';
+  $('st-title').textContent = tr(el.dataset.title || '');
   marquee($('st-title'));
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
   // single "Select"; a screen can name a different Menu action there. The bare LCD keeps both tappable labels.
   const phone = phoneMode();
-  const left = (phone && el.dataset.softLeftPhone) || el.dataset.softLeft || '', right = phone ? '' : el.dataset.softRight || '';
+  const left = tr((phone && el.dataset.softLeftPhone) || el.dataset.softLeft || ''), right = phone ? '' : tr(el.dataset.softRight || '');
   $('soft-left').textContent = left;
   $('soft-right').textContent = right;
   $('soft-left').parentElement.classList.toggle('solo', !!left && !right);
@@ -225,8 +227,8 @@ function hideGag() {
 }
 function showGag(title, text, bar = -1, segments = 0) {
   $('gag').hidden = false;
-  $('gag-title').textContent = title;
-  $('gag-text').textContent = text;
+  $('gag-title').textContent = tm(title);
+  $('gag-text').textContent = tm(text);
   const b = $('gag-bar');
   if (bar < 0) b.textContent = '';
   else if (b.children.length !== segments) b.innerHTML = '<i></i>'.repeat(segments);
@@ -248,7 +250,7 @@ function startWipe() {
     if (!v) { hideGag(); return; }
     showGag('', v.text, v.bar, v.segments);
   }, 100);
-  showGag('', 'Clearing memory...', 0, 12);
+  showGag('', tr('Clearing memory...'), 0, 12);
 }
 function konamiReward() {
   const lcd = $('lcd');
@@ -271,7 +273,7 @@ function eggToken(code, key) {
     dialBuf = (dialBuf + key).slice(-15);
     stopPreview();
     $('gag').style.pointerEvents = 'auto'; // swallows clicks on the song list underneath
-    showGag('Enter number', dialBuf + '_');
+    showGag(tr('Enter number'), dialBuf + '_');
     clearTimeout(dialTimer);
     dialTimer = setTimeout(hideGag, 3000);
   }
@@ -280,7 +282,7 @@ function eggToken(code, key) {
 let toastTimer = 0;
 function toast(msg, ms = 2200) {
   const t = $('toast');
-  t.textContent = msg; t.hidden = false;
+  t.textContent = tm(msg); t.hidden = false;
   // Pop up in the middle of the phone's LCD when it is on screen, else at the bottom of the viewport.
   const r = $('phone').classList.contains('off') ? null : $('lcd').getBoundingClientRect();
   const onLcd = !!(r && r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1);
@@ -321,7 +323,7 @@ function stopPreview() {
   clearTimeout(previewTimer); clearTimeout(autoPreviewTimer);
   previewTimer = autoPreviewTimer = null;
   if (synth.ctx) synth.stopAll();
-  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Preview';
+  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = tr('Preview');
 }
 function startPreview(entry, maxSec = Infinity) {
   stopPreview();
@@ -335,7 +337,7 @@ function startPreview(entry, maxSec = Infinity) {
     synth.playNote({ midi: n.midi, when: t0 + n.startBeat * beat, duration: n.durBeat * beat * 0.92 });
     end = Math.max(end, n.startBeat + n.durBeat);
   }
-  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = 'Stop preview';
+  for (const id of ['btn-custom-preview', 'sm-preview', 'comp-preview']) $(id).textContent = tr('Stop preview');
   previewTimer = setTimeout(stopPreview, (end * beat + 0.4) * 1000);
 }
 function togglePreview(entry) {
@@ -349,13 +351,13 @@ function badgeHTML(run, withMods = false) {
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
-const starsValue = rating => (rating / 2).toFixed(1);
+const starsValue = rating => fmt(rating / 2, 1);
 // `~` in front of a rating that is only a guess (density heuristic, or a rating imported from someone else).
 const estMark = e => (e && e.estimated ? '~' : '');
 // Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
 function starsText(rating) {
   const pct = Math.max(0, Math.min(100, Math.round(rating * 5) * 2));
-  return `<span class="stars-bar" role="img" aria-label="${starsValue(rating)} of 5 stars">` +
+  return `<span class="stars-bar" role="img" aria-label="${esc(tr('{v} of 5 stars', { v: starsValue(rating) }))}">` +
     `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
 }
 
@@ -370,9 +372,9 @@ function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
   const t = tabs.find(x => x.id === settings.view.category);
-  $('sel-cat').textContent = `${t.label} (${t.count})`;
+  $('sel-cat').textContent = `${tr(t.label)} (${t.count})`;
   const sort = SORTS.find(x => x.id === settings.view.sort);
-  $('sel-sort').textContent = sort.label;
+  $('sel-sort').textContent = tr(sort.label);
   $('sel-diff').textContent = cap(settings.difficulty);
 }
 function setCategory(id) {
@@ -397,7 +399,7 @@ function renderList() {
   if (!list.length) {
     const p = document.createElement('p');
     p.className = 'hint empty';
-    p.textContent = 'No songs match this filter.';
+    p.textContent = tr('No songs match this filter.');
     box.appendChild(p);
   }
   for (const e of list) {
@@ -406,7 +408,7 @@ function renderList() {
     b.className = away ? 'song-row unavail' : 'song-row';
     b.dataset.id = e.id;
     b.setAttribute('role', 'option');
-    if (away) b.title = `Only on ${cap(e.only)}`;
+    if (away) b.title = tr('Only on {diff}', { diff: cap(e.only) });
     const rec = away ? null : scores.get(e.id, settings.difficulty);
     const best = rec && rec.best;
     b.innerHTML =
@@ -452,8 +454,8 @@ function renderDetail() {
   const d = settings.difficulty, away = e.only && e.only !== d, rec = away ? null : scores.get(e.id, d);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
-    (away ? ` · <span class="hint">Only on ${cap(e.only)}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · New') + `</div>` +
-    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${e.notes[d]} notes</div>` +
+    (away ? ` · <span class="hint">${esc(tr('Only on {diff}', { diff: cap(e.only) }))}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
+    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${tn(e.notes[d], '{n} note', '{n} notes')}</div>` +
     (e.tag ? `<div>${esc(e.tag)}</div>` : '');
 }
 
@@ -544,11 +546,11 @@ function paintMenuIcon() {
 }
 function renderMenu(dir = 0) {
   const it = MENU[menuIdx], n = unreadCount();
-  $('mm-title').textContent = it.title;
-  $('mm-go').textContent = it.title;
+  $('mm-title').textContent = tr(it.title);
+  $('mm-go').textContent = tr(it.title);
   $('mm-num').textContent = menuIdx + 1;
   $('mm-thumb').style.setProperty('--p', (menuIdx / (MENU.length - 1)).toFixed(3));
-  $('mm-hint').textContent = it.id === 'messages' && n ? `${n} new message${n > 1 ? 's' : ''}` : '';
+  $('mm-hint').textContent = it.id === 'messages' && n ? tn(n, '{n} new message', '{n} new messages') : '';
   paintMenuIcon();
   if (dir) {
     const b = $('mm-body');
@@ -586,7 +588,7 @@ function menuAnim(now) {
 const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes'];
 const STAT_DIFFS = ['all', 'normal', 'hard'];
 let statPage = 0, statDiff = 'all', statTimer = 0;
-const fmtNum = n => Math.round(n).toLocaleString('en-US');
+const fmtNum = n => fmt(Math.round(n));
 const statRow = (label, value) => `<tr><td>${label}</td><td>${value}</td></tr>`;
 // Highscore entries for songs that still exist (a deleted custom song no longer counts).
 function knownScores() {
@@ -633,48 +635,48 @@ function renderStats() {
   statsCountStop();
   const s = stats.get(), list = knownScores(), page = STAT_PAGES[statPage], box = $('stat-page');
   box.scrollTop = 0;
-  $('stat-tab').textContent = `${page} ${statPage + 1}/${STAT_PAGES.length}`;
+  $('stat-tab').textContent = `${tr(page)} ${statPage + 1}/${STAT_PAGES.length}`;
   screens.stats.dataset.softLeft = page === 'Grades' ? 'Diff' : '';
   if (state === 'stats') refreshChrome(screens.stats);
-  const empty = s.runs === 0 ? '<p class="hint center">Play a song to start counting.</p>' : '';
+  const empty = s.runs === 0 ? `<p class="hint center">${tr('Play a song to start counting.')}</p>` : '';
   if (page === 'Time') {
     box.innerHTML =
-      `<div class="st-big">${formatDuration(s.playtime)}</div><div class="hint center">total playtime</div>` +
-      `<table>${statRow('Runs', fmtNum(s.runs))}${statRow('Finished', fmtNum(s.finished))}` +
-      `${statRow('Days played', fmtNum(s.daysPlayed))}${statRow('Streak', `${currentStreak(s)} · best ${s.bestStreak}`)}</table>` +
+      `<div class="st-big">${formatDuration(s.playtime)}</div><div class="hint center">${tr('total playtime')}</div>` +
+      `<table>${statRow(tr('Runs'), fmtNum(s.runs))}${statRow(tr('Finished'), fmtNum(s.finished))}` +
+      `${statRow(tr('Days played'), fmtNum(s.daysPlayed))}${statRow(tr('Streak'), tr('{n} · best {best}', { n: currentStreak(s), best: s.bestStreak }))}</table>` +
       empty;
   } else if (page === 'Score') {
     const fav = favourite(list), fe = fav && entryById(fav.id);
     box.innerHTML =
-      `<div class="st-big" id="stat-score"></div><div class="hint center">lifetime score</div>` +
-      `<table>${statRow('Best combo', fmtNum(s.bestCombo))}${statRow('Avg / run', s.runs ? fmtNum(s.score / s.runs) : '—')}` +
-      `${statRow('Modded runs', fmtNum(s.moddedRuns))}${statRow('My songs runs', fmtNum(s.customRuns))}</table>` +
+      `<div class="st-big" id="stat-score"></div><div class="hint center">${tr('lifetime score')}</div>` +
+      `<table>${statRow(tr('Best combo'), fmtNum(s.bestCombo))}${statRow(tr('Avg / run'), s.runs ? fmtNum(s.score / s.runs) : '—')}` +
+      `${statRow(tr('Modded runs'), fmtNum(s.moddedRuns))}${statRow(tr('My songs runs'), fmtNum(s.customRuns))}</table>` +
       (fe ? `<div class="st-fav"><span class="ic">♪</span><b class="st-name">${esc(fe.title)}</b><span class="n">${fav.plays}×</span></div>` : empty);
     statsCountUp($('stat-score'), s.score);
     marquee(box.querySelector('.st-name'));
   } else if (page === 'Top') {
     const rows = topSongs(list, Infinity).map(t => ({ e: entryById(t.id), plays: t.plays })).filter(r => r.e);
     box.innerHTML = rows.length
-      ? `<div class="hint center">${rows.length} song${rows.length === 1 ? '' : 's'} played</div><div class="st-top">${rows.map((r, i) =>
+      ? `<div class="hint center">${tn(rows.length, '{n} song played', '{n} songs played')}</div><div class="st-top">${rows.map((r, i) =>
         `<div class="st-row"><span class="rk">${i + 1}.</span><b class="st-name">${esc(r.e.title)}</b><span class="n">${r.plays}×</span></div>`).join('')}</div>`
-      : empty || '<p class="hint center">No songs played yet.</p>';
+      : empty || `<p class="hint center">${tr('No songs played yet.')}</p>`;
   } else if (page === 'Grades') {
     const t = gradeTally(list, statDiff), max = Math.max(1, ...GRADES.map(g => t[g]));
     const total = statDiff === 'all' ? entries().length : entries().filter(e => e.only ? e.only === statDiff : e.notes[statDiff] > 0).length;
     box.innerHTML =
-      `<div class="center"><b>${statDiff === 'all' ? 'All' : cap(statDiff)}</b> · ${t.played}/${total} played</div>` +
+      `<div class="center"><b>${statDiff === 'all' ? tr('All') : cap(statDiff)}</b> · ${tr('{n}/{total} played', { n: t.played, total })}</div>` +
       `<div class="gbars">${GRADES.map(g =>
         `<div class="gbar"><span>${t[g]}</span><i style="--h:${(t[g] / max).toFixed(3)}"></i><b>${g}</b></div>`).join('')}</div>` +
       `<div class="center"><span class="badge">FC</span> ${t.fc} &nbsp; <span class="badge ap">AP</span> ${t.ap}</div>`;
   } else {
     const n = s.notes, hits = n.perfect + n.great + n.good, all = hits + n.miss;
-    const acc = all ? ((n.perfect + n.great * 2 / 3 + n.good / 3) / all * 100).toFixed(1) + '%' : '—';
+    const acc = all ? fmt((n.perfect + n.great * 2 / 3 + n.good / 3) / all * 100, 1) + '%' : '—';
     const seg = k => (all ? (n[k] / all * 100).toFixed(2) : 0);
     box.innerHTML =
       `<div class="mixbar">${['perfect', 'great', 'good', 'miss'].map(k => `<i class="${k}" style="width:${seg(k)}%"></i>`).join('')}</div>` +
       `<table>${['perfect', 'great', 'good', 'miss'].map(k => statRow(`<i class="sw ${k}"></i>${cap(k)}`, fmtNum(n[k]))).join('')}` +
-      `${statRow('Accuracy', acc)}${statRow('Ghost taps', fmtNum(s.ghosts))}` +
-      `${statRow('FC runs', fmtNum(s.fcRuns))}${statRow('AP runs', fmtNum(s.apRuns))}</table>` + empty;
+      `${statRow(tr('Accuracy'), acc)}${statRow(tr('Ghost taps'), fmtNum(s.ghosts))}` +
+      `${statRow(tr('FC runs'), fmtNum(s.fcRuns))}${statRow(tr('AP runs'), fmtNum(s.apRuns))}</table>` + empty;
   }
 }
 
@@ -690,7 +692,7 @@ function openInbox(focusVersion = '') {
     b.className = 'msg-row' + (isNew ? ' new' : '');
     b.toggleAttribute('data-default', focusVersion ? m.version === focusVersion : i === 0);
     b.innerHTML = spriteHTML(isNew ? envelope() : ENVELOPE_SMALL_OPEN, 2) +
-      `<span class="t">${esc(m.title)}</span><span class="v">v${esc(m.version)}</span>`;
+      `<span class="t">${esc(tr(m.title))}</span><span class="v">v${esc(m.version)}</span>`;
     list.append(b);
   }
   setState('inbox', 'inbox');
@@ -724,7 +726,7 @@ function showMessage(i, quiet = false) {
   settings.msgSeen = markRead(settings.msgSeen, m.version); save();
   $('sms-from').textContent = SENDER;
   $('sms-date').textContent = `v${m.version} · ${m.date}`;
-  $('sms-body').innerHTML = `<b>${esc(m.title)}</b>\n${esc(m.body)}`;
+  $('sms-body').innerHTML = `<b>${esc(tr(m.title))}</b>\n${esc(tr(m.body))}`;
   $('sms-body').scrollTop = 0;
   screens.message.dataset.softLeft = i + 1 < MESSAGES.length ? 'Next' : '';
   setState('message', 'message');
@@ -743,7 +745,7 @@ function scrollMessage(dir) {
 function openProfile() {
   const s = stats.get();
   setSprite($('pf-icon'), PERSON_ART, unit * 2);
-  $('pf-meta').textContent = s.firstPlayed ? `Since ${dayKey(s.firstPlayed)} · ${formatDuration(s.playtime)} played` : 'New player';
+  $('pf-meta').textContent = s.firstPlayed ? tr('Since {date} · {time} played', { date: dayKey(s.firstPlayed), time: formatDuration(s.playtime) }) : tr('New player');
   setState('profile', 'profile');
 }
 
@@ -792,7 +794,7 @@ async function copyText(text, el, label) {
     ta.remove();
     if (prev && prev.focus) prev.focus();
   }
-  el.textContent = ok ? label + ' copied to clipboard!' : "Couldn't access the clipboard";
+  el.textContent = ok ? tr('{what} copied to clipboard!', { what: tr(label) }) : tr("Couldn't access the clipboard");
 }
 // Select + remember the saved song; persists nothing else.
 function afterSongsChanged(select) {
@@ -803,9 +805,9 @@ function afterSongsChanged(select) {
 // Why a save failed, in words the player can act on.
 function saveProblem(text) {
   const p = rtttlProblem(text);
-  if (p) return 'Cannot save: ' + p;
-  if (mysongs.isFull()) return `My songs is full (max ${MAX_SONGS}): delete a song first`;
-  return 'Cannot save: browser storage is unavailable';
+  if (p) return tr('Cannot save: {why}', { why: tm(p) });
+  if (mysongs.isFull()) return tr('My songs is full (max {max}): delete a song first', { max: MAX_SONGS });
+  return tr('Cannot save: browser storage is unavailable');
 }
 function openMySongs(msg = '') {
   const list = $('ms-list');
@@ -813,10 +815,10 @@ function openMySongs(msg = '') {
   for (const e of customs) {
     const b = document.createElement('button');
     b.dataset.uid = e.uid;
-    b.textContent = `${e.title} · ${e.notes.normal} notes · ${formatLength(e.length)}`;
+    b.textContent = `${e.title} · ${tn(e.notes.normal, '{n} note', '{n} notes')} · ${formatLength(e.length)}`;
     list.append(b);
   }
-  $('ms-msg').textContent = msg || (customs.length ? '' : 'No songs yet. Make one with New song.');
+  $('ms-msg').textContent = tm(msg) || (customs.length ? '' : tr('No songs yet. Make one with New song.'));
   $('ms-new').disabled = $('ms-paste').disabled = mysongs.isFull();
   $('ms-export').disabled = !customs.length;
   setState('mysongs', 'mysongs');
@@ -827,8 +829,8 @@ function openMySongs(msg = '') {
 // Song menu header: tempo / length plus the difficulty (stars per level; `~` = not measured on this device).
 function renderSongMeta(e) {
   const stars = d => `${cap(d)} ${estMark(e)}${starsValue(ratingOf(e, d))}`;
-  $('sm-meta').textContent = `${e.bpm} BPM · ${e.notes.normal} notes · ${formatLength(e.length)} · ${stars('normal')} / ${stars('hard')} ★`;
-  $('sm-calc').textContent = curSong() && curSong().rating && !curSong().rating.imported ? 'Recalculate difficulty' : 'Calculate difficulty';
+  $('sm-meta').textContent = `${e.bpm} BPM · ${tn(e.notes.normal, '{n} note', '{n} notes')} · ${formatLength(e.length)} · ${stars('normal')} / ${stars('hard')} ★`;
+  $('sm-calc').textContent = curSong() && curSong().rating && !curSong().rating.imported ? tr('Recalculate difficulty') : tr('Calculate difficulty');
 }
 // Measures the open song with the bot ladder (bot.js) on both difficulties, showing a progress bar; stores the result.
 let calcToken = 0, calcRunning = false;
@@ -837,13 +839,13 @@ async function calcDifficulty() {
   if (!song || !e) return;
   if (calcRunning) { // pressing the button again while it runs cancels
     calcToken++; calcRunning = false;
-    $('sm-bar').hidden = true; $('sm-msg').textContent = 'Calculation stopped';
+    $('sm-bar').hidden = true; $('sm-msg').textContent = tr('Calculation stopped');
     return;
   }
   const bar = $('sm-bar'), msg = $('sm-msg');
   const my = ++calcToken, uid = curUid;
   const cancelled = () => my !== calcToken || state !== 'songmenu' || curUid !== uid;
-  bar.hidden = false; setBar(0); msg.textContent = 'Calculating difficulty… (press again to stop)'; calcRunning = true;
+  bar.hidden = false; setBar(0); msg.textContent = tr('Calculating difficulty… (press again to stop)'); calcRunning = true;
   const measured = {};
   try {
     for (let i = 0; i < DIFFS.length; i++) {
@@ -857,12 +859,12 @@ async function calcDifficulty() {
   if (cancelled() || !measured.normal || !measured.hard) return; // whoever cancelled has already updated the screen
   setBar(1);
   const rec = ratingFromMeasured(measured);
-  if (!rec || !mysongs.setRating(uid, rec)) { bar.hidden = true; msg.textContent = "Couldn't store the rating"; return; }
+  if (!rec || !mysongs.setRating(uid, rec)) { bar.hidden = true; msg.textContent = tr("Couldn't store the rating"); return; }
   refreshCustoms();
   const fresh = curEntry();
   if (fresh) renderSongMeta(fresh);
   bar.hidden = true;
-  msg.textContent = 'Difficulty calculated';
+  msg.textContent = tr('Difficulty calculated');
 }
 const setBar = f => { $('sm-bar').firstElementChild.style.width = Math.round(Math.max(0, Math.min(1, f)) * 100) + '%'; };
 function openSongMenu(uid) {
@@ -885,7 +887,7 @@ function importSharedText(text) {
 }
 
 // -- difficulty picker: also the song's detail screen (rating per difficulty, top runs for the focused one) --
-function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
 let dpBack = null, dpEntry = null, dpDiff = 'normal';
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
@@ -898,10 +900,10 @@ function renderDpPanel() {
   ol.className = 'top';
   for (const r of (rec ? rec.top : [])) {
     const li = document.createElement('li');
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`;
     ol.appendChild(li);
   }
-  if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
+  if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
 }
 function askDifficulty(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
@@ -912,7 +914,7 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, same = entry.only && entry.only !== d; // folded into the other difficulty
     const n = same ? 0 : entry.notes[d] || 0;
-    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? '' : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') + '</span>';
+    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? '' : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${tn(n, '{n} note', '{n} notes')}` : ' · ' + esc(tr('no notes'))) + '</span>';
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
     b.onfocus = () => { dpDiff = d; renderDpPanel(); };
@@ -941,7 +943,7 @@ function compEntry() {
 }
 function renderComposer() {
   const dur = cs.notes[cs.cursor - 1] ? cs.notes[cs.cursor - 1].dur : cs.pen.dur;
-  $('comp-info').textContent = `${cs.name || 'Untitled'} · ${cs.bpm} BPM · 1/${dur} · oct ${cs.pen.oct}${csDirty ? ' · *' : ''}`;
+  $('comp-info').textContent = `${cs.name || tr('Untitled')} · ${cs.bpm} BPM · 1/${dur} · oct ${cs.pen.oct}${csDirty ? ' · *' : ''}`;
   const box = $('comp-notes');
   box.textContent = '';
   const caret = () => { const c = document.createElement('span'); c.className = 'caret'; return c; };
@@ -959,7 +961,7 @@ function renderComposer() {
   if (to < cs.notes.length) { const m = document.createElement('span'); m.textContent = '…'; box.append(m); }
   const e = compEntry(), st = $('comp-status');
   st.className = 'status ' + (e ? 'ok' : 'err');
-  st.textContent = e ? `${cs.notes.length} notes · ${formatLength(e.length)}` : cs.notes.length ? 'Needs a playable note' : 'Press 1-7 to enter notes';
+  st.textContent = e ? `${tn(cs.notes.length, '{n} note', '{n} notes')} · ${formatLength(e.length)}` : cs.notes.length ? tr('Needs a playable note') : tr('Press 1-7 to enter notes');
   $('comp-play').disabled = $('comp-preview').disabled = $('comp-save').disabled = !e;
   $('comp-bpm').value = cs.bpm; $('comp-bpm-val').textContent = cs.bpm;
   paintRange($('comp-bpm'));
@@ -1042,12 +1044,12 @@ function updateCustomStatus() {
   const e = text ? customEntry(text) : null;
   if (!e) {
     st.className = 'status err';
-    st.textContent = '✗ ' + (text ? 'Not a valid RTTTL song (needs name:d=4,o=5,b=120:notes)' : 'Paste an RTTTL string');
+    st.textContent = '✗ ' + (text ? tr('Not a valid RTTTL song (needs name:d=4,o=5,b=120:notes)') : tr('Paste an RTTTL string'));
   } else {
     st.className = 'status ok';
     const w = e.song.warnings;
-    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${e.notes.normal} notes` +
-      (w.length ? ` · ⚠ ${w.slice(0, 3).join('; ')}${w.length > 3 ? ` (+${w.length - 3} more)` : ''}` : '');
+    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${tn(e.notes.normal, '{n} note', '{n} notes')}` +
+      (w.length ? ` · ⚠ ${w.slice(0, 3).map(tm).join('; ')}${w.length > 3 ? ' ' + tr('(+{n} more)', { n: w.length - 3 }) : ''}` : '');
   }
   for (const id of ['btn-custom-save', 'btn-custom-play', 'btn-custom-preview', 'btn-custom-compose']) $(id).disabled = !e;
 }
@@ -1063,7 +1065,7 @@ function openCustom(text = '', uid = '') {
 // ---- mods (sticky loadout, edited on its own screen opened from the difficulty picker) ----
 function refreshModsButton() {
   const on = mods.isActive(settings.mods);
-  $('btn-mods').innerHTML = `<span class="dp-line">${esc('Mods: ' + mods.summary(settings.mods) + (on ? ' ▸' : ''))}</span>`;
+  $('btn-mods').innerHTML = `<span class="dp-line">${esc(tr('Mods: {summary}', { summary: tr(mods.summary(settings.mods)) }) + (on ? ' ▸' : ''))}</span>`;
   $('btn-mods').classList.toggle('sel', on);
 }
 const MOD_HINTS = {
@@ -1078,19 +1080,19 @@ const JUDGE_LABELS = { lenient: 'Lenient', off: 'Normal', strict: 'Strict' };
 function updateModsUI() {
   const m = settings.mods;
   $('m-speed').value = mods.SPEEDS.indexOf(m.speed);
-  $('m-speed-val').textContent = m.speed === 1 ? 'Normal' : m.speed.toFixed(1) + '×';
+  $('m-speed-val').textContent = m.speed === 1 ? tr('Normal') : fmt(m.speed, 1) + '×';
   $('m-mirror').checked = m.mirror;
   $('m-hidden').checked = m.hidden;
   $('m-sudden').checked = m.sudden;
   $('m-demo').checked = m.demo;
   $('m-judge').value = mods.JUDGES.indexOf(m.judge);
-  $('m-judge-val').textContent = JUDGE_LABELS[m.judge];
+  $('m-judge-val').textContent = tr(JUDGE_LABELS[m.judge]);
   $('m-mult').textContent = mods.multText(mods.multiplier(m));
   paintRanges($('mods'));
 }
 function openMods() {
   updateModsUI();
-  $('m-hint').textContent = MOD_HINTS['m-speed'];
+  $('m-hint').textContent = tr(MOD_HINTS['m-speed']);
   setState('mods', 'mods');
 }
 function closeMods() {
@@ -1124,11 +1126,11 @@ function startRun(r) {
   if (r.entry && r.entry.only) r.diff = r.entry.only; // Normal and Hard barely differ: one difficulty
   if (r.entry && r.entry.notes && !r.entry.notes[r.diff]) {
     const alt = ['normal', 'hard'].find(d => r.entry.notes[d] > 0);
-    if (alt) { toast(`No notes on ${r.diff}: playing ${alt}`); r.diff = alt; }
+    if (alt) { toast(tr('No notes on {from}: playing {to}', { from: cap(r.diff), to: cap(alt) })); r.diff = alt; }
   }
   run = r;
   runTime = 0; lastSongT = null;
-  for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = r.retLabel || 'Tones';
+  for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr(r.retLabel || 'Tones');
   stopPreview();
   let chart;
   try {
@@ -1147,7 +1149,7 @@ function startRun(r) {
   }
   synth.ensure();
   synth.setVolume(settings.volume);
-  renderer.title = r.tutorial ? STAGES[r.tutorial.stage].title : r.entry.title;
+  renderer.title = r.tutorial ? tr(STAGES[r.tutorial.stage].title) : r.entry.title;
   renderer.scrollTime = settings.scrollTime;
   renderer.hidden = !!(r.modsUsed && r.modsUsed.hidden);
   renderer.modLabel = r.modsUsed ? mods.tags(r.modsUsed).join(' ') : '';
@@ -1238,16 +1240,16 @@ function renderHistogram(deltas) {
     const el = document.createElement('div');
     el.style.height = Math.max(2, Math.round(46 * n / max)) + 'px';
     if (i === (HIST_BINS - 1) / 2) el.className = 'mid';
-    el.title = n + ' hits';
+    el.title = tn(n, '{n} hit', '{n} hits');
     box.appendChild(el);
   });
   if (deltas.length >= 10) {
     const mean = deltas.reduce((s, d) => s + d, 0) / deltas.length;
     const ms = Math.round(mean * 1000);
     $('r-offset').textContent = Math.abs(ms) < 8
-      ? 'Timing is centered.'
-      : `Average hit: ${Math.abs(ms)} ms ${ms > 0 ? 'late' : 'early'}` +
-        (Math.abs(ms) >= 20 ? ' — try Settings → Calibrate' : '');
+      ? tr('Timing is centered.')
+      : tr(ms > 0 ? 'Average hit: {ms} ms late' : 'Average hit: {ms} ms early', { ms: Math.abs(ms) }) +
+        (Math.abs(ms) >= 20 ? tr(' — try Settings → Calibrate') : '');
   } else {
     $('r-offset').textContent = '';
   }
@@ -1296,13 +1298,14 @@ game.onFinish = r => {
   commitTime();
   const demo = isDemo();
   if (run && run.entry && !demo) stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used });
-  $('r-heading').textContent = screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
+  screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
+  $('r-heading').textContent = tr(screens.results.dataset.title);
   $('r-song').textContent = run ? `${run.entry.title} · ${cap(run.diff)}` +
     (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
   juiceResults(r);
   $('r-grade').textContent = r.grade;
   $('r-grade').dataset.grade = r.grade;
-  $('r-acc').textContent = r.accuracy.toFixed(1) + '%';
+  $('r-acc').textContent = fmt(r.accuracy, 1) + '%';
   $('r-combo').textContent = r.maxCombo;
   $('r-p').textContent = r.counts.perfect;
   $('r-g').textContent = r.counts.great;
@@ -1312,7 +1315,7 @@ game.onFinish = r => {
   const banner = $('r-banner');
   banner.hidden = !r.fc || demo;
   banner.className = 'banner' + (r.ap ? ' ap' : '');
-  banner.textContent = r.ap ? 'ALL PERFECT' : r.fc ? 'FULL COMBO' : '';
+  banner.textContent = r.ap ? tr('ALL PERFECT') : r.fc ? tr('FULL COMBO') : '';
   if (r.fc && !demo) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
   const best = $('r-best');
   best.hidden = true;
@@ -1320,12 +1323,12 @@ game.onFinish = r => {
   if (demo) {
     // demo runs are never saved and show no best/rank line
   } else if (r.failed) {
-    best.hidden = false; best.textContent = 'Sudden death: run not saved'; best.style.color = 'var(--dim)';
+    best.hidden = false; best.textContent = tr('Sudden death: run not saved'); best.style.color = 'var(--dim)';
   } else if (run) {
     const rec = scores.record(run.entry.id, run.diff, r);
     best.style.color = '';
-    if (rec.isNewBest) { best.hidden = false; best.textContent = '★ NEW BEST ★'; }
-    else if (rec.rank) { best.hidden = false; best.textContent = `Rank #${rec.rank}`; }
+    if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
+    else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
     topRuns = { runs: scores.get(run.entry.id, run.diff)?.top || [], rank: rec.rank };
   }
   renderTopRuns();
@@ -1341,7 +1344,7 @@ function renderTopRuns() {
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
     if (topRuns.rank === i + 1) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`;
     ol.appendChild(li);
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
@@ -1365,24 +1368,24 @@ function nextSong() {
 function controlsHTML() {
   const keys = KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ');
   const pad = [0, 1, 2, 3].map(i => `<b>${buttonName(settings.padBindings[i][0])}</b>`).join(' ');
-  return `<p>Hit each note as it reaches the glowing line.</p>` +
-    `<p>Keys: ${keys}<br>Pad: ${pad}<br>Touch: tap the lanes</p>`;
+  return `<p>${tr('Hit each note as it reaches the glowing line.')}</p>` +
+    tr('<p>Keys: {keys}<br>Pad: {pad}<br>Touch: tap the lanes</p>', { keys, pad });
 }
 function tutProgress(done, current) {
   const n = STAGES.length;
   const boxes = STAGES.map((_, i) => (i < done ? '■' : i === current ? '▣' : '□')).join(' ');
   $('tut-progress').hidden = false;
-  $('tut-progress').textContent = `${boxes}   ${current >= 0 ? `Lesson ${current + 1} of ${n}` : `${n} lessons`}`;
+  $('tut-progress').textContent = `${boxes}   ${current >= 0 ? tr('Lesson {i} of {n}', { i: current + 1, n }) : tr('{n} lessons', { n })}`;
 }
 // First time opening Tones: offer the tutorial (it stays reachable from Settings).
 function openTutPrompt() { setState('tutprompt', 'tutprompt'); }
 function skipTutPrompt() { settings.tutorialDone = true; save(); openSelect(); }
 function openTutorial() {
-  $('btn-tut-go').textContent = 'Start tutorial';
+  $('btn-tut-go').textContent = tr('Start tutorial');
   $('btn-tut-skip').hidden = false;
-  $('tut-title').textContent = 'Welcome to Ringbeat';
+  $('tut-title').textContent = tr('Welcome to Ringbeat');
   $('tut-body').innerHTML = controlsHTML() +
-    `<p>${STAGES.length} short lessons.</p>`;
+    `<p>${tr('{n} short lessons.', { n: STAGES.length })}</p>`;
   tutProgress(0, -1);
   run = { tutorial: { stage: -1 } };
   setState('tutorial', 'tutorial');
@@ -1390,11 +1393,11 @@ function openTutorial() {
 // Lesson card: text + goal, waits for the player to confirm before the round starts.
 function openLesson(i, failed) {
   const st = STAGES[i];
-  $('tut-title').textContent = failed ? `Try again: ${st.title}` : st.title;
+  $('tut-title').textContent = failed ? tr('Try again: {title}', { title: tr(st.title) }) : tr(st.title);
   $('tut-body').innerHTML =
-    (failed ? `<p><b>Not quite</b> — ${esc(failed)}.</p>` : '') +
-    `<p>${esc(st.text)}</p><p>${esc(goalText(st))}</p>`;
-  $('btn-tut-go').textContent = failed ? 'Retry lesson' : 'Start lesson';
+    (failed ? `<p>${tr('<b>Not quite</b> — {why}.', { why: esc(failed) })}</p>` : '') +
+    `<p>${esc(tr(st.text))}</p><p>${esc(goalText(st))}</p>`;
+  $('btn-tut-go').textContent = failed ? tr('Retry lesson') : tr('Start lesson');
   $('btn-tut-skip').hidden = false;
   tutProgress(i, i);
   run = { tutorial: { stage: i, pending: true } };
@@ -1402,9 +1405,9 @@ function openLesson(i, failed) {
 }
 function lessonPassed(i) {
   const last = i + 1 >= STAGES.length;
-  $('tut-title').textContent = `Lesson ${i + 1} passed ✓`;
-  $('tut-body').innerHTML = `<p>${esc(STAGES[i].title)} mastered.</p>`;
-  $('btn-tut-go').textContent = last ? 'Continue' : 'Next lesson';
+  $('tut-title').textContent = tr('Lesson {i} passed ✓', { i: i + 1 });
+  $('tut-body').innerHTML = `<p>${esc(tr('{title} mastered.', { title: tr(STAGES[i].title) }))}</p>`;
+  $('btn-tut-go').textContent = last ? tr('Continue') : tr('Next lesson');
   $('btn-tut-skip').hidden = false;
   tutProgress(i + 1, -1);
   run = { tutorial: { stage: i, passed: true } };
@@ -1412,11 +1415,11 @@ function lessonPassed(i) {
 }
 function tutorialOutro() {
   game.stop();
-  $('tut-title').textContent = "You're ready!";
+  $('tut-title').textContent = tr("You're ready!");
   $('tut-body').innerHTML =
-    `<p>Hit every note for a <b>Full Combo</b>.</p>` +
-    `<p>Early or late? Try <b>Settings → Calibrate</b>.</p>`;
-  $('btn-tut-go').textContent = 'Pick a song';
+    `<p>${tr('Hit every note for a <b>Full Combo</b>.')}</p>` +
+    `<p>${tr('Early or late? Try <b>Settings → Calibrate</b>.')}</p>`;
+  $('btn-tut-go').textContent = tr('Pick a song');
   $('btn-tut-skip').hidden = true;
   tutProgress(STAGES.length, -1);
   run = { tutorial: { done: true } };
@@ -1455,8 +1458,8 @@ function showOffset() {
 function startCalibration() {
   stopPreview();
   setState('calibration', 'calibration');
-  $('calib-msg').textContent = 'Tap (any key, button or the pad) in time with the ticks.';
-  $('calib-count').textContent = '0 taps';
+  $('calib-msg').textContent = tr('Tap (any key, button or the pad) in time with the ticks.');
+  $('calib-count').textContent = tn(0, '{n} tap', '{n} taps');
   calibration.start();
 }
 function leaveCalibration() {
@@ -1471,7 +1474,7 @@ function nudge(ms) {
 function calibTap(e) {
   if (!calibration.running || calibration.finished) return;
   calibration.recordTap(eventAudioTime(synth.ctx, e));
-  $('calib-count').textContent = calibration.taps.length + ' taps';
+  $('calib-count').textContent = tn(calibration.taps.length, '{n} tap', '{n} taps');
 }
 
 // ---- settings screen & controller bindings ----
@@ -1483,7 +1486,7 @@ function renderBindings() {
   for (let s = 0; s < 4; s++) {
     const b = document.createElement('button');
     const names = settings.padBindings[s].map(buttonName).join(' ');
-    b.textContent = capturingSlot === s ? `${SLOT_NAMES[s]}: press a button…` : `${SLOT_NAMES[s]}: ${names}`;
+    b.textContent = capturingSlot === s ? tr('{slot}: press a button…', { slot: tr(SLOT_NAMES[s]) }) : `${tr(SLOT_NAMES[s])}: ${names}`;
     b.classList.toggle('capture', capturingSlot === s);
     b.onclick = () => { capturingSlot = s; renderBindings(); };
     g.appendChild(b);
@@ -1492,7 +1495,7 @@ function renderBindings() {
 }
 function updatePadStatus() {
   const first = pad.list()[0];
-  $('pad-status').textContent = first ? `Connected: ${first.id}` : 'No controller detected — press a button on it.';
+  $('pad-status').textContent = first ? tr('Connected: {id}', { id: first.id }) : tr('No controller detected — press a button on it.');
 }
 function bindButton(index) {
   const s = capturingSlot;
@@ -1542,11 +1545,11 @@ function selectHints() {
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
   $('sel-hint').textContent = pad
-    ? `${bn(BTN.LB)}/${bn(BTN.RB)} Cat · ${bn(BTN.LT)} Sort`
-    : '◄► Cat · D/F Sort · J/K Diff';
+    ? tr('{lb}/{rb} Cat · {lt} Sort', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT) })
+    : tr('◄► Cat · D/F Sort · J/K Diff');
 }
 
-pad.onConnect = id => { toast('Controller connected: ' + id.replace(/\(.*\)/, '').trim().slice(0, 40)); };
+pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); };
 pad.onDisconnect = () => {
   toast('Controller disconnected');
   if (state === 'countin' || state === 'playing' || state === 'resuming') pauseGame();
@@ -1741,8 +1744,21 @@ function wire() {
   hp.onchange = () => { settings.haptics = hp.checked; save(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
-  const voiceLabel = () => { $('set-voice').textContent = 'Tone: ' + (settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth'); };
-  voiceLabel();
+  const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: tr(settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth') }); };
+  const langLabel = () => { $('set-lang').textContent = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
+  // Everything that was drawn from text is redrawn; screens opened later render fresh.
+  const relocalize = () => {
+    applyStatic();
+    voiceLabel(); langLabel();
+    renderBindings(); refreshModsButton(); refreshChrome(); selectHints();
+    for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr((run && run.retLabel) || 'Tones');
+  };
+  relocalize();
+  $('set-lang').onclick = () => {
+    const codes = Object.keys(LANGS);
+    settings.lang = codes[(codes.indexOf(getLang()) + 1) % codes.length];
+    save(); setLang(settings.lang); relocalize();
+  };
   $('set-voice').onclick = () => {
     settings.voice = synth.voice = settings.voice === 'buzzer' ? 'smooth' : 'buzzer';
     save(); voiceLabel();
@@ -1759,10 +1775,10 @@ function wire() {
     const b = e.currentTarget;
     if (resetTimer) {
       clearTimeout(resetTimer); resetTimer = 0;
-      scores.clear(); stats.clear(); b.textContent = 'Reset scores & stats'; toast('Scores and stats cleared');
+      scores.clear(); stats.clear(); b.textContent = tr('Reset scores & stats'); toast('Scores and stats cleared');
     } else {
-      b.textContent = 'Really reset? Press again';
-      resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = 'Reset scores & stats'; }, 3000);
+      b.textContent = tr('Really reset? Press again');
+      resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = tr('Reset scores & stats'); }, 3000);
     }
   };
 
@@ -1819,7 +1835,7 @@ function wire() {
   $('btn-mods-back').onclick = closeMods;
   $('mods').addEventListener('focusin', e => {
     const h = MOD_HINTS[e.target.id];
-    if (h) $('m-hint').textContent = h;
+    if (h) $('m-hint').textContent = tr(h);
   });
 
   // my songs
@@ -1842,9 +1858,9 @@ function wire() {
       }
       r = importSharedText(text);
     } catch { r = { added: 0, skipped: 1 }; }
-    openMySongs(`Imported ${r.added}${r.skipped ? `, skipped ${r.skipped}` : ''}`);
+    openMySongs(r.skipped ? tr('Imported {n}, skipped {skipped}', { n: r.added, skipped: r.skipped }) : tr('Imported {n}', { n: r.added }));
   };
-  $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = 'Exported ' + mysongs.count() + ' songs'; };
+  $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = tn(mysongs.count(), 'Exported {n} song', 'Exported {n} songs'); };
 
   // one song
   $('sm-play').onclick = () => { const e = curEntry(); if (e) askDifficulty(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
@@ -1852,10 +1868,10 @@ function wire() {
   $('sm-edit').onclick = () => { const s = curSong(); if (s) openComposer(s.rtttl, s.uid); };
   $('sm-dup').onclick = () => {
     const d = mysongs.duplicate(curUid);
-    if (!d) { toast(mysongs.isFull() ? `My songs is full (max ${MAX_SONGS})` : 'Could not duplicate: storage unavailable'); return; }
+    if (!d) { toast(mysongs.isFull() ? tr('My songs is full (max {max})', { max: MAX_SONGS }) : 'Could not duplicate: storage unavailable'); return; }
     refreshCustoms(); openSongMenu(d.uid);
   };
-  $('sm-file').onclick = () => { const s = curSong(); if (s) { download(slug(s.name) + '.rtttl', s.rtttl + '\n'); $('sm-msg').textContent = 'Saved ' + slug(s.name) + '.rtttl'; } };
+  $('sm-file').onclick = () => { const s = curSong(); if (s) { download(slug(s.name) + '.rtttl', s.rtttl + '\n'); $('sm-msg').textContent = tr('Saved {file}', { file: slug(s.name) + '.rtttl' }); } };
   $('sm-copy').onclick = () => { const s = curSong(); if (s) copyText(s.rtttl, $('sm-msg'), 'Text'); };
   $('sm-calc').onclick = calcDifficulty;
   $('sm-share').onclick = async () => {
@@ -1865,8 +1881,8 @@ function wire() {
   };
   let delArmed = 0;
   $('sm-del').onclick = () => {
-    if (Date.now() - delArmed > 4000) { delArmed = Date.now(); $('sm-del').textContent = 'Really delete?'; setTimeout(() => { $('sm-del').textContent = 'Delete'; }, 4000); return; }
-    delArmed = 0; $('sm-del').textContent = 'Delete';
+    if (Date.now() - delArmed > 4000) { delArmed = Date.now(); $('sm-del').textContent = tr('Really delete?'); setTimeout(() => { $('sm-del').textContent = tr('Delete'); }, 4000); return; }
+    delArmed = 0; $('sm-del').textContent = tr('Delete');
     mysongs.remove(curUid); curUid = '';
     refreshCustoms();
     if (!entryById(selectedId)) selectedId = (visible()[0] || builtins[0]).id;
@@ -2236,11 +2252,11 @@ function frame() {
       calibration.running = false;
       const r = calibration.result();
       if (r === null) {
-        $('calib-msg').textContent = 'Not enough usable taps. Try again.';
+        $('calib-msg').textContent = tr('Not enough usable taps. Try again.');
       } else {
         settings.calibration = num(r, -0.5, 0.5, 0);
         save(); showOffset();
-        $('calib-msg').textContent = `Measured offset: ${Math.round(r * 1000)} ms. Nudge or press Done.`;
+        $('calib-msg').textContent = tr('Measured offset: {ms} ms. Nudge or press Done.', { ms: Math.round(r * 1000) });
       }
     }
     return;
@@ -2251,7 +2267,7 @@ function frame() {
     const now = performance.now() / 1000;
     renderer.labels.forEach((l, i) => {
       const d = demoLabels[i];
-      if (d) { l.t = now - d.age; l.lane = d.lane; l.text = DEMO_JUDGE_TEXT[d.j]; } else l.t = -10;
+      if (d) { l.t = now - d.age; l.lane = d.lane; l.text = tr(DEMO_JUDGE_TEXT[d.j]); } else l.t = -10;
     });
     renderer.draw(demoRun.g, demoRun.T); updatePhones(demoRun.g, demoRun.T); return;
   }
