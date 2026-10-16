@@ -28,6 +28,7 @@ import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
+import { RULES, encodeLog } from './replay.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
@@ -812,7 +813,8 @@ function renderProfile() {
   $('pf-meta').textContent = s.firstPlayed ? tr('Since {date} · {time} played', { date: dayKey(s.firstPlayed), time: formatDuration(s.playtime) }) : tr('New player');
   $('pf-signin').hidden = on;
   $('pf-signin').disabled = !cloud.available();
-  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-signout', 'pf-delete']) $(id).hidden = !on;
+  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-public', 'pf-signout', 'pf-delete']) $(id).hidden = !on;
+  $('pf-public').textContent = tr(p && p.public === false ? 'On leaderboards: Off' : 'On leaderboards: On');
   $('pf-signin').toggleAttribute('data-default', !on);
   $('pf-sync').toggleAttribute('data-default', on);
   const at = cloud.lastSync();
@@ -983,6 +985,18 @@ function renderDpPanel() {
     ol.appendChild(li);
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
+  renderDpWorld(e, e.only || d, box);
+}
+// The world top 3 under the local runs, once the board arrives (cached for a minute).
+async function renderDpWorld(e, d, box) {
+  const b = await cloud.board(e.id, d);
+  if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || !b || b.rules !== RULES || !b.runs.length) return;
+  box.querySelector('.dp-world')?.remove();
+  const div = document.createElement('div');
+  div.className = 'dp-world';
+  div.innerHTML = `<div class="hint">${esc(tr('World'))}</div><ol class="top">${b.runs.slice(0, 3).map(r =>
+    `<li>${esc(r.name)} · ${r.score}${badgeHTML(r, true)}</li>`).join('')}</ol>`;
+  box.appendChild(div);
 }
 function askDifficulty(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
@@ -1397,6 +1411,8 @@ game.onFinish = r => {
   if (r.fc && !demo) { void banner.offsetWidth; banner.classList.add('celebrate'); } // restart the pop on every results screen
   const best = $('r-best');
   best.hidden = true;
+  $('r-world').hidden = true;
+  worldToken++;
   topRuns = { runs: [], rank: null };
   if (demo) {
     // demo runs are never saved and show no best/rank line
@@ -1405,7 +1421,11 @@ game.onFinish = r => {
   } else if (run) {
     r.date = Date.now();
     const rec = scores.record(run.entry.id, run.diff, r);
-    cloud.queueRun(run.entry.id, run.diff, r, r.mods || []);
+    const runId = cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
+      replay: game.log ? encodeLog(game.log) : undefined, rules: RULES, loadout: run.modsUsed, // no log: ?demo=results
+      rtttl: run.entry.id.startsWith('custom:') ? run.entry.rtttl : undefined,
+    });
+    showWorldRank(run.entry.id, run.diff, runId);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
@@ -1416,6 +1436,26 @@ game.onFinish = r => {
   setResultsPage(0);
   setState('results', 'results');
 };
+
+// The results screen's world line: uploads the run right away, then asks for the player's rank. The API re-plays the
+// run and ranks its own score (docs/CLOUD.md › Leaderboards).
+let worldToken = 0;
+async function showWorldRank(songId, diff, runId) {
+  const el = $('r-world'), token = worldToken;
+  if (!cloud.available()) return;
+  el.hidden = false;
+  if (!runId) { el.textContent = tr('Sign in for world ranks'); return; }
+  el.textContent = tr('World rank…');
+  const verdict = (await cloud.submit())[runId];
+  const around = await cloud.around(songId, diff);
+  if (token !== worldToken) return;
+  const me = around && around.runs.find(x => x.me);
+  el.textContent = !around ? tr('World rank: no connection')
+    : around.rules !== RULES ? tr('Not ranked: update the game')
+    : verdict && verdict.verified === -1 ? tr('Not ranked')
+    : me ? tr('World #{n} of {total}', { n: me.rank, total: me.total })
+    : tr('World rank pending');
+}
 
 let resultsPage = 0, topRuns = { runs: [], rank: null };
 function renderTopRuns() {
@@ -1965,6 +2005,10 @@ function wire() {
   $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
   $('pf-sync').onclick = () => profileAction(async () => { if (!(await cloud.sync()).ok) throw new Error('sync'); }, '');
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
+  $('pf-public').onclick = () => {
+    const off = (cloud.profile() || {}).public === false;
+    profileAction(() => cloud.setPublic(off), tr(off ? 'Your name shows on leaderboards' : 'Your runs are hidden from leaderboards'));
+  };
   $('pf-signout').onclick = () => profileAction(() => cloud.signOut(), tr('Signed out'));
   $('pf-delete').onclick = () => {
     if (Date.now() - pfDeleteArmed > 4000) {

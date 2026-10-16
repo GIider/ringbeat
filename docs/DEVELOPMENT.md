@@ -60,7 +60,7 @@ audio/canvas:
 | `assets.test.mjs` | Glyph table and bold cut, glyphs for every song title, committed TTFs match the glyph table, sprites, cover art |
 | `audiostate.test.mjs` | AudioContext resume / interruption handling, Game pause and resume |
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
-| `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion) and two simulated devices syncing |
+| `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion), leaderboards (re-played scores, bad runs, RULES, best per player, opt-out, moderation, flags, the cron) and two simulated devices syncing |
 | `cloudmerge.test.mjs` | Cloud merges: shared document (settings, favourites, songs, deletes), combined scores and stats, the stores' sync hooks |
 | `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
 | `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
@@ -69,6 +69,7 @@ audio/canvas:
 | `i18n.test.mjs` | Language detection, `t`/`tn`/`tm`/`fmt`; for every language: no gaps (except English, the source), no stale entries, matching placeholders and plural shapes, glyphs for every character; glyphs for every English source string |
 | `mods.test.mjs` | Speed, mirror, sudden death, judging, demo autoplay; scores keep their mods |
 | `modules.test.mjs` | My songs validation and storage, composer edits, bot weaknesses, list view, lane assignment, input clock, gamepad, cameo status, IMEI formatting |
+| `replay.test.mjs` | Replays: a run played with a live-like frame loop re-plays to identical results (mods too), encode/decode, garbled logs; RULES is bumped when the scoring files change |
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
 | `settings.test.mjs` | Settings sanitising and persistence |
 | `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |

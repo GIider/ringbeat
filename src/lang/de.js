@@ -96,6 +96,20 @@ export const de = {
   'Signed in': 'Angemeldet',
   'Signed out': 'Abgemeldet',
   'Sign-in failed': 'Anmeldung fehlgeschlagen',
+  'On leaderboards: On': 'In Bestenlisten: An',
+  'On leaderboards: Off': 'In Bestenlisten: Aus',
+  'Your name shows on leaderboards': 'Dein Name steht in den Bestenlisten',
+  'Your runs are hidden from leaderboards': 'Deine Durchgänge sind in den Bestenlisten verborgen',
+
+  // ---- leaderboards ----
+  'World': 'Welt',
+  'Sign in for world ranks': 'Anmelden für Weltranglisten',
+  'World rank…': 'Weltrang…',
+  'World rank: no connection': 'Weltrang: keine Verbindung',
+  'World #{n} of {total}': 'Welt: Platz {n} von {total}',
+  'World rank pending': 'Weltrang folgt',
+  'Not ranked': 'Nicht gewertet',
+  'Not ranked: update the game': 'Nicht gewertet: Spiel aktualisieren',
   'Deletes the online profile and its data. This device keeps its own. Press again to delete.':
     'Löscht das Online-Profil und seine Daten. Dieses Gerät behält seine eigenen. Zum Löschen nochmal drücken.',
   'Online profile deleted': 'Online-Profil gelöscht',
@@ -377,6 +391,15 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Leaderboards': 'Bestenlisten',
+  ['Signed in? Your runs now count on world leaderboards.\n' +
+    'The results screen shows your world rank, and each song shows the world top 3 under your own runs.\n' +
+    'The server replays your key presses to check every score.\n' +
+    'Rather stay off the boards? Profile -> On leaderboards.']:
+    'Angemeldet? Deine Durchgänge zählen jetzt in weltweiten Bestenlisten.\n' +
+    'Der Ergebnis-Bildschirm zeigt deinen Weltrang, und jeder Song zeigt die Welt-Top-3 unter deinen eigenen Durchgängen.\n' +
+    'Der Server spielt deine Tastendrücke nach und prüft so jede Punktzahl.\n' +
+    'Lieber nicht in den Listen? Profil -> In Bestenlisten.',
   'Online profile': 'Online-Profil',
   ['Sign in with GitHub under Profile and your settings, favorites, songs, scores and stats follow you to every device.\n' +
     'Scores and stats from all your devices count together.\n' +

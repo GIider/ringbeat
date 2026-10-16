@@ -68,6 +68,9 @@ export class Game {
     this.notesLeft = chart.notes.length; // notes not yet judged (a dropped hold does not add to this)
     this.accSum = 0;
     this.deltas = [];         // signed hit offsets in seconds (+ = late), in hit order
+    // Everything that changed the outcome, in order: [songTime, code], code = lane (press), lane + 8 (release) or -1
+    // (an update that judged something or ended the song). Replaying it gives the same results (replay.js).
+    this.log = [];
     // Beat grid: tick n sits at songStart + (n - firstBeat) * beatLen
     this.nextBeat = Math.ceil(chart.firstBeat + (ctx.currentTime - this.songStart) / chart.beatLen - 1e-9);
     this.active = true;
@@ -127,6 +130,7 @@ export class Game {
     this.fx.press(lane);
     const t = audioTime - this.songStart - this.calibration;
     this.now = t;
+    this.log.push([t, lane]);
     const list = this.byLane[lane];
     let i = this.lanePtr[lane];
     while (i < list.length && list[i].judged) i++;
@@ -176,6 +180,7 @@ export class Game {
     if (this.state !== 'running' || !n) return;
     const t = audioTime - this.songStart - this.calibration;
     this.now = t;
+    this.log.push([t, lane + 8]);
     if (n.voice) n.voice.release(this.synth.ctx.currentTime);
     if (t >= n.time + n.duration - HOLD_RELEASE_FORGIVE) this._completeHold(n);
     else this._breakHold(n);
@@ -185,6 +190,7 @@ export class Game {
   update(t) {
     if (this.state !== 'running') return;
     this.now = t;
+    const mark = this.judgedCount + this.score; // both only grow: a change means this update counted
     for (let lane = 0; lane < this.byLane.length; lane++) {
       const list = this.byLane[lane];
       let i = this.lanePtr[lane];
@@ -203,7 +209,9 @@ export class Game {
       const h = this.holds[lane];
       if (h && t >= h.time + h.duration) this._completeHold(h); // still held at the end
     }
-    if (t > this.chart.length + END_PADDING) {
+    const end = t > this.chart.length + END_PADDING;
+    if (end || this.judgedCount + this.score !== mark) this.log.push([t, -1]);
+    if (end) {
       this.state = 'done';
       clearInterval(this.timer);
       this.onFinish(this.results());

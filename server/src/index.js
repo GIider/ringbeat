@@ -1,8 +1,16 @@
-// Ringbeat API: a Cloudflare Worker over D1 (binding DB). Online profiles with GitHub sign-in, cloud save and the run
-// history for future leaderboards. Plain fetch handler, no dependencies. Routes and data model: docs/CLOUD.md.
+// Ringbeat API: a Cloudflare Worker over D1 (binding DB). Online profiles with GitHub sign-in, cloud save, the run
+// history and leaderboards. Plain fetch handler; the game's own modules (../../src) are bundled in to re-play runs.
+// Routes and data model: docs/CLOUD.md.
 //
 // Env: DB (D1), GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET (secret), ALLOWED_ORIGINS (comma list; "http://localhost:*"
-// allows any local port), LIMITER (optional rate-limit binding).
+// allows any local port), LIMITER (optional rate-limit binding), ADMIN_TOKEN (optional secret: moderation routes).
+import { RULES, replay, decodeLog } from '../../src/replay.js';
+import { generateChart } from '../../src/chart.js';
+import { parseRTTTL } from '../../src/rtttl.js';
+import { SONGS } from '../../src/songs.js';
+import { hashString } from '../../src/library.js';
+import { planBot } from '../../src/bot.js';
+import * as mods from '../../src/mods.js';
 
 const SESSION_MS = 365 * 24 * 3600e3;
 const STATE_MS = 10 * 60e3;   // OAuth round trip
@@ -15,8 +23,17 @@ const DIFFS = ['normal', 'hard'];
 const NAME = /^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{1,14})[A-Za-z0-9_.-]$/; // 3-16 characters the LCD font has
 const DEVICE = /^[a-z0-9]{8,32}$/;
 const DEFAULT_NAME = /^Player-[A-Z2-9]{4}$/;
+const MAX_REPLAY = 250_000;   // characters of an encoded input log (replay.js MAX_EVENTS * 12)
+const MAX_RTTTL = 8000;      // mysongs.js MAX_RTTTL
+const VERIFY_PER_REQUEST = 4; // re-plays per request (CPU budget); the rest wait for the cron
+const VERIFY_PER_CRON = 20;
+const BOARD_MAX = 100;
+const BUILTIN = new Map(SONGS.map(s => [s.id, s.rtttl]));
 
-export default { fetch: (req, env) => handle(req, env) };
+export default {
+  fetch: (req, env) => handle(req, env),
+  scheduled: (ev, env, ctx) => ctx.waitUntil(verifyPending(env)),
+};
 
 export async function handle(req, env, now = Date.now()) {
   const url = new URL(req.url);
@@ -27,8 +44,8 @@ export async function handle(req, env, now = Date.now()) {
     'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400',
   } : {};
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  const json = (body, status = 200) => new Response(body === null ? null : JSON.stringify(body), {
-    status: body === null ? 204 : status, headers: { ...cors, ...(body !== null && { 'Content-Type': 'application/json' }) },
+  const json = (body, status = 200, extra = {}) => new Response(body === null ? null : JSON.stringify(body), {
+    status: body === null ? 204 : status, headers: { ...cors, ...(body !== null && { 'Content-Type': 'application/json' }), ...extra },
   });
   const fail = (status, error) => json({ error }, status);
 
@@ -89,6 +106,40 @@ export async function handle(req, env, now = Date.now()) {
       return json({ token, profile: await profile(env, row.user_id) });
     }
 
+    // ---- public: leaderboards ----
+    const boardRoute = /^\/board\/([^/]+)\/([a-z]+)(\/me)?$/.exec(url.pathname);
+    let boardSong = '';
+    if (boardRoute && req.method === 'GET') {
+      try { boardSong = decodeURIComponent(boardRoute[1]); } catch { return fail(400, 'bad song'); }
+      if (!DIFFS.includes(boardRoute[2]) || boardSong.length > 200) return fail(400, 'bad song');
+      if (!boardRoute[3]) {
+        const limit = Math.max(1, Math.min(BOARD_MAX, parseInt(url.searchParams.get('limit'), 10) || 50));
+        const runs = await board(env, boardSong, boardRoute[2], { limit });
+        return json({ rules: RULES, runs }, 200, { 'Cache-Control': 'public, max-age=30' });
+      }
+    }
+
+    // ---- moderation (ADMIN_TOKEN) ----
+    if (url.pathname.startsWith('/admin/')) {
+      const given = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
+      if (!env.ADMIN_TOKEN || await sha256(given) !== await sha256(env.ADMIN_TOKEN)) return fail(404, 'not found');
+      if (route === 'GET /admin/flagged') {
+        const { results } = await env.DB.prepare(`SELECT r.id, r.user_id, u.display_name AS name, r.song_id, r.diff,
+          r.score, r.flags, r.played_at FROM runs r JOIN users u ON u.id = r.user_id
+          WHERE r.flags != '' AND r.verified = 1 AND r.hidden = 0 ORDER BY r.id DESC LIMIT 100`).all();
+        return json({ runs: results });
+      }
+      if (route === 'POST /admin/hide') {
+        const hidden = body.hidden === false ? 0 : 1;
+        const r = Number.isInteger(body.runId)
+          ? await env.DB.prepare('UPDATE runs SET hidden = ? WHERE id = ?').bind(hidden, body.runId).run()
+          : await env.DB.prepare('UPDATE users SET hidden = ? WHERE id = ?').bind(hidden, String(body.userId || '')).run();
+        return r.meta.changes ? json(null) : fail(404, 'no such run or user');
+      }
+      if (route === 'POST /admin/verify') return json({ verified: await verifyPending(env) });
+      return fail(404, 'not found');
+    }
+
     const auth = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(req.headers.get('Authorization') || '');
     const tokenHash = auth && await sha256(auth[1]);
     const session = tokenHash && await env.DB.prepare('SELECT user_id, expires FROM sessions WHERE token_hash = ?').bind(tokenHash).first();
@@ -103,10 +154,21 @@ export async function handle(req, env, now = Date.now()) {
     }
     if (route === 'GET /me') return json({ profile: await profile(env, uid) });
     if (route === 'PATCH /me') {
-      const name = String(body.displayName || '').trim().replace(/\s+/g, ' ');
-      if (!NAME.test(name)) return fail(400, 'bad name');
-      await env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(name, uid).run();
+      if (body.displayName !== undefined) {
+        const name = String(body.displayName || '').trim().replace(/\s+/g, ' ');
+        if (!NAME.test(name)) return fail(400, 'bad name');
+        await env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(name, uid).run();
+      }
+      if (body.public !== undefined) {
+        if (typeof body.public !== 'boolean') return fail(400, 'bad public');
+        await env.DB.prepare('UPDATE users SET public = ? WHERE id = ?').bind(body.public ? 1 : 0, uid).run();
+      }
       return json({ profile: await profile(env, uid) });
+    }
+    if (boardRoute && boardRoute[3] && req.method === 'GET') {
+      // The caller and the players around them; included even when not public, so they still see their own rank.
+      const runs = await board(env, boardSong, boardRoute[2], { me: uid });
+      return json({ rules: RULES, runs });
     }
     if (route === 'DELETE /me') {
       await env.DB.batch(['runs', 'device_slots', 'shared_docs', 'login_codes', 'sessions', 'identities']
@@ -147,13 +209,23 @@ export async function handle(req, env, now = Date.now()) {
     if (route === 'POST /runs') {
       if (!Array.isArray(body.runs) || body.runs.length > MAX_RUNS) return fail(400, 'bad runs');
       const runs = body.runs.map(cleanRun).filter(Boolean);
+      let budget = VERIFY_PER_REQUEST;
+      for (const r of runs) {
+        // The server's own numbers replace the client's; runs over the budget wait for the cron (verified stays 0).
+        if (r.replay && r.rules === String(RULES) && budget-- > 0) Object.assign(r, verifyRun(r));
+      }
       if (runs.length) {
         await env.DB.batch(runs.map(r => env.DB.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade,
-          accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT (user_id, client_run_id) DO NOTHING`).bind(uid, r.clientRunId, r.songId, r.diff, r.score, r.grade, r.accuracy,
-          r.maxCombo, r.fc, r.ap, r.mods, r.mult, r.gameVersion, r.playedAt, now)));
+          r.maxCombo, r.fc, r.ap, r.mods, r.mult, r.gameVersion, r.playedAt, now, r.replay, r.verified, r.rules, r.loadout,
+          r.rtttl, r.flags)));
       }
-      return json({ accepted: runs.length });
+      return json({
+        accepted: runs.length, rules: RULES,
+        runs: runs.map(r => ({ clientRunId: r.clientRunId, verified: r.verified, ...(r.verified === 1 && { score: r.score }) })),
+      });
     }
     return fail(404, 'not found');
   } catch (e) {
@@ -206,17 +278,118 @@ function cleanRun(r) {
   const str = (v, max) => (typeof v === 'string' && v.length > 0 && v.length <= max ? v : null);
   const clientRunId = str(r.clientRunId, 260), songId = str(r.songId, 200);
   if (!clientRunId || !songId || !DIFFS.includes(r.diff) || !isNum(r.score) || r.score < 0 || r.score > 1e9) return null;
+  const replayLog = str(r.replay, MAX_REPLAY);
   return {
     clientRunId, songId, diff: r.diff, score: Math.round(r.score),
     grade: typeof r.grade === 'string' ? r.grade.slice(0, 2) : 'D',
-    accuracy: isNum(r.accuracy) ? Math.max(0, Math.min(1, r.accuracy)) : 0,
+    accuracy: isNum(r.accuracy) ? Math.max(0, Math.min(100, r.accuracy)) : 0, // percent
     maxCombo: isNum(r.maxCombo) ? Math.max(0, Math.round(r.maxCombo)) : 0,
     fc: r.fc ? 1 : 0, ap: r.ap ? 1 : 0,
     mods: JSON.stringify(Array.isArray(r.mods) ? r.mods.filter(t => typeof t === 'string').slice(0, 8).map(t => t.slice(0, 8)) : []),
     mult: isNum(r.mult) ? r.mult : 1,
     gameVersion: typeof r.gameVersion === 'string' ? r.gameVersion.slice(0, 32) : '',
     playedAt: isNum(r.playedAt) ? Math.round(r.playedAt) : 0,
+    // Re-playable runs: the input log, the RULES it was played under, the mods as played, a custom song's melody.
+    replay: replayLog,
+    rules: replayLog && Number.isInteger(r.rules) ? String(r.rules) : null,
+    loadout: replayLog ? JSON.stringify(mods.normalize(r.loadout)) : null,
+    rtttl: replayLog && songId.startsWith('custom:') ? str(r.rtttl, MAX_RTTTL) : null,
+    verified: 0, flags: '',
   };
+}
+
+// Re-play a run under this Worker's RULES: { verified: 1, and the server's score, grade, accuracy, max combo, FC/AP,
+// mods, multiplier, flags } or { verified: -1 } when it can't count. `run` has songId, diff, replay, loadout, rtttl.
+export function verifyRun(run) {
+  const bad = { verified: -1 };
+  const rtttl = run.songId.startsWith('custom:')
+    ? run.rtttl && 'custom:' + hashString(run.rtttl.trim()) === run.songId && run.rtttl.trim()
+    : BUILTIN.get(run.songId);
+  if (!rtttl) return bad;
+  let m, chart;
+  try {
+    m = mods.normalize(JSON.parse(run.loadout));
+    chart = mods.applyChart(generateChart(parseRTTTL(rtttl), { difficulty: run.diff }), m);
+  } catch { return bad; }
+  if (m.demo || !chart.notes.length) return bad;
+  const log = decodeLog(run.replay, chart.lanes);
+  const res = log && replay(chart, log, mods.gameOptions(m));
+  if (!res || res.failed) return bad;
+  // As the game stores it (main.js, game.onFinish): the mods' multiplier folds into the score.
+  const mult = mods.isActive(m) ? mods.multiplier(m) : 1;
+  return {
+    verified: 1, score: Math.round(res.score * mult), grade: res.grade, accuracy: res.accuracy, maxCombo: res.maxCombo,
+    fc: res.fc ? 1 : 0, ap: res.ap ? 1 : 0, mods: JSON.stringify(mods.tags(m)), mult, flags: flagsFor(chart, log, res),
+  };
+}
+
+// What looks automated, for moderation (GET /admin/flagged); flagged runs still count.
+// flat: hit offsets barely vary (a bot, even one shifted by a constant). bot: nearly every press lands within 1 ms of
+// the note (the demo mod's planned run).
+function flagsFor(chart, log, res) {
+  const f = [], d = res.deltas;
+  if (d.length >= 30) {
+    const mean = d.reduce((a, b) => a + b, 0) / d.length;
+    const sd = Math.sqrt(d.reduce((a, b) => a + (b - mean) ** 2, 0) / d.length);
+    if (sd < 0.004) f.push('flat');
+  }
+  const plan = planBot(chart, {}, 1).filter(e => e.type === 'press');
+  if (plan.length >= 20) {
+    const byLane = Array.from({ length: chart.lanes }, () => []);
+    for (const [t, k] of log) if (k >= 0 && k < 8) byLane[k].push(t);
+    byLane.forEach(l => l.sort((a, b) => a - b));
+    let close = 0;
+    for (const e of plan) {
+      const l = byLane[e.lane];
+      let lo = 0, hi = l.length;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (l[mid] < e.t) lo = mid + 1; else hi = mid; }
+      if ((lo < l.length && l[lo] - e.t <= 0.001) || (lo > 0 && e.t - l[lo - 1] <= 0.001)) close++;
+    }
+    if (close >= plan.length * 0.9) f.push('bot');
+  }
+  return f.join(',');
+}
+
+// Re-play runs waiting for it (over a request's budget, or posted before a deploy): the cron and POST /admin/verify.
+export async function verifyPending(env, limit = VERIFY_PER_CRON) {
+  const { results } = await env.DB.prepare(`SELECT id, song_id, diff, replay, loadout, rtttl FROM runs
+    WHERE verified = 0 AND replay IS NOT NULL AND rules = ? LIMIT ?`).bind(String(RULES), limit).all();
+  if (!results.length) return 0;
+  await env.DB.batch(results.map(row => {
+    const v = verifyRun({ songId: row.song_id, diff: row.diff, replay: row.replay, loadout: row.loadout, rtttl: row.rtttl });
+    return v.verified === 1
+      ? env.DB.prepare(`UPDATE runs SET verified = 1, score = ?, grade = ?, accuracy = ?, max_combo = ?, fc = ?, ap = ?,
+          mods = ?, mult = ?, flags = ? WHERE id = ?`).bind(v.score, v.grade, v.accuracy, v.maxCombo, v.fc, v.ap, v.mods,
+          v.mult, v.flags, row.id)
+      : env.DB.prepare('UPDATE runs SET verified = -1 WHERE id = ?').bind(row.id);
+  }));
+  return results.length;
+}
+
+// Best verified run per player under the current RULES, ranked (ties: the earlier run first). `me` = a user id: only
+// that player and the two above and below, with that player included even when not public.
+async function board(env, songId, diff, { limit = 50, me = '' }) {
+  const ranked = `WITH best AS (
+      SELECT r.user_id, r.score, r.grade, r.accuracy, r.max_combo, r.fc, r.ap, r.mods, r.played_at,
+        ROW_NUMBER() OVER (PARTITION BY r.user_id ORDER BY r.score DESC, r.played_at) AS n
+      FROM runs r JOIN users u ON u.id = r.user_id
+      WHERE r.song_id = ?1 AND r.diff = ?2 AND r.rules = ?3 AND r.verified = 1 AND r.hidden = 0
+        AND u.hidden = 0 AND (u.public = 1 OR u.id = ?4)
+    ), ranked AS (
+      SELECT b.*, u.display_name AS name, ROW_NUMBER() OVER (ORDER BY b.score DESC, b.played_at) AS rank,
+        COUNT(*) OVER () AS total
+      FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
+    )`;
+  const q = me
+    ? env.DB.prepare(`${ranked} SELECT * FROM ranked WHERE abs(rank - (SELECT rank FROM ranked WHERE user_id = ?4)) <= 2
+        ORDER BY rank`).bind(songId, diff, String(RULES), me)
+    : env.DB.prepare(`${ranked} SELECT * FROM ranked ORDER BY rank LIMIT ?5`).bind(songId, diff, String(RULES), '', limit);
+  const { results } = await q.all();
+  return results.map(r => ({
+    rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade, accuracy: r.accuracy,
+    maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at,
+    ...(me && r.user_id === me && { me: true }),
+  }));
 }
 
 // A provider's display name -> a valid player name (accents dropped, other characters removed, long names cut at a
@@ -266,9 +439,9 @@ async function userFor(env, provider, subject, suggested, now) {
 }
 
 async function profile(env, uid) {
-  const u = await env.DB.prepare('SELECT id, display_name, created FROM users WHERE id = ?').bind(uid).first();
+  const u = await env.DB.prepare('SELECT id, display_name, created, public FROM users WHERE id = ?').bind(uid).first();
   const { results } = await env.DB.prepare('SELECT provider FROM identities WHERE user_id = ?').bind(uid).all();
-  return u && { id: u.id, name: u.display_name, created: u.created, logins: results.map(r => r.provider) };
+  return u && { id: u.id, name: u.display_name, created: u.created, public: !!u.public, logins: results.map(r => r.provider) };
 }
 
 function randomToken() {

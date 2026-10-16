@@ -1,6 +1,6 @@
 // Bot players: simulate a human with a given reaction speed / weaknesses on a chart, using the real Game
 // logic (headless, no DOM or audio). Used by scripts/bench.mjs to measure song difficulty.
-import { Game } from './game.js';
+import { headlessGame } from './replay.js';
 
 // Seeded PRNG so benchmark output is reproducible.
 export function mulberry32(seed) {
@@ -119,9 +119,7 @@ export function runBot(chart, profile, seed = 1) {
   const notes = chart.notes.map(n => ({ ...n }));
   const c = { ...chart, notes };
   const ev = planBot(c, profile, seed);
-  const ctx = { currentTime: 0, suspend() {}, resume() {} };
-  const synth = { ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} };
-  const g = new Game(synth);
+  const g = headlessGame();
   let result = null;
   g.onFinish = r => { result = r; };
   g.start(c, { leadIn: 1, backing: false });

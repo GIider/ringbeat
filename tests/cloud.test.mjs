@@ -2,9 +2,16 @@
 // devices (src/cloud.js with real stores) syncing through it. GitHub is faked.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { handle, playerName } from '../server/src/index.js';
+import { handle, playerName, verifyPending } from '../server/src/index.js';
+import { RULES, encodeLog, headlessGame } from '../src/replay.js';
+import { planBot, LADDER } from '../src/bot.js';
+import { generateChart } from '../src/chart.js';
+import { parseRTTTL } from '../src/rtttl.js';
+import { SONGS } from '../src/songs.js';
+import { hashString } from '../src/library.js';
+import * as mods from '../src/mods.js';
 import { createCloud } from '../src/cloud.js';
 import { createScores } from '../src/scores.js';
 import { createStats } from '../src/stats.js';
@@ -18,7 +25,8 @@ const SONG_A = 'A:d=4,o=5,b=120:c,d,e,f,g,a,b,c6';
 // The slice of the D1 API the Worker uses.
 function d1() {
   const db = new DatabaseSync(':memory:');
-  db.exec(readFileSync(new URL('../server/migrations/0001_init.sql', import.meta.url), 'utf8'));
+  const dir = new URL('../server/migrations/', import.meta.url);
+  for (const f of readdirSync(dir).filter(f => f.endsWith('.sql')).sort()) db.exec(readFileSync(new URL(f, dir), 'utf8'));
   const stmt = (sql, args = []) => ({
     bind: (...a) => stmt(sql, a),
     first: async () => db.prepare(sql).get(...args) ?? null,
@@ -180,7 +188,7 @@ test('worker: the shared document is guarded by its revision; runs are deduplica
     { clientRunId: 'r2', songId: 's', diff: 'insane', score: 10 },
     { clientRunId: 'r3', songId: 's', diff: 'hard', score: -5 },
   ];
-  assert.deepEqual(await (await srv.call('/runs', { method: 'POST', headers: h, body: JSON.stringify({ runs }) })).json(), { accepted: 2 });
+  assert.equal((await (await srv.call('/runs', { method: 'POST', headers: h, body: JSON.stringify({ runs }) })).json()).accepted, 2);
   assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs').get().n, 1);
 });
 
@@ -297,4 +305,186 @@ test('cloud: no API configured means no online profile', async () => {
     prefs: { sharedSettings: () => ({}), applyShared: () => false }, apiBase: '', storage, fetch: () => { throw new Error('no'); } });
   assert.equal(cloud.available(), false);
   assert.equal(await cloud.takeLoginHash('#login=' + 'a'.repeat(43)), false);
+});
+
+// ---- leaderboards: the Worker re-plays each run's input log and ranks its own score ----
+
+// A run as the game uploads it: a bot plays `songId` with the game's frame loop, the log is encoded.
+function played(songId, diff, skill, loadout = null, seed = 1, rtttl = SONGS.find(s => s.id === songId)?.rtttl) {
+  const m = mods.normalize(loadout);
+  const chart = mods.applyChart(generateChart(parseRTTTL(rtttl), { difficulty: diff }), m);
+  const g = headlessGame();
+  let res = null;
+  g.onFinish = r => { res = r; };
+  g.start({ ...chart, notes: chart.notes.map(n => ({ ...n })) }, { leadIn: 0, ...mods.gameOptions(m) });
+  const ev = planBot(chart, skill, seed);
+  let i = 0;
+  for (let t = 0; !res; t += 1 / 60) {
+    for (; i < ev.length && ev[i].t <= t; i++) (ev[i].type === 'press' ? g.press : g.release).call(g, ev[i].lane, ev[i].t);
+    g.update(t);
+  }
+  const mult = mods.isActive(m) ? mods.multiplier(m) : 1;
+  return {
+    result: { ...res, score: Math.round(res.score * mult), mult },
+    run: { songId, diff, score: Math.round(res.score * mult), grade: res.grade, accuracy: res.accuracy, maxCombo: res.maxCombo,
+      fc: res.fc, ap: res.ap, mods: mods.tags(m), mult, playedAt: seed, replay: encodeLog(g.log), rules: RULES, loadout: m },
+  };
+}
+
+async function signedIn(srv, githubId, name) {
+  const code = (await githubSignIn(srv, githubId, { login: name, name })).slice('#login='.length);
+  const { token, profile } = await (await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) })).json();
+  const h = { Authorization: 'Bearer ' + token };
+  const post = async runs => (await srv.call('/runs', { method: 'POST', headers: h, body: JSON.stringify({ runs }) })).json();
+  return { h, post, id: profile.id };
+}
+const boardOf = async (srv, song, diff, h) => (await srv.call(`/board/${encodeURIComponent(song)}/${diff}${h ? '/me' : ''}`, h ? { headers: h } : {})).json();
+const rowOf = (srv, id) => ({ ...srv.env.DB.db.prepare('SELECT * FROM runs WHERE client_run_id = ?').get(id) });
+
+test('leaderboards: the server re-plays a run and keeps its own numbers; bad runs never rank', async () => {
+  const srv = server();
+  const u = await signedIn(srv, 1, 'Alice');
+  const { run, result } = played('ode', 'normal', LADDER[3]);
+  assert.ok(result.counts.great + result.counts.good + result.counts.miss > 0, 'an imperfect run');
+  const loud = { ...run, clientRunId: 'a1', score: 9_999_999, grade: 'S', accuracy: 100, fc: true, ap: true };
+  const r = await u.post([loud]);
+  assert.deepEqual(r.runs, [{ clientRunId: 'a1', verified: 1, score: result.score }]);
+  const row = rowOf(srv, 'a1');
+  assert.equal(row.score, result.score);
+  assert.equal(row.accuracy, result.accuracy, 'accuracy is stored in percent');
+  assert.equal(row.ap, result.ap ? 1 : 0);
+  assert.equal(row.rules, String(RULES));
+
+  // Mods: the multiplier folds in as the game does; the stored tags are the server's.
+  const modded = played('ode', 'normal', LADDER[3], { speed: 1.2, hidden: true });
+  await u.post([{ ...modded.run, clientRunId: 'a2', mods: ['fake'] }]);
+  assert.equal(rowOf(srv, 'a2').score, modded.result.score);
+  assert.equal(rowOf(srv, 'a2').mods, '["1.2x","HD"]');
+
+  const bad = [
+    { ...run, clientRunId: 'b1', replay: run.replay.slice(0, -8) },             // garbled
+    { ...run, clientRunId: 'b2', loadout: { demo: true } },                      // autoplay
+    { ...run, clientRunId: 'b3', songId: 'no-such-song' },
+    { ...run, clientRunId: 'b5', songId: 'custom:abc', rtttl: SONG_A },          // melody doesn't match the id
+  ];
+  assert.deepEqual((await u.post(bad)).runs.map(x => x.verified), [-1, -1, -1, -1]);
+  // Older clients and other RULES: kept as history, not ranked.
+  const later = await u.post([{ ...run, clientRunId: 'c1', rules: RULES + 1 }, { ...run, clientRunId: 'c2', replay: undefined }]);
+  assert.deepEqual(later.runs.map(x => x.verified), [0, 0]);
+  assert.equal(rowOf(srv, 'c2').replay, null);
+
+  const b = await boardOf(srv, 'ode', 'normal');
+  assert.equal(b.rules, RULES);
+  assert.deepEqual(b.runs.map(x => [x.rank, x.name, x.score]), [[1, 'Alice', Math.max(result.score, modded.result.score)]]);
+});
+
+test('leaderboards: custom songs re-play from the melody the run brings', async () => {
+  const srv = server();
+  const u = await signedIn(srv, 1, 'Alice');
+  const id = 'custom:' + hashString(SONG_A);
+  const { run, result } = played(id, 'normal', LADDER[5], null, 1, SONG_A);
+  const r = await u.post([{ ...run, clientRunId: 'x', rtttl: '  ' + SONG_A + '\n' }]);
+  assert.deepEqual(r.runs, [{ clientRunId: 'x', verified: 1, score: result.score }]);
+});
+
+test('leaderboards: best run per player, opt-out, the player\'s own neighbourhood, moderation', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const players = [];
+  for (const [i, name] of ['Ann', 'Bob', 'Cyd', 'Dee', 'Eve', 'Fay'].entries()) players.push({ ...(await signedIn(srv, 10 + i, name)), name });
+  const scoreOf = {};
+  for (const [i, p] of players.entries()) {
+    // Better ladder rungs score higher; each player also posts a worse run, which must not show.
+    const good = played('ode', 'normal', LADDER[2 + i], null, 1), worse = played('ode', 'normal', LADDER[0], null, 2);
+    await p.post([{ ...good.run, clientRunId: p.name + 1 }, { ...worse.run, clientRunId: p.name + 2, playedAt: 2 }]);
+    scoreOf[p.name] = Math.max(good.result.score, worse.result.score);
+  }
+  let b = await boardOf(srv, 'ode', 'normal');
+  const order = b.runs.map(x => x.name); // equal scores rank in either order
+  assert.deepEqual([...order].sort(), Object.keys(scoreOf).sort());
+  assert.deepEqual(b.runs.map(x => x.score), b.runs.map(x => scoreOf[x.name]), 'each player\'s best run');
+  assert.deepEqual(b.runs.map(x => x.score), Object.values(scoreOf).sort((x, y) => y - x));
+  assert.deepEqual(b.runs.map(x => x.rank), [1, 2, 3, 4, 5, 6]);
+  assert.ok(b.runs.every(x => x.total === 6 && !('me' in x) && !('user_id' in x)));
+  assert.equal((await srv.call('/board/ode/normal')).headers.get('Cache-Control'), 'public, max-age=30');
+  assert.equal((await srv.call('/board/ode/insane')).status, 400);
+  assert.equal((await srv.call('/board/ode/normal/me')).status, 401);
+
+  // The last-placed player: themselves and the two above.
+  const last = players.find(p => p.name === order[5]);
+  const around = await boardOf(srv, 'ode', 'normal', last.h);
+  assert.deepEqual(around.runs.map(x => [x.rank, x.name, !!x.me]), [[4, order[3], false], [5, order[4], false], [6, order[5], true]]);
+
+  // Opting out leaves the public board but keeps the player's own rank.
+  const top = players.find(p => p.name === order[0]);
+  const pr = await (await srv.call('/me', { method: 'PATCH', headers: top.h, body: JSON.stringify({ public: false }) })).json();
+  assert.equal(pr.profile.public, false);
+  b = await boardOf(srv, 'ode', 'normal');
+  assert.deepEqual(b.runs.map(x => x.name), order.slice(1));
+  assert.deepEqual((await boardOf(srv, 'ode', 'normal', top.h)).runs.map(x => [x.rank, !!x.me]), [[1, true], [2, false], [3, false]]);
+  assert.equal((await srv.call('/me', { method: 'PATCH', headers: top.h, body: JSON.stringify({ public: 'no' }) })).status, 400);
+
+  // Moderation: nothing without the token; hiding a user or a run takes it off the board.
+  const admin = { Authorization: 'Bearer admin-secret' };
+  assert.equal((await srv.call('/admin/flagged')).status, 404);
+  assert.equal((await srv.call('/admin/flagged', { headers: { Authorization: 'Bearer nope' } })).status, 404);
+  const second = players.find(p => p.name === order[1]);
+  assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ userId: second.id }) })).status, 204);
+  const runId = srv.env.DB.db.prepare('SELECT id FROM runs WHERE client_run_id = ?').get(order[2] + 1).id;
+  assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ runId }) })).status, 204);
+  b = await boardOf(srv, 'ode', 'normal');
+  assert.ok(!b.runs.some(x => x.name === order[1]));
+  assert.ok(!b.runs.some(x => x.name === order[2] && x.score === scoreOf[order[2]]), 'the hidden run is gone');
+  assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ runId: 99999 }) })).status, 404);
+});
+
+test('leaderboards: runs over a request\'s budget are verified later; automated-looking runs are flagged', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const u = await signedIn(srv, 1, 'Alice');
+  const runs = Array.from({ length: 6 }, (_, i) => ({ ...played('ode', 'normal', LADDER[4], null, i + 1).run, clientRunId: 'r' + i }));
+  const r = await u.post(runs);
+  assert.deepEqual(r.runs.map(x => x.verified), [1, 1, 1, 1, 0, 0]);
+  const admin = { Authorization: 'Bearer admin-secret' };
+  assert.deepEqual(await (await srv.call('/admin/verify', { method: 'POST', headers: admin })).json(), { verified: 2 });
+  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs WHERE verified = 1').get().n, 6);
+  assert.equal(await verifyPending(srv.env), 0);
+
+  // The demo mod's perfect timing, shifted by a constant: still flagged.
+  const bot = played('ode', 'normal', { bias: 7 });
+  await u.post([{ ...bot.run, clientRunId: 'bot' }]);
+  assert.equal(rowOf(srv, 'bot').flags, 'flat');
+  const exact = played('ode', 'normal', {});
+  await u.post([{ ...exact.run, clientRunId: 'exact' }]);
+  assert.equal(rowOf(srv, 'exact').flags, 'flat,bot');
+  assert.equal(rowOf(srv, 'r0').flags, '', 'a human-like run is not flagged');
+  const flagged = await (await srv.call('/admin/flagged', { headers: admin })).json();
+  assert.deepEqual(flagged.runs.map(x => x.flags).sort(), ['flat', 'flat,bot']);
+});
+
+test('leaderboards: the client uploads replays, gets the verdict and reads boards signed out', async () => {
+  const srv = server();
+  const a = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  const { run, result } = played('ode', 'normal', LADDER[4]);
+  const id = a.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+  const verdicts = await a.cloud.submit();
+  assert.deepEqual(verdicts[id], { clientRunId: id, verified: 1, score: result.score });
+  assert.equal(a.cloud.pendingRuns(), 0);
+  assert.deepEqual((await a.cloud.around('ode', 'normal')).runs.map(x => [x.rank, x.me]), [[1, true]]);
+
+  const anon = device(srv);
+  assert.equal(anon.cloud.queueRun('ode', 'normal', result), null, 'signed out: nothing queued');
+  const b = await anon.cloud.board('ode', 'normal');
+  assert.deepEqual(b.runs.map(x => [x.name, x.score]), [['Alice', result.score]]);
+  assert.equal(await anon.cloud.around('ode', 'normal'), null);
+
+  // A big outbox goes up in several requests below the API's body limit; old replays give way first.
+  for (let i = 0; i < 40; i++) a.cloud.queueRun('ode', 'normal', { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
+  const stored = JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox;
+  assert.ok(stored.reduce((n, r) => n + (r.replay || '').length, 0) <= 1_000_000);
+  assert.ok(!stored[0].replay && stored[39].replay);
+  const v = await a.cloud.submit();
+  assert.equal(Object.keys(v).length, 40);
+  assert.ok(Object.values(v).every(x => x.verified !== 1), 'junk replays never rank');
 });

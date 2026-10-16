@@ -5,6 +5,13 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.1', date: '2026-10-17', title: 'Leaderboards',
+    body: 'Signed in? Your runs now count on world leaderboards.\n' +
+      'The results screen shows your world rank, and each song shows the world top 3 under your own runs.\n' +
+      'The server replays your key presses to check every score.\n' +
+      'Rather stay off the boards? Profile -> On leaderboards.',
+  },
+  {
     version: '2.0', date: '2026-10-16', title: 'Online profile',
     body: 'Sign in with GitHub under Profile and your settings, favorites, songs, scores and stats follow you to every device.\n' +
       'Scores and stats from all your devices count together.\n' +

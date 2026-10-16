@@ -29,6 +29,8 @@ src/
                   missing entries fall back to density stars
   bot.js          headless bot players (8-level LADDER + weakness SPECIALISTS) running the real Game;
                   measureChart / measureChartAsync -> rating, tags; planBot; CALC_VERSION
+  replay.js       run replays: headlessGame, replay(chart, Game.log) -> identical results, encodeLog / decodeLog,
+                  RULES (the scoring version leaderboards rank under; see CLOUD.md)
   listview.js     pure song-list sorts (difficulty, title, BPM, duration) and category filter
   tutorial.js     the tutorial's hand-made lesson charts (STAGES at 100 BPM), lesson diagrams
 
@@ -72,7 +74,7 @@ src/
   composer.js     Nokia-style note editor state (no DOM); toRTTTL / fromRTTTL
   share.js        #s=<base64url>[&r=<rating>] share links
   cloud.js        optional online profile: sign-in hand-off, sync rounds (pull, merge, push), device slots, run
-                  outbox, API_BASE (see CLOUD.md)
+                  outbox with replays, leaderboard reads (board / around), API_BASE (see CLOUD.md)
   cloudmerge.js   merging the shared cloud document: settings per field, favourites, my songs with deletes, resetAt
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   version.js      VERSION / BUILD placeholders, stamped by scripts/build-dist.mjs (see RELEASING.md)
@@ -98,13 +100,14 @@ scripts/
   perf-play.mjs       frame pacing while a bot plays songs in headless Chromium
 
 server/           the Ringbeat API, deployed separately (see CLOUD.md)
-  src/index.js        Cloudflare Worker: GitHub sign-in, profile, sync, runs (plain fetch handler over D1)
-  migrations/         D1 schema (0001_init.sql)
-  wrangler.toml       Worker config: D1 binding, GitHub client id, allowed origins, rate limit
+  src/index.js        Cloudflare Worker: GitHub sign-in, profile, sync, runs, leaderboards, moderation (plain fetch
+                      handler over D1); bundles ../src's game modules to re-play runs
+  migrations/         D1 schema (0001_init.sql, 0002_leaderboards.sql)
+  wrangler.toml       Worker config: D1 binding, GitHub client id, allowed origins, rate limit, verify cron
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, rtttl, settings, stats (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, replay, rtttl, settings, stats (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

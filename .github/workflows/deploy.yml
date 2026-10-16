@@ -59,6 +59,32 @@ jobs:
         with:
           path: dist
 
+  # The API re-plays runs with the game's own modules, so it ships from the same commit as the pages (docs/CLOUD.md).
+  # Skipped until the repository has a CLOUDFLARE_API_TOKEN secret (Workers Scripts + D1 edit permissions).
+  deploy-api:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check for the Cloudflare token
+        id: token
+        run: if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::notice::No CLOUDFLARE_API_TOKEN secret, API not deployed"; fi
+      - if: steps.token.outputs.ok
+        run: npm ci
+      - if: steps.token.outputs.ok
+        run: npm run migrate
+      - if: steps.token.outputs.ok
+        run: npm run deploy
+
   deploy:
     needs: build
     runs-on: ubuntu-latest

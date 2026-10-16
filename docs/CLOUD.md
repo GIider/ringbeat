@@ -1,10 +1,10 @@
 [Docs](README.md) › Cloud save
 
-# Cloud save
+# Cloud save and leaderboards
 
 Signing in on the Profile screen is optional. It creates an **online profile**, and that profile keeps settings,
-favourites, my songs, scores and stats the same on every device. Every finished run is also stored on the server, as
-a base for online leaderboards later. The game is a static site, so the online part is a separate
+favourites, my songs, scores and stats the same on every device. Every finished run is also stored on the server,
+and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
 - Signed out, nothing changes: `localStorage` is the only store and no request leaves the browser.
@@ -61,6 +61,72 @@ between, the API answers 409, and the client merges with the newer copy and trie
 - Its id is `device:song:difficulty:time`. The first sync after signing in also uploads the device's existing top
   runs; because the ids match, the server stores each run once.
 - Song ids are stable: library ids for built-in songs, `custom:<hash of the RTTTL>` for custom ones.
+- Runs played since leaderboards also carry their **replay** (below), which the API re-plays. The results screen
+  uploads its run right away and shows the world rank.
+- The outbox keeps at most 1 000 000 characters of replays. When it would hold more, the oldest runs drop theirs:
+  they still go up as history, but can't rank.
+
+## Leaderboards
+
+A leaderboard ranks each player's best run on one song and difficulty. **The score on a board is always the
+server's own.** The game uploads the run's inputs, and the Worker re-plays them through the same game code to get
+the score. Whatever score the client claims is ignored.
+
+**Replays.** `Game` logs everything that changed the outcome, in order, as `[song time, code]` (`game.log`):
+- every press (code = lane),
+- every release that ended a hold (lane + 8),
+- every frame update that judged something or ended the song (−1).
+
+Frames that changed nothing are left out. Replaying the log through a headless `Game` (`replay.js`) gives the live
+run's results bit for bit:
+- times are kept as exact doubles, so a judgement on a window's edge can't flip;
+- the scoring path uses no engine-dependent maths, so Chromium, Firefox and WebKit agree with the Worker.
+
+`encodeLog` packs the log into base64url at 9 bytes per event, so a 3-minute song is about 6 KB.
+
+**Verification.** For each uploaded run with a replay, `POST /runs` does this:
+1. It finds the melody. Built-in songs come from `songs.js`. Custom songs bring their RTTTL, which must hash to
+   the song id.
+2. It builds the chart (`generateChart`, then `mods.applyChart` with the mods as played).
+3. It re-plays the log with `mods.gameOptions`.
+4. It stores the result, with the mods' multiplier folded in as the game does, and marks it `verified = 1`.
+
+Some runs get `verified = -1` instead and never rank:
+- a garbled log,
+- a log that doesn't reach the end of the song,
+- a failed run or a demo run,
+- an unknown song, or a melody that doesn't match.
+
+Runs without a replay, such as older clients and the backfill, are kept with `verified = 0` as plain history.
+
+**RULES.** `RULES` in `replay.js` is a number that changes whenever a code change would score a replay differently.
+- Each run carries the client's `RULES`, and boards only rank runs with the Worker's.
+- A client on an older version gets "Not ranked: update the game", and its runs wait with `verified = 0`.
+- `tests/replay.test.mjs` hashes the scoring files (`game.js`, `chart.js`, `rtttl.js`, `mods.js`, `songs.js`) and
+  fails when they change. Then decide:
+  - if scoring or charts changed, bump `RULES`;
+  - if not, only paste the new hash.
+- When `RULES` changes, the boards start empty for the new rules. Old runs stay stored with their replays.
+
+**CPU.** Chart plus replay of the longest song takes about 1.5 ms. The free plan allows 10 ms of CPU per request,
+so each request re-plays at most 4 runs. The others wait with `verified = 0`. A cron trigger (every 15 minutes)
+re-plays waiting runs 20 at a time.
+
+**What it does not stop.** Replay verification proves that a score is what its inputs earn. It doesn't prove that a
+person pressed the keys: a script can write a plausible log, and `planBot` already can. Two **flags** mark runs that
+look automated, for moderation only. Flagged runs still count.
+- `flat`: hit offsets barely vary (standard deviation under 4 ms over at least 30 hits), even when shifted by a
+  constant.
+- `bot`: at least 90 % of the notes have a press within 1 ms of the note's time.
+
+**Moderation.** `/admin/*` answers only with `Authorization: Bearer <ADMIN_TOKEN>`, a Worker secret. Without it,
+these routes answer 404.
+- `GET /admin/flagged`: the newest flagged runs.
+- `POST /admin/hide {runId}` or `{userId}`: takes a run or a player off every board. Add `hidden: false` to undo.
+- `POST /admin/verify`: re-plays waiting runs now.
+
+**Opt-out.** Profile → "On leaderboards" (`PATCH /me {public}`). A player who opts out leaves the public boards but
+still sees their own rank.
 
 ## Sign-in flow
 
@@ -81,7 +147,7 @@ between, the API answers 409, and the client merges with the newer copy and trie
 
 ## API
 
-All JSON. Everything except the auth routes needs `Authorization: Bearer <token>`. A 401 signs the device out, and
+All JSON. Everything except the auth and public board routes needs `Authorization: Bearer <token>`. A 401 signs the device out, and
 the device keeps its own data.
 
 | Route | Does |
@@ -90,13 +156,16 @@ the device keeps its own data.
 | `GET /auth/github/callback` | GitHub's redirect target (browser navigation) |
 | `POST /auth/exchange` `{code}` | → `{token, profile}` |
 | `POST /auth/logout` | Ends this token |
-| `GET /me` | → `{profile: {id, name, created, logins}}` |
-| `PATCH /me` `{displayName}` | 3–16 characters: letters, digits, space, `.` `_` `-` |
+| `GET /me` | → `{profile: {id, name, created, public, logins}}` |
+| `PATCH /me` `{displayName?, public?}` | Name: 3–16 characters (letters, digits, space, `.` `_` `-`); `public`: on leaderboards |
 | `DELETE /me` | Deletes the profile and everything stored with it |
 | `GET /sync` | → `{shared: {doc, rev}, devices: {deviceId: doc}}` |
 | `PUT /sync/shared` `{doc, baseRev}` | 409 when `baseRev` is stale |
 | `PUT /sync/device/:id` `{doc}` | This device's slot; the newest 20 devices are kept |
-| `POST /runs` `{runs: [...]}` | Up to 50 runs; invalid ones are dropped, repeats ignored |
+| `POST /runs` `{runs: [...]}` | Up to 50 runs; invalid ones are dropped, repeats ignored. → `{accepted, rules, runs: [{clientRunId, verified, score?}]}` |
+| `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}`. Cached 30 s |
+| `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
+| `GET /admin/flagged`, `POST /admin/hide`, `POST /admin/verify` | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
 
 Limits:
 - Request bodies up to 300 000 characters, each stored document up to 256 000.
@@ -105,17 +174,17 @@ Limits:
 
 ## Data model
 
-`server/migrations/0001_init.sql` creates these tables:
+`server/migrations/` creates these tables (`0001_init.sql`, then `0002_leaderboards.sql`):
 
 | Table | Holds |
 |---|---|
-| `users` | A profile: our own id, display name |
+| `users` | A profile: our own id, display name, `public` (on leaderboards), `hidden` (moderation) |
 | `identities` | `(provider, subject) → user`; GitHub's numeric id. Another login provider becomes another row on the same user |
 | `sessions` | SHA-256 of each bearer token, expiry |
 | `oauth_states`, `login_codes` | Short-lived sign-in state |
 | `shared_docs` | The shared document and its revision |
 | `device_slots` | One row per user × device |
-| `runs` | Every uploaded run, indexed by `(song_id, diff, score)` for leaderboards. `replay` is reserved for checking scores on the server: charts are deterministic (`chart.js`), so the Worker can re-run a submitted run |
+| `runs` | Every uploaded run. Re-playable runs also keep `replay`, `rules`, `loadout` (the mods) and a custom song's `rtttl`. `verified` (1 ranked, 0 waiting or history, −1 invalid), `flags` and `hidden` (moderation). Boards read the partial index `runs_rank` |
 
 ## Setup and deploy
 
@@ -150,7 +219,17 @@ You need a Cloudflare account (the free plan is enough) and a GitHub account.
    "Online profiles are not available yet." Add a changelog message when it ships (see
    [RELEASING.md](RELEASING.md#releasing-a-minor-version)).
 
-Schema changes go into a new numbered file in `server/migrations/`, followed by `npm run migrate`.
+8. For moderation, set an admin token (any long random string, kept to yourself):
+   ```sh
+   npx wrangler secret put ADMIN_TOKEN
+   ```
+9. To deploy the API from CI with every push to `main`, add a repository secret `CLOUDFLARE_API_TOKEN`. It needs a
+   Cloudflare API token with the "Edit Cloudflare Workers" template plus D1 edit permission. The `deploy-api` job
+   then applies migrations and deploys. Without the secret, the job is skipped.
+   - Deploying the API together with the pages matters because both must agree on `RULES`.
+   - An API left behind on older rules marks new runs "Not ranked" until it is deployed.
+
+Schema changes go into a new numbered file in `server/migrations/`, followed by `npm run migrate` (CI does this too).
 
 ## Local development
 

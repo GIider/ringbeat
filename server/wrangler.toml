@@ -25,3 +25,9 @@ simple = { limit = 60, period = 60 }
 
 # Local development (`npm run dev` here) reads overrides from server/.dev.vars (not committed): a second OAuth App's
 # GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET with the http://localhost:8787 callback, and ALLOWED_ORIGINS for the dev pages.
+
+# Re-plays runs that waited (more than a request's budget at once, or posted while the Worker had other RULES).
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Moderation routes (/admin/*, docs/CLOUD.md) answer only with this secret: `npx wrangler secret put ADMIN_TOKEN`.
