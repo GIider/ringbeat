@@ -309,6 +309,8 @@ const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter (for the current difficulty).
 const visible = () => applyView(entries(), settings.view, settings.difficulty, scores);
+// New players start on the top of the default view (easiest first, Normal), computed from the current ratings.
+const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, 'normal', scores)[0] || builtins[0]).id;
 
 // ---- preview (plays the song straight through, optionally cut at maxSec) ----
 let previewTimer = null, autoPreviewTimer = null;
@@ -1950,7 +1952,7 @@ function wire() {
     else if (!r.added) toast('My songs is full');
     return !!e;
   };
-  if (!takeShared(shared)) selectedId = entryById(settings.lastSongId) ? settings.lastSongId : builtins[0].id;
+  if (!takeShared(shared)) selectedId = entryById(settings.lastSongId) ? settings.lastSongId : defaultSongId();
   window.addEventListener('hashchange', () => {
     const t = decodeSong(location.hash);
     if (t && takeShared(t)) { toast('Shared song saved to My songs'); if (state === 'select') openSelect(); }
@@ -2245,7 +2247,9 @@ fetch(new URL('./difficulty.json', import.meta.url))
   .then(data => {
     if (!data) return;
     setMeasured(data);
+    const fallback = defaultSongId();
     builtins = perf.time('library', () => buildLibrary());
+    if (!settings.lastSongId && selectedId === fallback) selectedId = defaultSongId();
     renderList();
     renderDetail();
   })
