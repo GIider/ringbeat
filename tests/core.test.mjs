@@ -438,6 +438,7 @@ test('VERSION matches package.json', () => {
 
 test('buildLine formats stamped and dev builds', () => {
   assert.equal(buildLine({ number: 42, commit: '3a9f1c2', date: '2026-10-16' }), 'build 42 · 3a9f1c2 · 2026-10-16');
+  assert.equal(buildLine({ number: 42, commit: '3a9f1c2', date: '2026-10-16' }, false), '3a9f1c2 · 2026-10-16');
   assert.equal(buildLine({ number: 0, commit: 'dev', date: '' }), 'dev build');
   assert.equal(buildLine(BUILD), BUILD.number ? buildLine(BUILD) : 'dev build');
 });
