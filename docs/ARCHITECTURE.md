@@ -85,6 +85,7 @@ src/
   perf.js         frame / section profiler (ring buffers, percentiles); no-op until enabled
   perfhud.js      the profiler's corner overlay + report copy (see PERFORMANCE.md)
   netdebug.js     the ?dev request log: every cloud request and held-back sync as a corner panel + console groups
+  netsignal.js    the status-bar signal icon as a connection light for signed-in players: bars climb while sending, drop while receiving
 
 scripts/
   serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload)
@@ -108,7 +109,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, replay, rtttl, settings, stats (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, netsignal, replay, rtttl, settings, stats (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

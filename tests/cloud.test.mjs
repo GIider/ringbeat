@@ -313,7 +313,7 @@ test('cloud: signed out makes no requests; a 401 signs out and keeps local data;
   srv.env.DB.db.exec('DELETE FROM sessions');
   assert.equal((await cloud.sync()).ok, false);
   assert.equal(cloud.signedIn(), false);
-  assert.deepEqual(events, ['signedout']);
+  assert.deepEqual(events.filter(e => !e.net), ['signedout']);
   assert.equal(scores.get('s', 'normal').best.score, 5);
 
   const again = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch: (u, i) => srv.call(u.slice(API.length), i) });
@@ -797,4 +797,21 @@ test('rename and opt-out: shown at once, sent with the next push, checked locall
   a.cloud.rename('Last Word');
   await a.cloud.signOut();
   assert.equal(srv.env.DB.db.prepare('SELECT display_name FROM users').get().display_name, 'Last Word');
+});
+
+test('netState: send for a round with something to upload, recv for a pull only, error after a failure, off signed out', async () => {
+  const srv = server();
+  const a = device(srv, { now: 1000 }, fakeTimers());
+  assert.equal(a.cloud.netState(), 'off');
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  assert.equal(a.cloud.netState(), 'idle');
+  const nets = [];
+  a.cloud.onChange(e => { if (e && e.net) nets.push(e.net); });
+  await a.cloud.sync('start'); // first round uploads the device slot
+  await a.cloud.sync('again'); // nothing changed: asks only
+  assert.deepEqual(nets, ['send', 'idle', 'recv', 'idle']);
+  nets.length = 0;
+  a.cloud.queueRun('s', 'normal', result(1, 5));
+  await a.cloud.submit();
+  assert.deepEqual(nets.slice(0, 2), ['send', 'idle']);
 });

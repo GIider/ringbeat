@@ -226,6 +226,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         ...(batch.length && { runs: batch }),
       };
       const text = JSON.stringify(body);
+      setNet(sendShared || sendDevice || sendProfile || batch.length ? 'send' : 'recv');
       const r = await request('POST', '/sync', text, { keepalive: keepalive && text.length <= KEEPALIVE_MAX, why: first ? why : why + ' (more runs)' });
       if (isNum(r.rules)) st.rules = r.rules;
       if (r.shared) {
@@ -261,6 +262,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     return { ok: true, changed, verdicts };
   }
 
+  // What the connection is doing, for the status bar: 'idle', 'send' or 'recv' (a request is out), 'error' (the last round failed).
+  let net = 'idle';
+  const setNet = n => { if (n !== net) { net = n; emit({ net }); } };
+
   // Failures back off (1, 2, 4 … 30 minutes; "slow down" starts at 5) instead of retrying on every trigger.
   let backoffUntil = 0, backoffMs = 0;
   const failed = e => {
@@ -272,8 +277,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   // Every round goes through one queue: a sync, the results screen's submit and the hide flush never overlap.
   let chain = Promise.resolve();
   const enqueue = opts => {
-    const p = chain.then(() => round(opts)).then(r => { backoffMs = 0; backoffUntil = 0; return r; },
-      e => { failed(e); return { ok: false, changed: new Set(), verdicts: {} }; });
+    const p = chain.then(() => round(opts)).then(r => { backoffMs = 0; backoffUntil = 0; setNet('idle'); return r; },
+      e => { failed(e); setNet(e && e.status === 401 ? 'idle' : 'error'); return { ok: false, changed: new Set(), verdicts: {} }; });
     chain = p;
     return p.then(r => { if (r.changed.size) emit({ synced: r.changed }); return r; });
   };
@@ -317,7 +322,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     profile: () => st.profile,
     lastSync: () => st.syncedAt,
     pendingRuns: () => st.outbox.length,
-    // 'synced' after a sync that changed something (with the Set of what), 'signedin', 'signedout', 'profile'.
+    // 'off' signed out (or no API), else 'idle' | 'send' | 'recv' | 'error'.
+    netState: () => (st.token && apiBase ? net : 'off'),
+    // 'synced' after a sync that changed something (with the Set of what), 'signedin', 'signedout', 'profile',
+    // { net } when netState() changes.
     onChange: f => listeners.push(f),
     signInUrl: returnTo => apiBase + '/auth/github/start?return=' + encodeURIComponent(returnTo),
 

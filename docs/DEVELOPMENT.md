@@ -62,6 +62,7 @@ audio/canvas:
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
 | `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion), leaderboards (re-played scores, bad runs, RULES, best per player, opt-out, moderation, flags, the cron) and two simulated devices syncing |
 | `cloudmerge.test.mjs` | Cloud merges: shared document (settings, favourites, songs, deletes), combined scores and stats, the stores' sync hooks |
+| `netsignal.test.mjs` | The status-bar signal icon as a connection light: bar order, minimum busy time, reduced motion, blocked while playing |
 | `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
 | `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
 | `customrating.test.mjs` | Custom-song ratings: async measurement matches `difficulty.json`, cleaning, share encoding, storage |

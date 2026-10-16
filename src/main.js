@@ -41,6 +41,7 @@ import { createCameoLayer } from './cameolayer.js';
 import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
 import { createNetDebug } from './netdebug.js';
+import { createNetSignal } from './netsignal.js';
 import { marquee } from './marquee.js';
 
 const $ = id => document.getElementById(id);
@@ -167,6 +168,7 @@ const DEV = new URLSearchParams(location.search).has('dev');
 const DEV_CAMEO = DEV ? new URLSearchParams(location.search).get('dev') || 'debug' : '';
 
 // ---- easter eggs (decorative only: nothing here selects, navigates or touches saved data) ----
+let cameoSignal = false; // a cameo is drawing the status bar
 const cameo = createCameoLayer({
   canvas: $('cameo'),
   getState: () => state,
@@ -174,6 +176,7 @@ const cameo = createCameoLayer({
   dev: DEV_CAMEO,
   onStatus: st => {
     if (inPlay()) return;
+    cameoSignal = !!st;
     if (!st) { phoneIdle(); return; }
     if (st.envelope) setSprite($('st-signal'), envelope(), 2);
     else if (st.signal != null) setSprite($('st-signal'), signal(st.signal), 2);
@@ -322,7 +325,18 @@ const cloud = createCloud({
 });
 onSave(() => cloud.schedule());
 let settingsArrived = () => {}; // set up in wire()
+// The signal icon as the connection light: only for signed-in players, and never over play or a cameo.
+const netSignal = createNetSignal({
+  paint: n => setSprite($('st-signal'), signal(n), 2),
+  blocked: () => inPlay() || cameoSignal,
+  reduced: () => still.matches,
+});
+const netView = () => { const n = cloud.netState(); return n !== 'off' && navigator.onLine === false ? 'offline' : n; };
+const showNet = () => netSignal.setState(netView());
+addEventListener('online', showNet);
+addEventListener('offline', showNet);
 cloud.onChange(e => {
+  if (e.net || e === 'signedin' || e === 'signedout') showNet();
   if (e.synced) {
     if (e.synced.has('settings')) {
       // Not in the middle of a song: scroll speed, voice and language change once the run is over.
@@ -2369,7 +2383,7 @@ function layout(animate = false) {
 
 // Idle phone: full signal and battery.
 function phoneIdle() {
-  setSprite($('st-signal'), signal(5), 2);
+  netSignal.repaint();
   setSprite($('st-battery'), battery(4), 2);
 }
 // Live phone displays while a song runs: progress, time, signal (recent hit quality) and battery (time left).
@@ -2524,6 +2538,7 @@ fetch(new URL('./difficulty.json', import.meta.url))
 
 $('loading')?.remove();
 wire();
+showNet();
 phoneIdle();
 setMode();
 layout(); // place the phone before the first paint, without the slide
