@@ -5,6 +5,11 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '1.5', date: '2026-10-16', title: 'Favorites',
+    body: 'Mark your favorite songs: press V, or tap the icon of the selected song. Favorites get a solid icon.\n' +
+      'New category: Favorites. New sort: Favorites first.',
+  },
+  {
     version: '1.4', date: '2026-10-16', title: 'Touch & Deutsch',
     body: 'Ringbeat speaks German now: Settings -> Language, or it follows your browser.\n' +
       'Touch screens: swipe through song select and the composer.\n' +

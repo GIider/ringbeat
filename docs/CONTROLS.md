@@ -20,6 +20,7 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 | Song select: category | `←` `→`, or `[` `]` |
 | Song select: sort (previous / next) | `D` / `F` |
 | Song select: list difficulty | `J` / `K` |
+| Song select: toggle favorite | `V` |
 | Results pages | `←` `→`, or `[` `]` |
 | Stats pages | `←` `→`; `↑` `↓` scroll the Top page |
 | Message | `↑` `↓` scroll, `←` `→` previous / next message; any key skips the opening animation |
@@ -67,7 +68,7 @@ action, right = Back.
 - **Main menu, Stats, Results, Messages, tutorial cards:** swipe left / right for the next / previous item or page (tap
   the arrows or tabs where shown). Tap a loading message to skip the animation.
 - **Song select:** swipe the list left / right (or tap ◄ ►) to change category; tap the sort or difficulty chip to cycle
-  it; tap a song to select it, tap the selected song again to play.
+  it; tap a song to select it, tap the selected song again to play. Tap the icon of the selected song to toggle its favorite.
 - **Composer:** on touch / narrow screens a note pad (C–B, rest, length, dot, sharp, pitch, delete) replaces the keys.
 - Sliders get a taller touch target on touch / narrow screens. With *Hit effects* and *Vibration* on, phones buzz on
   Perfect hits and when a combo breaks.
@@ -116,7 +117,7 @@ A disconnect during play pauses the game. Controllers appear to the browser only
 
 ## On-screen hints
 
-- **Song select:** the hint line under the list shows the navigation keys: `◄► Cat · D/F Sort · J/K Diff` on keyboard,
+- **Song select:** the hint line under the list shows the navigation keys: `◄► Cat · D/F Sort · J/K Diff · V Fav` on keyboard,
   or `LB/RB Cat · LT Sort` once a controller is used. With a controller, the category arrows in the header also become
   LB / RB.
 - **Tutorial cards:** show the lane inputs for the device in use (keys, pad buttons or touch).

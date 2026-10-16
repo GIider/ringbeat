@@ -160,6 +160,86 @@ const S = {
 
 export const SPRITES = S;
 
+// "Favorite" variants of the category icons: same size, drawn solid (or with a heart) so a favorite stands out in the list.
+export const SPRITES_FAV = {
+  classical: [
+    '..#####',
+    '..#####',
+    '..#####',
+    '..#####',
+    '###.###',
+    '###.###',
+    '.......',
+  ],
+  pop: [
+    '.##.##.',
+    '#######',
+    '#######',
+    '.#####.',
+    '..###..',
+    '...#...',
+    '.......',
+  ],
+  dance: [
+    '...#...',
+    '#.###.#',
+    '.#####.',
+    '#######',
+    '.#####.',
+    '#.###.#',
+    '...#...',
+  ],
+  ndw: [
+    '#.....#',
+    '##...##',
+    '#.#.#.#',
+    '#.#.#.#',
+    '#.###.#',
+    '#..#..#',
+    '#.....#',
+  ],
+  screen: [
+    '.#...#.',
+    '..#.#..',
+    '#######',
+    '#.#.#.#',
+    '#.###.#',
+    '#..#..#',
+    '#######',
+  ],
+  videogame: [
+    '.........',
+    '.#######.',
+    '#########',
+    '#########',
+    '#########',
+    '###...###',
+    '.##...##.',
+  ],
+  folk: [
+    '......#',
+    '.....##',
+    '....###',
+    '.######',
+    '#######',
+    '#####..',
+    '.##....',
+  ],
+  custom: [
+    '.....##',
+    '....###',
+    '...####',
+    '..#####',
+    '.######',
+    '#######',
+    '#######',
+  ],
+};
+
+// The list icon for a category (custom for unknown ones), in its favorite form when `fav`.
+export const categorySprite = (category, fav = false) =>
+  (fav ? SPRITES_FAV[category] || SPRITES_FAV.custom : null) || SPRITES[category] || SPRITES.custom;
+
 // Signal strength: five rising bars, `level` (0-5) of them solid; the rest are just a dot at the foot.
 export function signal(level) {
   const W = 14, H = 9, rows = Array.from({ length: H }, () => Array(W).fill('.'));

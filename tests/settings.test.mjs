@@ -117,6 +117,16 @@ test('settings: msgSeen keeps strings only, capped at 100; missing uses the chan
   assert.ok(Array.isArray(s.msgSeen));
 });
 
+test('settings: favorites keep unique non-empty strings, capped; sort fav is allowed', async () => {
+  let { settings: s } = await load({ favorites: ['a', 'a', 3, '', null, 'b'], view: { sort: 'fav' } });
+  assert.deepEqual(s.favorites, ['a', 'b']);
+  assert.equal(s.view.sort, 'fav');
+  ({ settings: s } = await load({ favorites: Array.from({ length: 800 }, (_, i) => 's' + i) }));
+  assert.equal(s.favorites.length, 500);
+  ({ settings: s } = await load({ favorites: 'x' }));
+  assert.deepEqual(s.favorites, []);
+});
+
 test('settings: pad bindings and mods are sanitized', async () => {
   let { settings: s } = await load({ padBindings: { 0: [1, 2], 1: 'x', 2: [99], 3: [] } });
   assert.deepEqual(s.padBindings[0], [1, 2]);

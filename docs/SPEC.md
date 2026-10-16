@@ -48,8 +48,10 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Changing the view:**
   - Category: ←→, `[` `]`, LB/RB, a swipe, or the ◄► arrows in the header.
   - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Easiest first* (the default), *Hardest
-    first*, *Title*, *BPM* and *Duration*.
+    first*, *Title*, *BPM*, *Duration* and *Favorites first*.
   - List difficulty: `J` / `K`, or tapping the difficulty chip.
+- **Favorites:** a *Favorites* category chip (after the others) appears once a song is favorited. `V`, or clicking / tapping the icon of the selected row, toggles a song's favorite (saved in the settings; custom
+  songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
 - **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved on the shown difficulty (not
   necessarily in the best run).
 - **Footer:** stars + rating, note count, best, BPM and length of the selected song. A hint line below lists the

@@ -100,13 +100,16 @@ export const de = {
   'Title': 'Titel',
   'BPM': 'BPM',
   'Duration': 'Dauer',
+  'Favorites first': 'Favoriten zuerst',
+  'Favorite added': 'Favorit hinzugefügt',
+  'Favorite removed': 'Favorit entfernt',
   'No songs match this filter.': 'Keine Songs für diesen Filter.',
   'Only on {diff}': 'Nur auf {diff}',
   'New': 'Neu',
   '{n} notes': ['{n} Note', '{n} Noten'],
   '{v} of 5 stars': '{v} von 5 Sternen',
   '{lb}/{rb} Cat · {lt} Sort': '{lb}/{rb} Kat. · {lt} Sort.',
-  '◄► Cat · D/F Sort · J/K Diff': '◄► Kat. · D/F Sort. · J/K Stufe',
+  '◄► Cat · D/F Sort · J/K Diff · V Fav': '◄► Kat. · D/F Sort. · J/K Stufe · V Fav',
   'Normal': 'Normal',
   'Hard': 'Schwer',
   'No plays yet': 'Noch nicht gespielt',
@@ -355,6 +358,11 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Favorites': 'Favoriten',
+  ['Mark your favorite songs: press V, or tap the icon of the selected song. Favorites get a solid icon.\n' +
+    'New category: Favorites. New sort: Favorites first.']:
+    'Markiere deine Lieblingssongs: Taste V, oder tippe auf das Symbol des gewählten Songs. Favoriten haben ein ausgefülltes Symbol.\n' +
+    'Neue Kategorie: Favoriten. Neue Sortierung: Favoriten zuerst.',
   'Touch & Deutsch': 'Touch & Deutsch',
   ['Ringbeat speaks German now: Settings -> Language, or it follows your browser.\n' +
     'Touch screens: swipe through song select and the composer.\n' +

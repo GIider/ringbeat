@@ -32,7 +32,7 @@ import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
+import { SPRITES, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -319,7 +319,7 @@ const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter (for the current difficulty).
-const visible = () => applyView(entries(), settings.view, settings.difficulty, scores);
+const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, settings.favorites);
 // New players start on the top of the default view (easiest first, Normal), computed from the current ratings.
 const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, 'normal', scores)[0] || builtins[0]).id;
 
@@ -367,12 +367,15 @@ function starsText(rating) {
     `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
 }
 
-// Category chips: All + each category (+ Custom when a custom song exists), with song counts.
+// Category chips: All + each category (+ Custom when a custom song exists, + Favorites when there are any), with song counts.
 function categoryTabs() {
   const all = entries();
   const tabs = [{ id: 'all', label: 'All' }, ...CATEGORIES];
   if (customs.length) tabs.push({ id: 'custom', label: 'Custom' });
-  return tabs.map(t => ({ ...t, count: t.id === 'all' ? all.length : all.filter(e => e.category === t.id).length }));
+  if (all.some(e => isFavorite(e.id))) tabs.push({ id: 'favorites', label: 'Favorites' });
+  const count = t => t.id === 'all' ? all.length
+    : t.id === 'favorites' ? all.filter(e => isFavorite(e.id)).length : all.filter(e => e.category === t.id).length;
+  return tabs.map(t => ({ ...t, count: count(t) }));
 }
 function renderCategories() {
   const tabs = categoryTabs();
@@ -397,6 +400,23 @@ function cycleCategory(step) {
   setCategory(tabs[(i + step + tabs.length) % tabs.length].id);
 }
 
+const isFavorite = id => settings.favorites.includes(id);
+function toggleFavorite(id = selectedId) {
+  if (!entryById(id)) return;
+  const on = !isFavorite(id);
+  settings.favorites = on ? [...settings.favorites, id] : settings.favorites.filter(x => x !== id);
+  save();
+  toast(on ? tr('Favorite added') : tr('Favorite removed'));
+  if (!on && settings.view.category === 'favorites') { // the song leaves this view
+    const keep = selectedEntry();
+    if (!visible().length) settings.view.category = 'all';
+    if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
+    renderDetail();
+  }
+  renderList();
+  if (state === 'select') focusCurrentRow(); // the list may have re-sorted around the cursor
+}
+
 function renderList() {
   renderCategories();
   const box = $('song-list');
@@ -417,8 +437,10 @@ function renderList() {
     if (away) b.title = tr('Only on {diff}', { diff: cap(e.only) });
     const rec = away ? null : scores.get(e.id, settings.difficulty);
     const best = rec && rec.best;
+    const fav = isFavorite(e.id);
+    if (fav) b.classList.add('fav');
     b.innerHTML =
-      spriteHTML(SPRITES[e.category] || SPRITES.custom, 2) +
+      spriteHTML(categorySprite(e.category, fav), 2, 'cat') +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span>`;
     box.appendChild(b);
@@ -431,17 +453,19 @@ function renderList() {
   const rowId = ev => { const r = ev.target.closest && ev.target.closest('.song-row'); return r ? r.dataset.id : null; };
   box.addEventListener('focusin', ev => { const id = rowId(ev); if (id) selectSong(id, false); });
   // Touch has no reliable double-click: a tap on the row that was already selected (before focus moved) plays it.
-  let tapWasSelected = false;
+  let tapWasSelected = false, pressWasSelected = false; // pressWasSelected: any pointer (focusin selects the row before the click lands)
   const swiped = onSwipe(box, dir => cycleCategory(dir === 'left' ? 1 : -1));
-  box.addEventListener('pointerdown', ev => { tapWasSelected = ev.pointerType !== 'mouse' && rowId(ev) === selectedId; });
+  box.addEventListener('pointerdown', ev => { pressWasSelected = rowId(ev) === selectedId; tapWasSelected = ev.pointerType !== 'mouse' && pressWasSelected; });
   box.addEventListener('click', ev => {
     const id = rowId(ev);
     if (!id || swiped()) return;
+    // The icon of the selected row is the favorite toggle (a first tap on another row only selects it).
+    if (pressWasSelected && selectedId === id && ev.detail !== 0 && ev.target.closest('.spr.cat')) { toggleFavorite(id); tapWasSelected = pressWasSelected = false; return; }
     if (selectedId !== id) selectSong(id, false);
     else if (ev.detail === 0 || tapWasSelected) playSelected(); // keyboard / gamepad confirm or touch re-tap; mouse uses double-click
-    tapWasSelected = false;
+    tapWasSelected = pressWasSelected = false;
   });
-  box.addEventListener('dblclick', ev => { if (rowId(ev)) playSelected(); });
+  box.addEventListener('dblclick', ev => { if (rowId(ev) && !ev.target.closest('.spr.cat')) playSelected(); });
 }
 function markSelected() {
   for (const b of $('song-list').children) {
@@ -1554,7 +1578,7 @@ function selectHints() {
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
   $('sel-hint').textContent = pad
     ? tr('{lb}/{rb} Cat · {lt} Sort', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT) })
-    : tr('◄► Cat · D/F Sort · J/K Diff');
+    : tr('◄► Cat · D/F Sort · J/K Diff · V Fav');
 }
 
 pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); };
@@ -2106,6 +2130,13 @@ function onKey(e) {
     if (e.repeat) return;
     synth.keyClick();
     if (e.code === 'KeyD' || e.code === 'KeyF') setView('sort', SORTS, e.code === 'KeyF' ? 1 : -1);
+    return;
+  }
+  if (state === 'select' && !typing && tag !== 'SELECT' && e.code === 'KeyV' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    if (e.repeat) return;
+    synth.keyClick();
+    toggleFavorite();
     return;
   }
   if (state === 'select' && !typing && tag !== 'SELECT' && (e.code === 'KeyJ' || e.code === 'KeyK')) {

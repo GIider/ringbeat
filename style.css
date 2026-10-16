@@ -240,6 +240,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .song-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-row .b { flex: none; font-weight: 700; }
 .song-row.cur { background: var(--ink); color: var(--lcd); }
+.song-row.cur .spr.cat { cursor: pointer; }
 .song-row.unavail { opacity: .45; }
 .song-row.unavail .t { font-style: italic; }
 .song-row:focus { outline: none; }

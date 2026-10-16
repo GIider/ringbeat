@@ -12,7 +12,8 @@ import { eventAudioTime } from '../src/input.js';
 import { Pad, BTN, buttonName, cloneBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 import { createSms, createSignalWobble, createLowBattery, createScheduler, CAMEOS } from '../src/cameo.js';
 import { formatImei, fakeImei } from '../src/secrets.js';
-import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES } from '../src/pixelart.js';
+import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES, SPRITES_FAV, categorySprite } from '../src/pixelart.js';
+import { CATEGORIES } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
 
@@ -258,7 +259,19 @@ test('listview: bpm and length sorts, stable ties, custom last', () => {
   assert.deepEqual(applyView(es, { sort: 'bpm' }, 'normal', null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'length' }, 'normal', null).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'nonsense' }, 'normal', null).map(e => e.id), ['a', 'b', 'c', 'custom:x']);
-  assert.equal(SORTS.length, 5);
+  assert.equal(SORTS.length, 6);
+});
+
+test('listview: favorites sort puts favorites first by difficulty, custom still last', () => {
+  const es = [E('a', 'A', 1, 1, 3), E('b', 'B', 1, 1, 1), E('c', 'C', 1, 1, 2), E('custom:x', 'Z', 1, 1, 1)];
+  assert.deepEqual(applyView(es, { sort: 'fav' }, 'normal', null, ['a', 'c', 'custom:x']).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'fav' }, 'normal', null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
+});
+
+test('listview: the favorites category lists only favorites', () => {
+  const es = [E('a', 'A', 1, 1, 3), E('b', 'B', 1, 1, 1), E('c', 'C', 1, 1, 2)];
+  assert.deepEqual(applyView(es, { category: 'favorites' }, 'normal', null, ['c', 'a']).map(e => e.id), ['c', 'a']);
+  assert.deepEqual(applyView(es, { category: 'favorites' }, 'normal', null).map(e => e.id), []);
 });
 
 test('listview: nextOf / prevOf wrap, ratingOf prefers the measured rating', () => {
@@ -505,6 +518,21 @@ test('pixelart: spriteURL is a cached SVG data URI', () => {
   assert.ok(decodeURIComponent(u).includes('<rect'));
   assert.ok(spriteSVG(rows, 'red').includes('fill="red"'));
   for (const k of Object.keys(SPRITES)) assert.ok(spriteURL(SPRITES[k]).length > 30, k);
+});
+
+test('pixelart: every category icon has a distinct favorite variant of the same size', () => {
+  const cats = [...CATEGORIES.map(c => c.id), 'custom'];
+  assert.deepEqual(Object.keys(SPRITES_FAV).sort(), cats.sort());
+  for (const k of cats) {
+    const a = SPRITES[k], b = SPRITES_FAV[k];
+    assert.equal(b.length, a.length, k);
+    assert.ok(b.every(r => r.length === a[0].length && /^[#.]+$/.test(r)), k);
+    assert.notDeepEqual(b, a, k);
+    assert.equal(categorySprite(k, true), b);
+    assert.equal(categorySprite(k), a);
+  }
+  assert.equal(categorySprite('nope', true), SPRITES_FAV.custom);
+  assert.equal(categorySprite('nope'), SPRITES.custom);
 });
 
 import { swipeDir } from '../src/swipe.js';

@@ -28,9 +28,10 @@ export const settings = {
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
-    sort: ['diff-asc', 'diff-desc', 'title', 'bpm', 'length'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
-    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
+    sort: ['diff-asc', 'diff-desc', 'title', 'bpm', 'length', 'fav'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
+    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom', 'favorites'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
   },
+  favorites: Array.isArray(raw.favorites) ? [...new Set(raw.favorites.filter(v => typeof v === 'string' && v && v.length <= 200))].slice(0, 500) : [],
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',
   // Existing players (who already picked a song) are not shown the tutorial.
   tutorialDone: raw.tutorialDone === true || (typeof raw.lastSongId === 'string' && raw.lastSongId !== ''),
