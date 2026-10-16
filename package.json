@@ -14,6 +14,7 @@
     "bench": "node scripts/bench.mjs",
     "perf": "node --expose-gc scripts/perf-bench.mjs",
     "perf:play": "node scripts/perf-play.mjs",
+    "perf:menus": "node scripts/perf-menus.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "font":"node scripts/build-font.mjs"
   },

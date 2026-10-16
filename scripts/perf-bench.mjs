@@ -16,6 +16,11 @@ import { customEntry } from '../src/library.js';
 import { MAX_RTTTL } from '../src/mysongs.js';
 import { runBot, LADDER } from '../src/bot.js';
 import { Game } from '../src/game.js';
+import { menuFrame, menuFrames, MENU_IDS, letterFrame } from '../src/menuicons.js';
+import { spriteSVG, spriteURL, spriteHTML, compose, ringing, SPRITES } from '../src/pixelart.js';
+import { coverRows } from '../src/cover.js';
+import { CAMEOS } from '../src/cameo.js';
+import { createStats, gradeTally, topSongs, favourite } from '../src/stats.js';
 
 const arg = (name, def = null) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : def; };
 const filter = arg('filter'), jsonOut = arg('json'), basePath = arg('baseline'), failOver = arg('fail-over'), failOverMax = arg('fail-over-max');
@@ -118,6 +123,43 @@ function playSong(chartSrc, { draw = true } = {}) {
   return { update: upd, draw: drw, press: Float64Array.from(prs) };
 }
 
+
+// ---- hit-indicator / menu / animation fixtures ----
+const perfectHit = (r, lane) => r.fx.judge(lane, 'perfect');
+// Every juice effect live at once: rings, debris, punch, labels (typewriter phase), shake, strike, milestone frame, holds.
+function armStorm(r, g) {
+  const now = performance.now() / 1000;
+  const js = ['perfect', 'great', 'good', 'miss'];
+  r.lastCombo = 20; r._comboTxt = '20';
+  for (let i = 0; i < r.lanes; i++) { r.fx.press(i); r.fx.judge(i, js[i & 3]); }
+  r.fx.judge(0, 'miss');
+  r.fx.judge(1, 'perfect'); r.fx.judge(2, 'perfect');
+  r.frameT = now; r.popT = now; r.bumpT = now;
+  g.holds = Array.from({ length: r.lanes }, () => ({}));
+}
+function disarm(r, g) { r.resetState(); g.holds = new Array(r.lanes).fill(null); }
+const rfStorm = renderFixture();
+const rfHolds = renderFixture();
+const rfCalm = renderFixture();
+rfCalm.r.juice = false;
+const rfReduced = renderFixture();
+rfReduced.r.reduced = true;
+const chipTexts = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
+
+// Seeded rng so cameo runs are identical between benchmark runs.
+const seeded = seed => () => ((seed = Math.imul(seed ^ (seed >>> 15), 2246822507) + 374761393 | 0) >>> 0) / 4294967296;
+// 1000 imported songs-worth of scores for the stats recompute.
+const statEntries = Array.from({ length: 400 }, (_, i) => ({
+  id: 's' + i, diff: i & 1 ? 'hard' : 'normal', plays: 3 + (i % 7), fc: i % 5 === 0, ap: i % 11 === 0,
+  best: { score: 100000 + i, grade: 'SABCD'[i % 5] },
+  top: Array.from({ length: 5 }, (_, k) => ({ score: 90000 + i * k, maxCombo: 50 + k, date: 1.7e12 + i * 8.64e7, grade: 'SABCD'[(i + k) % 5] })),
+}));
+const bigLib = (() => {
+  const cats = ['classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk'];
+  return Array.from({ length: 500 }, (_, i) => ({ ...lib[i % lib.length], id: (i < lib.length ? '' : 'custom:') + lib[i % lib.length].id + i, category: cats[i % cats.length] }));
+})();
+let sink = 0; // keeps results of pure calls alive
+
 // A max-length custom song (the biggest chart a player can import).
 const bigRtttl = (() => {
   const body = ['c', '8e', '16g', 'd6', '8.a', 'f', '16p', 'b', '4g6', '8c6', 'e6', '16a5'];
@@ -190,6 +232,40 @@ const cases = [
   }],
   ['chart.generate custom max-length song (3 diffs)', () => { for (const d of DIFFICULTIES) generateChart(bigEntry.song, { difficulty: d }); }],
   ['library.customEntry max-length (import)', () => { customEntry(bigRtttl); }],
+
+  // -- hit indicators (chips, punch, debris, shimmer, shake, milestone) --
+  ['render.draw hit storm (all juice live, 4 lanes)', () => { armStorm(rfStorm.r, rfStorm.g); rfStorm.r.draw(rfStorm.g, rfStorm.t); disarm(rfStorm.r, rfStorm.g); }],
+  ['render.draw holds + shimmer (all lanes held)', () => {
+    rfHolds.g.holds = Array.from({ length: rfHolds.r.lanes }, () => ({}));
+    rfHolds.r.draw(rfHolds.g, rfHolds.t);
+  }],
+  ['render.draw perfect-spam (1 hit/frame, rolling)', () => { perfectHit(rfStorm.r, sink++ & 3); rfStorm.r.draw(rfStorm.g, rfStorm.t); }],
+  ['render._chip x4 (perfect/great/good/miss)', () => { for (const j in chipTexts) rf.r._chip(ctx, chipTexts[j], j, 100, 200); }],
+  ['render.draw juice off (floor)', () => { rfCalm.r.draw(rfCalm.g, rfCalm.t); }],
+  ['render.draw reduced motion', () => { rfReduced.r.draw(rfReduced.g, rfReduced.t); }],
+  ['render.fx.judge x100 (pool churn)', () => { for (let i = 0; i < 100; i++) rf.r.fx.judge(i & 3, i % 7 ? 'perfect' : 'miss'); }],
+
+  // -- menu / pixel-art / animation (pure parts; DOM parts live in perf-menus) --
+  ['menuicons.menuFrame (all ids x 8 ticks)', () => { for (const id of MENU_IDS) for (let n = 0; n < 8; n++) sink += menuFrame(id, n, { unread: n & 1 }).length; }],
+  ['menuicons.menuFrames (all ids, preload)', () => { for (const id of MENU_IDS) sink += menuFrames(id).length; }],
+  ['menuicons.letterFrame x3', () => { for (let i = 0; i < 3; i++) sink += letterFrame(i).length; }],
+  ['pixelart.spriteSVG (all menu frames)', () => { for (const id of MENU_IDS) for (let n = 0; n < 4; n++) sink += spriteSVG(menuFrame(id, n)).length; }],
+  ['pixelart.spriteURL warm (menu icon tick)', () => { for (const id of MENU_IDS) sink += spriteURL(menuFrame(id, 1)).length; }],
+  ['pixelart.spriteHTML x60 (list rows)', () => { for (let i = 0; i < 60; i++) sink += spriteHTML(SPRITES.custom || Object.values(SPRITES)[0], 2).length; }],
+  ['pixelart.compose ringing x2', () => { sink += ringing(0).length + ringing(1).length; }],
+  ['cover.coverRows (all songs, cold)', () => { for (const e of lib) sink += coverRows(e.id + Math.random(), e.category).length; }],
+  ['cover.coverRows (all songs, warm)', () => { for (const e of lib) sink += coverRows(e.id, e.category).length; }],
+  ...CAMEOS.map(c => [`cameo.${c.id} (full run: step+draw)`, () => {
+    const s = c.create(seeded(7), 60, 30);
+    let n = 0;
+    while (!s.done && n++ < 3000) { s.step(); if (c.kind === 'canvas') s.draw((x, y) => { sink += x + y; }); else sink += s.status() ? 1 : 0; }
+  }]),
+  ['stats.gradeTally+topSongs+favourite (400 songs)', () => { gradeTally(statEntries, 'all'); gradeTally(statEntries, 'hard'); topSongs(statEntries); favourite(statEntries); }],
+  ['stats.recordRun x5 (persist)', () => {
+    const st = createStats({ getItem: () => null, setItem() {}, removeItem() {} });
+    for (let i = 0; i < 5; i++) st.recordRun({ diff: 'normal', result: { score: 1000, maxCombo: 60, counts: { perfect: 90, great: 5, good: 3, miss: 2 }, fc: false, ap: false } });
+  }],
+  ['listview.applyView (500-song library, all sorts + cats)', () => { for (const s of SORTS) for (const c of ['all', 'pop', 'folk']) applyView(bigLib, { sort: s.id, category: c }, 'hard', scores); }],
   ['scores.record x5 (persist to storage)', () => {
     const sc = createScores({ getItem: () => null, setItem() {}, removeItem() {} });
     for (let i = 0; i < 5; i++) sc.record('s', 'normal', { score: 1000 * i, maxCombo: 50, accuracy: 90, grade: 'A', counts: { perfect: 1, great: 1, good: 1, miss: 0 }, deltas: [] });

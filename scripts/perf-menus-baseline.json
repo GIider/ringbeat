@@ -1,0 +1,67 @@
+{
+ "menu: scroll icons (Down x24)": {
+  "cost": 1.4625000000620882,
+  "frameP95": 17.5,
+  "frameMax": 17.5
+ },
+ "menu: jump by number key": {
+  "cost": 1.3333333333333333,
+  "frameP95": 17.300000000745058,
+  "frameMax": 17.300000000745058
+ },
+ "menu: idle 2 s (icon animation)": {
+  "cost": 16.67107438016683,
+  "frameP95": 17.300000000745058,
+  "frameMax": 17.59999999962747
+ },
+ "select: open + back (Enter/Esc)": {
+  "cost": 3.9499999997206032,
+  "frameP95": 17.699999999254942,
+  "frameMax": 17.699999999254942
+ },
+ "select: scroll list (Down x30)": {
+  "cost": 2.193333333265036,
+  "frameP95": 18,
+  "frameMax": 18.100000000558794
+ },
+ "select: scroll list up (Up x30)": {
+  "cost": 1.8466666666169962,
+  "frameP95": 17.700000000186265,
+  "frameMax": 17.799999999813735
+ },
+ "select: cycle category ([ ] x8)": {
+  "cost": 3.612500000046566,
+  "frameP95": 18.100000000558794,
+  "frameMax": 18.100000000558794
+ },
+ "select: cycle difficulty (K x6)": {
+  "cost": 2.6666666668218872,
+  "frameP95": 17.700000000186265,
+  "frameMax": 17.700000000186265
+ },
+ "select: cycle sort (F x6)": {
+  "cost": 2.9166666668218872,
+  "frameP95": 17.799999999813735,
+  "frameMax": 17.799999999813735
+ },
+ "select: idle 2 s (preview + cameo)": {
+  "cost": 16.66776859504748,
+  "frameP95": 17.299999999813735,
+  "frameMax": 17.799999999813735
+ },
+ "stats: open + flip pages": {
+  "cost": 1.8899999999441206,
+  "frameP95": 17.700000000186265,
+  "frameMax": 17.700000000186265
+ },
+ "inbox: open + back": {
+  "cost": 1.7000000001862645,
+  "frameP95": 17.600000000558794,
+  "frameMax": 17.600000000558794
+ },
+ "settings: open + back": {
+  "cost": 1.7000000001862645,
+  "frameP95": 17.5,
+  "frameMax": 17.5
+ }
+}

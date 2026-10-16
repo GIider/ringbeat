@@ -38,6 +38,7 @@ src/
   main.js         state machine, screen wiring, phone layout/modes + soft keys, play/results flow
 scripts/serve.mjs   dependency-free dev server (LAN URLs, no-store)
 scripts/perf-bench.mjs  speed micro-benchmarks incl. headless render, whole-song frame replays, alloc per call (`npm run perf`)
+scripts/perf-menus.mjs  drives the DOM menus in headless Chromium: handler/layout/frame time per key press, idle animation frames (`npm run perf:menus`)
 scripts/perf-play.mjs   plays songs in headless Chromium with a key bot and reports frame pacing (`npm run perf:play`)
 tests/
   core.test.mjs   node tests: library, scores, speed transform, game FC/AP, bindings
@@ -85,5 +86,9 @@ tests/
   Columns include p99/max (stutter is about the worst frame) and, because `npm run perf` runs with `--expose-gc`,
   `alloc B/call` (approximate heap growth per call; steady-state `render.draw` should stay near zero). `frames.*` cases
   replay a whole song at 60 Hz and report per-frame percentiles; `--fail-over-max N` also gates the worst-frame delta.
+- **Menus:** `npm run perf:menus [-- --reps 3 --json f.json --baseline scripts/perf-menus-baseline.json --fail-over 50]` scrolls the main menu, song list,
+  categories/sorts, stats, inbox and settings with 30 custom songs loaded; reports JS, forced-layout and frame time per press plus
+  browser layout/style recalc totals. The node suite also covers hit effects (storm, holds, chips, juice off), menu icon frames,
+  sprite URLs, cover art and cameo sims.
 - **In a real browser:** `npm run perf:play [-- --songs 0,6,12 --diff hard --seconds 30]` plays songs with a keyboard bot
   and prints fps, long-frame %, frame p50/p95/p99/max and draw/update p99. The HUD also counts main-thread long tasks.
