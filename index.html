@@ -122,6 +122,19 @@
           <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
         </section>
 
+        <!-- First visit to Tones: offer the tutorial -->
+        <section id="tutprompt" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
+          <h2>First time?</h2>
+          <div id="tp-body">
+            <p>Play the <b>tutorial</b> first? 7 short lessons.</p>
+            <p>Find it later in <b>Settings → Replay tutorial</b>.</p>
+          </div>
+          <div class="menu">
+            <button id="btn-tp-yes" data-default>Play tutorial</button>
+            <button id="btn-tp-no">No thanks</button>
+          </div>
+        </section>
+
         <!-- Tutorial (intro / outro card; the stages themselves play on the canvas) -->
         <section id="tutorial" class="screen" hidden data-title="Tutorial" data-soft-left="Select" data-soft-right="Skip">
           <h2 id="tut-title">Welcome to Ringbeat</h2>

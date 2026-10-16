@@ -90,7 +90,7 @@ const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), select: $('select'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
-  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), results: $('results'), paused: $('pause'),
+  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
@@ -507,7 +507,7 @@ function openSelect() {
 
 // ---- main menu: one item per screen, big animated icon, numbered scrollbar (3310 style) ----
 const MENU = [
-  { id: 'tones', title: 'Tones', open: () => openSelect() },
+  { id: 'tones', title: 'Tones', open: () => (settings.tutorialDone ? openSelect() : openTutPrompt()) },
   { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
   { id: 'stats', title: 'Stats', open: () => openStats() },
   { id: 'messages', title: 'Messages', open: () => openInbox() },
@@ -1329,6 +1329,9 @@ function tutProgress(done, current) {
   $('tut-progress').hidden = false;
   $('tut-progress').textContent = `${boxes}   ${current >= 0 ? `Lesson ${current + 1} of ${n}` : `${n} lessons`}`;
 }
+// First time opening Tones: offer the tutorial (it stays reachable from Settings).
+function openTutPrompt() { setState('tutprompt', 'tutprompt'); }
+function skipTutPrompt() { settings.tutorialDone = true; save(); openSelect(); }
 function openTutorial() {
   $('btn-tut-go').textContent = 'Start tutorial';
   $('btn-tut-skip').hidden = false;
@@ -1553,6 +1556,7 @@ function back() {
     case 'msgload': openInbox(MESSAGES[msgIdx].version); break;
     case 'message': openInbox(MESSAGES[msgIdx].version); break;
     case 'tutorial': finishTutorial(); break;
+    case 'tutprompt': skipTutPrompt(); break;
     case 'settings': closeSettings(); break;
     case 'mods': closeMods(); break;
     case 'mysongs': openMenu('mysongs'); break;
@@ -1671,7 +1675,7 @@ let booted = false;
 function startFromTitle() {
   synth.ensure();
   if (!booted) { booted = true; synth.jingle(); }
-  if (!settings.tutorialDone) openTutorial(); else openMenu('tones');
+  openMenu('tones');
 }
 
 function wire() {
@@ -1756,6 +1760,8 @@ function wire() {
   $('inbox-list').onclick = e => { const b = e.target.closest('button'); if (b) openMessage(+b.dataset.i); };
 
   // tutorial
+  $('btn-tp-yes').onclick = () => { synth.ensure(); openTutorial(); };
+  $('btn-tp-no').onclick = skipTutPrompt;
   $('btn-tut-go').onclick = tutorialGo;
   $('btn-tut-skip').onclick = finishTutorial;
   $('btn-tut-skip-pause').onclick = finishTutorial;

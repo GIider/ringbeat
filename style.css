@@ -317,8 +317,8 @@ td + td { text-align: right; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .pad { transform: none; } }
 
 /* ---------- tutorial ---------- */
-#tut-body p { margin: 4px 0; }
-#tut-body b { font-weight: 700; }
+#tut-body p, #tp-body p { margin: 4px 0; }
+#tut-body b, #tp-body b { font-weight: 700; }
 .tut-progress { letter-spacing: 1px; margin: 2px 0 6px; color: var(--ink-dim); }
 
 /* ---------- pop-ups ---------- */
