@@ -20,6 +20,9 @@ import { menuFrame, menuFrames, MENU_IDS, letterFrame } from '../src/menuicons.j
 import { spriteSVG, spriteURL, spriteHTML, compose, ringing, SPRITES } from '../src/pixelart.js';
 import { coverRows } from '../src/cover.js';
 import { CAMEOS } from '../src/cameo.js';
+import { eventAudioTime } from '../src/input.js';
+import { Calibration } from '../src/calibration.js';
+import { Pad } from '../src/gamepad.js';
 import { createStats, gradeTally, topSongs, favourite } from '../src/stats.js';
 
 const arg = (name, def = null) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : def; };
@@ -260,6 +263,23 @@ const cases = [
     let n = 0;
     while (!s.done && n++ < 3000) { s.step(); if (c.kind === 'canvas') s.draw((x, y) => { sink += x + y; }); else sink += s.status() ? 1 : 0; }
   }]),
+  ['input.eventAudioTime x100', () => {
+    const c = { currentTime: 10, outputLatency: 0.05, getOutputTimestamp: () => ({ contextTime: 9.9, performanceTime: 1000 }) };
+    for (let i = 0; i < 100; i++) sink += eventAudioTime(c, { timeStamp: 1000 + i });
+  }],
+  ['calibration.result (12 ticks, 40 taps)', () => {
+    const cal = new Calibration({ ctx: { currentTime: 0 }, ensure() { return this.ctx; }, stopAll() {}, tick() {}, getLatency: () => 0 });
+    cal.start();
+    for (let i = 0; i < 40; i++) cal.recordTap(cal.tickTimes[i % 12] + 0.03 + (i % 5) * 0.004);
+    sink += cal.result();
+  }],
+  ['gamepad.Pad.poll x60 (4 buttons flipping)', () => {
+    const pad = new Pad();
+    let f = 0;
+    pad.list = () => [{ index: 0, axes: [0, 0], timestamp: 0, buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i < 4 && f % 2 === 0 })) }];
+    pad.onButton = () => { sink++; };
+    for (f = 0; f < 60; f++) pad.poll();
+  }],
   ['stats.gradeTally+topSongs+favourite (400 songs)', () => { gradeTally(statEntries, 'all'); gradeTally(statEntries, 'hard'); topSongs(statEntries); favourite(statEntries); }],
   ['stats.recordRun x5 (persist)', () => {
     const st = createStats({ getItem: () => null, setItem() {}, removeItem() {} });
