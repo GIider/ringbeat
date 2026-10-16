@@ -14,10 +14,6 @@ the few assets (pixel font, phone artwork) are made in-repo — see below.
 | --- | --- | --- | --- |
 | ![Main menu](docs/screenshots/menu-desktop.png) | ![Song list](docs/screenshots/select-desktop.png) | ![Playing](docs/screenshots/play-desktop.png) | ![Playing, compact](docs/screenshots/play-compact.png) |
 
-| Full combo | Difficulty | Settings | Messages | Results (compact) |
-| --- | --- | --- | --- | --- |
-| ![Results with full combo](docs/screenshots/fc-desktop.png) | ![Difficulty picker](docs/screenshots/info-desktop.png) | ![Settings](docs/screenshots/settings-desktop.png) | ![Message](docs/screenshots/message-desktop.png) | ![Results, compact](docs/screenshots/fc-compact.png) |
-
 On narrow screens (under 600 px wide) the phone body is dropped and the LCD fills the window.
 
 Regenerate them with `npm run screenshots` (see below).
