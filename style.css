@@ -225,6 +225,8 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-cat { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dp-tabs { display: flex; justify-content: center; gap: 6px; margin: 2px 0 0; }
 .dp-tabs .sel { background: var(--ink); color: var(--lcd); font-weight: 700; padding: 0 4px; }
+.dp-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#diffpick .menu > button { flex-wrap: nowrap; }
 .dp-panel { min-height: 3.2em; }
 .sel-sub { text-align: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-list { flex: 1; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);

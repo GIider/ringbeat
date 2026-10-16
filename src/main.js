@@ -883,8 +883,10 @@ let dpBack = null, dpEntry = null, dpDiff = 'normal';
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
   if (!e) return;
-  const rec = scores.get(e.id, e.only || d), box = $('dp-panel');
+  const box = $('dp-panel');
   box.textContent = '';
+  if (!d) return; // Mods focused: no scores
+  const rec = scores.get(e.id, e.only || d);
   const ol = document.createElement('ol');
   ol.className = 'top';
   for (const r of (rec ? rec.top : [])) {
@@ -903,8 +905,8 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, same = entry.only && entry.only !== d; // folded into the other difficulty
     const n = same ? 0 : entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.innerHTML = cap(d) + (same ? ` · same as ${cap(entry.only)}` : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
-      (r && !same ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
+    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? ` · same as ${cap(entry.only)}` : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
+      (r && !same ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '') + '</span>';
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
     b.onfocus = () => { dpDiff = d; renderDpPanel(); };
@@ -1055,7 +1057,7 @@ function openCustom(text = '', uid = '') {
 // ---- mods (sticky loadout, edited on its own screen opened from the difficulty picker) ----
 function refreshModsButton() {
   const on = mods.isActive(settings.mods);
-  $('btn-mods').textContent = 'Mods: ' + mods.summary(settings.mods) + (on ? ' ▸' : '');
+  $('btn-mods').innerHTML = `<span class="dp-line">${esc('Mods: ' + mods.summary(settings.mods) + (on ? ' ▸' : ''))}</span>`;
   $('btn-mods').classList.toggle('sel', on);
 }
 const MOD_HINTS = {
@@ -1799,6 +1801,7 @@ function wire() {
   // title / select
   $('btn-start').onclick = startFromTitle;
   $('btn-mods').onclick = openMods;
+  $('btn-mods').onfocus = () => { dpDiff = null; renderDpPanel(); };
 
   // mods
   $('m-speed').oninput = e => setMod({ speed: mods.SPEEDS[+e.target.value] });
