@@ -827,56 +827,32 @@ function importSharedText(text) {
   return r;
 }
 
-// -- difficulty picker: also the song's detail screen (Info / Top runs tabs for the focused difficulty) --
+// -- difficulty picker: also the song's detail screen (rating per difficulty, top runs for the focused one) --
 function cap(s) { return s[0].toUpperCase() + s.slice(1); }
-let dpBack = null, dpEntry = null, dpDiff = 'normal', dpTab = 0;
-const DP_TABS = ['Info', 'Top'];
-function setDpTab(i) {
-  const n = Math.max(0, Math.min(DP_TABS.length - 1, i));
-  if (n === dpTab) return;
-  if (n > 0 && !(dpEntry && scores.get(dpEntry.id, dpDiff))) { synth.blocked(); return; }
-  dpTab = n;
-  renderDpPanel();
-  synth.keyClick();
-}
+let dpBack = null, dpEntry = null, dpDiff = 'normal';
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
   if (!e) return;
   const rec = scores.get(e.id, d), box = $('dp-panel');
-  if (!rec) dpTab = 0; // focused difficulty has no plays: fall back to Info
-  DP_TABS.forEach((_, i) => {
-    const t = $('dp-tab-' + i);
-    t.classList.toggle('sel', i === dpTab);
-    t.classList.toggle('off', i > 0 && !rec); // nothing to show until the song has been played
-    t.setAttribute('aria-selected', String(i === dpTab));
-  });
-  if (dpTab === 0) {
-    const tricky = e.tags && e.tags[d] && e.tags[d].length ? `<div class="hint">Tricky: ${esc(e.tags[d].join(', '))}</div>` : '';
-    const mod = mods.isActive(settings.mods)
-      ? `<div class="hint">Mods ${esc(mods.summary(settings.mods))} · score ${mods.multText(mods.multiplier(settings.mods))}</div>` : '';
-    box.innerHTML = `<div>${starsText(ratingOf(e, d))}<b>${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span> · ${e.notes[d]} notes</div>${tricky}${mod}`;
-  } else {
-    box.textContent = '';
-    const ol = document.createElement('ol');
-    ol.className = 'top';
-    for (const r of (rec ? rec.top : [])) {
-      const li = document.createElement('li');
-      li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
-      ol.appendChild(li);
-    }
-    if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
+  box.textContent = '';
+  const ol = document.createElement('ol');
+  ol.className = 'top';
+  for (const r of (rec ? rec.top : [])) {
+    const li = document.createElement('li');
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${r.accuracy.toFixed(1)}%${badgeHTML(r, true)}`;
+    ol.appendChild(li);
   }
+  if (!ol.children.length) box.innerHTML = '<div class="hint">No plays yet</div>'; else box.appendChild(ol);
 }
 function askDifficulty(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
   dpEntry = entry;
-  dpTab = 0;
   setSprite($('dp-cover'), coverRows(entry.id, entry.category), 2);
   $('dp-title').textContent = entry.title;
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
     const d = b.dataset.diff, n = entry.notes[d] || 0, r = scores.get(entry.id, d);
-    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))}` : ' · no notes') +
+    b.innerHTML = cap(d) + (n ? ` · ${starsText(ratingOf(entry, d))} ${starsValue(ratingOf(entry, d))} · ${n} notes` : ' · no notes') +
       (r ? ` · ${r.best.grade}${r.ap ? ' ★' : r.fc ? ' ✓' : ''}` : '');
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
@@ -1612,7 +1588,6 @@ function navigate(dir) {
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
-  if (state === 'diffpick' && (dir === 'left' || dir === 'right')) { setDpTab(dpTab + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     const p = resultsPage;
     setResultsPage(p + (dir === 'left' ? -1 : 1));

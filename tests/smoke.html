@@ -65,8 +65,6 @@ f.addEventListener('load', async () => {
     log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones', 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
-    key('ArrowRight'); await sleep(50);
-    log(!$('dp-tab-1').classList.contains('sel') && $('dp-tab-1').classList.contains('off'), 'Top tab blocked for an unplayed song');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
     const v0 = $('set-voice').textContent;
@@ -154,8 +152,6 @@ f.addEventListener('load', async () => {
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
     d.querySelector('.song-row.cur').click(); await sleep(100);
     log(vis('diffpick') && !!d.querySelector('#diffpick [data-default]'), 'play opens difficulty screen');
-    log(!$('dp-tab-1').classList.contains('off'), 'Top tab enabled for a played song');
-    key('ArrowRight'); await sleep(50); // Info -> Top
     log($('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
     d.querySelector('#diffpick [data-default]').click(); await sleep(100);
     rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
