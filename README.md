@@ -14,6 +14,10 @@ the few assets (pixel font, phone artwork) are made in-repo — see below.
 | --- | --- | --- | --- |
 | ![Main menu](docs/screenshots/menu-desktop.png) | ![Song list](docs/screenshots/select-desktop.png) | ![Playing](docs/screenshots/play-desktop.png) | ![Playing, compact](docs/screenshots/play-compact.png) |
 
+| Full combo | Difficulty | Settings | Messages | Results (compact) |
+| --- | --- | --- | --- | --- |
+| ![Results with full combo](docs/screenshots/fc-desktop.png) | ![Difficulty picker](docs/screenshots/info-desktop.png) | ![Settings](docs/screenshots/settings-desktop.png) | ![Message](docs/screenshots/message-desktop.png) | ![Results, compact](docs/screenshots/fc-compact.png) |
+
 On narrow screens (under 600 px wide) the phone body is dropped and the LCD fills the window.
 
 Regenerate them with `npm run screenshots` (see below).
@@ -28,11 +32,11 @@ npm start -- 9000    # custom port (or PORT=9000 npm start)
 npm run dev          # same server, the page reloads whenever a file changes
 npm run build        # stage runtime files into dist/ (what CI deploys to GitHub Pages)
 npm run bench        # re-measure song difficulty with bots -> src/difficulty.json
-npm run screenshots  # regenerate docs/screenshots/*.png from the ?demo= states (Playwright)
+npm run screenshots  # regenerate docs/screenshots/*.png from the ?demo= states (Playwright; palette-optimised if ImageMagick is installed)
 npm run font         # rebuild assets/fonts/*.ttf after editing the glyphs in src/pixelfont.js
 ```
 
-Screenshot states for development: `index.html?demo=play` (also `pause`, `menu`, `select`, `options`, `info`, `results`,
+Screenshot states for development: `index.html?demo=play` (also `pause`, `menu`, `select`, `info`, `results`, `fc`,
 `settings`, `stats`, `message`) loads the Nokia Tune and freezes a frame at ~10 %.
 
 Versioning: `1.0.<build>` — major.minor from `package.json`, patch = the GitHub Actions run number (stamped by `npm run build` via `BUILD_NUMBER`).
