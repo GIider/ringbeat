@@ -4,6 +4,7 @@
 import { chromium, firefox, webkit, devices } from 'playwright';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { API_BASE } from '../src/cloud.js';
 
 const port = 20000 + Math.floor(Math.random() * 10000);
 const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: 'ignore' });
@@ -16,7 +17,15 @@ async function run(name) {
     browser = await engines[name].launch();
     const dev = process.env.SMOKE_DEVICE;
     // locale pinned: the app follows the browser language, which otherwise comes from the host's $LANG
-    const page = await (await browser.newContext({ ...(dev ? devices[dev] : {}), locale: 'en-US' })).newPage();
+    const context = await browser.newContext({ ...(dev ? devices[dev] : {}), locale: 'en-US' });
+    // The live API stays out of it: an empty leaderboard snapshot, signed out for everything else (and no CORS error
+    // from a localhost page, which WebKit reports as a page error).
+    await context.route(url => url.href.startsWith(API_BASE + '/'), route => route.fulfill({
+      status: route.request().url().endsWith('/boards') ? 200 : 401,
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      body: route.request().url().endsWith('/boards') ? '{"rules":0,"built":0,"boards":{}}' : '{"error":"sign in"}',
+    }));
+    const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(`http://127.0.0.1:${port}/tests/smoke.html`);
