@@ -155,10 +155,13 @@ Schema changes go into a new numbered file in `server/migrations/`, followed by 
 ## Local development
 
 1. Create a second OAuth App with the callback `http://localhost:8787/auth/github/callback`.
-2. Put its id and secret into `server/.dev.vars` (this file is not committed):
+2. Put its id and secret into `server/.dev.vars` (this file is not committed), together with the pages the local API
+   should accept. `:*` allows any port. The live API accepts only `https://giider.github.io`, so a dev server can't
+   sign in against it.
    ```
    GITHUB_CLIENT_ID=...
    GITHUB_CLIENT_SECRET=...
+   ALLOWED_ORIGINS=http://localhost:*,http://192.168.2.130:*
    ```
 3. Start the API on port 8787 with a local D1:
    ```sh
@@ -169,8 +172,8 @@ Schema changes go into a new numbered file in `server/migrations/`, followed by 
    ```js
    localStorage.setItem('ringbeat.api', 'http://localhost:8787')
    ```
-
-`ALLOWED_ORIGINS` already allows any `http://localhost` port.
+   From another device, use the API machine's address instead of `localhost`. Its OAuth App callback then has to
+   use that address too.
 
 `tests/cloud.test.mjs` runs the Worker against an in-memory SQLite stand-in for D1 (`node:sqlite`) with GitHub faked,
 including two simulated devices syncing through it. `tests/cloudmerge.test.mjs` covers the merges, so neither needs
