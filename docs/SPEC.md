@@ -171,7 +171,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   with an API address.
 - **Signed in:** the card shows the online player name (at first the GitHub display name or username, else `Player-XXXX`). The screen offers:
   - *Sync now*;
-  - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`);
+  - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`; shown at once, sent with the next sync);
   - *On leaderboards: On/Off* (Off: the player's runs leave the public boards; they still see their own rank);
   - *Sign out*;
   - *Delete online profile* (press twice; this device keeps its own data).

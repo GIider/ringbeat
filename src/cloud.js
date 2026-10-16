@@ -4,7 +4,7 @@
 // later. Requests are few on purpose (docs/CLOUD.md › Requests): one POST /sync does a whole round, it only goes out
 // when something changed or the last pull is old, and never while a song is playing.
 // Storage, fetch, the clock and the timeout are injectable so the logic is testable without a browser.
-import { mergeShared, sameShared, sharedKey } from './cloudmerge.js';
+import { mergeShared, sameShared, sharedKey, cleanName } from './cloudmerge.js';
 
 // The deployed Worker (no trailing slash). Empty = online profiles are not offered. `ringbeat.api` in localStorage
 // overrides it for local development (e.g. http://localhost:8787).
@@ -75,6 +75,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
     ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, at }: the world rank last seen
     rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
+    pendingProfile: obj(st.pendingProfile),            // { displayName?, public? } waiting for the next push
   };
   const persist = () => { try { storage.setItem(CLOUD_KEY, JSON.stringify(st)); } catch { /* ignore */ } };
 
@@ -121,7 +122,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   // Back to signed out on this device. The device keeps its own data; the other devices' numbers leave the view.
   function forget() {
     Object.assign(st, { token: '', profile: null, syncedAt: 0, devices: {}, devicesAt: 0, outbox: [], backfilled: false,
-      sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {} });
+      sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {}, pendingProfile: {} });
     persist();
     showRemote();
     clearTimer(timer); timer = 0;
@@ -132,7 +133,25 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   const deviceDoc = () => ({ v: 1, scores: scores.own(), stats: stats.own() });
   const devicePrint = doc => fingerprint(JSON.stringify(doc));
   const sharedDirty = () => sharedPrint(localShared()) !== st.sharedHash;
-  const dirty = () => st.outbox.length > 0 || sharedDirty() || devicePrint(deviceDoc()) !== st.deviceHash;
+  const profileDirty = () => Object.keys(st.pendingProfile).length > 0;
+  const dirty = () => st.outbox.length > 0 || sharedDirty() || profileDirty() || devicePrint(deviceDoc()) !== st.deviceHash;
+  // The profile as the server has it, with this device's changes still waiting on top.
+  const showProfile = server => {
+    const p = st.pendingProfile;
+    const next = { ...server, ...(p.displayName && { name: p.displayName }), ...('public' in p && { public: p.public }) };
+    if (JSON.stringify(next) === JSON.stringify(st.profile)) return;
+    st.profile = next;
+    emit('profile');
+  };
+  // A rename or the opt-out: shown at once, sent with the next push (within SHARED_DELAY).
+  function changeProfile(change) {
+    if (!st.token) throw new HttpError(401);
+    st.pendingProfile = { ...st.pendingProfile, ...change };
+    showProfile(st.profile);
+    persist();
+    kick(SHARED_DELAY);
+    return st.profile;
+  }
 
   // This device's top runs, once per sign-in: the first upload for players who played before signing in.
   function backfillRuns() {
@@ -194,13 +213,15 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       const shared = localShared(), dev = deviceDoc();
       const sendShared = sharedPrint(shared) !== st.sharedHash, devPrint = devicePrint(dev);
       const sendDevice = devPrint !== st.deviceHash, batch = takeBatch();
+      const sendProfile = first && profileDirty() ? { ...st.pendingProfile } : null;
       const askDevices = first && pull;
-      if (!sendShared && !sendDevice && !batch.length && !askDevices) break;
+      if (!sendShared && !sendDevice && !sendProfile && !batch.length && !askDevices) break;
       const body = {
         deviceId,
         ...((pull || sendShared) && { sharedRev: st.sharedRev }),
         ...(sendShared && { shared, stampAt: now() }),
         ...(sendDevice && { device: { ...dev, updated: now() } }),
+        ...(sendProfile && { profile: sendProfile }),
         ...(askDevices && { devicesSince: st.devicesAt ? Math.max(0, st.devicesAt - DEVICE_OVERLAP) : 0 }),
         ...(batch.length && { runs: batch }),
       };
@@ -213,6 +234,9 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         if (remote) applySharedDoc(remote, changed);
       }
       if (sendDevice) st.deviceHash = devPrint;
+      // Sent and taken (or refused): no longer waiting, unless it changed again while the request ran.
+      if (sendProfile && JSON.stringify(sendProfile) === JSON.stringify(st.pendingProfile)) st.pendingProfile = {};
+      if (r.profile) showProfile(r.profile);
       if (r.deviceIds) {
         const devices = {};
         for (const id of r.deviceIds) {
@@ -396,23 +420,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       const v = boards.value;
       return v ? { rules: v.rules, runs: v.boards[songId + '|' + diff] || [] } : null;
     },
-    // The signed-in player's rank with the two players above and below; runs is empty when they have no ranked run.
-    async around(songId, diff) {
-      if (!st.token || !apiBase) return null;
-      try {
-        const r = await request('GET', `/board/${encodeURIComponent(songId)}/${diff}/me`);
-        const me = r.runs.find(x => x.me);
-        if (me) { st.ranks[songId + '|' + diff] = { rank: me.rank, total: me.total, at: now() }; persist(); }
-        return r;
-      } catch { return null; }
-    },
-    async setPublic(on) {
-      const r = await request('PATCH', '/me', { public: !!on });
-      st.profile = r.profile;
-      persist();
-      emit('profile');
-      return st.profile;
-    },
+    // On leaderboards or not; goes up with the next push. -> the profile as shown.
+    setPublic: on => changeProfile({ public: !!on }),
 
     // Scores and stats were reset on this device: every device resets on its next sync.
     markReset() {
@@ -423,15 +432,17 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       kick(500);
     },
 
-    async rename(name) {
-      const r = await request('PATCH', '/me', { displayName: name });
-      st.profile = r.profile;
-      persist();
-      emit('profile');
-      return st.profile;
+    // A new player name, checked here as the API checks it (a bad one throws { status: 400 }); goes up with the next
+    // push. -> the profile as shown.
+    rename(name) {
+      const clean = cleanName(name);
+      if (!clean) throw new HttpError(400);
+      return changeProfile({ displayName: clean });
     },
     async signOut() {
-      try { await request('POST', '/auth/logout'); } catch { /* signed out locally either way */ }
+      // What still waits (a rename, runs, scores) goes up first: it would be lost with the token.
+      if (dirty()) await enqueue({ pull: false, why: 'sign out' });
+      try { await request('POST', '/auth/logout', undefined, { why: 'sign out' }); } catch { /* signed out locally either way */ }
       forget();
       emit('signedout');
     },

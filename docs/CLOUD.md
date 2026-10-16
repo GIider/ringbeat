@@ -128,7 +128,7 @@ these routes answer 404.
 - `POST /admin/hide {runId}` or `{userId}`: takes a run or a player off every board. Add `hidden: false` to undo.
 - `POST /admin/verify`: re-plays waiting runs now.
 
-**Opt-out.** Profile → "On leaderboards" (`PATCH /me {public}`). A player who opts out leaves the public boards but
+**Opt-out.** Profile → "On leaderboards" (`profile.public` in the next `POST /sync`). A player who opts out leaves the public boards but
 still sees their own rank.
 
 ## Sign-in flow
@@ -158,6 +158,7 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The Sync button | Same, at most once per 30 s (counted from the last sync too); the button counts down meanwhile |
 | The tab comes back | Same, but only when the last sync is over 10 minutes old |
 | A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
+| A new player name, "On leaderboards" | Shown at once, sent with that same push within 30 s (and before signing out) |
 | A new best | One push from the results screen; the world rank comes back with it |
 | Scores, stats, other top-5 runs | A push within 10 minutes, or when the tab is hidden, whichever comes first |
 | The tab is hidden | A push, only if something changed (`keepalive` when the body is under 60 KB) |
@@ -190,9 +191,8 @@ the device keeps its own data.
 | `POST /auth/exchange` `{code}` | → `{token, profile}` |
 | `POST /auth/logout` | Ends this token |
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
-| `PATCH /me` `{displayName?, public?}` | Name: 3–16 characters (letters, digits, space, `.` `_` `-`); `public`: on leaderboards |
 | `DELETE /me` | Deletes the profile and everything stored with it |
-| `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, device?, devicesSince?, runs?}` | The game's one sync request; every part optional (see below) |
+| `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?}` | The game's one sync request; every part optional (see below) |
 | `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 min |
 | `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
@@ -202,9 +202,12 @@ the device keeps its own data.
 - `shared` (the device's copy) and/or `sharedRev` (the revision it last saw): the Worker merges and stores as above.
   The answer has `shared: {rev, doc?}` when there is anything new. `doc` is left out when the device already has
   it. `stampAt` is the device's clock, used to stamp never-changed settings when it fills an empty profile.
+- `profile`: `{displayName?, public?}`, a rename or the leaderboard opt-out. Names are 3–16 characters (letters,
+  digits, space, `.` `_` `-`; `cleanName` in `cloudmerge.js`, which the game checks first). A bad value is refused
+  on its own as `profileError` and the rest of the sync still lands. The answer has the `profile`.
 - `device`: this device's slot. The newest 20 devices are kept.
-- `devicesSince`: the answer has `deviceIds` (all slots) and `devices` (the docs of other devices' slots written
-  after that time).
+- `devicesSince`: the answer has `deviceIds` (all slots), `devices` (the docs of other devices' slots written
+  after that time) and the `profile`, so a rename on another device shows here.
 - `runs`: up to 50. Invalid ones are dropped, repeats ignored. The answer has `runs: [{clientRunId, verified,
   score?}]`, and `ranks: {"song|diff": {rank, total}}` wherever a run just ranked.
 

@@ -77,6 +77,14 @@ export function mergeShared(a, b) {
   return m;
 }
 
+// Player names, checked the same way by the game (before a rename goes up) and the API: 3-16 characters the LCD font
+// has, inner runs of spaces folded. -> the clean name, or '' when it doesn't fit.
+const NAME = /^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{1,14})[A-Za-z0-9_.-]$/;
+export function cleanName(raw) {
+  const s = String(raw ?? '').trim().replace(/\s+/g, ' ');
+  return NAME.test(s) ? s : '';
+}
+
 // Stable text form, for "did anything change?" checks.
 export const sharedKey = doc => canon(cleanShared(doc));
 export function sameShared(a, b) {

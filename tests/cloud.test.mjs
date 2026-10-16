@@ -132,11 +132,15 @@ test('worker: sign-in stores only the GitHub id; codes are single use; names are
   assert.ok(!JSON.stringify(db.prepare('SELECT * FROM users').all()).includes('x@y'), 'no email stored');
 
   const auth = { Authorization: 'Bearer ' + token };
+  const setProfile = async profile => (await srv.call('/sync', { method: 'POST', headers: auth, body: JSON.stringify({ profile }) })).json();
   for (const bad of ['ab', 'x'.repeat(17), 'semi;colon', 'a!b', 'Ümlaut']) {
-    assert.equal((await srv.call('/me', { method: 'PATCH', headers: auth, body: JSON.stringify({ displayName: bad }) })).status, 400, bad);
+    const r = await setProfile({ displayName: bad });
+    assert.equal(r.profileError, 'bad name', bad);
+    assert.match(r.profile.name, /^Player-/, 'kept');
   }
-  const ok = await srv.call('/me', { method: 'PATCH', headers: auth, body: JSON.stringify({ displayName: 'Ring  Master' }) });
-  assert.equal((await ok.json()).profile.name, 'Ring Master');
+  assert.equal((await setProfile({ displayName: 'Ring  Master' })).profile.name, 'Ring Master');
+  assert.equal((await setProfile({ public: 'no' })).profileError, 'bad public');
+  assert.equal((await srv.call('/me', { method: 'PATCH', headers: auth, body: '{}' })).status, 404, 'PATCH /me is gone');
 
   // Signing in again with the same GitHub account finds the same profile.
   const code2 = (await githubSignIn(srv, 7)).slice('#login='.length);
@@ -435,12 +439,11 @@ test('leaderboards: best run per player, opt-out, the player\'s own neighbourhoo
 
   // Opting out leaves the public board but keeps the player's own rank.
   const top = players.find(p => p.name === order[0]);
-  const pr = await (await srv.call('/me', { method: 'PATCH', headers: top.h, body: JSON.stringify({ public: false }) })).json();
+  const pr = await (await srv.call('/sync', { method: 'POST', headers: top.h, body: JSON.stringify({ profile: { public: false } }) })).json();
   assert.equal(pr.profile.public, false);
   b = await boardOf(srv, 'ode', 'normal');
   assert.deepEqual(b.runs.map(x => x.name), order.slice(1));
   assert.deepEqual((await boardOf(srv, 'ode', 'normal', top.h)).runs.map(x => [x.rank, !!x.me]), [[1, true], [2, false], [3, false]]);
-  assert.equal((await srv.call('/me', { method: 'PATCH', headers: top.h, body: JSON.stringify({ public: 'no' }) })).status, 400);
 
   // Moderation: nothing without the token; hiding a user or a run takes it off the board.
   const admin = { Authorization: 'Bearer admin-secret' };
@@ -489,13 +492,12 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
   const verdicts = await a.cloud.submit();
   assert.deepEqual(verdicts[id], { clientRunId: id, verified: 1, score: result.score });
   assert.equal(a.cloud.pendingRuns(), 0);
-  assert.deepEqual((await a.cloud.around('ode', 'normal')).runs.map(x => [x.rank, x.me]), [[1, true]]);
+  assert.equal(a.cloud.rank('ode', 'normal').rank, 1);
 
   const anon = device(srv);
   assert.equal(anon.cloud.queueRun('ode', 'normal', result), null, 'signed out: nothing queued');
   const b = await anon.cloud.board('ode', 'normal');
   assert.deepEqual(b.runs.map(x => [x.name, x.score]), [['Alice', result.score]]);
-  assert.equal(await anon.cloud.around('ode', 'normal'), null);
 
   // A big outbox goes up in several requests below the API's body limit; old replays give way first.
   for (let i = 0; i < 40; i++) a.cloud.queueRun('ode', 'normal', { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
@@ -665,8 +667,8 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   srv.tick(1000);
   await rebuildBoards(srv.env, 2_000_000);
   assert.equal((await boards()).built, first.built, 'nothing changed: no rebuild');
-  await srv.call('/me', { method: 'PATCH', headers: { Authorization: 'Bearer ' + JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).token },
-    body: JSON.stringify({ public: false }) });
+  a.cloud.setPublic(false);
+  await a.cloud.submit(); // goes up with the next push
   await rebuildBoards(srv.env, 3_000_000);
   const later = await boards();
   assert.equal(later.built, 3_000_000);
@@ -762,4 +764,37 @@ test('the Sync button: once per cooldown, counted from the last sync; no request
   assert.equal(a.cloud.syncCooldown(), 20_000);
   await a.cloud.syncNow();
   assert.equal(a.calls.length, 1);
+});
+
+test('rename and opt-out: shown at once, sent with the next push, checked locally, reach other devices', async () => {
+  const srv = server();
+  const timers = fakeTimers();
+  const a = device(srv, { now: 1000 }, timers), b = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv)); await a.cloud.sync();
+  await b.cloud.takeLoginHash(await githubSignIn(srv)); await b.cloud.sync();
+  a.calls.length = 0;
+  const events = [];
+  a.cloud.onChange(e => events.push(e));
+  assert.throws(() => a.cloud.rename('x!'), e => e.status === 400);
+  assert.equal(a.cloud.rename('  Ring   Master ').name, 'Ring Master');
+  a.cloud.setPublic(false);
+  assert.deepEqual([a.cloud.profile().name, a.cloud.profile().public], ['Ring Master', false]);
+  assert.deepEqual(events, ['profile', 'profile']);
+  assert.equal(a.calls.length, 0, 'no request of its own');
+  assert.deepEqual(timers.pending().map(t => t.ms), [30_000]);
+  timers.fireAll();
+  await settle(); await settle();
+  assert.equal(a.calls.length, 1);
+  assert.deepEqual(JSON.parse(a.calls[0].init.body).profile, { displayName: 'Ring Master', public: false });
+  assert.equal(srv.env.DB.db.prepare('SELECT display_name FROM users').get().display_name, 'Ring Master');
+  a.cloud.schedule();
+  assert.equal(timers.pending().length, 0, 'sent: nothing waits');
+  srv.tick(1000);
+  await b.cloud.sync();
+  assert.equal(b.cloud.profile().name, 'Ring Master', 'the next pull brings it');
+
+  // Signing out sends what still waits first.
+  a.cloud.rename('Last Word');
+  await a.cloud.signOut();
+  assert.equal(srv.env.DB.db.prepare('SELECT display_name FROM users').get().display_name, 'Last Word');
 });

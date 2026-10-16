@@ -11,7 +11,7 @@ import { SONGS } from '../../src/songs.js';
 import { hashString } from '../../src/library.js';
 import { planBot } from '../../src/bot.js';
 import * as mods from '../../src/mods.js';
-import { mergeShared, sameShared, stampUnset } from '../../src/cloudmerge.js';
+import { mergeShared, sameShared, stampUnset, cleanName } from '../../src/cloudmerge.js';
 
 const SESSION_MS = 365 * 24 * 3600e3;
 const STATE_MS = 10 * 60e3;   // OAuth round trip
@@ -21,7 +21,6 @@ const MAX_DOC = 256_000;      // stored document, characters
 const MAX_DEVICES = 20;
 const MAX_RUNS = 50;          // per POST /runs
 const DIFFS = ['normal', 'hard'];
-const NAME = /^[A-Za-z0-9_.-](?:[A-Za-z0-9 _.-]{1,14})[A-Za-z0-9_.-]$/; // 3-16 characters the LCD font has
 const DEVICE = /^[a-z0-9]{8,32}$/;
 const DEFAULT_NAME = /^Player-[A-Z2-9]{4}$/;
 const MAX_REPLAY = 250_000;   // characters of an encoded input log (replay.js MAX_EVENTS * 12)
@@ -42,7 +41,7 @@ export async function handle(req, env, now = Date.now()) {
   const origin = req.headers.get('Origin') || '';
   const cors = originAllowed(origin, env) ? {
     'Access-Control-Allow-Origin': origin, 'Vary': 'Origin',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400',
   } : {};
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -94,7 +93,7 @@ export async function handle(req, env, now = Date.now()) {
     }
 
     // ---- API (fetch from the game) ----
-    const body = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await readJson(req) : null;
+    const body = req.method === 'POST' ? await readJson(req) : null;
     if (body === undefined) return fail(400, 'bad body');
 
     if (route === 'POST /auth/exchange') {
@@ -164,19 +163,6 @@ export async function handle(req, env, now = Date.now()) {
       return json(null);
     }
     if (route === 'GET /me') return json({ profile: await profile(env, uid) });
-    if (route === 'PATCH /me') {
-      if (body.displayName !== undefined) {
-        const name = String(body.displayName || '').trim().replace(/\s+/g, ' ');
-        if (!NAME.test(name)) return fail(400, 'bad name');
-        await env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(name, uid).run();
-      }
-      if (body.public !== undefined) {
-        if (typeof body.public !== 'boolean') return fail(400, 'bad public');
-        await env.DB.prepare('UPDATE users SET public = ? WHERE id = ?').bind(body.public ? 1 : 0, uid).run();
-      }
-      await boardsChanged(env).run(); // the snapshot shows names
-      return json({ profile: await profile(env, uid) });
-    }
     if (boardRoute && boardRoute[3] && req.method === 'GET') {
       // The caller and the players around them; included even when not public, so they still see their own rank.
       const runs = await board(env, boardSong, boardRoute[2], { me: uid });
@@ -202,6 +188,23 @@ export async function handle(req, env, now = Date.now()) {
         if (r === 'busy') return fail(409, 'stale');
         if (r) out.shared = r;
       }
+      if (body.profile !== undefined) {
+        // A rename or the leaderboard opt-out, sent along with the next sync. A bad value is refused on its own
+        // (profileError) so the rest of the sync still lands.
+        const p = body.profile && typeof body.profile === 'object' ? body.profile : {};
+        const name = p.displayName === undefined ? null : cleanName(p.displayName);
+        if (name === '' || (p.public !== undefined && typeof p.public !== 'boolean')) out.profileError = name === '' ? 'bad name' : 'bad public';
+        else {
+          const sets = [];
+          if (name) sets.push(env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ? AND display_name != ?').bind(name, uid, name));
+          if (p.public !== undefined) sets.push(env.DB.prepare('UPDATE users SET public = ? WHERE id = ? AND public != ?').bind(+p.public, uid, +p.public));
+          if (sets.length) {
+            const r = await env.DB.batch(sets);
+            if (r.some(x => x.meta.changes)) await boardsChanged(env).run(); // the snapshot shows names
+          }
+        }
+        out.profile = await profile(env, uid);
+      }
       if (body.device !== undefined) {
         const doc = docText(body.device);
         if (!DEVICE.test(String(body.deviceId)) || !doc) return fail(400, 'bad doc');
@@ -212,6 +215,7 @@ export async function handle(req, env, now = Date.now()) {
         const { results } = await env.DB.prepare(`SELECT device_id, CASE WHEN updated > ? AND device_id != ? THEN doc END AS doc
           FROM device_slots WHERE user_id = ?`).bind(body.devicesSince, String(body.deviceId || ''), uid).all();
         out.deviceIds = results.map(r => r.device_id);
+        out.profile ||= await profile(env, uid); // a rename on another device reaches this one
         out.devices = Object.fromEntries(results.filter(r => r.doc !== null).map(r => [r.device_id, JSON.parse(r.doc)]));
       }
       if (body.runs && body.runs.length) {
@@ -486,7 +490,7 @@ export function playerName(raw) {
     s = cut >= 3 ? s.slice(0, cut) : s.slice(0, 16);
   }
   s = s.replace(/^[ ._-]+|[ ._-]+$/g, '');
-  return NAME.test(s) ? s : '';
+  return cleanName(s);
 }
 
 // GitHub OAuth code -> { subject: numeric user id as text, name, login }, or null. The access token is used once and dropped.
