@@ -8,7 +8,8 @@ const INK = '#1d2b12';
 const PAPER = '#a3c464';   // LCD green, used for text knocked out of an ink box
 const JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
 const BANNER_POOL = 3;
-const RING_POOL = 12, LABEL_POOL = 8;
+const RING_POOL = 12, LABEL_POOL = 8, DEBRIS_POOL = 24;
+const DEBRIS_DIRS = [[-1, -1], [1, -1], [-1, 1], [1, 1]]; // diagonal pixel debris on a perfect hit
 const SPRITE_MAX = 200;   // cached text strings (each has up to 4 colour/weight variants)
 const LANE_MAX = 40;
 const NOTE_H = 7;
@@ -71,6 +72,13 @@ export class Renderer {
     this.rings = Array.from({ length: RING_POOL }, () => ({ t: -10, lane: 0, big: false }));
     this.labels = Array.from({ length: LABEL_POOL }, () => ({ t: -10, lane: 0, text: '' }));
     this.ringI = 0; this.labelI = 0;
+    // Juice (all stepped, fixed pools): debris on perfects, receptor punch, tiny shake, combo-break strike, milestone frame.
+    this.juice = true;
+    this.debris = Array.from({ length: DEBRIS_POOL }, () => ({ t: -10, lane: 0, dx: 0, dy: 0 }));
+    this.debrisI = 0;
+    this.punch = new Float64Array(4).fill(-10);
+    this.shakeT = -10; this.breakT = -10; this.popT = -10; this.frameT = -10; this.bumpT = -10;
+    this._brokenTxt = '';
     this.vi = 0;
     this.lastCombo = 0; this._comboTxt = ''; this._comboShort = '';
     this.banners = Array.from({ length: BANNER_POOL }, () => ({ t: -10, text: '' }));
@@ -100,6 +108,15 @@ export class Renderer {
         if (j !== 'miss') {
           const r = this.rings[this.ringI++ % RING_POOL];
           r.t = now; r.lane = lane; r.big = j === 'perfect';
+          if (lane < this.punch.length && (j === 'perfect' || j === 'great')) this.punch[lane] = now;
+          if (j === 'perfect') {
+            for (let k = 0; k < DEBRIS_DIRS.length; k++) {
+              const d = this.debris[this.debrisI++ % DEBRIS_POOL];
+              d.t = now; d.lane = lane; d.dx = DEBRIS_DIRS[k][0]; d.dy = DEBRIS_DIRS[k][1];
+            }
+          }
+        } else if (this.lastCombo >= 10) { // combo break: strike the old counter, jitter the field
+          this.breakT = now; this.shakeT = now; this._brokenTxt = this._comboTxt;
         }
         const l = this.labels[this.labelI++ % LABEL_POOL];
         l.t = now; l.lane = lane; l.text = JUDGE_TEXT[j];
@@ -136,6 +153,7 @@ export class Renderer {
     this.lanes = n;
     this.keyLabels = keyLabels || [];
     this.flash = new Float64Array(n).fill(-10);
+    this.punch = new Float64Array(n).fill(-10);
     this.pressed = new Uint8Array(n);
     this._layout();
   }
@@ -143,6 +161,8 @@ export class Renderer {
   resetState() {
     this.vi = 0; this.lastCombo = 0; this._comboTxt = ''; this._comboShort = '';
     this.rings.forEach(r => r.t = -10); this.labels.forEach(l => l.t = -10); this.banners.forEach(b => b.t = -10);
+    this.debris.forEach(d => d.t = -10); this.punch.fill(-10);
+    this.shakeT = this.breakT = this.popT = this.frameT = this.bumpT = -10; this._lastScore = 0;
     this._dispScore = 0; this._shownScore = -1;
   }
 
@@ -287,6 +307,11 @@ export class Renderer {
     this._idleDone = false;
     if (this._staticDirty) this._buildStatic();
     c.clearRect(0, 0, W, H);
+    const fx = this.juice && !this.reduced;
+    // Tiny shake: 1 px sideways, flipping every frame-ish step for ~0.1 s (the HUD is drawn unshaken).
+    const shakeAge = now - this.shakeT;
+    const sx = fx && shakeAge >= 0 && shakeAge < 0.1 ? (Math.floor(shakeAge / 0.033) & 1 ? 1 : -1) : 0;
+    if (sx) c.translate(sx, 0);
     if (this.staticLayer) c.drawImage(this.staticLayer, 0, 0);
     else this._paintStatic(c);
 
@@ -409,6 +434,35 @@ export class Renderer {
       }
     }
 
+    if (fx) {
+      // Receptor punch: the box fills solid for a moment on a perfect/great, then the sparkle takes over
+      c.fillStyle = INK;
+      const bwp = lw - 5;
+      for (let i = 0; i < n; i++) {
+        const age = now - this.punch[i];
+        if (age < 0 || age > 0.05) continue;
+        c.fillRect(x0 + i * lw + ((lw - bwp) >> 1), this.recY + 1, bwp, this.recH - 2);
+      }
+      // Held notes shimmer: alternating pixel row on the hit line
+      const par = Math.floor(now / 0.07) & 1;
+      if (game.holds) {
+        for (let i = 0; i < n; i++) {
+          if (!game.holds[i]) continue;
+          const bx = x0 + i * lw + ((lw - bwp) >> 1);
+          c.fillStyle = PAPER;
+          for (let x = bx + 1 + par; x < bx + bwp - 1; x += 2) c.fillRect(x, hitY, 1, 1);
+          c.fillStyle = INK;
+        }
+      }
+      // Perfect debris: 4 diagonal pixels, three 70 ms steps outward
+      for (const d of this.debris) {
+        const age = now - d.t;
+        if (age < 0 || age > 0.21) continue;
+        const r = 5 + 3 * Math.floor(age / 0.07);
+        c.fillRect(x0 + d.lane * lw + (lw >> 1) + d.dx * r, hitY + d.dy * r, 1, 1);
+      }
+    }
+
     // Hit sparkles: three pixel frames, no easing
     if (!this.reduced) {
       c.fillStyle = INK;
@@ -432,10 +486,24 @@ export class Renderer {
       const age = now - l.t;
       if (age > 0.45 || age < 0) continue;
       const x = Math.max(0, Math.min(W - textWidth(l.text, false) - 1, x0 + l.lane * lw + (lw >> 1) - (textWidth(l.text, false) >> 1)));
-      this._text(c, l.text, x, this.recY - 10 - (this.reduced ? 0 : age > 0.2 ? 1 : 0), INK, false);
+      // Typewriter reveal on the first steps, and a miss sinks a pixel instead of rising
+      const txt = fx && age < 0.1 ? l.text.slice(0, 2 + Math.floor(age / 0.025)) : l.text;
+      const dy = this.reduced ? 0 : l.text === 'MISS' ? (age > 0.2 ? -1 : 0) : (age > 0.2 ? 1 : 0);
+      this._text(c, txt, x, this.recY - 10 - dy, INK, false);
     }
 
+    if (sx) c.translate(-sx, 0);
+
     this._hud(game, t, now);
+
+    // Milestone: the LCD edge blinks (two 50 ms pulses, border only so it never strobes the whole screen)
+    if (fx) {
+      const fa = now - this.frameT;
+      if (fa >= 0 && fa < 0.15 && Math.floor(fa / 0.05) !== 1) {
+        c.fillStyle = INK;
+        c.fillRect(0, 0, W, 1); c.fillRect(0, H - 1, W, 1); c.fillRect(0, 0, 1, H); c.fillRect(W - 1, 0, 1, H);
+      }
+    }
   }
 
   _hud(game, t, now) {
@@ -450,15 +518,21 @@ export class Renderer {
     if (acc !== this._acc || game.grade !== this._grade) { this._acc = acc; this._grade = game.grade; this._accTxt = game.grade + ' ' + acc.toFixed(1) + '%'; }
     const cmb = game.combo;
     if (cmb !== this.lastCombo) {
-      if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) this._banner(cmb + ' COMBO', now);
+      if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) {
+        this._banner(cmb + ' COMBO', now);
+        this.frameT = now; this.shakeT = now;
+      }
+      if (cmb > this.lastCombo && cmb >= 10 && cmb % 10 === 0) this.popT = now;
       this.lastCombo = cmb;
       const m = game.multiplier > 1 ? ' x' + game.multiplier.toFixed(1) : '';
       this._comboTxt = cmb + ' COMBO' + m;
       this._comboShort = cmb + m;
     }
 
+    const fx = this.juice && !this.reduced;
+    if (game.score !== this._lastScore) { if (game.score > this._lastScore) this.bumpT = now; this._lastScore = game.score; }
     // Row 1: score + grade/accuracy. Row 2: FC/AP (or the active mod chips) + combo.
-    this._text(c, this._scoreTxt, 3, 1, INK, true);
+    this._text(c, this._scoreTxt, 3, fx && now - this.bumpT < 0.06 ? 0 : 1, INK, true);
     this._text(c, this._accTxt, W - 2, 1, INK, false, 1, 'right');
     c.fillStyle = INK; c.fillRect(0, 10, W, 1);
     let tag = '';
@@ -469,7 +543,22 @@ export class Renderer {
       // Fall back to the short form when the full string would collide with the left tag.
       const full = this._comboTxt;
       const fits = !tag || 3 + textWidth(tag) + 4 + textWidth(full, true) < W - 2;
-      this._text(c, fits ? full : this._comboShort, W - 2, 12, INK, true, 1, 'right');
+      const str = fits ? full : this._comboShort;
+      if (fx && now - this.popT < 0.1) { // every 10th combo: the counter flashes inverted
+        const tw = textWidth(str, true);
+        c.fillStyle = INK; c.fillRect(W - 3 - tw, 11, tw + 2, CAP + 3);
+        this._text(c, str, W - 2, 12, PAPER, true, 1, 'right');
+      } else this._text(c, str, W - 2, 12, INK, true, 1, 'right');
+    } else if (fx && this._brokenTxt) {
+      // Combo broke: the old counter stays up for a beat, struck through and flickering
+      const ba = now - this.breakT;
+      if (ba >= 0 && ba < 0.3) {
+        if (Math.floor(ba / 0.05) % 2 === 0) {
+          const tw = textWidth(this._brokenTxt, true);
+          this._text(c, this._brokenTxt, W - 2, 12, INK, true, 1, 'right');
+          c.fillStyle = INK; c.fillRect(W - 2 - tw, 15, tw, 1);
+        }
+      } else this._brokenTxt = '';
     }
 
     // Milestone banners over the highway

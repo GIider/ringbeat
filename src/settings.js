@@ -18,6 +18,8 @@ export const settings = {
   backing: raw.backing !== false,
   preview: raw.preview !== false,
   idleGags: raw.idleGags !== false,
+  juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
+  haptics: raw.haptics !== false,   // vibration on supporting devices (needs juice)
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['easy', 'normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {

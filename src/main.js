@@ -43,10 +43,31 @@ renderer.scrollTime = settings.scrollTime;
 const QUALITY = { perfect: 1, great: 0.8, good: 0.5, miss: 0 };
 const recent = new Float32Array(16);
 let recentN = 0;
+// Juice: layered sound + vibration on top of the renderer's visual effects. All gated by settings.juice.
+let prevCombo = 0;
+const buzz = ms => { if (settings.juice && settings.haptics && navigator.vibrate) { try { navigator.vibrate(ms); } catch { /* ignore */ } } };
+function juiceJudge(lane, j) {
+  const c = game.combo;
+  if (game.judgedCount <= 1) prevCombo = 0; // new run: don't inherit the last song's combo
+  if (j === 'miss') {
+    if (prevCombo >= 10) { synth.breakSlide(); buzz(20); }
+  } else {
+    if (j === 'perfect') { synth.ping(72); buzz(8); }
+    if (c > prevCombo && (c === 10 || c === 25 || (c >= 50 && c % 50 === 0))) {
+      synth.chirp();
+      const sg = $('st-signal'); sg.classList.remove('blip'); void sg.offsetWidth; sg.classList.add('blip');
+    }
+  }
+  prevCombo = c;
+}
 game.fx = {
   press: renderer.fx.press,
   banner: renderer.fx.banner,
-  judge: (lane, j) => { renderer.fx.judge(lane, j); recent[recentN++ % recent.length] = QUALITY[j]; },
+  judge: (lane, j) => {
+    renderer.fx.judge(lane, j);
+    recent[recentN++ % recent.length] = QUALITY[j];
+    if (settings.juice) juiceJudge(lane, j); else prevCombo = game.combo;
+  },
 };
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
 input.onPress = (lane, t) => { setDevice('kbd'); game.press(lane, t); };
@@ -69,6 +90,7 @@ function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   $('btn-pause').hidden = !inPlay();
+  if (name !== 'results') juiceResultsStop();
   if (!['select', 'custom', 'options', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
   const tut = !!(run && run.tutorial && (inPlay() || state === 'paused'));
   $('np-caption').hidden = !tut;
@@ -924,6 +946,35 @@ function renderHistogram(deltas) {
   }
 }
 
+// Results flourish: the score ticks up in stepped increments, then the grade stamps in with a stinger.
+var countTimer = 0; // var: show() can run before this line at boot
+function juiceResultsStop() { clearInterval(countTimer); $('r-grade').style.visibility = ''; }
+function juiceResults(r) {
+  const scoreEl = $('r-score'), gradeEl = $('r-grade');
+  clearInterval(countTimer);
+  gradeEl.classList.remove('stamp');
+  scoreEl.textContent = r.score;
+  const still = !settings.juice || matchMedia('(prefers-reduced-motion: reduce)').matches || r.score < 1;
+  if (still) return;
+  const STEPS = 14, final = r.score;
+  let i = 0;
+  scoreEl.textContent = 0;
+  gradeEl.style.visibility = 'hidden';
+  countTimer = setInterval(() => {
+    i++;
+    if (i >= STEPS) {
+      clearInterval(countTimer);
+      scoreEl.textContent = final;
+      gradeEl.style.visibility = '';
+      void gradeEl.offsetWidth; gradeEl.classList.add('stamp');
+      synth.stinger(r.grade);
+      return;
+    }
+    scoreEl.textContent = Math.round(final * i / STEPS);
+    synth.tickUp(i);
+  }, 45);
+}
+
 game.onFinish = r => {
   input.reset();
   padHeld.forEach(s => s.clear());
@@ -938,7 +989,7 @@ game.onFinish = r => {
   $('r-heading').textContent = screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-song').textContent = run ? `${run.entry.title} · ${run.diff}` +
     (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
-  $('r-score').textContent = r.score;
+  juiceResults(r);
   $('r-grade').textContent = r.grade;
   $('r-grade').dataset.grade = r.grade;
   $('r-acc').textContent = r.accuracy.toFixed(1) + '%';
@@ -1352,6 +1403,12 @@ function wire() {
   sc.oninput = () => { settings.scrollTime = +sc.value; renderer.scrollTime = settings.scrollTime; $('scroll-val').textContent = sc.value + 's'; save(); };
   $('scroll-val').textContent = sc.value + 's';
   bk.onchange = () => { settings.backing = bk.checked; game.backing = settings.backing; save(); };
+  const jc = $('pref-juice'), hp = $('pref-haptics');
+  jc.checked = settings.juice; hp.checked = settings.haptics;
+  const syncJuice = () => { renderer.juice = settings.juice; hp.disabled = !settings.juice; };
+  syncJuice();
+  jc.onchange = () => { settings.juice = jc.checked; syncJuice(); save(); };
+  hp.onchange = () => { settings.haptics = hp.checked; save(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceLabel = () => { $('set-voice').textContent = 'Tone: ' + (settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth'); };

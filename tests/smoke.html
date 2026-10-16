@@ -124,6 +124,13 @@ f.addEventListener('load', async () => {
     log($('r-banner').textContent === 'ALL PERFECT' && !$('r-banner').hidden, 'ALL PERFECT banner');
     log($('r-best').textContent.includes('NEW BEST'), 'new best flagged: ' + $('r-best').textContent);
     log($('r-hist').children.length === 9, 'timing histogram');
+    await sleep(900);
+    log($('r-score').textContent === '1234' && $('r-grade').style.visibility === '', 'juice: score count-up settles on the real value');
+    rb.settings.juice = false;
+    rb.game.onFinish(fake(777)); await sleep(50);
+    log($('r-score').textContent === '777' && $('r-grade').style.visibility === '', 'juice off: results show immediately');
+    rb.settings.juice = true;
+    rb.scores.clear(); rb.game.onFinish(fake(1234)); await sleep(100);
     $('btn-menu').click(); await sleep(100);
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
     d.querySelector('.song-row.cur').click(); await sleep(100);

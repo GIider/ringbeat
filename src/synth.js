@@ -100,6 +100,34 @@ export class Synth {
     };
   }
 
+  // Juice: a quiet octave-up blip layered on perfect hits, a rising 2-note chirp at combo milestones and a falling
+  // 2-step slide when a combo breaks. Same piezo square voice, below the note level so the melody stays clean.
+  _beeps(steps, level) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime;
+    for (const [midi, at, d] of steps) {
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = freqOf(midi);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + at);
+      g.gain.linearRampToValueAtTime(level, t + at + 0.002);
+      g.gain.setValueAtTime(level, t + at + d - 0.006);
+      g.gain.linearRampToValueAtTime(0, t + at + d);
+      o.connect(g).connect(this.bus);
+      o.start(t + at); o.stop(t + at + d + 0.01);
+      this._cleanup(o, [o, g]);
+    }
+  }
+  ping(midi) { this._beeps([[midi + 12, 0, 0.025]], 0.04); }
+  chirp() { this._beeps([[88, 0, 0.045], [95, 0.05, 0.06]], 0.05); }
+  breakSlide() { this._beeps([[67, 0, 0.05], [60, 0.05, 0.07]], 0.05); }
+  // Result grade stinger: S gets a 4-note run, then fewer/lower notes down to a flat two-note C.
+  stinger(grade) {
+    const seq = { S: [72, 76, 79, 84], A: [72, 76, 79], B: [72, 76], C: [67, 64] }[grade] || [60, 57];
+    this._beeps(seq.map((m, i) => [m, i * 0.09, i === seq.length - 1 ? 0.2 : 0.08]), 0.06);
+  }
+  tickUp(step) { this._beeps([[72 + (step % 12), 0, 0.02]], 0.04); }
+
   // Menu key beep.
   keyClick() {
     const ctx = this.ctx;
