@@ -1,0 +1,26 @@
+# Ringbeat API (Cloudflare Worker + D1). Setup and deploy: docs/CLOUD.md.
+name = "ringbeat-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Fill in after creating the GitHub OAuth App; the secret goes in with `npx wrangler secret put GITHUB_CLIENT_SECRET`.
+GITHUB_CLIENT_ID = "Ov23litON66PbejSH8dA"
+# Pages allowed to sign in and call the API. "http://localhost:*" allows any local port (development).
+ALLOWED_ORIGINS = "https://giider.github.io,http://localhost:*,http://192.168.2.130:*"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ringbeat"
+# From `npx wrangler d1 create ringbeat`.
+database_id = "fbce428d-14d8-478c-9172-d158c11b71f9"
+migrations_dir = "migrations"
+
+# Per-user / per-IP request limit (optional: the Worker runs without it).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
+# Local development (`npm run dev` here) reads overrides from server/.dev.vars (not committed): a second OAuth App's
+# GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET with the http://localhost:8787 callback.

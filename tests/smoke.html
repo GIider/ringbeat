@@ -263,7 +263,10 @@ f.addEventListener('load', async () => {
     log(vis('inbox') && !d.querySelectorAll('#inbox-list button')[0].classList.contains('new'), 'back to inbox, message read');
     key('Escape'); await sleep(80);
     key('5'); await sleep(30); $('mm-go').click(); await sleep(80);
-    log(vis('profile'), 'profile placeholder');
+    log(vis('profile') && $('pf-name').textContent === 'Player 1', 'profile card');
+    log(rb.cloud.available() || (vis('pf-signin') && $('pf-signin').disabled && !vis('pf-sync') && !vis('pf-signout')),
+      'profile: no API configured -> sign-in offered but disabled', $('pf-msg').textContent);
+    log(!rb.cloud.signedIn() && !vis('pf-delete'), 'profile: signed out, no online-profile actions');
     key('Escape'); await sleep(80);
     key('Escape'); await sleep(80);
     log(vis('title'), 'back from the menu -> title');

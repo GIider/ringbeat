@@ -61,14 +61,19 @@ src/
 
   -- data and persistence --
   settings.js     persisted settings (ringbeat.v1): audio, display, controller bindings, mods, language, tutorial
-                  progress, read messages, list view
-  scores.js       highscores store, top 5 per song and difficulty (injectable storage)
-  stats.js        lifetime stats store (playtime, runs, notes, score, day streak), derived grade tally / top songs,
-                  one-time backfill from scores
-  mysongs.js      saved custom songs: CRUD, import/export, measured rating (injectable storage)
+                  progress, read messages, list view; change stamps for cloud sync (sharedSettings / applyShared)
+  scores.js       highscores store, top 5 per song and difficulty (injectable storage); combineScores shows other
+                  devices' synced scores alongside
+  stats.js        lifetime stats store (playtime, runs, notes, score, day streak, play-day list), derived grade
+                  tally / top songs, one-time backfill from scores; combineStats pools synced devices
+  mysongs.js      saved custom songs: CRUD, import/export, measured rating, remembered deletes for sync (injectable
+                  storage)
   customrating.js validate / encode / decode a custom song's rating record (storage, import, share links)
   composer.js     Nokia-style note editor state (no DOM); toRTTTL / fromRTTTL
   share.js        #s=<base64url>[&r=<rating>] share links
+  cloud.js        optional online profile: sign-in hand-off, sync rounds (pull, merge, push), device slots, run
+                  outbox, API_BASE (see CLOUD.md)
+  cloudmerge.js   merging the shared cloud document: settings per field, favourites, my songs with deletes, resetAt
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   version.js      VERSION / BUILD placeholders, stamped by scripts/build-dist.mjs (see RELEASING.md)
 
@@ -92,9 +97,14 @@ scripts/
   perf-menus.mjs      menu interaction benchmark in headless Chromium; perf-menus-baseline.json is a saved run
   perf-play.mjs       frame pacing while a bot plays songs in headless Chromium
 
+server/           the Ringbeat API, deployed separately (see CLOUD.md)
+  src/index.js        Cloudflare Worker: GitHub sign-in, profile, sync, runs (plain fetch handler over D1)
+  migrations/         D1 schema (0001_init.sql)
+  wrangler.toml       Worker config: D1 binding, GitHub client id, allowed origins, rate limit
+
 tests/
-  *.test.mjs      node unit tests: assets, audiostate, calibration, cameo, core, customrating, docs, game, i18n, mods,
-                  modules, rtttl, settings, stats (one line each in DEVELOPMENT.md)
+  *.test.mjs      node unit tests: assets, audiostate, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
+                  game, i18n, mods, modules, rtttl, settings, stats (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```
@@ -153,10 +163,15 @@ defaults.
 | `ringbeat.v1` | `settings.js` | Settings: voice, language, volume, scroll time, toggles, calibration, difficulty, list view, last song, tutorial progress, pad bindings, mods, read messages |
 | `ringbeat.scores.v1` | `scores.js` | Highscores: top 5 runs and play count per song id × difficulty |
 | `ringbeat.stats.v1` | `stats.js` | Lifetime stats |
-| `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30) |
+| `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
+| `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |
+| `ringbeat.cloud.v1` | `cloud.js` | Online profile: token, profile, last sync, other devices' scores and stats, run outbox, reset marks |
+| `ringbeat.device.v1` | `cloud.js` | This device's random id |
+| `ringbeat.api` | `main.js` | Developer override of the API address (see [CLOUD.md](CLOUD.md#local-development)) |
 | `ringbeat.perf` | `main.js` | Profiler left on with F3 |
 
-Grade counts on the Stats screen are derived from the highscores, never stored twice. Custom songs' scores are keyed by
+`ringbeat.v1` also holds `_t` (when each synced setting last changed) and `_fav` (favourite marks with times) for cloud
+sync. Grade counts on the Stats screen are derived from the highscores, never stored twice. Custom songs' scores are keyed by
 a hash of their RTTTL.
 
 See also: [SPEC.md](SPEC.md) · [DEVELOPMENT.md](DEVELOPMENT.md) · [TRANSLATIONS.md](TRANSLATIONS.md) · [PERFORMANCE.md](PERFORMANCE.md)

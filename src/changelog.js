@@ -5,6 +5,13 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.0', date: '2026-10-16', title: 'Online profile',
+    body: 'Sign in with GitHub under Profile and your settings, favorites, songs, scores and stats follow you to every device.\n' +
+      'Scores and stats from all your devices count together.\n' +
+      'No account? Everything works as before, saved on this device.\n' +
+      'Your runs are saved online too, ready for leaderboards later.',
+  },
+  {
     version: '1.5', date: '2026-10-16', title: 'Favorites',
     body: 'Mark your favorite songs: press V, or tap the icon of the selected song. Favorites get a solid icon.\n' +
       'New category: Favorites. New sort: Favorites first.',

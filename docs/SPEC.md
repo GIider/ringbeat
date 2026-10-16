@@ -18,7 +18,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
                ├─ 3 Stats (Time / Score / Top / Grades / Notes)
                ├─ 4 Messages ─▶ inbox ─▶ opening… ─▶ message
-               ├─ 5 Profile (placeholder)
+               ├─ 5 Profile (optional online profile)
                └─ 6 Settings ─▶ calibration
 ```
 
@@ -36,7 +36,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | My songs | Covered in the [My songs](#my-songs) section below. |
 | Stats | Five pages (←→, LB/RB, swipe). See [Stats](#stats). |
 | Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one plays a short "Opening message" envelope animation (any key skips it) and an SMS tone, then shows the SMS view (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
-| Profile | Placeholder: one player card (since, playtime), disabled *Switch profile* / *New profile*, "Profiles are coming soon." |
+| Profile | The player card (name, since, playtime) and the optional online profile. See [Profile](#profile). |
 | Settings | Covered in the [Settings](#settings) section below. |
 | Calibration | Tap along with 12 ticks at 90 BPM; the median offset becomes the latency setting (±5 ms nudge, *Again*, *Reset*, clamped to ±500 ms). Any key or button counts as a tap. |
 
@@ -164,6 +164,30 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   roll, or after the last note is judged.
 - There is no fail state, unless the opt-in *Sudden death* mod is on (see [Modifiers](#modifiers)).
 
+## Profile
+
+- **Signed out** (the default): the card reads *Player 1*. *Sign in with GitHub* is offered, with a short note on what
+  is stored online. The button is disabled, with "Online profiles are not available yet.", until the game is built
+  with an API address.
+- **Signed in:** the card shows the online player name (at first the GitHub display name or username, else `Player-XXXX`). The screen offers:
+  - *Sync now*;
+  - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`);
+  - *Sign out*;
+  - *Delete online profile* (press twice; this device keeps its own data).
+
+  The line below shows when the last sync was.
+- **What syncs:**
+  - settings, except volume, latency, controller buttons and the last selected song;
+  - favourites;
+  - My songs;
+  - highscores and stats.
+
+  Highscores and stats from every signed-in device are shown combined: pooled top 5, summed plays and counters, play
+  days counted once. Resetting scores & stats while signed in resets every device. Details:
+  [CLOUD.md](CLOUD.md).
+- Every finished run is also uploaded (song, difficulty, score, grade, accuracy, combo, FC/AP, mods, time), as the base
+  for future online leaderboards.
+
 ## Highscores
 
 - Stored locally (`ringbeat.scores.v1`) per song id and difficulty: the top 5 runs and a play count.
@@ -263,11 +287,12 @@ timing resolution to one frame (~16 ms at 60 Hz). The pad's own `timestamp` is u
 ## Persistence
 
 Everything stays in the browser's `localStorage`: settings, highscores, stats and My songs. Keys and contents are listed
-in [ARCHITECTURE.md › Persistence](ARCHITECTURE.md#persistence).
+in [ARCHITECTURE.md › Persistence](ARCHITECTURE.md#persistence). With an online profile, the same data is also synced
+through the Ringbeat API ([CLOUD.md](CLOUD.md), [PRIVACY.md](PRIVACY.md)); `localStorage` stays the source of truth.
 
 ## Non-goals
 
-Online leaderboards, accounts, user-authored charts beyond RTTTL, keyboard rebinding (only gamepad buttons are
+Online leaderboards (for now: runs are already uploaded, see [Profile](#profile)), user-authored charts beyond RTTTL, keyboard rebinding (only gamepad buttons are
 rebindable), gamepad rumble (phones can vibrate; see Settings), audio files.
 
 See also: [CONTROLS.md](CONTROLS.md) · [SONGS.md](SONGS.md) · [ARCHITECTURE.md](ARCHITECTURE.md)

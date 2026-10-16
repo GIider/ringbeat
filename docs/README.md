@@ -17,6 +17,8 @@ a quick start; come here for the details.
 | Doc | What's in it |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Module map of `src/`, `scripts/` and `tests/`, key design decisions, storage keys |
+| [CLOUD.md](CLOUD.md) | Online profiles and cloud save: sync model, sign-in flow, the API in `server/`, setup and deploy |
+| [PRIVACY.md](PRIVACY.md) | What an online profile stores and how to delete it |
 
 ## Contributing
 
@@ -43,6 +45,7 @@ a quick start; come here for the details.
 | Change a glyph in the LCD font | [DEVELOPMENT.md › Editing the pixel font](DEVELOPMENT.md#editing-the-pixel-font) |
 | Check a change didn't slow frames down | [PERFORMANCE.md](PERFORMANCE.md) |
 | Look up a timing window or score rule | [SPEC.md › Gameplay](SPEC.md#gameplay) |
+| Deploy or run the cloud-save API | [CLOUD.md › Setup and deploy](CLOUD.md#setup-and-deploy) |
 
 `tests/docs.test.mjs` keeps this set honest: it fails on broken links between docs, on a source file, script or test
 missing from [ARCHITECTURE.md](ARCHITECTURE.md), and on an npm script missing from [DEVELOPMENT.md](DEVELOPMENT.md).

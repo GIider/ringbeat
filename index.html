@@ -101,17 +101,21 @@
           <div id="sms-body" class="sms-body" tabindex="0" data-default></div>
         </section>
 
-        <!-- Profile (placeholder until profiles can be switched) -->
-        <section id="profile" class="screen" hidden data-title="Profile" data-soft-left="" data-soft-right="Back">
+        <!-- Profile: the player card and the optional online profile (cloud save) -->
+        <section id="profile" class="screen" hidden data-title="Profile" data-soft-left="Select" data-soft-right="Back">
           <div class="pf-card">
             <i id="pf-icon" class="spr"></i>
-            <div><b data-i18n>Player 1</b><div id="pf-meta" class="hint"></div></div>
+            <div><b id="pf-name"></b><div id="pf-meta" class="hint"></div></div>
           </div>
           <div class="menu">
-            <button id="pf-switch" disabled data-i18n>Switch profile</button>
-            <button id="pf-new" disabled data-i18n>New profile</button>
+            <button id="pf-signin" data-i18n>Sign in with GitHub</button>
+            <button id="pf-sync" data-i18n>Sync now</button>
+            <label class="item" id="pf-name-row"><span data-i18n>Name</span> <input id="pf-name-input" type="text" maxlength="16" spellcheck="false" autocomplete="off"></label>
+            <button id="pf-rename" data-i18n>Save name</button>
+            <button id="pf-signout" data-i18n>Sign out</button>
+            <button id="pf-delete" data-i18n>Delete online profile</button>
           </div>
-          <p class="hint center" data-i18n>Profiles are coming soon.</p>
+          <p id="pf-msg" class="hint center" aria-live="polite"></p>
         </section>
 
         <!-- Song select: "Tones" -->

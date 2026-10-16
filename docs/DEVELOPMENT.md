@@ -60,6 +60,8 @@ audio/canvas:
 | `assets.test.mjs` | Glyph table and bold cut, glyphs for every song title, committed TTFs match the glyph table, sprites, cover art |
 | `audiostate.test.mjs` | AudioContext resume / interruption handling, Game pause and resume |
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
+| `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion) and two simulated devices syncing |
+| `cloudmerge.test.mjs` | Cloud merges: shared document (settings, favourites, songs, deletes), combined scores and stats, the stores' sync hooks |
 | `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
 | `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
 | `customrating.test.mjs` | Custom-song ratings: async measurement matches `difficulty.json`, cleaning, share encoding, storage |
@@ -103,7 +105,8 @@ Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 | `?cameo=<any>` | Idle cameos every 2–4 s instead of every 45–150 s |
 | `?cameo=debug` | Adds a panel with a button per cameo plus stop, IMEI, wipe and Konami |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
-| `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, state}` for devtools and `tests/smoke.html` |
+| `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, cloud, state}` for devtools and `tests/smoke.html` |
+| `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
 
 To start fresh, clear the `ringbeat.*` keys in `localStorage` (list in

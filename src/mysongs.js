@@ -4,7 +4,9 @@ import { parseRTTTL } from './rtttl.js';
 import { cleanRating } from './customrating.js';
 
 export const MYSONGS_KEY = 'ringbeat.songs.v1';
+export const MYSONGS_GONE_KEY = 'ringbeat.songs.gone.v1'; // deleted uid -> when, so deletes reach other devices
 export const MAX_SONGS = 30;
+export const MAX_STORED = 100; // a cloud merge never drops songs, so the list may grow past MAX_SONGS
 export const MAX_RTTTL = 8000;
 
 const memoryStorage = () => {
@@ -34,8 +36,21 @@ export function splitRtttl(text) {
 }
 
 export function createMySongs(storage = browserStorage()) {
-  let songs = null;
+  let songs = null, gone = null;
   const save = () => { try { storage.setItem(MYSONGS_KEY, JSON.stringify(songs)); } catch { /* ignore */ } };
+  const loadGone = () => {
+    if (gone) return gone;
+    gone = {};
+    try {
+      const raw = JSON.parse(storage.getItem(MYSONGS_GONE_KEY));
+      if (raw && typeof raw === 'object') for (const [uid, t] of Object.entries(raw)) if (isNum(t)) gone[uid] = t;
+    } catch { /* ignore */ }
+    return gone;
+  };
+  const saveGone = () => { try { storage.setItem(MYSONGS_GONE_KEY, JSON.stringify(gone)); } catch { /* ignore */ } };
+  const cleanSong = r => (r && typeof r.rtttl === 'string' && isValidRtttl(r.rtttl.trim())
+    ? { uid: typeof r.uid === 'string' ? r.uid : newUid(), name: cleanName(r.name) || 'Untitled', rtttl: r.rtttl.trim(), updated: isNum(r.updated) ? r.updated : 0, rating: cleanRating(r.rating) }
+    : null);
   const load = () => {
     if (songs) return songs;
     songs = [];
@@ -43,9 +58,10 @@ export function createMySongs(storage = browserStorage()) {
       const raw = JSON.parse(storage.getItem(MYSONGS_KEY));
       if (Array.isArray(raw)) {
         for (const r of raw) {
-          if (!r || typeof r.rtttl !== 'string' || !isValidRtttl(r.rtttl)) continue;
-          songs.push({ uid: typeof r.uid === 'string' ? r.uid : newUid(), name: cleanName(r.name) || 'Untitled', rtttl: r.rtttl.trim(), updated: isNum(r.updated) ? r.updated : 0, rating: cleanRating(r.rating) });
-          if (songs.length >= MAX_SONGS) break;
+          const s = cleanSong(r);
+          if (!s) continue;
+          songs.push(s);
+          if (songs.length >= MAX_STORED) break;
         }
       }
     } catch { /* ignore */ }
@@ -86,10 +102,33 @@ export function createMySongs(storage = browserStorage()) {
       s.rating = cleanRating(rating); save();
       return s;
     },
-    remove(uid) {
+    remove(uid, now = Date.now()) {
       const l = load(), i = l.findIndex(s => s.uid === uid);
       if (i < 0) return false;
       l.splice(i, 1); save();
+      loadGone()[uid] = now; saveGone();
+      return true;
+    },
+    // For cloud sync: the songs as {uid: song} plus the deletes ({uid: time}).
+    shared() {
+      const out = {};
+      for (const { uid, name, rtttl, updated, rating } of load()) out[uid] = { name, rtttl, updated, rating };
+      return { songs: out, gone: { ...loadGone() } };
+    },
+    // Takes a merged shared document's songs. Local order is kept; songs new to this device go last (oldest first).
+    // -> true when anything changed.
+    applyShared(doc) {
+      const before = JSON.stringify(api.shared());
+      const incoming = doc.songs || {};
+      const next = [];
+      for (const s of load()) if (incoming[s.uid]) next.push(cleanSong({ uid: s.uid, ...incoming[s.uid] }));
+      const fresh = Object.keys(incoming).filter(uid => !load().some(s => s.uid === uid))
+        .sort((a, b) => (incoming[a].updated || 0) - (incoming[b].updated || 0));
+      for (const uid of fresh) next.push(cleanSong({ uid, ...incoming[uid] }));
+      songs = next.filter(Boolean).slice(0, MAX_STORED);
+      gone = { ...loadGone(), ...(doc.gone || {}) };
+      if (JSON.stringify(api.shared()) === before) return false;
+      save(); saveGone();
       return true;
     },
     duplicate(uid) {

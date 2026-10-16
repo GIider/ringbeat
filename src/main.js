@@ -16,7 +16,7 @@ import { encodeSong, decodeShare } from './share.js';
 import { measureChartAsync } from './bot.js';
 import { ratingFromMeasured } from './customrating.js';
 import { Calibration } from './calibration.js';
-import { settings, saveSettings as save, num, effectiveLang } from './settings.js';
+import { settings, saveSettings as save, num, effectiveLang, onSave, sharedSettings, applyShared } from './settings.js';
 import { t as tr, tn, tm, fmt, setLang, applyStatic, LANGS, getLang } from './i18n.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
@@ -27,6 +27,7 @@ import { createStats, gradeTally, favourite, topSongs, formatDuration, currentSt
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
+import { createCloud, API_BASE } from './cloud.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
@@ -305,7 +306,32 @@ const mysongs = createMySongs();
 let customs = [];        // library entries for the player's saved songs ({...entry, uid})
 let selectedId = '';
 
+// ---- cloud save: optional online profile (see docs/CLOUD.md); `ringbeat.api` in localStorage points at a local API ----
+const cloud = createCloud({
+  scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
+  apiBase: (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })(),
+});
+onSave(() => cloud.schedule());
+let settingsArrived = () => {}; // set up in wire()
+cloud.onChange(e => {
+  if (e.synced) {
+    if (e.synced.has('settings')) {
+      // Not in the middle of a song: scroll speed, voice and language change once the run is over.
+      const apply = () => (inPlay() || state === 'paused' ? setTimeout(apply, 1000) : settingsArrived());
+      apply();
+    }
+    if (e.synced.has('songs')) { refreshCustoms(); if (!entryById(selectedId)) selectedId = defaultSongId(); }
+    if (state === 'select') renderList();
+    else if (state === 'stats') renderStats();
+    else if (state === 'mysongs') openMySongs();
+    else if (state === 'menu') renderMenu();
+  }
+  if (e === 'profile' || e === 'signedin') $('pf-name-input').value = (cloud.profile() || {}).name || '';
+  if (state === 'profile') renderProfile();
+});
+
 function refreshCustoms() {
+  cloud.schedule();
   const seen = new Set();
   customs = [];
   for (const s of mysongs.list()) {
@@ -771,12 +797,35 @@ function scrollMessage(dir) {
   b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.4);
 }
 
-// ---- profile (placeholder: one player until profiles can be switched) ----
+// ---- profile: the player card and the optional online profile ----
+let pfMsg = '', pfDeleteArmed = 0;
 function openProfile() {
-  const s = stats.get();
+  pfMsg = '';
+  $('pf-name-input').value = (cloud.profile() || {}).name || '';
   setSprite($('pf-icon'), PERSON_ART, unit * 2);
-  $('pf-meta').textContent = s.firstPlayed ? tr('Since {date} · {time} played', { date: dayKey(s.firstPlayed), time: formatDuration(s.playtime) }) : tr('New player');
+  renderProfile();
   setState('profile', 'profile');
+}
+function renderProfile() {
+  const s = stats.get(), on = cloud.signedIn(), p = cloud.profile();
+  $('pf-name').textContent = on && p ? p.name : tr('Player 1');
+  $('pf-meta').textContent = s.firstPlayed ? tr('Since {date} · {time} played', { date: dayKey(s.firstPlayed), time: formatDuration(s.playtime) }) : tr('New player');
+  $('pf-signin').hidden = on;
+  $('pf-signin').disabled = !cloud.available();
+  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-signout', 'pf-delete']) $(id).hidden = !on;
+  $('pf-signin').toggleAttribute('data-default', !on);
+  $('pf-sync').toggleAttribute('data-default', on);
+  const at = cloud.lastSync();
+  $('pf-msg').textContent = pfMsg ||
+    (!cloud.available() ? tr('Online profiles are not available yet.')
+    : !on ? tr('Sign in to keep settings, scores and songs in sync on all your devices. Stored online: your GitHub user number, a player name and your game data.')
+    : at ? tr('Synced {time}', { time: new Date(at).toLocaleString(getLang(), { dateStyle: 'short', timeStyle: 'short' }) })
+    : tr('Not synced yet'));
+}
+async function profileAction(fn, okMsg) {
+  pfMsg = tr('Working…'); renderProfile();
+  try { await fn(); pfMsg = okMsg; } catch (e) { pfMsg = e && e.status === 400 ? tr('Names: 3-16 letters, digits, space . _ -') : tr('No connection, try again later'); }
+  renderProfile();
 }
 
 // ---- per-run playtime for stats: song time actually played (pauses and menus excluded) ----
@@ -1326,7 +1375,7 @@ game.onFinish = r => {
   }
   commitTime();
   const demo = isDemo();
-  if (run && run.entry && !demo) stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used });
+  if (run && run.entry && !demo) { stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used }); cloud.schedule(); }
   screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-heading').textContent = tr(screens.results.dataset.title);
   $('r-song').textContent = run ? `${run.entry.title} · ${cap(run.diff)}` +
@@ -1354,7 +1403,9 @@ game.onFinish = r => {
   } else if (r.failed) {
     best.hidden = false; best.textContent = tr('Sudden death: run not saved'); best.style.color = 'var(--dim)';
   } else if (run) {
+    r.date = Date.now();
     const rec = scores.record(run.entry.id, run.diff, r);
+    cloud.queueRun(run.entry.id, run.diff, r, r.mods || []);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
@@ -1787,6 +1838,15 @@ function wire() {
     for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr((run && run.retLabel) || 'Tones');
   };
   relocalize();
+  // Settings that arrived from another device: the controls, the live objects and the language follow.
+  settingsArrived = () => {
+    sc.value = settings.scrollTime; $('scroll-val').textContent = sc.value + 's';
+    bk.checked = settings.backing; pv.checked = settings.preview; $('pref-gags').checked = settings.idleGags;
+    ra.checked = settings.rollAudio; jc.checked = settings.juice; hp.checked = settings.haptics;
+    renderer.scrollTime = settings.scrollTime; game.backing = settings.backing; game.rollAudio = settings.rollAudio; synth.voice = settings.voice;
+    syncJuice(); paintRanges(screens.settings); cameo.sync();
+    setLang(effectiveLang()); relocalize();
+  };
   $('set-lang').onclick = () => {
     const codes = Object.keys(LANGS);
     settings.lang = codes[(codes.indexOf(getLang()) + 1) % codes.length];
@@ -1808,7 +1868,7 @@ function wire() {
     const b = e.currentTarget;
     if (resetTimer) {
       clearTimeout(resetTimer); resetTimer = 0;
-      scores.clear(); stats.clear(); b.textContent = tr('Reset scores & stats'); toast('Scores and stats cleared');
+      scores.clear(); stats.clear(); cloud.markReset(); b.textContent = tr('Reset scores & stats'); toast('Scores and stats cleared');
     } else {
       b.textContent = tr('Really reset? Press again');
       resetTimer = setTimeout(() => { resetTimer = 0; b.textContent = tr('Reset scores & stats'); }, 3000);
@@ -1900,6 +1960,20 @@ function wire() {
     openMySongs(r.skipped ? tr('Imported {n}, skipped {skipped}', { n: r.added, skipped: r.skipped }) : tr('Imported {n}', { n: r.added }));
   };
   $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = tn(mysongs.count(), 'Exported {n} song', 'Exported {n} songs'); };
+
+  // profile
+  $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
+  $('pf-sync').onclick = () => profileAction(async () => { if (!(await cloud.sync()).ok) throw new Error('sync'); }, '');
+  $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
+  $('pf-signout').onclick = () => profileAction(() => cloud.signOut(), tr('Signed out'));
+  $('pf-delete').onclick = () => {
+    if (Date.now() - pfDeleteArmed > 4000) {
+      pfDeleteArmed = Date.now(); pfMsg = tr('Deletes the online profile and its data. This device keeps its own. Press again to delete.'); renderProfile();
+      return;
+    }
+    pfDeleteArmed = 0;
+    profileAction(() => cloud.deleteAccount(), tr('Online profile deleted'));
+  };
 
   // one song
   $('sm-play').onclick = () => { const e = curEntry(); if (e) askDifficulty(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
@@ -2031,8 +2105,18 @@ function wire() {
   const wake = () => { if (synth.ctx && synth.ctx.state !== 'running' && game.state !== 'paused') synth.ctx.resume(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); }); // audio clock keeps running when hidden
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { pauseGame(); cloud.flush(); } else cloud.sync(); // audio clock keeps running when hidden
+  });
   window.addEventListener('pagehide', commitTime);
+
+  // Back from signing in: the API hands over a one-time code (or the reason it failed) in the hash.
+  if (/^#login(-error)?=/.test(location.hash)) {
+    const hash = location.hash;
+    history.replaceState(null, '', location.pathname + location.search);
+    if (hash.startsWith('#login-error=')) toast('Sign-in failed');
+    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync(); } }, () => toast('Sign-in failed'));
+  } else cloud.sync();
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
@@ -2377,4 +2461,4 @@ let perfOn = /[?&]perf\b/.test(location.search);
 try { perfOn = perfOn || !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
 if (perfOn) setPerf(true);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, stats, settings, perf, mysongs, get state() { return state; } }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, get state() { return state; } }; // debug/test hook (tests/smoke.html)

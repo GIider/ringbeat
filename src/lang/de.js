@@ -76,10 +76,29 @@ export const de = {
   'From:': 'Von:',
   'New player': 'Neuer Spieler',
   'Player 1': 'Spieler 1',
-  'Switch profile': 'Profil wechseln',
-  'New profile': 'Neues Profil',
-  'Profiles are coming soon.': 'Profile kommen bald.',
   'Since {date} · {time} played': 'Seit {date} · {time} gespielt',
+
+  // ---- online profile ----
+  'Sign in with GitHub': 'Mit GitHub anmelden',
+  'Sync now': 'Jetzt synchronisieren',
+  'Save name': 'Name speichern',
+  'Sign out': 'Abmelden',
+  'Delete online profile': 'Online-Profil löschen',
+  'Online profiles are not available yet.': 'Online-Profile gibt es noch nicht.',
+  'Sign in to keep settings, scores and songs in sync on all your devices. Stored online: your GitHub user number, a player name and your game data.':
+    'Melde dich an, um Einstellungen, Punkte und Songs auf all deinen Geräten gleich zu halten. Online gespeichert: deine GitHub-Nutzernummer, ein Spielername und deine Spieldaten.',
+  'Synced {time}': 'Synchronisiert {time}',
+  'Not synced yet': 'Noch nicht synchronisiert',
+  'Working…': 'Moment…',
+  'Names: 3-16 letters, digits, space . _ -': 'Namen: 3-16 Buchstaben, Ziffern, Leerzeichen . _ -',
+  'No connection, try again later': 'Keine Verbindung, versuch es später',
+  'Name saved': 'Name gespeichert',
+  'Signed in': 'Angemeldet',
+  'Signed out': 'Abgemeldet',
+  'Sign-in failed': 'Anmeldung fehlgeschlagen',
+  'Deletes the online profile and its data. This device keeps its own. Press again to delete.':
+    'Löscht das Online-Profil und seine Daten. Dieses Gerät behält seine eigenen. Zum Löschen nochmal drücken.',
+  'Online profile deleted': 'Online-Profil gelöscht',
 
   // ---- song select ----
   'Songs': 'Songs',
@@ -358,6 +377,15 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Online profile': 'Online-Profil',
+  ['Sign in with GitHub under Profile and your settings, favorites, songs, scores and stats follow you to every device.\n' +
+    'Scores and stats from all your devices count together.\n' +
+    'No account? Everything works as before, saved on this device.\n' +
+    'Your runs are saved online too, ready for leaderboards later.']:
+    'Melde dich unter Profil mit GitHub an, und Einstellungen, Favoriten, Songs, Punkte und Statistik folgen dir auf jedes Gerät.\n' +
+    'Punkte und Statistik all deiner Geräte zählen zusammen.\n' +
+    'Kein Konto? Alles bleibt wie bisher, gespeichert auf diesem Gerät.\n' +
+    'Deine Durchgänge werden auch online gespeichert, bereit für spätere Bestenlisten.',
   'Favorites': 'Favoriten',
   ['Mark your favorite songs: press V, or tap the icon of the selected song. Favorites get a solid icon.\n' +
     'New category: Favorites. New sort: Favorites first.']:

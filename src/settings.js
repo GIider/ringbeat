@@ -3,6 +3,7 @@ import { sanitizeBindings } from './gamepad.js';
 import { normalize as normalizeMods } from './mods.js';
 import { defaultSeen } from './changelog.js';
 import { LANGS, detect } from './i18n.js';
+import { SYNCED_SETTINGS } from './cloudmerge.js';
 
 const STORE_KEY = 'ringbeat.v1';
 
@@ -12,8 +13,9 @@ function load() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
 }
 
-const raw = load();
-export const settings = {
+// Any stored object -> the full, sanitized settings.
+function fromRaw(raw) {
+  return {
   volume: num(raw.volume, 0, 1, 0.7),
   // '' = follow the browser language until the player picks one in Settings
   lang: LANGS[raw.lang] ? raw.lang : '',
@@ -42,13 +44,68 @@ export const settings = {
   mods: normalizeMods(raw.mods),
   // Changelog versions read in Messages; before the Inbox existed, everything but the newest counts as read.
   msgSeen: Array.isArray(raw.msgSeen) ? raw.msgSeen.filter(v => typeof v === 'string').slice(0, 100) : defaultSeen(),
-};
+  };
+}
+
+const raw = load();
+export const settings = fromRaw(raw);
+
+// For cloud sync: when each synced setting last changed (ms) and the favourite marks as {id: {on, t}}, so devices can
+// merge them (cloudmerge.js). Kept beside the settings in the same storage entry; stamped by saveSettings.
+const isNum = v => typeof v === 'number' && isFinite(v);
+const stamps = {};
+if (raw._t && typeof raw._t === 'object') for (const k of SYNCED_SETTINGS) if (isNum(raw._t[k])) stamps[k] = raw._t[k];
+const favMarks = {};
+if (raw._fav && typeof raw._fav === 'object') {
+  for (const [id, f] of Object.entries(raw._fav)) if (f && isNum(f.t)) favMarks[id] = { on: f.on === true, t: f.t };
+}
+for (const id of settings.favorites) if (!favMarks[id] || !favMarks[id].on) favMarks[id] = { on: true, t: 0 };
+const text = v => JSON.stringify(v);
+let saved = Object.fromEntries(SYNCED_SETTINGS.map(k => [k, text(settings[k])]));
 
 // The language to show: the saved choice, else the browser's.
 export const effectiveLang = () => settings.lang || detect(typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []);
 
-export function saveSettings() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
+// Called after every save (cloud sync schedules an upload).
+const saveListeners = [];
+export const onSave = f => saveListeners.push(f);
+
+export function saveSettings(now = Date.now()) {
+  for (const k of SYNCED_SETTINGS) {
+    const v = text(settings[k]);
+    if (v !== saved[k]) { stamps[k] = now; saved[k] = v; }
+  }
+  const favs = new Set(settings.favorites);
+  for (const id of favs) if (!favMarks[id] || !favMarks[id].on) favMarks[id] = { on: true, t: now };
+  for (const [id, f] of Object.entries(favMarks)) if (f.on && !favs.has(id)) favMarks[id] = { on: false, t: now };
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ ...settings, _t: stamps, _fav: favMarks })); } catch { /* ignore */ }
+  for (const f of saveListeners) f();
+}
+
+// The synced part, as the cloud's shared document holds it.
+export function sharedSettings() {
+  return {
+    settings: structuredClone(Object.fromEntries(SYNCED_SETTINGS.map(k => [k, settings[k]]))),
+    settingsT: { ...stamps },
+    favorites: structuredClone(favMarks),
+  };
+}
+
+// Takes a merged shared document's settings and favourites (sanitized like stored ones) without re-stamping them.
+// -> true when anything changed.
+export function applyShared(doc) {
+  const before = text(sharedSettings());
+  const next = fromRaw({ ...settings, ...(doc.settings || {}) });
+  for (const k of SYNCED_SETTINGS) settings[k] = next[k];
+  Object.assign(stamps, doc.settingsT || {});
+  for (const [id, f] of Object.entries(doc.favorites || {})) favMarks[id] = { on: !!f.on, t: f.t };
+  // Keep the local order; favourites new to this device go last.
+  const on = Object.keys(favMarks).filter(id => favMarks[id].on);
+  settings.favorites = [...settings.favorites.filter(id => on.includes(id)), ...on.filter(id => !settings.favorites.includes(id))].slice(0, 500);
+  saved = Object.fromEntries(SYNCED_SETTINGS.map(k => [k, text(settings[k])]));
+  if (text(sharedSettings()) === before) return false;
+  saveSettings();
+  return true;
 }
 
 export { num };
