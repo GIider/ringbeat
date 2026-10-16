@@ -1,8 +1,10 @@
 // Regenerates the README screenshots in docs/screenshots/ from the ?demo=<kind> states.
 // Usage: npm run screenshots   (needs `npx playwright install chromium` once)
 import { chromium } from 'playwright';
-import { spawn, execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
+import { mkdirSync, existsSync, mkdtempSync, copyFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // desktop = full phone artwork; compact (<600px wide) = bare LCD, as on a real phone
@@ -21,6 +23,15 @@ for (const bin of ['magick', 'convert']) {
   try { execFileSync(bin, ['-version'], { stdio: 'ignore' }); magick = bin; break; } catch { /* not installed */ }
 }
 if (!magick) console.log('ImageMagick not found: screenshots will not be palette-optimised');
+// Re-encoding changes the bytes (PNG metadata) even when no pixel moved, so a shot is only
+// replaced when its pixels differ from the committed file: `git status` then shows real changes only.
+// Without ImageMagick there is no pixel compare, so every shot is rewritten.
+const tmp = mkdtempSync(join(tmpdir(), 'rb-shots-'));
+const samePixels = (a, b) => {
+  if (!magick) return false;
+  const r = spawnSync(magick, ['compare', '-metric', 'AE', a, b, 'null:'], { encoding: 'utf8' }); // metric goes to stderr
+  return r.status === 0 && r.stderr.trim().startsWith('0'); // status 1 = differs, 2 = error/size mismatch
+};
 const outDir = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
 mkdirSync(outDir, { recursive: true });
 
@@ -44,9 +55,12 @@ try {
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 300)))));
     const name = `${kind}-${view}.png`;
-    await page.screenshot({ path: outDir + name });
-    if (magick) execFileSync(magick, [outDir + name, '-colors', '128', 'PNG8:' + outDir + name]);
+    const fresh = join(tmp, name);
+    await page.screenshot({ path: fresh });
+    if (magick) execFileSync(magick, [fresh, '-colors', '128', '-strip', 'PNG8:' + fresh]);
     await page.close();
+    if (existsSync(outDir + name) && samePixels(fresh, outDir + name)) { console.log('unchanged ' + name); continue; }
+    copyFileSync(fresh, outDir + name);
     console.log('wrote docs/screenshots/' + name);
    }
    await ctx.close();
@@ -56,6 +70,7 @@ try {
 } catch (e) {
   console.error('screenshots failed:', e.message);
 } finally {
+  rmSync(tmp, { recursive: true, force: true });
   if (browser) await browser.close();
   server.kill();
 }
