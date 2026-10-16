@@ -126,9 +126,9 @@ function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].h
   $('st-title').textContent = tr(el.dataset.title || '');
   marquee($('st-title'));
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
-  // single "Select"; a screen can name a different Menu action there. The bare LCD keeps both tappable labels.
+  // single "Select". The bare LCD keeps both tappable labels.
   const phone = phoneMode();
-  const left = tr((phone && el.dataset.softLeftPhone) || el.dataset.softLeft || ''), right = phone ? '' : tr(el.dataset.softRight || '');
+  const left = tr(el.dataset.softLeft || ''), right = phone ? '' : tr(el.dataset.softRight || '');
   $('soft-left').textContent = left;
   $('soft-right').textContent = right;
   $('soft-left').parentElement.classList.toggle('solo', !!left && !right);
@@ -239,7 +239,8 @@ function showGag(title, text, bar = -1, segments = 0) {
 }
 function showImei() {
   hideGag();
-  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + buildLine(BUILD, false));
+  showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + (BUILD.number ? 'Build ' + BUILD.number + '\n' : '') +
+    buildLine(BUILD, false));
   $('gag-link').hidden = false;
   setSprite($('gag-art'), SPRITES.avatar, 2);
   $('gag-art').hidden = false;
@@ -289,8 +290,8 @@ function toast(msg, ms = 2200) {
   const t = $('toast');
   t.textContent = tm(msg); t.hidden = false;
   // Pop up in the middle of the phone's LCD when it is on screen, else at the bottom of the viewport.
-  const r = $('phone').classList.contains('off') ? null : $('lcd').getBoundingClientRect();
-  const onLcd = !!(r && r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1);
+  const r = $('lcd').getBoundingClientRect();
+  const onLcd = !!(r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1);
   t.classList.toggle('on-lcd', onLcd);
   t.style.left = onLcd ? r.left + r.width / 2 + 'px' : '';
   t.style.top = onLcd ? r.top + r.height / 2 + 'px' : '';
@@ -1993,7 +1994,7 @@ function wire() {
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
-  $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the CI run number is stamped but not shown
+  $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });

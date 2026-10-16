@@ -64,7 +64,7 @@ audio/canvas:
 | `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
 | `customrating.test.mjs` | Custom-song ratings: async measurement matches `difficulty.json`, cleaning, share encoding, storage |
 | `game.test.mjs` | Grades, combo multiplier, holds, pause/resume, judgement windows, rolls, the stray error tone |
-| `i18n.test.mjs` | Language detection, `t`/`tn`/`tm`/`fmt`, German coverage, stale entries, placeholders, glyphs |
+| `i18n.test.mjs` | Language detection, `t`/`tn`/`tm`/`fmt`; for every language: no gaps (except English, the source), no stale entries, matching placeholders and plural shapes, glyphs for every character; glyphs for every English source string |
 | `mods.test.mjs` | Speed, mirror, sudden death, judging, demo autoplay; scores keep their mods |
 | `modules.test.mjs` | My songs validation and storage, composer edits, bot weaknesses, list view, lane assignment, input clock, gamepad, cameo status, IMEI formatting |
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |

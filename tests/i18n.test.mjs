@@ -50,30 +50,40 @@ test('fmt: locale-aware numbers', () => {
   assert.equal(fmt(1234.5, 1), '1.234,5');
 });
 
-test('every source string in the app has a German translation', () => {
-  const missing = collectKeys().filter(k => DICTS.de[k] === undefined);
-  assert.deepEqual(missing, []);
+const SOURCE = 'en'; // the English text is the key: no dictionary needed, but every string must still render
+const holes = s => [...String(s).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join();
+const noGlyph = s => [...s].filter(ch => ch !== '\n' && !GLYPHS[ch] && !GLYPHS[ch.toUpperCase()]);
+
+test('every source string in the app has a translation in every other language', () => {
+  const keys = collectKeys();
+  for (const code of Object.keys(LANGS).filter(c => c !== SOURCE)) {
+    assert.deepEqual(keys.filter(k => DICTS[code][k] === undefined), [], `${code}: missing translations`);
+  }
 });
 
-test('German has no stale or malformed entries', () => {
+test('no language has stale or malformed entries', () => {
   const used = new Set(collectKeys());
-  const stale = Object.keys(DICTS.de).filter(k => !used.has(k));
-  assert.deepEqual(stale, [], 'entries nothing asks for (remove or add to scripts/i18n-keys.mjs)');
-  const holes = s => [...String(s).matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join();
-  for (const [k, v] of Object.entries(DICTS.de)) {
-    const forms = Array.isArray(v) ? v : [v];
-    for (const f of forms) assert.equal(holes(f), holes(k), `placeholders differ in ${JSON.stringify(k)}`);
-    if (Array.isArray(v)) assert.equal(v.length, 2, `plural needs [one, other]: ${k}`);
+  for (const code of Object.keys(LANGS)) {
+    const stale = Object.keys(DICTS[code]).filter(k => !used.has(k));
+    assert.deepEqual(stale, [], `${code}: entries nothing asks for (remove or add to scripts/i18n-keys.mjs)`);
+    for (const [k, v] of Object.entries(DICTS[code])) {
+      const forms = Array.isArray(v) ? v : [v];
+      for (const f of forms) assert.equal(holes(f), holes(k), `${code}: placeholders differ in ${JSON.stringify(k)}`);
+      if (Array.isArray(v)) assert.equal(v.length, 2, `${code}: plural needs [one, other]: ${k}`);
+    }
   }
+});
+
+test('every English source string, plural singulars included, has a glyph in the LCD font', () => {
+  const bad = collectKeys({ singulars: true }).filter(k => noGlyph(k).length).map(k => `${JSON.stringify(noGlyph(k).join(''))} in ${JSON.stringify(k)}`);
+  assert.deepEqual(bad, []);
 });
 
 test('every character of every translation has a glyph in the LCD font', () => {
   for (const code of Object.keys(LANGS)) {
     for (const [k, v] of Object.entries(DICTS[code])) {
-      for (const ch of [].concat(v).join('')) {
-        if (ch === '\n') continue;
-        assert.ok(GLYPHS[ch] || GLYPHS[ch.toUpperCase()], `${code}: no glyph for ${JSON.stringify(ch)} in ${JSON.stringify(k)}`);
-      }
+      const missing = noGlyph([].concat(v).join(''));
+      assert.deepEqual(missing, [], `${code}: no glyph in ${JSON.stringify(k)}`);
     }
   }
 });

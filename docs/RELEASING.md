@@ -53,8 +53,8 @@ Patch releases need nothing: every commit to `main` bumps the patch.
    - `BUILD.commit`: the first 7 characters of `GITHUB_SHA`, else `git rev-parse --short=7 HEAD`, else `dev`.
    - `BUILD.date`: today.
 
-The source `src/version.js` is never modified. The title screen and the `*#06#` panel show the version and
-`commit · date`; the build number is stamped but not displayed.
+The source `src/version.js` is never modified. The title screen shows the version and `commit · date`; the `*#06#`
+panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
 
 ## CI
 

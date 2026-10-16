@@ -37,7 +37,8 @@ Then add the German entry to `src/lang/de.js`:
 - `node scripts/i18n-keys.mjs` lists what's missing (`--lang=<code>` for another language).
 - `--all` prints every key.
 
-`npm test` fails until the entry is there.
+`npm test` fails until the entry is there. The English text itself is checked too: every character of every source
+string (including `tn()` singulars) needs a glyph in the LCD font.
 
 ## Adding a language
 
@@ -47,8 +48,8 @@ Then add the German entry to `src/lang/de.js`:
 3. Run `node scripts/i18n-keys.mjs --lang=<code>` and translate everything it lists, including the changelog messages.
 4. Every character used must exist in the LCD font. Add glyphs to `src/pixelfont.js` and run `npm run font`
    (see [DEVELOPMENT.md › Editing the pixel font](DEVELOPMENT.md#editing-the-pixel-font)).
-5. Extend `tests/i18n.test.mjs`. Its glyph check loops over all `LANGS`, but the gap, stale-entry, placeholder and
-   plural-shape checks are written against `DICTS.de` only, so a new language is not checked until you add it there.
+5. Run `npm test`. `tests/i18n.test.mjs` loops over all `LANGS`, so the new language is checked for gaps, stale
+   entries, placeholders, plural shapes (`[one, other]`) and glyphs with no test changes.
 
 Translated strings have to fit the LCD, which is narrow. Check long ones on a compact screen.
 

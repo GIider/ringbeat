@@ -142,10 +142,11 @@ export function createParade(rng, w, h, n = 5) {
 }
 
 // ---- Registry + scheduler ----
-const ALL = ['title', 'menu', 'select', 'options'];
+// The screens cameos may appear on.
+export const CAMEO_STATES = ['title', 'menu', 'select'];
 export const CAMEOS = [
-  { id: 'snake', weight: 5, kind: 'canvas', states: ALL, create: createSnake },
-  { id: 'space-impact', weight: 2, kind: 'canvas', states: ['select', 'options'], create: createSpaceImpact },
+  { id: 'snake', weight: 5, kind: 'canvas', states: CAMEO_STATES, create: createSnake },
+  { id: 'space-impact', weight: 2, kind: 'canvas', states: ['select'], create: createSpaceImpact },
   { id: 'sms', weight: 1, kind: 'status', states: ['select'], create: createSms },
   { id: 'signal-wobble', weight: 1, kind: 'status', states: ['select'], create: createSignalWobble },
   { id: 'low-battery', weight: 1, kind: 'status', states: ['select'], once: true, create: createLowBattery },

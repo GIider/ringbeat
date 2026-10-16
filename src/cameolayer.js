@@ -1,6 +1,6 @@
 // DOM glue for the idle cameos. The canvas is pointer-events:none and never focusable; this layer only reads
 // the app state (via getState) and paints. It never calls into navigation, selection or the game.
-import { createScheduler, createParade, CAMEOS } from './cameo.js';
+import { createScheduler, createParade, CAMEOS, CAMEO_STATES } from './cameo.js';
 
 const CELL = 4;      // CSS px per LCD cell
 const TICK_MS = 100; // sim speed
@@ -85,7 +85,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
 
   function arm() {
     if (timer || sim) return;
-    if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) return;
+    if (!allowed() || !CAMEO_STATES.includes(getState())) return;
     const ms = remaining || sched.gap() * 1000;
     remaining = 0;
     due = performance.now() + ms;
@@ -94,7 +94,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
 
   // Called after every screen change: cancel instantly when leaving the places cameos may appear.
   function sync() {
-    if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) pause();
+    if (!allowed() || !CAMEO_STATES.includes(getState())) pause();
     else arm();
   }
 
@@ -119,7 +119,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
     stop() { cancel(); },
     // Konami reward: a parade of snakes right now (only where cameos are allowed).
     parade() {
-      if (!allowed() || !['title', 'menu', 'select', 'options'].includes(getState())) return;
+      if (!allowed() || !CAMEO_STATES.includes(getState())) return;
       cancel();
       if (measure()) runCanvas(createParade(rng, gridW, gridH));
     },

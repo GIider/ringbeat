@@ -15,7 +15,8 @@ const unesc = s => s.replace(/\\(['"`\\])/g, '$1').replace(/\\n/g, '\n');
 const decode = s => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 const LIT = String.raw`(['"\`])((?:\\.|(?!\1)[^\\])*)\1`;
 
-export function collectKeys() {
+// `singulars` also returns tn()'s singular forms: they are shown in English but are not dictionary keys.
+export function collectKeys({ singulars = false } = {}) {
   const keys = new Set();
   for (const f of fs.readdirSync(root + 'src').filter(n => n.endsWith('.js'))) {
     const src = read('src/' + f);
@@ -26,7 +27,10 @@ export function collectKeys() {
     }
     for (const m of src.matchAll(new RegExp(String.raw`dataset\.soft(?:Left|Right)\s*=\s*(?:[^'"\`;]*\?\s*)?${LIT}`, 'g'))) keys.add(unesc(m[2]));
     for (const m of src.matchAll(new RegExp(String.raw`\b(?:toast|openMySongs)\(\s*${LIT}`, 'g'))) keys.add(unesc(m[2]));
-    for (const m of src.matchAll(new RegExp(String.raw`\btn\([^,]+,\s*${LIT}\s*,\s*${LIT}`, 'g'))) keys.add(unesc(m[4]));
+    for (const m of src.matchAll(new RegExp(String.raw`\btn\([^,]+,\s*${LIT}\s*,\s*${LIT}`, 'g'))) {
+      keys.add(unesc(m[4]));
+      if (singulars) keys.add(unesc(m[2]));
+    }
   }
   const html = read('index.html');
   for (const m of html.matchAll(/<(\w+)([^>]*)>/g)) {

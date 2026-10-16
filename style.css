@@ -37,7 +37,6 @@ button { font: inherit; color: inherit; }
   background: url(assets/phone.svg) center / 100% 100% no-repeat;
   transition: left .55s var(--ease), top .55s var(--ease), width .55s var(--ease), height .55s var(--ease), opacity .3s; }
 #phone.no-anim { transition: none; }
-#phone.off { opacity: 0; visibility: hidden; pointer-events: none; }
 body.compact #phone { background: none; }
 
 .keys .k { position: absolute; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 50%;
