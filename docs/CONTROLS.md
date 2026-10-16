@@ -10,7 +10,7 @@
 | Detail tab (difficulty screen) | `←` `→` |
 | Options (song select: category, sort, show) | `O` or `#` |
 | Stats pages | `←` `→` |
-| Message | `↑` `↓` scroll |
+| Message | `↑` `↓` scroll, `←` `→` previous / next message; any key skips the opening animation |
 | Sort (song select) | play keys `D` `F` (prev / next) |
 | Back / pause / resume | `Esc` or `Backspace` |
 | Restart (play, pause, results) | `R` |

@@ -685,14 +685,14 @@ function openMessage(i) {
   if (!MESSAGES[i]) return;
   msgIdx = i;
   clearTimeout(msgTimer);
-  const STEPS = still.matches ? 1 : 8, bar = $('ml-bar');
+  const STEPS = still.matches ? 1 : 5, bar = $('ml-bar');
   bar.innerHTML = '<i></i>'.repeat(8);
   let k = 0;
   const step = () => {
     setSprite($('ml-icon'), letterFrame(Math.floor(k * 3 / (STEPS + 1))), unit * 2);
     Array.from(bar.children).forEach((c, j) => c.classList.toggle('on', j < Math.round(k * 8 / STEPS)));
-    if (k++ >= STEPS) { msgTimer = setTimeout(() => showMessage(i), still.matches ? 150 : 120); return; }
-    msgTimer = setTimeout(step, 85);
+    if (k++ >= STEPS) { msgTimer = setTimeout(() => showMessage(i), still.matches ? 150 : 60); return; }
+    msgTimer = setTimeout(step, 45);
   };
   setState('msgload', 'msgload');
   step();
@@ -703,7 +703,7 @@ function smsTone() {
   let t = synth.ctx.currentTime + 0.02;
   for (const d of [0.05, 0.05, 0.05, 0.14, 0.14, 0.05, 0.05, 0.05]) { synth.playNote({ midi: 88, when: t, duration: d }); t += d + 0.05; }
 }
-function showMessage(i) {
+function showMessage(i, quiet = false) {
   const m = MESSAGES[i];
   msgIdx = i;
   settings.msgSeen = markRead(settings.msgSeen, m.version); save();
@@ -713,8 +713,12 @@ function showMessage(i) {
   $('sms-body').scrollTop = 0;
   screens.message.dataset.softLeft = i + 1 < MESSAGES.length ? 'Next' : '';
   setState('message', 'message');
-  smsTone();
+  if (!quiet) smsTone();
 }
+// Any key during the opening animation jumps straight to the message.
+const skipMessageLoad = () => { if (state === 'msgload') showMessage(msgIdx); };
+// Flip to a neighbouring message (+1 = older) without the animation.
+const stepMessage = d => { if (MESSAGES[msgIdx + d]) showMessage(msgIdx + d, true); };
 function scrollMessage(dir) {
   const b = $('sms-body');
   b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.4);
@@ -1568,6 +1572,7 @@ function back() {
 }
 
 function menuButton(index) {
+  if (state === 'msgload' && index !== BTN.B) { skipMessageLoad(); return; }
   const root = activeScreen();
   switch (index) {
     case BTN.A: case BTN.START:
@@ -1580,8 +1585,8 @@ function menuButton(index) {
       if (state === 'diffpick') openMods();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
       break;
-    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results' || state === 'stats') navigate('left'); break;
-    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results' || state === 'stats') navigate('right'); break;
+    case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('left'); break;
+    case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('right'); break;
     case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
   }
@@ -1599,7 +1604,7 @@ function navigate(dir) {
   if (state === 'menu') { menuStep(dir === 'up' || dir === 'left' ? -1 : 1); return; }
   if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
-  if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); return; }
+  if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'diffpick' && (dir === 'left' || dir === 'right')) { setDpTab(dpTab + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
@@ -1616,7 +1621,7 @@ function softLeft() {
   switch (state) {
     case 'title': startFromTitle(); break;
     case 'select': nav.confirm(activeScreen()); break; // the Menu key picks the song
-    case 'message': if (msgIdx + 1 < MESSAGES.length) openMessage(msgIdx + 1); break;
+    case 'message': stepMessage(1); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
@@ -1647,6 +1652,7 @@ function phoneKey(key) {
     return;
   }
   if (!inPlay()) synth.keyClick();
+  if (state === 'msgload' && key !== 'softR') { skipMessageLoad(); return; }
   if (state === 'title') { startFromTitle(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
   switch (key) {
@@ -2004,6 +2010,7 @@ function onKey(e) {
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
   }
+  if (state === 'msgload' && !typing && !e.repeat && !e.code.startsWith('Shift') && e.code !== 'Tab') { e.preventDefault(); skipMessageLoad(); return; }
   if (state === 'results' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); navigate(e.code === 'BracketRight' ? 'right' : 'left'); return;
   }
