@@ -18,6 +18,7 @@ import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num } from './settings.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
+import { onSwipe } from './swipe.js';
 import { SORTS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
@@ -371,7 +372,8 @@ function renderCategories() {
   const t = tabs.find(x => x.id === settings.view.category);
   $('sel-cat').textContent = `${t.label} (${t.count})`;
   const sort = SORTS.find(x => x.id === settings.view.sort);
-  $('sel-sub').textContent = `${sort.label} · ${cap(settings.difficulty)}`;
+  $('sel-sort').textContent = sort.label;
+  $('sel-diff').textContent = cap(settings.difficulty);
 }
 function setCategory(id) {
   settings.view.category = id; save();
@@ -420,11 +422,16 @@ function renderList() {
   const box = $('song-list');
   const rowId = ev => { const r = ev.target.closest && ev.target.closest('.song-row'); return r ? r.dataset.id : null; };
   box.addEventListener('focusin', ev => { const id = rowId(ev); if (id) selectSong(id, false); });
+  // Touch has no reliable double-click: a tap on the row that was already selected (before focus moved) plays it.
+  let tapWasSelected = false;
+  const swiped = onSwipe(box, dir => cycleCategory(dir === 'left' ? 1 : -1));
+  box.addEventListener('pointerdown', ev => { tapWasSelected = ev.pointerType !== 'mouse' && rowId(ev) === selectedId; });
   box.addEventListener('click', ev => {
     const id = rowId(ev);
-    if (!id) return;
+    if (!id || swiped()) return;
     if (selectedId !== id) selectSong(id, false);
-    else if (ev.detail === 0) playSelected(); // keyboard / gamepad confirm; mouse uses double-click
+    else if (ev.detail === 0 || tapWasSelected) playSelected(); // keyboard / gamepad confirm or touch re-tap; mouse uses double-click
+    tapWasSelected = false;
   });
   box.addEventListener('dblclick', ev => { if (rowId(ev)) playSelected(); });
 }
@@ -1765,16 +1772,10 @@ function wire() {
   $('mm-next').onclick = e => { e.stopPropagation(); synth.keyClick(); menuStep(1); };
   for (const b of [$('mm-prev'), $('mm-next')]) b.addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the item
   {
-    let sx = null, sy = 0, swiped = false, wheelAt = 0;
+    let wheelAt = 0;
     const m = $('menu');
-    m.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; swiped = false; });
-    m.addEventListener('pointerup', e => {
-      if (sx === null) return;
-      const dx = e.clientX - sx, dy = e.clientY - sy;
-      sx = null;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) > 30) { swiped = true; synth.keyClick(); menuStep((Math.abs(dy) > Math.abs(dx) ? -dy : -dx) > 0 ? 1 : -1); }
-    });
-    $('mm-body').addEventListener('click', () => { if (!swiped) { synth.keyClick(); menuSelect(); } swiped = false; });
+    const swiped = onSwipe(m, dir => { synth.keyClick(); menuStep(dir === 'left' || dir === 'up' ? 1 : -1); }, { axis: 'both', threshold: 30 });
+    $('mm-body').addEventListener('click', () => { if (!swiped()) { synth.keyClick(); menuSelect(); } });
     m.addEventListener('wheel', e => {
       e.preventDefault();
       const now = performance.now();
@@ -1785,13 +1786,8 @@ function wire() {
   // stats: Diff (left soft key / Enter on the Grades page), swipe or tap the arrows for pages
   $('stat-go').onclick = cycleStatDiff;
   {
-    let sx = null;
     const st = $('stats');
-    st.addEventListener('pointerdown', e => { sx = e.clientX; });
-    st.addEventListener('pointerup', e => {
-      if (sx !== null && Math.abs(e.clientX - sx) > 40) navigate(e.clientX < sx ? 'right' : 'left');
-      sx = null;
-    });
+    onSwipe(st, dir => navigate(dir === 'left' ? 'right' : 'left'));
     const arrows = st.querySelectorAll('.st-tabs .arrow');
     arrows[0].addEventListener('click', () => navigate('left'));
     arrows[1].addEventListener('click', () => navigate('right'));
@@ -1879,6 +1875,8 @@ function wire() {
   $('sm-back').onclick = () => openMySongs();
 
   // composer
+  $('comp-pad').addEventListener('click', e => { const b = e.target.closest('button'); if (b) compInput(b.dataset.k); });
+  $('comp-pad').addEventListener('pointerdown', e => e.preventDefault());
   $('comp-left').onclick = () => compInput('left');
   $('comp-right').onclick = () => compInput('right');
   $('comp-resume').onclick = () => setCompMenu(false);
@@ -1927,20 +1925,21 @@ function wire() {
   $('btn-custom-back').onclick = back;
 
   // play / pause / results
+  for (const id of ['sel-arrow-l', 'sel-arrow-r', 'sel-sort', 'sel-diff']) $(id).addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the song row
+  $('sel-arrow-l').onclick = () => { synth.keyClick(); cycleCategory(-1); };
+  $('sel-arrow-r').onclick = () => { synth.keyClick(); cycleCategory(1); };
+  $('sel-sort').onclick = () => { synth.keyClick(); setView('sort', SORTS, 1); };
+  $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
+  onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
+  $('msgload').addEventListener('click', skipMessageLoad);
+  $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
   $('btn-pause').onclick = pauseGame;
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;
   for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
-  { // horizontal swipe flips results pages
-    let sx = null;
-    const r = $('results');
-    r.addEventListener('pointerdown', e => { sx = e.clientX; });
-    r.addEventListener('pointerup', e => {
-      if (sx !== null && Math.abs(e.clientX - sx) > 40) navigate(e.clientX < sx ? 'right' : 'left');
-      sx = null;
-    });
-  }
+  // horizontal swipe flips results pages
+  onSwipe($('results'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('btn-retry').onclick = restartRun;
   $('btn-next').onclick = nextSong;
   $('btn-menu').onclick = leaveToSelect;

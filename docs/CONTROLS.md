@@ -27,6 +27,12 @@ On the bare LCD (narrow screens) there are no phone keys, so both soft-key label
 
 ## Touch
 Tap and hold the lane columns (multi-touch). On small screens the on-screen ❚❚ pauses. Menu items are plain buttons.
+- Title: tap anywhere. Messages: swipe left / right for next / previous; tap while one loads to skip.
+- Song select: swipe the list left / right (or tap ◄ ►) to change category; tap the sort or difficulty label to cycle it;
+  tap a song to select it, tap the selected song again to play.
+- Stats and results: swipe left / right for pages. Main menu: swipe or tap the arrows.
+- Composer: on touch / narrow screens a note pad (C-B, rest, length, dot, sharp, pitch, delete) replaces the keys.
+- Sliders get a taller touch target on touch / narrow screens.
 
 ## Gamepad (Standard Gamepad API)
 Gameplay — defaults, each lane has several buttons:

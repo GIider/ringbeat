@@ -521,3 +521,14 @@ test('pixelart: spriteURL is a cached SVG data URI', () => {
   assert.ok(spriteSVG(rows, 'red').includes('fill="red"'));
   for (const k of Object.keys(SPRITES)) assert.ok(spriteURL(SPRITES[k]).length > 30, k);
 });
+
+import { swipeDir } from '../src/swipe.js';
+test('swipeDir: axis, threshold and dominance', () => {
+  assert.equal(swipeDir(-50, 5), 'left');
+  assert.equal(swipeDir(50, 5), 'right');
+  assert.equal(swipeDir(30, 0), null);
+  assert.equal(swipeDir(50, 60), null, 'vertical drags do not count on the x axis');
+  assert.equal(swipeDir(5, -50, 'y'), 'up');
+  assert.equal(swipeDir(5, 50, 'both'), 'down');
+  assert.equal(swipeDir(-35, 10, 'both', 30), 'left');
+});

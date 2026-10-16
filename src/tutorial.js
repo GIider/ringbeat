@@ -11,7 +11,7 @@ const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch p
 export const STAGES = [
   {
     id: 'tap', title: 'Tap notes',
-    text: 'Press the lane key as the note touches the line.',
+    text: 'Hit the lane (key or tap) as the note touches the line.',
     notes: [[0, 0, 0.25], [2, 1, 0.25], [4, 2, 0.25], [6, 3, 0.25]],
     maxMiss: 0,
   },
@@ -23,13 +23,13 @@ export const STAGES = [
   },
   {
     id: 'hold', title: 'Hold notes',
-    text: 'Long notes have a tail. HOLD the key until the tail reaches the line, then release.',
+    text: 'Long notes have a tail. HOLD the lane until the tail reaches the line, then release.',
     notes: [[0, 0, 2], [3, 3, 2], [6, 1, 3]],
     maxMiss: 0,
   },
   {
     id: 'roll', title: 'Roll notes',
-    text: 'A ROLL is a bar of fast ticks. Mash the key while it passes the line.',
+    text: 'A ROLL is a bar of fast ticks. Mash the lane while it passes the line.',
     notes: [[0, 1, 0, { roll: 8 }], [5, 2, 0, { roll: 8 }], [10, 0, 0, { roll: 10 }]],
     maxMiss: 0,
   },
@@ -45,7 +45,7 @@ export const STAGES = [
   },
   {
     id: 'double', title: 'Double notes',
-    text: 'Notes joined by a bridge fall together. Press both keys at once.',
+    text: 'Notes joined by a bridge fall together. Hit both lanes at once.',
     notes: [[0, 1, 0.5, { double: 0 }], [2, 2, 0.5, { double: 1 }], [4, 3, 0.5, { double: 2 }], [6, 0, 0.5],
       [7, 2, 0.5, { double: 1 }], [9, 3, 0.5, { double: 2 }]],
     maxMiss: 0,

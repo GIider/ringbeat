@@ -49,7 +49,7 @@
         <section id="title" class="screen boot" hidden data-title="" data-soft-left="Start" data-soft-right="">
           <div class="boot-logo">RINGBEAT</div>
           <i id="boot-art" class="spr boot-art"></i>
-          <p class="blink">Press any key</p>
+          <p class="blink">Press any key or tap</p>
           <p class="boot-version"><a id="boot-version" href="https://github.com/GIider/ringbeat" target="_blank" rel="noopener" title="Ringbeat on GitHub"></a></p>
           <p id="boot-build" class="boot-version boot-build"></p>
           <button id="btn-start" class="sr" data-default>Start</button>
@@ -112,11 +112,11 @@
         <!-- Song select: "Tones" -->
         <section id="select" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
           <div class="sel-head">
-            <span class="arrow" id="sel-arrow-l" aria-hidden="true">◄</span>
+            <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1">◄</button>
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
-            <span class="arrow" id="sel-arrow-r" aria-hidden="true">►</span>
+            <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1">►</button>
           </div>
-          <div id="sel-sub" class="sel-sub"></div>
+          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1"></button></div>
           <div id="song-list" class="song-list" role="listbox" aria-label="Songs"></div>
           <div id="sel-info" class="sel-info" aria-live="polite"></div>
           <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
@@ -190,7 +190,13 @@
               <button id="comp-left" aria-label="Cursor left">◀</button>
               <button id="comp-right" aria-label="Cursor right">▶</button>
             </div>
-            <div class="hint comp-help">1-7 notes · 0 rest · 8/9 length · * dot · # sharp · repeat key = octave · ▲▼ pitch</div>
+            <div class="comp-pad" id="comp-pad">
+              <button data-k="1">C</button><button data-k="2">D</button><button data-k="3">E</button><button data-k="4">F</button>
+              <button data-k="5">G</button><button data-k="6">A</button><button data-k="7">B</button><button data-k="0" aria-label="Rest">Rest</button>
+              <button data-k="8" aria-label="Shorter">Len -</button><button data-k="9" aria-label="Longer">Len +</button><button data-k="*" aria-label="Dot">Dot</button><button data-k="#" aria-label="Sharp">#</button>
+              <button data-k="up" aria-label="Pitch up">▲</button><button data-k="down" aria-label="Pitch down">▼</button><button data-k="del" aria-label="Delete note">Del</button>
+            </div>
+            <div class="hint comp-help keys-only">1-7 notes · 0 rest · 8/9 length · * dot · # sharp · repeat key = octave · ▲▼ pitch</div>
           </div>
           <div id="comp-menu" class="menu" hidden>
             <button id="comp-play">Play</button>

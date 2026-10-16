@@ -215,7 +215,8 @@ textarea::placeholder { color: var(--ink-dim); }
 /* ---------- song select ---------- */
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.sel-head .arrow { font-size: var(--fs); }
+.sel-head .arrow { font-size: var(--fs); background: none; border: 0; padding: 4px 10px; cursor: pointer; }
+.sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
 .sel-hint { color: var(--ink-dim); white-space: normal; text-align: center; }
 .seg { display: flex; gap: 2px; }
 .seg button { background: none; border: var(--u) solid transparent; padding: 1px 6px; cursor: pointer; min-height: 0; }
@@ -407,3 +408,16 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 /* progress bar (difficulty calculation) */
 .bar { height: 8px; margin: 4px 0; border: var(--u) solid var(--ink); }
 .bar > i { display: block; height: 100%; width: 0; background: var(--ink); }
+
+/* ---------- touch / compact ---------- */
+.comp-pad { display: none; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 4px 0; }
+.comp-pad button { min-height: 32px; padding: 0; border: var(--u) solid var(--ink); background: none; }
+.comp-pad button:active { background: var(--ink); color: var(--lcd); }
+body.compact .comp-pad { display: grid; }
+body.compact .comp-help.keys-only { display: none; }
+@media (pointer: coarse) {
+  .comp-pad { display: grid; }
+  .comp-help.keys-only { display: none; }
+}
+body.compact input[type=range] { height: 28px; }
+@media (pointer: coarse) { input[type=range] { height: 28px; } }
