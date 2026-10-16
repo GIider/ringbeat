@@ -73,6 +73,7 @@ export function buildStageChart(stage) {
       n.isRoll = true; n.isHold = false;
       n.ticks = Array.from({ length: x.roll }, (_, k) => k * 0.5 * beatLen);
       n.duration = n.ticks[x.roll - 1] + ROLL_TAIL_SEC;
+      n.tickDur = 0.12;
       n.goal = Math.max(3, Math.round(x.roll * 0.6)); // tutorial rolls ask for a bit over half the ticks
       n.rollHits = 0;
     }

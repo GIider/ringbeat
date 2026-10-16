@@ -597,3 +597,9 @@ test('game: slide follow-ups accept wide presses as Good; the first note and ord
   assert.equal(play(1, 0.2), 'miss');
   assert.equal(play(1, 0.01), 'perfect');
 });
+
+test('tutorial: roll notes carry a finite tickDur (auto-play rolls must not sustain forever)', () => {
+  const rolls = STAGES.flatMap(s => buildStageChart(s).notes).filter(n => n.isRoll);
+  assert.ok(rolls.length > 0);
+  for (const n of rolls) assert.ok(Number.isFinite(n.tickDur) && n.tickDur > 0);
+});

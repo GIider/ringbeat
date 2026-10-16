@@ -64,7 +64,8 @@ export function scaleChart(chart, speed) {
   return {
     ...chart,
     notes: chart.notes.map(n => ({ ...n, time: n.time * k, duration: n.duration * k,
-      ...(n.ticks && { ticks: n.ticks.map(o => o * k) }) })),
+      ...(n.ticks && { ticks: n.ticks.map(o => o * k) }),
+      ...(n.tickDur && { tickDur: n.tickDur * k }) })),
     backing: (chart.backing || []).map(n => ({ ...n, time: n.time * k, duration: n.duration * k })),
     length: chart.length * k,
     bpm: chart.bpm * speed,

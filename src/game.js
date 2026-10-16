@@ -215,8 +215,9 @@ export class Game {
     this.score += Math.round(ROLL_TICK_POINTS * this.multiplier);
     if (!this.rollAudio) { this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: 0.1 }); return; }
     if (n.rollHits !== 1) return; // the first press plays the roll as written; mashing only scores
-    this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: n.tickDur }); // first tick sounds right away
-    n.ticks.slice(1).forEach(o => this.rollQueue.push({ time: n.time + o, midi: n.midi, duration: n.tickDur }));
+    const dur = n.tickDur ?? 0.1; // never leave the duration open: an unbounded voice would sustain forever
+    this.synth.playNote({ midi: n.midi, when: this.synth.ctx.currentTime, duration: dur }); // first tick sounds right away
+    n.ticks.slice(1).forEach(o => this.rollQueue.push({ time: n.time + o, midi: n.midi, duration: dur }));
     this._schedule();
   }
 

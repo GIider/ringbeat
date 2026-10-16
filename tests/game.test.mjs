@@ -251,3 +251,13 @@ test('game: rollAudio plays the roll as written from the first press; mashing on
   assert.equal(on.notes, ticks.length, 'one note per roll tick, regardless of presses');
   assert.equal(on.score, off.score, 'scoring is unaffected');
 });
+
+test('game: rollAudio never plays an unbounded tone, even if the roll has no tickDur', () => {
+  const { g, synth } = run([note(0, 0, 1, { isRoll: true, ticks: [0, 0.1, 0.2], goal: 3, duration: 0.35 })], { rollAudio: true });
+  g.synth.ctx.currentTime = g.songStart + 1;
+  g.press(0, g.songStart + 1);
+  for (let t = 1; t <= 1.5; t += 0.05) { g.synth.ctx.currentTime = g.songStart + t; g._schedule(); }
+  g.stop();
+  assert.equal(synth.calls.notes.length, 3);
+  assert.ok(synth.calls.notes.every(o => Number.isFinite(o.duration) && o.duration > 0));
+});

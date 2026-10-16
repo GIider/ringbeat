@@ -148,3 +148,8 @@ test('demo autoplay plays every note perfectly, also with mirror, speed and stri
     assert.ok(r.fc && r.ap && !r.failed);
   }
 });
+
+test('mods: scaleChart scales roll tickDur with the ticks', () => {
+  const c = { notes: [{ time: 1, duration: 0.5, ticks: [0, 0.2], tickDur: 0.1 }], backing: [], length: 2, bpm: 120, beatLen: 0.5 };
+  assert.ok(Math.abs(scaleChart(c, 2).notes[0].tickDur - 0.05) < 1e-9);
+});
