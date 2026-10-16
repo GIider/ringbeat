@@ -26,6 +26,7 @@ f.addEventListener('load', async () => {
     key('Space'); await sleep(100);
     log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
     log($('soft-left').textContent === 'Select' && $('soft-left').parentElement.classList.contains('solo'), 'menu: single centred Select');
+    for (let i = 0; i < 20 && d.activeElement !== $('mm-go'); i++) await sleep(50); // focus lands in a rAF, which headless WebKit can delay
     log(d.activeElement === $('mm-go'), 'menu item focused');
     key('ArrowDown'); await sleep(50);
     log($('mm-title').textContent === 'My songs' && $('mm-num').textContent === '2', 'down -> next menu item');
