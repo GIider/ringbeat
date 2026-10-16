@@ -1,102 +1,296 @@
 {
  "rtttl.parse (all songs)": {
-  "iters": 318,
-  "mean": 0.6302,
-  "p50": 0.6092,
-  "p95": 0.6758,
-  "opsPerSec": 1586.8087
+  "iters": 153,
+  "mean": 1.3138,
+  "p50": 1.255,
+  "p95": 1.5016,
+  "p99": 2.3937,
+  "max": 2.5069,
+  "opsPerSec": 761.1342,
+  "allocBytes": 17744.92
  },
  "chart.generate easy (all songs)": {
-  "iters": 734,
-  "mean": 0.2727,
-  "p50": 0.2332,
-  "p95": 0.595,
-  "opsPerSec": 3666.4265
+  "iters": 153,
+  "mean": 1.3096,
+  "p50": 1.0945,
+  "p95": 3.0491,
+  "p99": 3.1904,
+  "max": 3.3405,
+  "opsPerSec": 763.6192,
+  "allocBytes": 65237.72
  },
  "chart.generate normal (all songs)": {
-  "iters": 637,
-  "mean": 0.3143,
-  "p50": 0.2927,
-  "p95": 0.3722,
-  "opsPerSec": 3181.2166
+  "iters": 174,
+  "mean": 1.1554,
+  "p50": 1.1386,
+  "p95": 1.2161,
+  "p99": 1.2321,
+  "max": 1.2722,
+  "opsPerSec": 865.4967,
+  "allocBytes": 2706.64
  },
  "chart.generate hard (all songs)": {
-  "iters": 599,
-  "mean": 0.3341,
-  "p50": 0.3237,
-  "p95": 0.3971,
-  "opsPerSec": 2993.4212
+  "iters": 121,
+  "mean": 1.6626,
+  "p50": 1.6432,
+  "p95": 1.7206,
+  "p99": 1.7844,
+  "max": 1.792,
+  "opsPerSec": 601.4817,
+  "allocBytes": 17580.48
  },
  "library.build": {
-  "iters": 22595,
-  "mean": 0.0089,
-  "p50": 0.0084,
-  "p95": 0.0092,
-  "opsPerSec": 112974.9452
+  "iters": 9496,
+  "mean": 0.0211,
+  "p50": 0.0202,
+  "p95": 0.0231,
+  "p99": 0.0564,
+  "max": 0.1778,
+  "opsPerSec": 47476.5114,
+  "allocBytes": 60679.04
  },
  "library.build x2 (boot + rebuild)": {
-  "iters": 11729,
-  "mean": 0.0171,
-  "p50": 0.0165,
-  "p95": 0.0174,
-  "opsPerSec": 58643.2794
+  "iters": 4992,
+  "mean": 0.0401,
+  "p50": 0.0389,
+  "p95": 0.0433,
+  "p99": 0.0645,
+  "max": 0.2522,
+  "opsPerSec": 24956.2209,
+  "allocBytes": 39091.04
  },
  "practice.slice+scale (all)": {
-  "iters": 1805,
-  "mean": 0.1108,
-  "p50": 0.1037,
-  "p95": 0.1551,
-  "opsPerSec": 9021.9836
+  "iters": 702,
+  "mean": 0.2851,
+  "p50": 0.2718,
+  "p95": 0.3364,
+  "p99": 0.4253,
+  "max": 0.9796,
+  "opsPerSec": 3507.7573,
+  "allocBytes": 34555.2
  },
  "game.simulate (longest, 1 bot run)": {
-  "iters": 1370,
-  "mean": 0.146,
-  "p50": 0.1053,
-  "p95": 0.2262,
-  "opsPerSec": 6849.2806
+  "iters": 895,
+  "mean": 0.2239,
+  "p50": 0.1254,
+  "p95": 0.4353,
+  "p99": 2.2861,
+  "max": 3.5784,
+  "opsPerSec": 4466.347,
+  "allocBytes": 149382.16
  },
  "listview.applyView (all sorts)": {
-  "iters": 2949,
-  "mean": 0.0678,
-  "p50": 0.0646,
-  "p95": 0.0739,
-  "opsPerSec": 14740.2953
+  "iters": 964,
+  "mean": 0.2076,
+  "p50": 0.2048,
+  "p95": 0.2216,
+  "p99": 0.3145,
+  "max": 1.1187,
+  "opsPerSec": 4816.1311,
+  "allocBytes": 18366.28
  },
  "share.encode+decode": {
-  "iters": 32668,
-  "mean": 0.0061,
-  "p50": 0.0057,
+  "iters": 32413,
+  "mean": 0.0062,
+  "p50": 0.0058,
   "p95": 0.0081,
-  "opsPerSec": 163337.6365
+  "p99": 0.0104,
+  "max": 0.3041,
+  "opsPerSec": 162064.6564,
+  "allocBytes": 10735.24
  },
  "render.draw (1 frame)": {
-  "iters": 8042,
-  "mean": 0.0249,
-  "p50": 0.0233,
-  "p95": 0.0302,
-  "opsPerSec": 40209.1639,
-  "callsPerFrame": 858
+  "iters": 30142,
+  "mean": 0.0066,
+  "p50": 0.0064,
+  "p95": 0.0069,
+  "p99": 0.0119,
+  "max": 0.2385,
+  "opsPerSec": 150705.9129,
+  "allocBytes": 33.28,
+  "callsPerFrame": 236
  },
  "render.drawIdle (settled)": {
-  "iters": 6863954,
+  "iters": 6889691,
   "mean": 0,
   "p50": 0,
   "p95": 0,
-  "opsPerSec": 34319768.1094,
+  "p99": 0,
+  "max": 0.0296,
+  "opsPerSec": 34448454.9969,
+  "allocBytes": 1.28,
   "callsPerFrame": 0
  },
  "synth.playNote x8 (plain)": {
-  "iters": 132145,
-  "mean": 0.0015,
-  "p50": 0.0012,
-  "p95": 0.002,
-  "opsPerSec": 660720.5434
- },
- "synth.playNote x8 (buzzer)": {
-  "iters": 133212,
-  "mean": 0.0015,
+  "iters": 143816,
+  "mean": 0.0014,
   "p50": 0.0012,
   "p95": 0.0019,
-  "opsPerSec": 666056.2035
+  "p99": 0.0035,
+  "max": 0.2888,
+  "opsPerSec": 719075.6568,
+  "allocBytes": 28232.28
+ },
+ "synth.playNote x8 (buzzer)": {
+  "iters": 140272,
+  "mean": 0.0014,
+  "p50": 0.0012,
+  "p95": 0.0021,
+  "p99": 0.0034,
+  "max": 0.2211,
+  "opsPerSec": 701356.7878,
+  "allocBytes": 28632.64
+ },
+ "render.draw busiest frame": {
+  "iters": 49799,
+  "mean": 0.004,
+  "p50": 0.004,
+  "p95": 0.004,
+  "p99": 0.0041,
+  "max": 0.0528,
+  "opsPerSec": 248994.1497,
+  "allocBytes": 33.28,
+  "callsPerFrame": 165
+ },
+ "render.draw small LCD (100x90)": {
+  "iters": 37013,
+  "mean": 0.0054,
+  "p50": 0.0052,
+  "p95": 0.0057,
+  "p99": 0.0107,
+  "max": 0.0737,
+  "opsPerSec": 185063.6241,
+  "allocBytes": 33.28,
+  "callsPerFrame": 182
+ },
+ "render.draw large LCD (330x300)": {
+  "iters": 33347,
+  "mean": 0.006,
+  "p50": 0.006,
+  "p95": 0.006,
+  "p99": 0.0062,
+  "max": 0.0383,
+  "opsPerSec": 166734.9958,
+  "allocBytes": 33.28,
+  "callsPerFrame": 226
+ },
+ "render.draw FX saturated (rings+labels+banners+countdown)": {
+  "iters": 17707,
+  "mean": 0.0113,
+  "p50": 0.0108,
+  "p95": 0.0146,
+  "p99": 0.0195,
+  "max": 0.3894,
+  "opsPerSec": 88533.1771,
+  "allocBytes": 137.64,
+  "callsPerFrame": 283
+ },
+ "render.text sprites cold (cache cleared)": {
+  "iters": 6877,
+  "mean": 0.0291,
+  "p50": 0.0285,
+  "p95": 0.0352,
+  "p99": 0.0581,
+  "max": 0.4835,
+  "opsPerSec": 34380.514,
+  "allocBytes": 1793.32,
+  "callsPerFrame": 806
+ },
+ "render.text sprite churn (250 distinct strings)": {
+  "iters": 546,
+  "mean": 0.3698,
+  "p50": 0.3533,
+  "p95": 0.4071,
+  "p99": 0.4613,
+  "max": 3.085,
+  "opsPerSec": 2704.2118,
+  "allocBytes": 73543.52,
+  "callsPerFrame": 9140
+ },
+ "game._schedule (backing, 25 ms steps, full song)": {
+  "iters": 9426,
+  "mean": 0.0212,
+  "p50": 0.0192,
+  "p95": 0.0231,
+  "p99": 0.048,
+  "max": 2.0934,
+  "opsPerSec": 47126.6766,
+  "allocBytes": 60129.68
+ },
+ "synth.playNote x16 burst + cleanup (smooth)": {
+  "iters": 53425,
+  "mean": 0.0037,
+  "p50": 0.0032,
+  "p95": 0.0045,
+  "p99": 0.0093,
+  "max": 0.3186,
+  "opsPerSec": 267124.9599,
+  "allocBytes": 62336
+ },
+ "chart.generate custom max-length song (3 diffs)": {
+  "iters": 295,
+  "mean": 0.6793,
+  "p50": 0.5876,
+  "p95": 0.9447,
+  "p99": 2.0635,
+  "max": 3.0774,
+  "opsPerSec": 1472.0614,
+  "allocBytes": 16577.8
+ },
+ "library.customEntry max-length (import)": {
+  "iters": 14807,
+  "mean": 0.0135,
+  "p50": 0.0133,
+  "p95": 0.0139,
+  "p99": 0.0161,
+  "max": 0.1775,
+  "opsPerSec": 74032.1146,
+  "allocBytes": 489.44
+ },
+ "scores.record x5 (persist to storage)": {
+  "iters": 32274,
+  "mean": 0.0062,
+  "p50": 0.006,
+  "p95": 0.0069,
+  "p99": 0.0092,
+  "max": 0.2178,
+  "opsPerSec": 161365.4866,
+  "allocBytes": 5924.16
+ },
+ "frames.update (longest song, 60 Hz)": {
+  "iters": 23125,
+  "mean": 0.0001,
+  "p50": 0.0001,
+  "p95": 0.0002,
+  "p99": 0.0004,
+  "max": 0.011,
+  "opsPerSec": 8606959.6219
+ },
+ "frames.draw (longest song, 60 Hz)": {
+  "iters": 23125,
+  "mean": 0.0134,
+  "p50": 0.0132,
+  "p95": 0.0165,
+  "p99": 0.0184,
+  "max": 0.499,
+  "opsPerSec": 74618.1343
+ },
+ "frames.press (judge + synth call)": {
+  "iters": 2240,
+  "mean": 0.0003,
+  "p50": 0.0003,
+  "p95": 0.0004,
+  "p99": 0.0007,
+  "max": 0.0016,
+  "opsPerSec": 3103387.3441
+ },
+ "frames.draw (max-length custom song)": {
+  "iters": 80000,
+  "mean": 0.014,
+  "p50": 0.0139,
+  "p95": 0.0169,
+  "p99": 0.0184,
+  "max": 0.7384,
+  "opsPerSec": 71263.8981
  }
 }

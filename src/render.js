@@ -9,6 +9,7 @@ const PAPER = '#a3c464';   // LCD green, used for text knocked out of an ink box
 const JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
 const BANNER_POOL = 3;
 const RING_POOL = 12, LABEL_POOL = 8;
+const SPRITE_MAX = 200;   // cached text strings (each has up to 4 colour/weight variants)
 const LANE_MAX = 40;
 const NOTE_H = 7;
 const LABEL_H = CAP + 2;   // key-label row under each receptor
@@ -72,7 +73,7 @@ export class Renderer {
     this.lastCombo = 0;
     this.banners = Array.from({ length: BANNER_POOL }, () => ({ t: -10, text: '' }));
     this.bannerI = 0;
-    this._sprites = new Map();
+    this._sprites = new Map();  // string -> [ink, paper, ink bold, paper bold] -> { w, sp }
     this.resetState();
     this.resize();
     if (typeof window !== 'undefined') {
@@ -167,20 +168,33 @@ export class Renderer {
     this._idleDone = false;
   }
 
-  // Pre-rendered text (one canvas per string/colour) so a frame blits a handful of bitmaps instead of hundreds of rects.
+  // Pre-rendered text (one canvas per string/colour/weight) so a frame blits a handful of bitmaps instead of hundreds
+  // of rects. Lookup is by string, then a 4-slot array for ink/paper x plain/bold: no key concatenation per call, and
+  // the oldest string is evicted one at a time (a wholesale clear would re-rasterise every label in a single frame).
   _text(c, str, x, y, color = INK, bold = false, scale = 1, align = 'left') {
-    const w = textWidth(str, bold), h = CAP + 2;
+    const ci = color === INK ? 0 : color === PAPER ? 1 : -1;
+    let ent;
+    if (ci >= 0) {
+      let slots = this._sprites.get(str);
+      if (slots === undefined) {
+        if (this._sprites.size >= SPRITE_MAX) this._sprites.delete(this._sprites.keys().next().value);
+        this._sprites.set(str, slots = [null, null, null, null]);
+      }
+      const si = ci + (bold ? 2 : 0);
+      ent = slots[si];
+      if (ent === null) {
+        const w = textWidth(str, bold);
+        const sp = makeCanvas(Math.max(1, w), CAP + 2);
+        if (sp) paintText(sp.getContext('2d'), str, 0, 0, color, bold);
+        slots[si] = ent = { w, sp };
+      }
+    } else {
+      ent = { w: textWidth(str, bold), sp: null }; // unexpected colour: draw uncached
+    }
+    const w = ent.w, h = CAP + 2, sp = ent.sp;
     if (align === 'center') x -= Math.floor(w * scale / 2);
     else if (align === 'right') x -= w * scale;
     x = Math.round(x); y = Math.round(y);
-    const key = str + '|' + color + '|' + bold;
-    let sp = this._sprites.get(key);
-    if (sp === undefined) {
-      if (this._sprites.size > 200) this._sprites.clear();
-      sp = makeCanvas(Math.max(1, w), h);
-      if (sp) paintText(sp.getContext('2d'), str, 0, 0, color, bold);
-      this._sprites.set(key, sp);
-    }
     if (sp && typeof c.drawImage === 'function') c.drawImage(sp, x, y, w * scale, h * scale);
     else if (scale === 1) paintText(c, str, x, y, color, bold);
     return w * scale;
@@ -448,11 +462,20 @@ export class Renderer {
     // Milestone banners over the highway
     const bx = Math.round(this.x0 + this.laneW * this.lanes / 2);
     // Simultaneous banners (e.g. two combo milestones) stack upward, newest at the base position.
-    let slot = 0;
-    const live = this.banners.filter(b => { const age = now - b.t; return age >= 0 && age <= 1.2; });
-    live.sort((a, b) => b.t - a.t);
-    for (const b of live) {
-      this._box(c, b.text, bx, Math.round(H * 0.4) - slot++ * (CAP + 8));
+    // Picked newest-first straight from the 3-slot pool (no per-frame filter/sort arrays).
+    const bn = this.banners;
+    let slot = 0, used = 0;
+    for (;;) {
+      let best = -1;
+      for (let i = 0; i < bn.length; i++) {
+        if (used & (1 << i)) continue;
+        const age = now - bn[i].t;
+        if (age < 0 || age > 1.2) continue;
+        if (best < 0 || bn[i].t > bn[best].t) best = i;
+      }
+      if (best < 0) break;
+      used |= 1 << best;
+      this._box(c, bn[best].text, bx, Math.round(H * 0.4) - slot++ * (CAP + 8));
     }
 
     // Resume countdown (song time is frozen while this shows)

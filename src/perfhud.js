@@ -1,7 +1,7 @@
 // Corner overlay for perf.js. Only created when profiling is switched on.
 
 export function createHud(perf, { interval = 500 } = {}) {
-  let el = null, timer = 0;
+  let el = null, timer = 0, obs = null, longTasks = 0, longMax = 0;
   const fmt = v => (v == null ? '-' : v.toFixed(2));
 
   function render() {
@@ -11,6 +11,7 @@ export function createHud(perf, { interval = 500 } = {}) {
     for (const [k, s] of Object.entries(r.sections)) {
       if (k !== 'frame') lines.push(`${k.padEnd(10)} ${fmt(s.mean)} (p95 ${fmt(s.p95)}) ms`);
     }
+    if (obs) lines.push(`longtasks ${longTasks} (max ${longMax.toFixed(0)} ms)`);
     const m = performance.memory;
     if (m) lines.push(`heap ${(m.usedJSHeapSize / 1048576).toFixed(1)} MB`);
     el.textContent = lines.join('\n');
@@ -22,10 +23,16 @@ export function createHud(perf, { interval = 500 } = {}) {
       el = document.createElement('pre');
       el.style.cssText = 'position:fixed;top:4px;left:4px;z-index:9999;margin:0;padding:4px 6px;font:11px/1.3 ui-monospace,monospace;color:#9f9;background:rgba(0,0,0,.65);pointer-events:none;white-space:pre';
       document.body.appendChild(el);
+      // Main-thread tasks over 50 ms (GC, layout, script) show up here even when the frame timer misses them.
+      longTasks = 0; longMax = 0;
+      try {
+        obs = new PerformanceObserver(list => { for (const e of list.getEntries()) { longTasks++; longMax = Math.max(longMax, e.duration); } });
+        obs.observe({ entryTypes: ['longtask'] });
+      } catch { obs = null; /* not supported */ }
       timer = setInterval(render, interval);
       render();
     },
-    hide() { clearInterval(timer); if (el) el.remove(); el = null; },
+    hide() { clearInterval(timer); if (obs) obs.disconnect(); obs = null; if (el) el.remove(); el = null; },
     get visible() { return !!el; },
   };
 }

@@ -12,7 +12,8 @@
     "smoke": "node scripts/smoke.mjs",
     "build": "node scripts/build-dist.mjs",
     "bench": "node scripts/bench.mjs",
-    "perf": "node scripts/perf-bench.mjs",
+    "perf": "node --expose-gc scripts/perf-bench.mjs",
+    "perf:play": "node scripts/perf-play.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "font":"node scripts/build-font.mjs"
   },

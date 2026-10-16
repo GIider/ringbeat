@@ -34,7 +34,8 @@ src/
   share.js        #s=<base64url> share links
   main.js         state machine, screen wiring, phone layout/modes + soft keys, play/results flow
 scripts/serve.mjs   dependency-free dev server (LAN URLs, no-store)
-scripts/perf-bench.mjs  speed micro-benchmarks incl. headless render (`npm run perf`)
+scripts/perf-bench.mjs  speed micro-benchmarks incl. headless render, whole-song frame replays, alloc per call (`npm run perf`)
+scripts/perf-play.mjs   plays songs in headless Chromium with a key bot and reports frame pacing (`npm run perf:play`)
 tests/
   core.test.mjs   node tests: library, scores, practice transforms, game FC/AP, bindings
   rtttl.test.html parser/chart tests in the browser (title shows PASS/FAIL)
@@ -72,3 +73,8 @@ tests/
   `--baseline f.json` adds a Δ% column, `--fail-over 25` exits nonzero on a regression. Timings are machine-specific, so
   record a baseline on the same machine first. `canvas calls/frame` for `render.draw` is deterministic and a good
   regression signal.
+  Columns include p99/max (stutter is about the worst frame) and, because `npm run perf` runs with `--expose-gc`,
+  `alloc B/call` (approximate heap growth per call; steady-state `render.draw` should stay near zero). `frames.*` cases
+  replay a whole song at 60 Hz and report per-frame percentiles; `--fail-over-max N` also gates the worst-frame delta.
+- **In a real browser:** `npm run perf:play [-- --songs 0,6,12 --diff hard --seconds 30]` plays songs with a keyboard bot
+  and prints fps, long-frame %, frame p50/p95/p99/max and draw/update p99. The HUD also counts main-thread long tasks.

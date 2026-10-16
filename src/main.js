@@ -1810,10 +1810,10 @@ function frame() {
     else if (resumeEnd) renderer.resumeCount = Math.ceil(left / 1000);
   }
   perf.begin('update');
-  game.update(game.songTime());
+  const t = game.songTime(); // one clock read per frame: update and draw see the same time
+  game.update(t);
   perf.end('update');
   if (!game.active || game.state === 'done') return;
-  const t = game.songTime();
   if (state === 'countin' && t >= 0) state = 'playing';
   perf.begin('draw');
   renderer.draw(game, t);
