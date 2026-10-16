@@ -443,11 +443,14 @@ function selectSong(id, scroll = true) {
     const row = Array.from($('song-list').children).find(b => b.dataset.id === id);
     if (row) revealRow(row);
   }
-  if (changed) {
-    stopPreview();
-    if (settings.preview && state === 'select' && synth.ctx) {
-      autoPreviewTimer = setTimeout(() => startPreview(selectedEntry(), 10), 450);
-    }
+  if (changed) scheduleAutoPreview();
+}
+
+function scheduleAutoPreview() {
+  stopPreview();
+  if (settings.preview && state === 'select' && synth.ctx) {
+    synth.ensure(); // resume a context suspended by tutorial pause/skip
+    autoPreviewTimer = setTimeout(() => startPreview(selectedEntry(), 10), 450);
   }
 }
 
@@ -489,6 +492,7 @@ function openSelect() {
   renderDetail();
   setState('select', 'select');
   focusCurrentRow();
+  scheduleAutoPreview();
 }
 function openOptions() { renderCategories(); setState('options', 'options'); }
 
@@ -987,7 +991,7 @@ game.onFinish = r => {
     r.mods = mods.tags(used);
   }
   $('r-heading').textContent = screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
-  $('r-song').textContent = run ? `${run.entry.title} · ${run.diff}` +
+  $('r-song').textContent = run ? `${run.entry.title} · ${cap(run.diff)}` +
     (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
   juiceResults(r);
   $('r-grade').textContent = r.grade;
