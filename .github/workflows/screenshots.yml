@@ -31,7 +31,7 @@ jobs:
       - name: Fetch published screenshots
         run: |
           if git fetch --depth=1 origin screenshots; then
-            git worktree add --detach shots FETCH_HEAD
+            git -c core.hooksPath=/dev/null worktree add --detach shots FETCH_HEAD # the branch has no .githooks
           else
             mkdir shots
           fi
