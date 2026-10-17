@@ -117,6 +117,7 @@ const inPlay = () => state === 'countin' || state === 'playing' || state === 're
 function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  if (name !== 'select') dismissBubble();
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
   if (name !== 'msgload') clearTimeout(msgTimer);
@@ -322,21 +323,37 @@ function showToast(fill, ms) {
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
-// Thought bubble with a pixel icon beside the selected row's genre icon (the label is for screen readers only).
-let bubbleTimer = 0;
-function favBubble(rows, label, kind, ms = 1100) {
-  const b = $('fav-bubble'), icon = document.querySelector('#song-list .song-row.cur .spr.cat');
-  if (!icon) return;
+// Thought bubble with a pixel icon beside a song's genre icon (the label is for screen readers only). It is pinned to
+// that song's row: it follows the row while the list scrolls and is dismissed once the row is out of view or gone.
+let bubbleTimer = 0, bubbleId = '';
+function favBubble(id, rows, label, kind, ms = 1100) {
+  const b = $('fav-bubble');
   b.innerHTML = spriteHTML(rows, 4) + `<span class="sr">${esc(label)}</span>`;
-  b.hidden = false; // measured below
-  const ir = icon.getBoundingClientRect(), lr = $('lcd').getBoundingClientRect(), br = b.getBoundingClientRect();
+  bubbleId = id;
+  b.hidden = false; // measured in placeBubble
+  if (!placeBubble()) return;
+  b.classList.remove('add', 'break'); void b.offsetWidth; b.classList.add(kind);
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(dismissBubble, ms);
+}
+function dismissBubble() {
+  clearTimeout(bubbleTimer);
+  bubbleId = '';
+  $('fav-bubble').hidden = true;
+}
+// Put the bubble beside its row's icon; false (and dismissed) when that row is not fully inside the list viewport.
+function placeBubble() {
+  const b = $('fav-bubble');
+  if (b.hidden) return false;
+  const row = Array.from($('song-list').children).find(r => r.dataset.id === bubbleId), icon = row && row.querySelector('.spr.cat');
+  if (!icon) { dismissBubble(); return false; }
+  const ir = icon.getBoundingClientRect(), list = $('song-list').getBoundingClientRect(), lr = $('lcd').getBoundingClientRect(), br = b.getBoundingClientRect();
+  if (ir.top < list.top || ir.bottom > list.bottom) { dismissBubble(); return false; }
   const above = ir.top - br.height - 12 >= lr.top + 2; // otherwise below the icon, tail pointing up
   b.classList.toggle('below', !above);
   b.style.left = Math.max(lr.left + 14, Math.min(lr.right - br.width - 4, ir.right + 12)) + 'px';
   b.style.top = (above ? ir.top - br.height - 12 : ir.bottom + 12) + 'px';
-  b.classList.remove('add', 'break'); void b.offsetWidth; b.classList.add(kind);
-  clearTimeout(bubbleTimer);
-  bubbleTimer = setTimeout(() => { b.hidden = true; }, ms);
+  return true;
 }
 
 // ---- library & selection ----
@@ -513,7 +530,7 @@ function updateThumb() {
 }
 {
   const l = $('song-list');
-  l.addEventListener('scroll', queueThumb, { passive: true });
+  l.addEventListener('scroll', () => { queueThumb(); placeBubble(); }, { passive: true });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateThumb).observe(l);
 }
 // A-Z strip (touch, sorted by title): the letters present, drag along it to jump.
@@ -654,7 +671,7 @@ function toggleFavorite(id = selectedId) {
   renderList();
   if (state === 'select') focusCurrentRow(); // the list may have re-sorted around the cursor
   // After focusCurrentRow's frame has put the row back in view, so the bubble finds the icon where it ended up.
-  requestAnimationFrame(() => requestAnimationFrame(() => (on ? favBubble(HEART, tr('Favorite added'), 'add') : favBubble(HEART_BROKEN, tr('Favorite removed'), 'break'))));
+  requestAnimationFrame(() => requestAnimationFrame(() => (on ? favBubble(id, HEART, tr('Favorite added'), 'add') : favBubble(id, HEART_BROKEN, tr('Favorite removed'), 'break'))));
 }
 
 function renderList() {
@@ -688,6 +705,7 @@ function renderList() {
   renderAz();
   markSelected();
   queueThumb();
+  placeBubble(); // the rows were rebuilt: re-pin the bubble (or drop it when its song left the list)
 }
 // One delegated set of row handlers instead of three listeners per row (the list is rebuilt on every view change).
 {
