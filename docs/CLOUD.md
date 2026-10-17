@@ -58,6 +58,10 @@ merged document only when it differs from what the device sent.
 into an outbox (`ringbeat.cloud.v1`); a better run replaces waiting ones on the same board. Other runs never leave
 the device: they can't change the player's place on any board, and the scores and stats they changed travel in the
 device slot anyway. The first sync after sign-in sends the best run per board.
+A replay over the API's 250 000-character limit is dropped when the run is queued (it goes up as unranked history).
+The runs in a request only get the room the rest of its body leaves; a run that doesn't fit next to a big document
+goes in the next request. If the API still refuses a batch (400/413), its runs lose their replays, then themselves,
+so one bad run can't block the queue.
 - A run carries song id, difficulty, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
   time.
 - Its id is `device:song:difficulty:time`. The first sync after signing in also uploads the device's existing top

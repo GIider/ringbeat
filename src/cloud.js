@@ -14,7 +14,8 @@ export const DEVICE_KEY = 'ringbeat.device.v1';
 export const BOARDS_KEY = 'ringbeat.boards.v1';
 export const RUN_BATCH = 50;
 const MAX_OUTBOX = 500;
-const MAX_BATCH_CHARS = 250_000;   // a POST /sync body stays under the API's limit
+const BODY_BUDGET = 280_000;       // a POST /sync body stays under the API's limit (300 000)
+const MAX_REPLAY = 250_000;        // the API's limit for one encoded input log; a longer one goes up as unranked history
 const MAX_OUTBOX_REPLAYS = 1_000_000; // replay characters kept waiting; older runs drop theirs (they stay unranked)
 const KEEPALIVE_MAX = 60_000;      // browsers drop keepalive bodies over 64 KB
 export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when the last sync is older than this
@@ -176,6 +177,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   let sending = 0;
   function queue(run) {
     const { date, ...rest } = run;
+    if (rest.replay && rest.replay.length > MAX_REPLAY) delete rest.replay; // the API would drop it anyway
     // A better run on the same board replaces the ones still waiting: only the best can rank.
     st.outbox = st.outbox.filter((r, i) => i < sending || r.songId !== rest.songId || r.diff !== rest.diff || r.score > rest.score);
     st.outbox.push(rest);
@@ -186,10 +188,14 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (r.replay) { chars -= r.replay.length; delete r.replay; }
     }
   }
-  function takeBatch() {
+  // The runs for one request, in the `room` the other parts of its body leave. A first run that doesn't fit next to
+  // them waits for the next request, which carries nothing else (`alone`).
+  function takeBatch(room, alone) {
     let n = 0, chars = 0;
-    while (n < Math.min(RUN_BATCH, st.outbox.length) && (n === 0 || chars + JSON.stringify(st.outbox[n]).length < MAX_BATCH_CHARS)) {
-      chars += JSON.stringify(st.outbox[n++]).length;
+    while (n < Math.min(RUN_BATCH, st.outbox.length)) {
+      const len = JSON.stringify(st.outbox[n]).length + 1;
+      if (chars + len > room && (n > 0 || !alone)) break;
+      chars += len; n++;
     }
     return st.outbox.slice(0, n);
   }
@@ -219,8 +225,11 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     do {
       const shared = localShared(), dev = deviceDoc();
       const sendShared = sharedPrint(shared) !== st.sharedHash, devPrint = devicePrint(dev);
-      const sendDevice = devPrint !== st.deviceHash, batch = takeBatch();
+      const sendDevice = devPrint !== st.deviceHash;
       const sendProfile = first && profileDirty() ? { ...st.pendingProfile } : null;
+      const fixed = (sendShared ? JSON.stringify(shared).length : 0) + (sendDevice ? JSON.stringify(dev).length : 0)
+        + (sendProfile ? JSON.stringify(sendProfile).length : 0);
+      const batch = takeBatch(BODY_BUDGET - fixed - 1000, fixed === 0);
       const askDevices = first && pull;
       const askRanks = first && wantRanks;
       if (!sendShared && !sendDevice && !sendProfile && !batch.length && !askDevices && !askRanks) break;
@@ -239,6 +248,15 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       sending = batch.length;
       let r;
       try { r = await request('POST', '/sync', text, { keepalive: keepalive && text.length <= KEEPALIVE_MAX, why: first ? why : why + ' (more runs)' }); }
+      catch (e) {
+        // Refused for its size or shape: the runs lose their replays, then themselves, so they can't block the queue.
+        if (batch.length && e && (e.status === 400 || e.status === 413)) {
+          if (batch.some(b => b.replay)) for (const b of batch) delete b.replay;
+          else st.outbox.shift();
+          persist();
+        }
+        throw e;
+      }
       finally { sending = 0; }
       if (isNum(r.rules)) st.rules = r.rules;
       if (r.shared) {

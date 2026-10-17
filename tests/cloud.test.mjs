@@ -1001,3 +1001,47 @@ test('queue: a better run replaces waiting ones on the same board; backfill send
   a.cloud.queueRun('s1', 'hard', result(50, 3));
   assert.equal(a.cloud.pendingRuns(), 2, 'one per board, the best');
 });
+
+// ---- a run can't get stuck in the outbox ----
+
+test('outbox: an over-long replay goes up as unranked history; a big body is split; a refused batch loses its replay', async () => {
+  const srv = server();
+  const a = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync();
+
+  const long = a.cloud.queueRun('s1', 'normal', result(100, 1), [], { replay: 'A'.repeat(300_000), rules: RULES });
+  assert.equal(JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox[0].replay, undefined, 'the API would drop it: not sent');
+  assert.equal((await a.cloud.submit())[long].verified, 0);
+  assert.equal(a.cloud.pendingRuns(), 0);
+
+  // A big shared document next to a big replay would pass the API's body limit: they go in two requests.
+  for (let i = 0; i < 3500; i++) a.prefs.favs['song-number-' + i] = { on: true, t: 1000 + i };
+  a.cloud.queueRun('s2', 'normal', result(100, 2), [], { replay: 'A'.repeat(240_000), rules: RULES });
+  a.calls.length = 0;
+  const r = await a.cloud.submit();
+  assert.equal(Object.keys(r).length, 1);
+  assert.equal(a.cloud.pendingRuns(), 0);
+  assert.ok(a.calls.length >= 2 && a.calls.every(c => c.init.body.length < 300_000), 'every body fits');
+  assert.ok(a.calls.filter(c => JSON.parse(c.init.body).runs).length === 1, 'the run travels once, apart from the document');
+});
+
+test('outbox: a batch the API refuses (400) loses its replays, then itself, instead of blocking the queue', async () => {
+  const srv = server();
+  let refuse = 0;
+  const wrapped = { ...srv, call: (path, init) => (init && init.body && refuse > 0 && JSON.parse(init.body).runs && refuse--)
+    ? Promise.resolve(new Response('{}', { status: 400 })) : srv.call(path, init) };
+  const a = device(wrapped);
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  await a.cloud.sync();
+  refuse = 2;
+  const id = a.cloud.queueRun('s1', 'normal', result(100, 1), [], { replay: 'AAAA', rules: RULES });
+  assert.deepEqual(await a.cloud.submit(), {});
+  assert.equal(JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox[0].replay, undefined, 'replay stripped');
+  a.t.now += 3 * 60e3; // past the backoff
+  assert.deepEqual(await a.cloud.submit(), {});
+  assert.equal(a.cloud.pendingRuns(), 0, 'nothing left to strip: the run is dropped');
+  const next = a.cloud.queueRun('s1', 'normal', result(200, 2));
+  assert.ok((await a.cloud.submit())[next], 'the queue moves again');
+  assert.ok(id);
+});
