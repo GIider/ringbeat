@@ -7,6 +7,7 @@ import { mkdirSync, existsSync, mkdtempSync, copyFileSync, rmSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fixture } from './lib/screenshot-fixture.mjs';
 
 // desktop = full phone artwork; compact (<600px wide) = bare LCD, as on a real phone
 const views = {
@@ -16,7 +17,8 @@ const views = {
 };
 // [demo state, view] pairs used by the README
 const shots = [
-  ['menu', 'narrow'], ['select', 'desktop'], ['mods', 'narrow'], ['play', 'narrow'], ['play', 'compact'],
+  ['title', 'narrow'], ['menu', 'narrow'], ['select', 'desktop'], ['mods', 'narrow'], ['play', 'narrow'], ['play', 'compact'],
+  ['inbox', 'narrow'], ['profile', 'narrow'], ['settings', 'narrow'], ['grades', 'narrow'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.
 let magick = null;
@@ -50,6 +52,8 @@ try {
     viewport, deviceScaleFactor: 1,
     reducedMotion: 'reduce', locale: 'en-US', timezoneId: 'UTC',
    });
+   // The same signed-in player in every shot (the cloud is faked: ?demo= pages make no requests).
+   await ctx.addInitScript(fx => { for (const [k, v] of Object.entries(fx)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); }, fixture);
    for (const kind of kinds) {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(`${kind}: ${e.message}`));

@@ -90,12 +90,13 @@ without adding them to `main`'s history:
 
 The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name>.png`.
 
-`npm run screenshots` (`scripts/screenshots.mjs`) takes five shots from `?demo=` states (see
-[DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)):
-- `menu`, `select`, `mods` (1.2× speed, mirror lanes, hidden notes and sudden death on; held in memory, never saved) and `play` at desktop size (1280×1100).
+`npm run screenshots` (`scripts/screenshots.mjs`) takes ten shots from `?demo=` states (see
+[DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)), all as the same signed-in demo player:
+- `title`, `menu`, `select` (with seeded grades and FC/AP badges), `mods` (1.2× speed, mirror lanes, hidden notes and sudden death on; held in memory, never saved), `play`, `inbox`, `profile`, `settings` (Sound tab) and `grades` (Stats, Grades page) at desktop size (1280×1100 / 1000×1100).
 - `play` at compact size (480×800).
 
-All five use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.
+The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in, lifetime stats and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.
+All of them use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.
 With ImageMagick (`magick` or `convert`), each shot is reduced to a 128-colour PNG8 and only rewritten when its pixels
 differ, so unchanged shots keep their exact bytes.
 

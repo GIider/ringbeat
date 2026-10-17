@@ -153,6 +153,8 @@ textarea::placeholder { color: var(--ink-dim); }
 .boot-build { margin-top: 2px; opacity: .45; }
 .boot-version a { color: inherit; text-decoration: none; pointer-events: auto; }
 .boot-version a:hover, .boot-version a:focus-visible { text-decoration: underline; opacity: 1; }
+.hint-tap { display: none; }
+@media (pointer: coarse) { .hint-key { display: none; } .hint-tap { display: inline; } } /* touch screens: "Tap" instead of "Press any key" */
 .blink { font-weight: 700; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { visibility: hidden; } }
 @keyframes hello-in { from { clip-path: inset(0 100% 0 0); } }

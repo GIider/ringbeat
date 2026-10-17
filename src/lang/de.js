@@ -36,7 +36,8 @@ export const de = {
   'My song': 'Mein Song',
 
   // ---- title & main menu ----
-  'Press any key or tap': 'Taste drücken oder tippen',
+  'Press any key': 'Taste drücken',
+  'Tap': 'Tippen',
   'Connecting…': 'Verbinde…',
   'Connected': 'Verbunden',
   'Ringbeat on GitHub': 'Ringbeat auf GitHub',

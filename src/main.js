@@ -2999,8 +2999,8 @@ function wire() {
     history.replaceState(null, '', location.pathname + location.search);
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
     else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
-  } else cloud.sync('start');
-  cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
+  } else if (!demoKind) cloud.sync('start'); // ?demo= pages never touch the network
+  if (!demoKind) cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
@@ -3230,16 +3230,36 @@ function updatePhones(g, t) {
   setSprite($('st-battery'), battery(bat), 2);
 }
 
-// ---- dev-only screenshot states: ?demo=menu|select|info|mods|play|pause|results|fc|settings|stats|message ----
+// ---- dev-only screenshot states: ?demo=title|menu|select|info|mods|play|pause|results|fc|settings|stats|grades|inbox|profile|message ----
 let demoRun = null, demoLabels = [];
+const demoKind = new URLSearchParams(location.search).get('demo');
 const DEMO_SEED = 11;
 const DEMO_JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
+// A fixed spread of best runs on the rows around the selected song: every grade, FC, AP and a gap, always the same.
+const DEMO_RUNS = [
+  { grade: 'S', score: 91250, accuracy: 97.2, maxCombo: 74, fc: true }, { grade: 'A', score: 76420, accuracy: 93.5, maxCombo: 41 },
+  { grade: 'B', score: 61900, accuracy: 88.0, maxCombo: 33 }, { grade: 'S', score: 98400, accuracy: 99.1, maxCombo: 88, fc: true, ap: true },
+  { grade: 'B', score: 58300, accuracy: 86.7, maxCombo: 28 }, { grade: 'A', score: 80100, accuracy: 94.8, maxCombo: 60, fc: true },
+  { grade: 'S', score: 95030, accuracy: 98.0, maxCombo: 70, fc: true }, { grade: 'C', score: 40210, accuracy: 79.4, maxCombo: 19 },
+  { grade: 'A', score: 78800, accuracy: 94.1, maxCombo: 52 }, null,
+  { grade: 'B', score: 57100, accuracy: 85.9, maxCombo: 25 }, { grade: 'S', score: 99000, accuracy: 99.5, maxCombo: 96, fc: true, ap: true },
+];
+function seedDemoScores() {
+  const list = visible(), from = Math.max(0, list.findIndex(e => e.id === selectedId) - 5); // the rows around the cursor
+  list.slice(from, from + DEMO_RUNS.length).forEach((e, i) => {
+    if (DEMO_RUNS[i]) scores.record(e.id, settings.difficulty, { ...DEMO_RUNS[i], date: Date.UTC(2026, 9, 10) + i * 36e5 });
+  });
+}
 function demo(kind) {
   settings.tutorialDone = true;
+  if (kind === 'title') return; // stays on the title screen
   selectedId = entryById('nokia') ? 'nokia' : selectedId;
   openSelect();
-  if (kind === 'menu') openMenu('tones');
+    if (kind === 'menu') openMenu('settings');
   else if (kind === 'stats') openStats();
+  else if (kind === 'grades') { seedDemoScores(); openStats(); setStatPage(3); } // the grade tally comes from the scores
+  else if (kind === 'inbox') openInbox();
+  else if (kind === 'profile') openProfile();
   else if (kind === 'message') showMessage(0);
   else if (kind === 'info') askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
   else if (kind === 'mods') {
@@ -3365,6 +3385,7 @@ fetch(new URL('./difficulty.json', import.meta.url))
     const fallback = defaultSongId();
     builtins = perf.time('library', () => buildLibrary());
     if (!settings.lastSongId && selectedId === fallback) selectedId = defaultSongId();
+    if (demoKind === 'select') seedDemoScores(); // after the re-sort: the rows around the cursor are final now
     renderList();
     renderDetail();
     if (state === 'select') focusCurrentRow(); // the re-sort moved the cursor row
@@ -3379,7 +3400,6 @@ setMode();
 layout(); // place the phone before the first paint, without the slide
 // Row heights change once the pixel font arrives: re-centre the cursor row then.
 if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
-const demoKind = new URLSearchParams(location.search).get('demo');
 if (demoKind) demo(demoKind);
 try { // the overlay used to be remembered outside the settings: adopt that once
   if (localStorage.getItem('ringbeat.perf')) { settings.perfOverlay = true; save(); }

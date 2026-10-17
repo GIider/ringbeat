@@ -15,13 +15,27 @@ leaderboards; see [Online](#online-optional).
 
 ## Screenshots
 
-| Main menu | Song list | Mods |
-| --- | --- | --- |
-| ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) | ![Mods: 1.2x speed, mirror lanes, hidden notes, sudden death](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/mods-desktop.png) |
+The screenshots show a signed-in demo player ("Nova") with fixed scores and stats.
 
-| Playing | Playing (compact) |
-| --- | --- |
-| ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing, compact](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
+| Title | Main menu | Song list |
+| --- | --- | --- |
+| ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
+| Title screen: "Press any key" (or "Tap" on touch screens) starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with each song's best grade and FC (full combo) / AP (all perfect) badges, and the cursor song's best score below. |
+
+| Mods | Playing | Playing (compact) |
+| --- | --- | --- |
+| ![Mods](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/mods-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing (compact)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
+| Mods: 1.2x speed, mirror lanes, hidden notes, sudden death. | Playing on the phone. | Compact layout: on small windows the LCD fills the window. |
+
+| Messages | Profile | Settings |
+| --- | --- | --- |
+| ![Messages](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-desktop.png) | ![Profile](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/profile-desktop.png) | ![Settings](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/settings-desktop.png) |
+| Messages: the changelog arrives as texts, unread ones in bold. | Profile of a signed-in player: name, play time, leaderboard visibility, sync status. | Settings, Sound tab: volume, tone, backing pulse and auto-play rolls. |
+
+| Stats |
+| --- |
+| ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/grades-desktop.png) |
+| Stats, Grades page: how many songs ended on each grade, from the saved best runs. |
 
 On small windows (under 600 px wide or 520 px tall) the phone body is dropped and the LCD fills the window.
 CI regenerates the screenshots on every push to `main` (see [docs/RELEASING.md](docs/RELEASING.md#screenshots)).
