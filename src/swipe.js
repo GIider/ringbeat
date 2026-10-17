@@ -14,13 +14,16 @@ export function swipeDir(dx, dy, axis = 'x', threshold = 40) {
 // gesture was a swipe, so click handlers can ignore the click that follows it.
 export function onSwipe(el, cb, { axis = 'x', threshold = 40 } = {}) {
   let sx = null, sy = 0, swiped = false;
-  el.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; swiped = false; });
-  el.addEventListener('pointercancel', () => { sx = null; });
-  el.addEventListener('pointerup', e => {
+  // Fires once the drag passes the threshold (not only on pointerup), so a browser that takes over the gesture
+  // and cancels the pointer afterwards still delivers the swipe.
+  const check = e => {
     if (sx === null) return;
     const dir = swipeDir(e.clientX - sx, e.clientY - sy, axis, threshold);
-    sx = null;
-    if (dir) { swiped = true; cb(dir, e); }
-  });
+    if (dir) { sx = null; swiped = true; cb(dir, e); }
+  };
+  el.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; swiped = false; });
+  el.addEventListener('pointermove', check);
+  el.addEventListener('pointercancel', () => { sx = null; });
+  el.addEventListener('pointerup', e => { check(e); sx = null; });
   return () => swiped;
 }

@@ -491,6 +491,16 @@
   <div id="toast" class="toast" hidden role="status"></div>
   <div id="fav-fx" hidden role="status"></div>
 
+  <script>
+    // Startup safety net: if the app script throws, say so on the page instead of leaving the loading bars.
+    addEventListener('error', function (e) { window.__rbErr = window.__rbErr || String(e.message || e); });
+    addEventListener('unhandledrejection', function (e) { window.__rbErr = window.__rbErr || String(e.reason); });
+    setTimeout(function () {
+      var l = document.getElementById('loading');
+      if (l && l.parentNode && !l.hidden) { l.insertAdjacentHTML('beforeend', '<pre style="white-space:pre-wrap;font-size:11px;margin:8px">' +
+        String(window.__rbErr || 'Still loading...').replace(/[<&]/g, '?') + '</pre>'); }
+    }, 8000);
+  </script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

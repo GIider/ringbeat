@@ -79,7 +79,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Feedback:** judgement chips appear per lane, and a milestone banner every 50 combo. With *Hit effects* on, you also
   get receptor punches, debris, combo chirps and an LCD edge blink.
 - **Soft keys** pause.
-- **Compact mode** (window under 600 px wide or 520 px tall, or forced by Settings › Compact view) has the same layout on a bare LCD, without the phone body.
+- **Compact mode** (window under 600 px wide or 520 px tall, or forced by Settings › Compact view, which is only offered when the window is at least 600 × 520 px) has the same layout on a bare LCD, without the phone body.
 
 ### Results
 

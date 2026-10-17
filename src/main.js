@@ -3152,7 +3152,9 @@ function setMode() {
 }
 function layout(animate = false) {
   const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
-  const compact = settings.compactView || vw < 600 || vh < 520;
+  const small = vw < 600 || vh < 520; // too small for the phone: compact is forced, so the setting has nothing to choose
+  const compact = settings.compactView || small;
+  $('pref-compact').closest('label').hidden = small;
   if (phoneMode() === compact) { body.classList.toggle('compact', compact); refreshChrome(); selectHints(); } // labels differ per mode
   let x, y, w, h;
   if (compact) { x = 0; y = 0; w = vw; h = vh; }
