@@ -11,8 +11,8 @@ const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', imp
 const engines = { chromium, firefox, webkit };
 const LANGS = (process.env.AUDIT_LANGS || 'en,de').split(',');
 const LOCALES = { en: 'en-US', de: 'de-DE' };
-// compact phones below 470px LCD use the 20px font, 480+ the 30px one; 900x1100 is the desktop phone frame
-const VIEWPORTS = [[320, 640], [360, 740], [480, 800], [900, 1100]];
+// compact phones below 470px LCD use the 20px font, 480+ the 30px one; 900x1100 is the desktop phone frame, 1024x600 a small desktop window
+const VIEWPORTS = [[320, 640], [360, 740], [480, 800], [900, 1100], [1024, 600]];
 const DEMOS = ['menu', 'select', 'info', 'pause', 'results', 'fc', 'settings', 'stats', 'message'];
 const JOBS = Number(process.env.AUDIT_JOBS) || 4;
 const sleep = ms => new Promise(r => setTimeout(r, ms));

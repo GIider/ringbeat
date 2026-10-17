@@ -257,7 +257,7 @@ textarea::placeholder { color: var(--ink-dim); }
 #set-tabs .arrow.off, #r-tabs .arrow.off { opacity: .35; cursor: default; }
 .dp-tabs { display: flex; justify-content: center; gap: 6px; margin: 2px 0 0; }
 .dp-tabs .sel { background: var(--ink); color: var(--lcd); font-weight: 700; padding: 0 4px; }
-.dp-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-line { flex: 1; min-width: 0; }
 #songscreen .menu > button { flex-wrap: nowrap; }
 .dp-panel { min-height: 3.2em; }
 .dp-seg { justify-content: center; margin: 2px 0; }
