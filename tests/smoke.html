@@ -69,18 +69,24 @@ f.addEventListener('load', async () => {
     log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), '*#06# shows the IMEI panel with the avatar');
     key('KeyX'); await sleep(50);
     log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
-    const catOf = () => $('sel-cat').textContent.replace(/ \d+\//, ' '); // label + total, without the cursor position
+    const catOf = () => $('st-title').textContent + ' ' + $('sel-cat').textContent.replace(/^\d+\//, ''); // heading (with category) + total, without the cursor position
     const cat0 = catOf();
     key('ArrowRight'); await sleep(80);
     log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
     log(catOf() === cat0, 'left arrow switches back');
-    log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones', 'soft keys + status title');
+    log($('soft-left').textContent === 'Select' && /^Tones · ./.test($('st-title').textContent), 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
     log($('dp-tabs').hidden, 'difficulty screen: no World/Local tabs when signed out');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
+    $('sel-sort').click(); await sleep(50);
+    d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await sleep(80);
+    log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);
+    $('sel-sort').click(); await sleep(50);
+    d.querySelector('#hub-grid [data-sort="title"]').click(); await sleep(80);
+    log(!/ - /.test($('sel-cat').textContent), 'sort by title: header shows a letter, no range', $('sel-cat').textContent);
     const v0 = $('set-voice').textContent, voice0 = hookOf().settings.voice, seen = new Set([voice0]);
     $('set-voice').click();
     log($('set-voice').textContent !== v0 && hookOf().settings.voice === 'smooth', 'tone cycle: ' + $('set-voice').textContent);

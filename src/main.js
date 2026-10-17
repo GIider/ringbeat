@@ -140,7 +140,7 @@ function setState(s, screen) { state = s; show(screen); input.enabled = s === 'c
 // Status bar title + soft-key labels come from the visible screen's data attributes.
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
-  $('st-title').textContent = tr(el.dataset.title || '');
+  $('st-title').textContent = tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
   marquee($('st-title'));
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
   // single "Select". The bare LCD keeps both tappable labels.
@@ -500,20 +500,17 @@ function renderCategories() {
   $('sel-diff').textContent = cap(settings.difficulty);
   renderPosition();
 }
-// Header: category, cursor position and the section under the cursor ("Video Games 3/61 · T").
+// Header: the category goes in the status title ("Tones · Video Games"); the row shows the cursor position and section ("3/61 · T").
 // Uses the list and tab renderList() just built: this runs on every cursor move, which must stay cheap.
 let viewList = [], viewTab = null;
 function renderPosition() {
   const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
   if (!t) return;
   let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
-  if (sec && settings.view.sort === 'diff-asc' && !isNaN(sec)) sec = fmt(+sec, 1); // same format as the stars value
-  // The label gives way (ellipsis, marquee when it still overflows); the position and section stay readable.
-  const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
-  if (!cat.firstElementChild) cat.innerHTML = '<span class="cat-lbl"></span> <span class="cat-pos"></span>';
-  const lbl = cat.firstElementChild;
-  cat.lastElementChild.textContent = pos;
-  if (lbl.textContent !== tr(t.label)) { lbl.textContent = tr(t.label); marquee(lbl); }
+  if (sec && settings.view.sort === 'diff-asc' && !isNaN(sec)) sec = `${fmt(+sec - 0.5, 1)} - ${fmt(+sec, 1)}`; // the half-star band, same format as the stars value
+    const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
+  cat.textContent = pos;
+  if (screens.select.dataset.sub !== t.label) { screens.select.dataset.sub = t.label; if (state === 'select') refreshChrome(screens.select); }
   $('sel-sort').textContent = tr(SORTS.find(x => x.id === settings.view.sort).label);
 }
 // Move the cursor to list index `i` (clamped) and keep it in view.
@@ -2895,7 +2892,7 @@ function wire() {
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); marquee($('sel-cat').firstElementChild); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
+  window.addEventListener('resize', () => { layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
@@ -3152,6 +3149,7 @@ function demo(kind) {
     settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); // in memory only, never saved
     askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
     openMods();
+    requestAnimationFrame(() => requestAnimationFrame(() => $('m-mirror').focus())); // show() focuses the first row on a rAF
   } else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
