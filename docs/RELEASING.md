@@ -90,12 +90,12 @@ without adding them to `main`'s history:
 
 The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name>.png`.
 
-`npm run screenshots` (`scripts/screenshots.mjs`) takes four shots from `?demo=` states (see
+`npm run screenshots` (`scripts/screenshots.mjs`) takes five shots from `?demo=` states (see
 [DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)):
-- `menu`, `select` and `play` at desktop size (900×1100).
+- `menu`, `select`, `mods` (1.2× speed, mirror lanes, hidden notes and sudden death on; held in memory, never saved) and `play` at desktop size (1280×1100).
 - `play` at compact size (480×800).
 
-All four use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.
+All five use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.
 With ImageMagick (`magick` or `convert`), each shot is reduced to a 128-colour PNG8 and only rewritten when its pixels
 differ, so unchanged shots keep their exact bytes.
 

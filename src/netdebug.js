@@ -2,6 +2,8 @@
 // held back, as a corner panel, with the full bodies in the console. Plugged into cloud.js as its `debug` callback;
 // off until switched on in Settings › Developer (docs/DEVELOPMENT.md › Debug URLs and hooks).
 
+import { floatBox } from './floatbox.js';
+
 export const size = n => (n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB');
 
 // What the browser says about a finished fetch (Resource Timing): { wire, transfer, decoded, source }. `wire` is the body
@@ -75,13 +77,14 @@ export function line(e, time = new Date()) {
 
 export function createNetDebug({ max = 10, doc = globalThis.document, out = globalThis.console, perf = globalThis.performance, unzip = estimateUnzip } = {}) {
   const totals = { requests: 0, up: 0, down: 0, wire: 0 }, lines = [];
-  let el = null, enabled = true;
+  let el = null, unfloat = null, enabled = true;
   function render() {
     if (!doc || !enabled) return;
     if (!el) {
       el = doc.createElement('pre');
       el.className = 'net-debug';
       doc.body.appendChild(el);
+      unfloat = floatBox(el, 'net', { defaults: () => (doc.body.classList.contains('compact') ? { bottom: 4, right: 4 } : { bottom: 4, left: 4 }) });
     }
     el.textContent = `cloud: ${totals.requests} requests · ↑${size(totals.up)} ↓${size(totals.wire)} wire / ${size(totals.down)}\n` + lines.map(l => l.text).join('\n');
   }
@@ -118,6 +121,8 @@ export function createNetDebug({ max = 10, doc = globalThis.document, out = glob
     if (on === enabled) return;
     enabled = on;
     if (on) { Object.assign(totals, { requests: 0, up: 0, down: 0, wire: 0 }); lines.length = 0; render(); return; } // shows the panel at once, before the first request
+    if (unfloat) unfloat();
+    unfloat = null;
     if (el) el.remove();
     el = null;
   };

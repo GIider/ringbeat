@@ -57,8 +57,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
 - **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved on the shown difficulty (not
   necessarily in the best run).
-- **Footer:** stars + rating, note count, best, BPM and length of the selected song. The category / sort / difficulty keys for the input device in use are listed in a panel beside the phone on wide
-  screens, or in a cycling hint line below on narrow ones.
+- **Footer:** stars + rating, note count, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide
+  screens (no hint line on the LCD).
 - **Selecting and playing:** focusing or tapping a row selects it, and an optional 10 s preview plays. Confirming,
   double-clicking or re-tapping the selected row opens the difficulty screen.
 - **Rating:** `1 + 16.2 ×` the position on an eight-level simulated skill ladder where bots start full-combo-ing the
@@ -79,7 +79,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Feedback:** judgement chips appear per lane, and a milestone banner every 50 combo. With *Hit effects* on, you also
   get receptor punches, debris, combo chirps and an LCD edge blink.
 - **Soft keys** pause.
-- **Compact mode** (window under 600 px wide or 520 px tall) has the same layout on a bare LCD, without the phone body.
+- **Compact mode** (window under 600 px wide or 520 px tall, or forced by Settings › Compact view) has the same layout on a bare LCD, without the phone body.
 
 ### Results
 

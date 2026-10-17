@@ -44,6 +44,7 @@ import { createCameoLayer } from './cameolayer.js';
 import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
 import { createNetDebug } from './netdebug.js';
+import { resetFloatBoxes } from './floatbox.js';
 import { createNetSignal } from './netsignal.js';
 import { marquee, marqueeAll } from './marquee.js';
 import { worldLines } from './worldlines.js';
@@ -2305,7 +2306,7 @@ function selectHints() {
   const bn = buttonName;
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
-  // Wide screens list every key beside the phone; the LCD line is the fallback and flips between pages.
+  // Every key is listed in the panel beside the phone (shown when the screen is wide enough).
   const rows = pad
     ? [[[bn(BTN.LB), bn(BTN.RB)], tr('Category')], [[bn(BTN.LT)], tr('Sort')], [[bn(BTN.Y)], tr('All categories')],
       [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X)], tr('Random')]]
@@ -2322,15 +2323,7 @@ function selectHints() {
     div.append(' ' + label);
     side.append(div);
   }
-  // Two pages of hints, flipped every few seconds (the line is only one or two LCD rows tall).
-  const pages = pad
-    ? [tr('{lb}/{rb} Cat · {lt} Sort · {y} Cats', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT), y: bn(BTN.Y) }),
-      tr('{rt}/{back} Group · {x} Random', { rt: bn(BTN.RT), back: bn(BTN.BACK), x: bn(BTN.X) })]
-    : [tr('◄► Cat · D/F Sort · J/K Diff'), tr('V Fav · R Random · G Cats'), tr('PgUp/PgDn Page · ,/. Group · / Find')];
-  $('sel-hint').textContent = pages[hintPage % pages.length];
 }
-let hintPage = 0;
-setInterval(() => { if (state === 'select' && !document.body.classList.contains('selkeys-on')) { hintPage++; selectHints(); } }, 4500);
 
 pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); syncSettingsTabs(); };
 pad.onDisconnect = () => {
@@ -2573,6 +2566,9 @@ function wire() {
   syncJuice();
   jc.onchange = () => { settings.juice = jc.checked; syncJuice(); save(); };
   hp.onchange = () => { settings.haptics = hp.checked; save(); };
+  const cv = $('pref-compact');
+  cv.checked = settings.compactView;
+  cv.onchange = () => { settings.compactView = cv.checked; save(); layout(true); };
   const cp = $('pref-combopopup');
   cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
   cp.onchange = () => { settings.comboPopup = cp.checked; renderer.comboPopup = cp.checked; save(); };
@@ -2704,6 +2700,7 @@ function wire() {
   $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
   $('btn-mods-back').onclick = closeMods;
   $('btn-glyphs').onclick = openGlyphs;
+  $('btn-float-reset').onclick = () => { resetFloatBoxes(); synth.keyClick(); };
   $('btn-glyphs-back').onclick = () => openSettings(settingsFrom);
   $('glyphs').addEventListener('focusout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.gl-cell')) glyphAnimate(null); });
   $('glyphs').addEventListener('focusin', e => {
@@ -3086,7 +3083,7 @@ function setMode() {
 }
 function layout(animate = false) {
   const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
-  const compact = vw < 600 || vh < 520;
+  const compact = settings.compactView || vw < 600 || vh < 520;
   if (phoneMode() === compact) { body.classList.toggle('compact', compact); refreshChrome(); selectHints(); } // labels differ per mode
   let x, y, w, h;
   if (compact) { x = 0; y = 0; w = vw; h = vh; }
@@ -3139,7 +3136,7 @@ function updatePhones(g, t) {
   setSprite($('st-battery'), battery(bat), 2);
 }
 
-// ---- dev-only screenshot states: ?demo=menu|select|info|play|pause|results|fc|settings|stats|message ----
+// ---- dev-only screenshot states: ?demo=menu|select|info|mods|play|pause|results|fc|settings|stats|message ----
 let demoRun = null, demoLabels = [];
 const DEMO_SEED = 11;
 const DEMO_JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
@@ -3151,7 +3148,11 @@ function demo(kind) {
   else if (kind === 'stats') openStats();
   else if (kind === 'message') showMessage(0);
   else if (kind === 'info') askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
-  else if (kind === 'settings') openSettings();
+  else if (kind === 'mods') {
+    settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); // in memory only, never saved
+    askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
+    openMods();
+  } else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
     run = { entry: selectedEntry(), diff: settings.difficulty };

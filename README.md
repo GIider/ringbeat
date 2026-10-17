@@ -12,9 +12,13 @@ leaderboards; see [Online](#online-optional).
 
 ## Screenshots
 
-| Main menu | Song list | Playing | Playing (compact) |
-| --- | --- | --- | --- |
-| ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing, compact](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
+| Main menu | Song list | Mods |
+| --- | --- | --- |
+| ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) | ![Mods: 1.2x speed, mirror lanes, hidden notes, sudden death](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/mods-desktop.png) |
+
+| Playing | Playing (compact) |
+| --- | --- |
+| ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing, compact](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
 
 On small windows (under 600 px wide or 520 px tall) the phone body is dropped and the LCD fills the window.
 CI regenerates the screenshots on every push to `main` (see [docs/RELEASING.md](docs/RELEASING.md#screenshots)).

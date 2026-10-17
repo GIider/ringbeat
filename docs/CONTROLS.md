@@ -63,69 +63,22 @@ The LCD label is tappable too. In the main menu, swipe or scroll the wheel to br
 On the bare LCD (compact mode) there are no phone keys, so both soft-key labels are shown and tappable: left = the
 action, right = Back.
 
+## Gamepad (Standard Gamepad API)
+
+Any controller the browser maps to the Standard Gamepad layout works. Menus follow the d-pad and left stick, `A` / Start select
+and `B` goes back. The default lane buttons follow the finger order: lane 1 = `LB` / `LT`, lane 2 = d-pad right,
+lane 3 = `X`, lane 4 = `RB` / `RT`. Settings › Controller shows the connection status, lets you capture a new button per
+lane (`Esc` cancels) and has a *Reset buttons* action. Song picker buttons are in the
+[song picker table](#song-picker-navigation).
+
 ## Touch
 
 - **Play:** tap and hold the lane columns (multi-touch). The soft keys pause.
 - **Title:** tap anywhere.
 - **Main menu, Stats, Results, Messages, tutorial cards:** swipe left / right for the next / previous item or page (tap
   the arrows or tabs where shown). Tap a loading message to skip the animation.
-- **Song select:** swipe the list left / right (or tap ◄ ►) to change category; tap the sort or difficulty chip to cycle
-  it; tap a song to select it, tap the selected song again to play. Tap the icon of the selected song to toggle its favorite.
-- **Composer:** on touch / narrow screens a note pad (C–B, rest, length, dot, sharp, pitch, delete) replaces the keys.
-- Sliders get a taller touch target on touch / narrow screens. With *Hit effects* and *Vibration* on, phones buzz on
-  Perfect hits and when a combo breaks; controllers with rumble do the same. *Vibration* sits under Effects on a phone and
-  under Controller on a desktop with a rumble-capable controller, and is hidden otherwise.
-
-## Gamepad (Standard Gamepad API)
-
-Gameplay defaults (each lane has several buttons):
-
-| Lane | Buttons |
-|---|---|
-| 1 (left) | LB, LT |
-| 2 | D-pad → |
-| 3 | X |
-| 4 (right) | RB, RT |
-
-The order follows the fingers: left shoulder, right d-pad, left face button, right shoulder.
-
-`Start` pauses, `Back/Select` restarts.
-
-**Rebinding:** in Settings → Controller, press a lane's button, then the gamepad button. That button becomes the lane's
-only binding, and a button belongs to at most one lane. *Reset buttons* restores the defaults. Bindings are saved.
-
-Menus:
-
-| Action | Input |
-|---|---|
-| Move | D-pad or left stick |
-| Adjust slider | ← → |
-| Confirm | A (or Start) |
-| Back | B |
-| Song select: category − / + | LB / RB (or ← →) |
-| Song select: next sort | LT |
-| Difficulty screen: open Mods | X |
-| Stats / Results / Message: page − / + | LB / RB (or ← →) |
-| Calibration | any button taps; B or Start leaves |
-
-Composer:
-
-| Action | Input |
-|---|---|
-| Add a copy of the last note / rest | A / Y |
-| Tune the note / move the cursor | D-pad up-down / left-right |
-| Length shorter / longer | LB / RB |
-| Preview | X |
-| Composer menu | Start |
-
-A disconnect during play pauses the game. Controllers appear to the browser only after their first button press.
-
-## On-screen hints
-
-- **Song select:** on wide screens every navigation key is listed in a panel to the right of the phone and the list keeps
-  the rows. On narrow or compact screens the hint line under the list flips between short pages of the navigation keys (`◄► Cat · D/F Sort · J/K Diff`,
-  `V Fav · R Random · G Cats`, `PgUp/PgDn Page · ,/. Group · / Find` on keyboard; `LB/RB Cat · LT Sort · Y Cats`,
-  `RT/Back Group · X Random` once a controller is used). With a controller, the category arrows in the header also become
+- **Song select:** on wide screens every navigation key is listed in a panel to the right of the phone. There is no hint line
+  on the LCD, so narrow and compact screens show none. With a controller, the category arrows in the header also become
   LB / RB.
 - **Tutorial cards:** show the lane inputs for the device in use (keys, pad buttons or touch).
 - **Legend:** on wide screens, a legend beside the phone lists the menu and play keys.

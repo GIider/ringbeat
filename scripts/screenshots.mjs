@@ -10,12 +10,12 @@ import { fileURLToPath } from 'node:url';
 
 // desktop = full phone artwork; compact (<600px wide) = bare LCD, as on a real phone
 const views = {
-  desktop: { width: 900, height: 1100 },
+  desktop: { width: 1280, height: 1100 },
   compact: { width: 480, height: 800 },
 };
 // [demo state, view] pairs used by the README
 const shots = [
-  ['menu', 'desktop'], ['select', 'desktop'], ['play', 'desktop'], ['play', 'compact'],
+  ['menu', 'desktop'], ['select', 'desktop'], ['mods', 'desktop'], ['play', 'desktop'], ['play', 'compact'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.
 let magick = null;

@@ -113,7 +113,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 
 | Hook | Effect |
 |---|---|
-| `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
+| `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `mods`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
 | `?dev` | Dev mode: a panel with a button per cameo plus stop, IMEI, wipe and Konami, and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
 | `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
@@ -122,7 +122,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
 
-The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite, pop-up icon and menu icon (focusing a menu icon or pop-up replays its animation).
+The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Drag either overlay to move it, pull its bottom-right corner to resize it, double-click to reset (position is kept per device); **Reset overlay positions** resets both. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite, pop-up icon and menu icon (focusing a menu icon or pop-up replays its animation).
 
 **New symbols, animations, glyphs and icons must be viewable in that gallery.** When you add one (a font glyph, a sprite in `src/pixelart.js`, a pop-up, a menu icon or an animated frame set), register it where the gallery reads from (`GLYPHS`, `SPRITES` / `SPRITES_FAV`, `POPUPS`, `MENU_IDS`) or add a section in `buildGlyphs()` (`src/main.js`), make it replay its animation on focus, and extend the rectangular-art check in `tests/assets.test.mjs`.
 

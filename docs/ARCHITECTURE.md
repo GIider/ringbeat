@@ -89,6 +89,7 @@ src/
   i18n.js         t / tn / tm / fmt, applyStatic, LANGS / DICTS, browser-language detection (see TRANSLATIONS.md)
   lang/de.js      the German dictionary
   perf.js         frame / section profiler (ring buffers, percentiles); no-op until enabled
+  floatbox.js     drag / resize / remember-position helper for the developer overlays
   perfhud.js      the profiler's corner overlay + report copy (see PERFORMANCE.md)
   netdebug.js     the request log (Settings › Developer): every cloud request and held-back sync as a corner panel + console groups
   netsignal.js    the status-bar signal icon as a connection light for signed-in players: bars climb while sending, drop while receiving
@@ -135,7 +136,7 @@ tests/
   - The `#nowplaying` screen is the `#stage` canvas. It is drawn at one canvas pixel per LCD pixel
     (`renderer.setPixelScale(u)`), in two colours (LCD ink on the green backlight), and scaled up with
     `image-rendering: pixelated`.
-  - Compact mode (window under 600 px wide or under 520 px tall) drops the phone body, so the LCD fills the viewport.
+  - Compact mode (window under 600 px wide or under 520 px tall, or `settings.compactView`) drops the phone body, so the LCD fills the viewport.
 - **Crisp pixel text.** The LCD font size is 30 px on a wide LCD and 20 px otherwise. It is then snapped so that one font
   pixel is a whole number of device pixels (`u = round(fs / 10 × dpr) / dpr`, `--fs = 10u`). The canvas does not use
   `fillText`: `render.js` draws the same glyph table as sprites, so canvas and DOM text match pixel for pixel.

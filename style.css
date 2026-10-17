@@ -232,7 +232,6 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-head .arrow { flex: none; font-size: var(--fs); background: none; border: 0; padding: 4px 10px; cursor: pointer; }
 @media (max-width: 600px) { .sel-head { gap: 2px; } .sel-head .arrow { padding: 4px 5px; } }
 .sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
-.sel-hint { color: var(--ink-dim); white-space: normal; text-align: center; }
 .seg { display: flex; gap: 2px; }
 .seg button { background: none; border: var(--u) solid transparent; padding: 1px 6px; cursor: pointer; min-height: 0; }
 .seg button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }
@@ -437,7 +436,7 @@ td + td { text-align: right; font-weight: 700; }
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);
   line-height: 1.5; opacity: 0; visibility: hidden; transition: opacity .3s; }
-body.legend-on .legend { opacity: .85; visibility: visible; }
+body.legend-on .legend:not(.sel-keys) { opacity: .85; visibility: visible; }
 .legend .lg-play, body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-menu { display: none; }
 body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: block; }
 .legend b { display: block; color: #c4d6a8; margin-bottom: 6px; }
@@ -446,7 +445,6 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
   border-radius: 4px; padding: 0 4px; margin-right: 4px; font: inherit; color: #c4d6a8; }
 
 body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
-body.selkeys-on.in-select .sel-hint { display: none; }
 
 /* ---------- marquee for overlong titles ---------- */
 .scrolls { text-overflow: clip; }
