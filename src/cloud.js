@@ -83,7 +83,6 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     devices: obj(st.devices),                          // other devices' {scores, stats, updated}
     devicesAt: isNum(st.devicesAt) ? st.devicesAt : 0, // server time of the last pull of those
     outbox: Array.isArray(st.outbox) ? st.outbox : [], // finished runs not uploaded yet
-    backfilled: st.backfilled === true,                // this device's old top runs went up once
     sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
     sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
@@ -141,7 +140,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
 
   // Back to signed out on this device. The device keeps its own data; the other devices' numbers leave the view.
   function forget() {
-    Object.assign(st, { token: '', profile: null, syncedAt: 0, devices: {}, devicesAt: 0, outbox: [], backfilled: false,
+    Object.assign(st, { token: '', profile: null, syncedAt: 0, devices: {}, devicesAt: 0, outbox: [],
       sharedRev: 0, sharedHash: '', deviceHash: '', ranks: {}, myRanks: { at: 0, rows: [] }, pendingProfile: {} });
     persist();
     showRemote();
@@ -173,21 +172,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     return st.profile;
   }
 
-  // This device's top runs, once per sign-in: the first upload for players who played before signing in.
-  function backfillRuns() {
-    if (st.backfilled) return;
-    const own = scores.own();
-    for (const [songId, diffs] of Object.entries(own)) {
-      for (const [diff, e] of Object.entries(diffs)) {
-        const r = e.top[0]; // only the best run per board can change a leaderboard
-        if (r) queue({ clientRunId: runId(songId, diff, r.date), songId, diff, ...r, playedAt: r.date, gameVersion: '' });
-      }
-    }
-    st.backfilled = true;
-    persist();
-  }
-
-  // The same run gets the same id from queueRun and the backfill, so the API stores it once.
+  // A run's id is stable, so the API stores a re-sent run once.
   const runId = (songId, diff, playedAt) => `${deviceId}:${songId}:${diff}:${playedAt}`;
 
   // Runs from the outbox's first `sending` entries are in a request right now: they stay.
@@ -316,7 +301,6 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (pull && first) st.syncedAt = now();
       persist();
       first = false;
-      if (pull) backfillRuns(); // after the first answer, so a reset from another device is applied first
     } while (st.outbox.length);
     return { ok: true, changed, verdicts };
   }
@@ -422,7 +406,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       const m = /^#?login=([A-Za-z0-9_-]{16,128})$/.exec(String(hash || ''));
       if (!m || !apiBase) return false;
       const r = await request('POST', '/auth/exchange', { code: m[1] });
-      st.token = r.token; st.profile = r.profile; st.backfilled = false;
+      st.token = r.token; st.profile = r.profile;
       persist();
       emit('signedin');
       return true;

@@ -71,15 +71,15 @@ merged document only when it differs from what the device sent.
 **Runs.** A finished run (not demo, tutorial or failed) that is a new best for its song and difficulty goes
 into an outbox (`ringbeat.cloud.v1`); a better run replaces waiting ones on the same board. Other runs never leave
 the device: they can't change the player's place on any board, and the scores and stats they changed travel in the
-device slot anyway. The first sync after sign-in sends the best run per board.
+device slot anyway.
+Scores played before signing in stay on the device: with no replay they could not rank, so they are not uploaded.
 A replay over the API's 250 000-character limit is dropped when the run is queued (it goes up as unranked history).
 The runs in a request only get the room the rest of its body leaves; a run that doesn't fit next to a big document
 goes in the next request. If the API still refuses a batch (400/413), its runs lose their replays, then themselves,
 so one bad run can't block the queue.
 - A run carries song id, difficulty, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
   time.
-- Its id is `device:song:difficulty:time`. The first sync after signing in also uploads the device's existing top
-  runs; because the ids match, the server stores each run once.
+- Its id is `device:song:difficulty:time`; the server stores each id once.
 - Song ids are stable: library ids for built-in songs, `custom:<hash of the RTTTL>` for custom ones.
 - Runs played since leaderboards also carry their **replay** (below), which the API re-plays. A new best goes up
   from the results screen right away, and its world rank comes back in the same answer. Other runs wait for the
@@ -118,7 +118,7 @@ Some runs get `verified = -1` instead and never rank:
 - a failed run or a demo run,
 - an unknown song, or a melody that doesn't match.
 
-Runs without a replay, such as older clients and the backfill, are kept with `verified = 0` as plain history.
+Runs without a replay, such as older clients, are kept with `verified = 0` as plain history.
 
 **Developer mark.** A board row of a user with `users.dev = 1` carries `dev: true`; the game shows the name with an animated dev effect. The flag is set by hand in D1 (`UPDATE users SET dev = 1 WHERE id = ?`), never through the API.
 

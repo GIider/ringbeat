@@ -275,7 +275,7 @@ test('worker: POST /sync merges the shared document under its revision; runs are
   }
 });
 
-test('two devices: scores, stats, settings and songs meet; runs go up once', async () => {
+test('two devices: scores, stats, settings and songs meet; only runs played while signed in go up', async () => {
   const srv = server();
   const a = device(srv), b = device(srv);
   // Device A played before signing in.
@@ -302,7 +302,7 @@ test('two devices: scores, stats, settings and songs meet; runs go up once', asy
   assert.deepEqual(a.scores.get('s1', 'normal').top.map(r => r.score), [700, 500]);
   assert.deepEqual(a.scores.own().s1.normal.top.map(r => r.score), [500], 'own data stays own');
   const runs = srv.env.DB.db.prepare('SELECT score, mods, game_version FROM runs ORDER BY score').all().map(r => ({ ...r }));
-  assert.deepEqual(runs, [{ score: 500, mods: '[]', game_version: '' }, { score: 700, mods: '["x1.2"]', game_version: '1.6.0' }]);
+  assert.deepEqual(runs, [{ score: 700, mods: '["x1.2"]', game_version: '1.6.0' }], 'A\'s score from before signing in is not uploaded');
   assert.equal(a.cloud.pendingRuns(), 0);
 });
 
@@ -1233,7 +1233,7 @@ test('guessRank: from the snapshot alone; the sync answer patches the overview a
   assert.deepEqual(snap.runs.map(r => r.name), ['Bob', 'Alice'], 'the snapshot shows the new score');
 });
 
-test('queue: a better run replaces waiting ones on the same board; backfill sends one run per board', async () => {
+test('queue: a better run replaces waiting ones on the same board', async () => {
   const srv = server();
   const a = device(srv);
   await a.cloud.takeLoginHash(await githubSignIn(srv));
