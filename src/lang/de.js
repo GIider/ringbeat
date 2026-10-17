@@ -433,6 +433,17 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Ring ring': 'Ring ring',
+  ['New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
+    'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +
+    'Song select: J and K jump between groups, the period key toggles the difficulty, and the heading opens the category screen. Up from the first song wraps to the last.\n' +
+    'On touch, tap a difficulty once to select it and again to start. The favorite heart is easier to hit.\n' +
+    'New: Settings -> Compact view. Fixed: umlauts in bold text, a duplicate song, white logo with Dark Reader.']:
+    'Neuer Titelbildschirm: Ein Nokia 3310 fällt herein und klingelt unter dem RINGBEAT-Logo. Beim Anmelden gibt es einen kurzen Willkommensgruß, dein Name steht im Menü.\n' +
+    'Die Menü-Symbole wurden überarbeitet: ein kleines 3310 neben jedem Symbol, weichere Animationen, Funkeln bei ungelesenen Nachrichten. Nachrichten öffnen sofort, der SMS-Ton spielt einmal pro Besuch.\n' +
+    'Songauswahl: J und K springen zwischen Gruppen, der Punkt schaltet die Schwierigkeit um, die Überschrift öffnet den Kategorie-Bildschirm. Hoch beim ersten Song springt zum letzten.\n' +
+    'Am Touchscreen wählt ein Tipp die Schwierigkeit aus, ein zweiter startet. Das Favoriten-Herz ist leichter zu treffen.\n' +
+    'Neu: Einstellungen -> Kompaktansicht. Behoben: Umlaute in Fettschrift, ein doppelter Song, weißes Logo mit Dark Reader.',
   'Find your song': 'Finde deinen Song',
   ['76 new songs: games, TV, Eurodance, pop and synth.\n' +
     'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +

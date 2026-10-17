@@ -5,6 +5,14 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.4', date: '2026-10-17', title: 'Ring ring',
+    body: 'New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
+      'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +
+      'Song select: J and K jump between groups, the period key toggles the difficulty, and the heading opens the category screen. Up from the first song wraps to the last.\n' +
+      'On touch, tap a difficulty once to select it and again to start. The favorite heart is easier to hit.\n' +
+      'New: Settings -> Compact view. Fixed: umlauts in bold text, a duplicate song, white logo with Dark Reader.',
+  },
+  {
     version: '2.3', date: '2026-10-17', title: 'Find your song',
     body: '76 new songs: games, TV, Eurodance, pop and synth.\n' +
       'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +

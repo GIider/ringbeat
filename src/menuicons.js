@@ -116,11 +116,15 @@ function envelopeClosed(g, x, y) {
 }
 const PEEK = [0, 1, 2, 3, 3, 2, 1, 0]; // read: how many rows of letter show above the envelope
 const BADGE = [0, 1, 2, 2, 2, 2, 1, 0]; // unread: a small "new" spark gently grows and fades
+const SPARKS = [[25, 5, 0], [3, 4, 3], [27, 12, 5], [14, 2, 6], [2, 14, 1]]; // x, y, phase offset: sparkles twinkle out of step
 function messages(g, n, { unread = false } = {}) {
   if (unread) { // closed envelope, still, with the spark at its corner
     envelopeClosed(g, 5, 6);
-    if (BADGE[n] >= 1) px(g, 25, 5);
-    if (BADGE[n] >= 2) { px(g, 24, 5); px(g, 26, 5); px(g, 25, 4); px(g, 25, 6); }
+    for (const [x, y, phase] of SPARKS) {
+      const lvl = BADGE[(n + phase) % 8];
+      if (lvl >= 1) px(g, x, y);
+      if (lvl >= 2) { px(g, x - 1, y); px(g, x + 1, y); px(g, x, y - 1); px(g, x, y + 1); }
+    }
   } else { // read: the envelope stays shut and a letter slides up out of it and back
     const r = PEEK[n], top = 6 - r;
     if (r) { vline(g, 8, top, 6); vline(g, 19, top, 6); hline(g, 8, 19, top); }

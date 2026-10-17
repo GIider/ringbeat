@@ -37,7 +37,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Results | Covered in the [Results](#results) section below. |
 | My songs | Covered in the [My songs](#my-songs) section below. |
 | Stats | Five pages (←→, LB/RB, swipe). See [Stats](#stats). |
-| Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one plays an SMS tone and shows the SMS view (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
+| Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one shows the SMS view (with an SMS tone the first time per visit to Messages) (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
 | Profile | The player card (name, since, playtime) and the optional online profile. See [Profile](#profile). |
 | Admin | Dev mode (`?dev`) or a signed-in account with the developer flag (`profile.dev`). Unlock with the `ADMIN_TOKEN` (kept in memory, never stored), then: *Players* (search by name; open one to blacklist/whitelist, hide, delete, or browse their runs), *Flagged runs* (approve, hide or delete), *Maintenance* (table counts, purge expired sessions and sign-in rows, rebuild boards, verify pending runs) and *Log* (the audit trail). Deletes need a second press. Routes: [CLOUD.md](CLOUD.md#leaderboards). |
 | Settings | Covered in the [Settings](#settings) section below. |

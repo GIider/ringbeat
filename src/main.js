@@ -862,7 +862,7 @@ const MENU = [
   { id: 'tones', title: 'Tones', open: () => { favKeep.clear(); if (settings.tutorialDone) openSelect(); else openTutPrompt(); } },
   { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
   { id: 'stats', title: 'Stats', open: () => openStats() },
-  { id: 'messages', title: 'Messages', open: () => openInbox() },
+  { id: 'messages', title: 'Messages', open: () => { smsToned = false; openInbox(); } },
   { id: 'profile', title: 'Profile', open: () => openProfile() },
   { id: 'settings', title: 'Settings', open: () => openSettings('menu') },
 ];
@@ -1178,7 +1178,7 @@ function wireAdmin() {
 }
 
 // ---- messages: the changelog as an SMS inbox ----
-let msgIdx = 0;
+let msgIdx = 0, smsToned = false; // the SMS tone plays once per visit to Messages (reset when the menu opens it)
 function openInbox(focusVersion = '') {
   const list = $('inbox-list');
   list.textContent = '';
@@ -1211,7 +1211,7 @@ function showMessage(i, quiet = false) {
   $('sms-body').scrollTop = 0;
   screens.message.dataset.softLeft = i + 1 < MESSAGES.length ? 'Next' : '';
   setState('message', 'message');
-  if (!quiet) smsTone();
+  if (!quiet && !smsToned) { smsToned = true; smsTone(); }
 }
 // Flip to a neighbouring message (+1 = older) without the animation.
 const stepMessage = d => { if (MESSAGES[msgIdx + d]) showMessage(msgIdx + d, true); };

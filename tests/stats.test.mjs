@@ -173,7 +173,7 @@ test('menu icons: every item animates, frames are equal-size 1-bit sprites', () 
         assert.equal(f[0].length, ICON_W, id);
       }
       assert.ok(new Set(frames.map(f => f.join('/'))).size >= 2, `${id} has no animation`);
-      assert.deepEqual(menuFrame(id, frames.length), frames[0], `${id}: loops after its last frame`);
+      assert.deepEqual(menuFrame(id, frames.length, opts), frames[0], `${id}: loops after its last frame`);
       assert.ok(frames.every(f => f.some(r => r.slice(0, 13).includes('#'))), `${id}: phone drawn in every frame`);
     }
     assert.deepEqual(menuFrame(id, -1), menuFrame(id, menuFrames(id).length - 1), `${id}: negative frames wrap`);
