@@ -17,7 +17,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
                │                                                          └─ Mods ─▶ mods screen ─▶ back to difficulty
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
                ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
-               ├─ 4 Messages ─▶ inbox ─▶ opening… ─▶ message
+               ├─ 4 Messages ─▶ inbox ─▶ message
                ├─ 5 Profile (optional online profile)
                ├─ 6 Settings ─▶ calibration
                └─ 7 Admin (only with ?dev or a signed-in dev-flag account; needs the admin token)
@@ -26,7 +26,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Screen | Purpose |
 |---|---|
 | Title | Boot screen: an LCD scene (power-on, a Nokia 3310 drops in and bounces, the RINGBEAT logo lands letter by letter) that then rings in an 8.4 s loop (vibrating phone, sound waves, floating notes, a falling-note highway on the phone's own screen, a glint and a ripple across the logo); reduced motion shows one still frame. Below it "Press any key" ("Tap" on touch screens), the version (linking to GitHub) and the build line. The first boot plays a short power-on jingle. The key press also satisfies the browser's audio-gesture requirement. |
-| Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (folder card + symbol + a hand pressing a key), a numbered scrollbar on the right and a centred *Select*. You can browse with ↑↓/←→, keypad 2/8, digits 1–6 (7 for Admin), swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
+| Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (a small 3310 beside the item's symbol), a numbered scrollbar on the right and a centred *Select*. You can browse with ↑↓/←→, keypad 2/8, digits 1–6 (7 for Admin), swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
 | Login prompt | Shown once per device after the tutorial (played or skipped, or *No thanks* on the tutorial prompt) to a player who isn't signed in: *Sign in with GitHub* / *Not now*. |
 | Tutorial prompt | Shown the first time Tones is opened, unless the player has already picked a song: *Play tutorial* / *No thanks*. See [Tutorial](#tutorial). |
 | Song select | Covered in the [Song select](#song-select) section below. |
@@ -37,7 +37,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Results | Covered in the [Results](#results) section below. |
 | My songs | Covered in the [My songs](#my-songs) section below. |
 | Stats | Five pages (←→, LB/RB, swipe). See [Stats](#stats). |
-| Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one plays a short "Opening message" envelope animation (any key skips it) and an SMS tone, then shows the SMS view (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
+| Messages | The changelog as an SMS inbox: one message per version (bold = unread). Opening one plays an SMS tone and shows the SMS view (↑↓ scroll; ←→ or *Next* flip between messages). An update leaves exactly one new message, and the menu shows the envelope icon until it is read. How entries are written: [RELEASING.md](RELEASING.md#releasing-a-minor-version). |
 | Profile | The player card (name, since, playtime) and the optional online profile. See [Profile](#profile). |
 | Admin | Dev mode (`?dev`) or a signed-in account with the developer flag (`profile.dev`). Unlock with the `ADMIN_TOKEN` (kept in memory, never stored), then: *Players* (search by name; open one to blacklist/whitelist, hide, delete, or browse their runs), *Flagged runs* (approve, hide or delete), *Maintenance* (table counts, purge expired sessions and sign-in rows, rebuild boards, verify pending runs) and *Log* (the audit trail). Deletes need a second press. Routes: [CLOUD.md](CLOUD.md#leaderboards). |
 | Settings | Covered in the [Settings](#settings) section below. |

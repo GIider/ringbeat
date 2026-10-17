@@ -224,7 +224,6 @@ textarea::placeholder { color: var(--ink-dim); }
 .msg-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msg-row.new .t { font-weight: 700; }
 .msg-row .v { flex: none; }
-.msgload { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .sms { display: flex; flex-direction: column; overflow: hidden; }
 .sms-head { border-bottom: var(--u) solid var(--ink); padding-bottom: 2px; margin-bottom: 4px; }
 .sms-head .hint { margin: 0; }

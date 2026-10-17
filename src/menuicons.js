@@ -1,9 +1,10 @@
-// Main-menu art in the style of the 3310's menu: a folder card holding the item's symbol, and a hand pressing a key
-// beside it. Each icon is a list of equal-size frames ('#' = ink); menuFrame() composes card + symbol + hand.
+// Main-menu art in the style of the 3310's menu: a small 3310 on the left (its LCD reacts) and the item's animated symbol
+// beside it. Each icon is a list of equal-size frames ('#' = ink); menuFrame() composes phone + symbol.
 import { SPRITES } from './pixelart.js';
 
 export const ICON_W = 44, ICON_H = 21;
-const CARD_W = 30, CARD_H = 20, CARD_Y = 1;
+const SYM_X = 14, SYM_W = ICON_W - SYM_X; // the symbol's own 30x21 canvas, blitted beside the phone
+const FRAME_COUNT = 8; // every icon loops over 8 frames
 
 // ---- tiny raster helpers (grid = array of char arrays) ----
 const grid = (w, h) => Array.from({ length: h }, () => Array(w).fill('.'));
@@ -32,41 +33,47 @@ function stamp(g, spr, ox, oy, solid = false) {
     for (let x = 0; x < r.length; x++) if (r[x] === '#') px(g, ox + x, oy + y);
   });
 }
+const lerp = (a, b, t) => Math.round(a + (b - a) * t);
 
-// ---- shared parts ----
-// Folder card with a tab on the top left; the inside is x 2..27, y 4..17 (in card coordinates).
-function card(g) {
-  const y = CARD_Y, w = CARD_W, h = CARD_H;
-  hline(g, 2, 7, y); px(g, 1, y + 1); px(g, 8, y + 1);
-  px(g, 0, y + 2); hline(g, 9, w - 2, y + 2);
-  vline(g, 0, y + 2, y + h - 2); vline(g, w - 1, y + 3, y + h - 2);
-  hline(g, 1, w - 2, y + h - 1);
-}
-// A hand beside the card, finger pointing down at a key; odd frames press it.
-const HAND = [
-  '..########..',
-  '..#......#..',
-  '..########..',
-  '.#........#.',
-  '#..........#',
-  '#..........#',
-  '#..........#',
-  '.#.#.#.....#',
-  '..#.#.##...#',
-  '.......#...#',
-  '.......#...#',
-  '.......#...#',
-  '........###.',
+// ---- the phone ----
+// A small 3310 like SPRITES.nokia: earpiece, LCD window (interior x 4..8, y 4..6), Navi key, 4 rows of keys.
+export const PHONE_S = [
+  '..#########..',
+  '.#.........#.',
+  '.#.........#.',
+  '.#.#######.#.',
+  '.#.#.....#.#.',
+  '.#.#.....#.#.',
+  '.#.#.....#.#.',
+  '.#.#######.#.',
+  '.#.........#.',
+  '.#...###...#.',
+  '.#.........#.',
+  '.#..#.#.#..#.',
+  '.#.........#.',
+  '.#..#.#.#..#.',
+  '.#.........#.',
+  '.#..#.#.#..#.',
+  '.#.........#.',
+  '.#..#.#.#..#.',
+  '.#.........#.',
+  '..#.......#..',
+  '...#######...',
 ];
-function hand(g, n) {
-  const x = 31, down = ((n % 2) + 2) % 2;
-  stamp(g, HAND, x, 2 + down, true);
-  // key cap under the finger (squashed while pressed), with click sparks
-  if (down) { rect(g, x + 5, 17, 7, 3); px(g, x + 4, 16); px(g, x + 12, 16); }
-  else rect(g, x + 5, 16, 7, 4);
+// What the phone's LCD shows for the item (f = frame 0..7).
+function lcd(g, id, f, unread) {
+  switch (id) {
+    case 'tones': if (f % 2) { px(g, 4, 5); px(g, 8, 5); px(g, 6, 5); } else { px(g, 5, 5); px(g, 7, 5); } break;
+    case 'mysongs': hline(g, 4, 4 + (f >> 1), 5); break;
+    case 'stats': [0, 1, 2].forEach(i => { const h = 1 + ((f + i * 2) % 3); fill(g, 4 + i * 2, 7 - h, 1, h); }); break;
+    case 'messages': rect(g, 4, 4, 5, 3); if (f >= 2 && f <= 5) px(g, 6, 5); break;
+    case 'profile': px(g, 5, 4); px(g, 7, 4); if (f % 4 < 2) hline(g, 5, 7, 6); else px(g, 6, 6); break;
+    case 'settings': px(g, 6, 5); if (f % 2) { px(g, 6, 4); px(g, 5, 5); px(g, 7, 5); px(g, 6, 6); } else { px(g, 5, 4); px(g, 7, 4); px(g, 5, 6); px(g, 7, 6); } break;
+    case 'admin': rect(g, 5, 5, 3, 2); if (f % 2) px(g, 6, 4); break;
+  }
 }
 
-// ---- symbols (drawn in icon coordinates; the card's inside is x 2..27, y 5..18) ----
+// ---- symbols (drawn on their own 30x21 canvas; the usual area is x 2..27, y 5..18) ----
 const NOTE_PAIR = [ // beamed eighth notes
   '...##########',
   '...##########',
@@ -78,48 +85,48 @@ const NOTE_PAIR = [ // beamed eighth notes
   '####.....####',
   '.##.......##.',
 ];
+const BOB = [0, -1, -1, -1, 0, 1, 1, 1];
+const WAVES = [0, 1, 2, 3, 3, 2, 1, 0]; // how many sound waves are showing
 function tones(g, n) {
-  const b = [0, -1, 0, 1][n];
-  stamp(g, NOTE_PAIR, 6, 7 + b);
+  stamp(g, NOTE_PAIR, 4, 7 + BOB[n]);
   // sound waves to the right, growing then fading
-  if (n >= 1 && n <= 2) { vline(g, 22, 9, 13); }
-  if (n === 2) { px(g, 24, 8); vline(g, 25, 9, 13); px(g, 24, 14); }
+  for (let k = 0; k < WAVES[n]; k++) {
+    const x = 20 + k * 3, h = 2 + k;
+    vline(g, x, 11 - h, 11 + h); px(g, x - 1, 11 - h); px(g, x - 1, 11 + h);
+  }
 }
+const HEADS = [[6, 13], [10, 11], [14, 9], [18, 11]];
 function mysongs(g, n) {
   for (let i = 0; i < 5; i++) hline(g, 3, 26, 7 + i * 2);
-  const heads = [[6, 13], [10, 11], [14, 9], [18, 11]];
-  const shown = n + 1;
-  heads.slice(0, shown).forEach(([x, y]) => { fill(g, x, y, 3, 2); vline(g, x + 2, y - 4, y); });
-  const [hx, hy] = heads[Math.min(shown, heads.length) - 1];
-  stamp(g, SPRITES.custom, hx + 3, hy - 6, true); // the pencil follows the last note
+  const shown = 1 + (n >> 1);
+  HEADS.slice(0, shown).forEach(([x, y]) => { fill(g, x, y, 3, 2); vline(g, x + 2, y - 4, y); });
+  const [hx, hy] = HEADS[shown - 1];
+  stamp(g, SPRITES.custom, hx + 3, hy - 6 + (n % 2), true); // the pencil follows the last note, scribbling
 }
 const BARS = [4, 8, 6, 11, 9];
+const GROW = [0.3, 0.6, 0.85, 1, 1, 1, 0.85, 0.6];
 function stats(g, n) {
   hline(g, 3, 26, 17);
   vline(g, 3, 6, 17);
-  const k = [0.35, 0.65, 1, 1][n];
-  BARS.forEach((h, i) => { const bh = Math.max(1, Math.round(h * k)); fill(g, 6 + i * 4, 17 - bh, 3, bh); });
+  BARS.forEach((h, i) => { const bh = Math.max(1, Math.round(h * GROW[n])); fill(g, 6 + i * 4, 17 - bh, 3, bh); });
 }
 function envelopeClosed(g, x, y) {
   rect(g, x, y, 18, 11);
   line(g, x + 1, y + 1, x + 8, y + 7); line(g, x + 16, y + 1, x + 9, y + 7);
 }
-function envelopeOpen(g, x, y) {
-  // flap folded up behind, a letter half out, then the envelope's front pocket over it
-  line(g, x, y + 5, x + 8, y); line(g, x + 17, y + 5, x + 9, y);
-  fill(g, x + 3, y + 1, 12, 9, false); rect(g, x + 3, y + 1, 12, 9);
-  hline(g, x + 5, x + 12, y + 3); hline(g, x + 5, x + 10, y + 5);
-  fill(g, x, y + 7, 18, 9, false);
-  rect(g, x, y + 5, 18, 11);
-  fill(g, x + 1, y + 6, 16, 1, false);
-  line(g, x + 1, y + 14, x + 6, y + 9); line(g, x + 16, y + 14, x + 11, y + 9);
-}
+const PEEK = [0, 1, 2, 3, 3, 2, 1, 0]; // read: how many rows of letter show above the envelope
+const BADGE = [0, 1, 2, 2, 2, 2, 1, 0]; // unread: a small "new" spark gently grows and fades
 function messages(g, n, { unread = false } = {}) {
-  if (unread) { // closed envelope that rattles, with "new" marks
-    envelopeClosed(g, n % 2 ? 6 : 5, 6);
-    if (n % 2) { px(g, 3, 5); px(g, 2, 4); px(g, 26, 5); px(g, 27, 4); vline(g, 14, 2, 3); }
-  } else if (n < 2) envelopeClosed(g, 5, 6);
-  else envelopeOpen(g, 5, 2);
+  if (unread) { // closed envelope, still, with the spark at its corner
+    envelopeClosed(g, 5, 6);
+    if (BADGE[n] >= 1) px(g, 25, 5);
+    if (BADGE[n] >= 2) { px(g, 24, 5); px(g, 26, 5); px(g, 25, 4); px(g, 25, 6); }
+  } else { // read: the envelope stays shut and a letter slides up out of it and back
+    const r = PEEK[n], top = 6 - r;
+    if (r) { vline(g, 8, top, 6); vline(g, 19, top, 6); hline(g, 8, 19, top); }
+    if (r >= 3) hline(g, 10, 17, top + 2);
+    envelopeClosed(g, 5, 6);
+  }
 }
 const PERSON = [
   '....###....',
@@ -134,13 +141,15 @@ const PERSON = [
   '#.........#',
   '###########',
 ];
+const SWAP = [0, 0, 1 / 3, 2 / 3, 1, 1, 2 / 3, 1 / 3];
 function profile(g, n) {
-  // two players trading places: the one in front swaps every other frame
-  const a = [6, 6], b = [14, 4];
-  const [front, back] = n < 2 ? [a, b] : [b, a];
+  // two players trading places: they slide past each other and the one in front changes halfway
+  const t = SWAP[n], a = [6, 6], b = [14, 4];
+  const p1 = [lerp(a[0], b[0], t), lerp(a[1], b[1], t)], p2 = [lerp(b[0], a[0], t), lerp(b[1], a[1], t)];
+  const [front, back] = t < 0.5 ? [p1, p2] : [p2, p1];
   stamp(g, PERSON, back[0], back[1] + 3);
   stamp(g, PERSON, front[0], front[1] + 3, true);
-  if (n % 2) { hline(g, 23, 26, 7); px(g, 25, 6); px(g, 25, 8); hline(g, 23, 26, 11); px(g, 24, 10); px(g, 24, 12); }
+  if (n === 1 || n === 5) { hline(g, 23, 26, 7); px(g, 25, 6); px(g, 25, 8); hline(g, 23, 26, 11); px(g, 24, 10); px(g, 24, 12); }
 }
 const WRENCH = [
   '......#..#',
@@ -154,6 +163,7 @@ const WRENCH = [
   '##........',
   '#.........',
 ];
+const NUDGE = [0, 0, 1, 1, 1, 1, 0, 0];
 function gear(g, cx, cy, turn) {
   for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) {
     const r = Math.hypot(x, y), a = Math.atan2(y, x) + turn * Math.PI / 8;
@@ -163,8 +173,8 @@ function gear(g, cx, cy, turn) {
   }
 }
 function settings(g, n) {
-  stamp(g, WRENCH, 4 + (n % 2), 7 - (n % 2));
-  gear(g, 19, 11, n);
+  stamp(g, WRENCH, 4 + NUDGE[n], 7 - NUDGE[n]);
+  gear(g, 19, 11, n / 4); // eight teeth: a quarter step per frame loops after two whole steps
 }
 
 const SHIELD = [
@@ -182,36 +192,31 @@ const SHIELD = [
 // Dev-only admin app: a shield with a keyhole; the shine sweeps across it.
 function admin(g, n) {
   stamp(g, SHIELD, 8, 5);
+  if (n >= 1 && n <= 6) { // diagonal glint, skipping the keyhole
+    const sx = 9 + (n - 1) * 2;
+    for (let i = 0; i < 4; i++) if (sx + i < 13 || sx + i > 15) px(g, sx + i, 11 - i);
+  }
   fill(g, 13, 8, 3, 3); vline(g, 14, 11, 13);
-  if (n % 2) { line(g, 10, 7, 11, 6); line(g, 22, 7, 21, 6); }
 }
 
 const SYMBOLS = { tones, mysongs, stats, messages, profile, settings, admin };
-const FRAMES = { tones: 4, mysongs: 4, stats: 4, messages: 4, profile: 4, settings: 2, admin: 2 };
 export const MENU_IDS = Object.keys(SYMBOLS);
 
 // One frame (any integer n, wraps) of a menu icon -> rows.
 export function menuFrame(id, n = 0, opts = {}) {
-  const g = grid(ICON_W, ICON_H);
-  const f = ((n % FRAMES[id]) + FRAMES[id]) % FRAMES[id];
-  card(g);
-  SYMBOLS[id](g, f, opts);
-  hand(g, n);
+  const g = grid(ICON_W, ICON_H), sym = grid(SYM_W, ICON_H);
+  const f = ((n % FRAME_COUNT) + FRAME_COUNT) % FRAME_COUNT;
+  SYMBOLS[id](sym, f, opts);
+  sym.forEach((r, y) => r.forEach((c, x) => { if (c === '#') px(g, SYM_X + x, y); }));
+  stamp(g, PHONE_S, 0, 0);
+  lcd(g, id, f, !!opts.unread);
   return rows(g);
 }
 // Every distinct frame of an icon (for tests and preloading).
-export const menuFrames = (id, opts) => Array.from({ length: Math.max(2, FRAMES[id]) * 2 }, (_, n) => menuFrame(id, n, opts));
+export const menuFrames = (id, opts) => Array.from({ length: FRAME_COUNT }, (_, n) => menuFrame(id, n, opts));
 
 // ---- Messages screens ----
 export const PERSON_ART = PERSON;
-// The big envelope on the "Opening message" screen: closed, then opening, then open.
-export function letterFrame(n) {
-  const g = grid(20, 17);
-  if (n <= 0) envelopeClosed(g, 1, 6);
-  else if (n === 1) { envelopeClosed(g, 1, 6); fill(g, 2, 7, 16, 3, false); line(g, 1, 6, 9, 2); line(g, 18, 6, 10, 2); }
-  else envelopeOpen(g, 1, 1);
-  return rows(g);
-}
 // Inbox row icons, 14x9 like the status-bar envelope: sealed (unread) and opened (read).
 export const ENVELOPE_SMALL_OPEN = [
   '......##......',

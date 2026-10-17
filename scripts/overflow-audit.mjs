@@ -129,7 +129,7 @@ async function auditCombo(browser, lang, w, h) {
     await page.close();
   }
   // screens that only show in a run or a first visit: the markup and its translations, unhidden by hand
-  for (const id of ['title', 'tutprompt', 'loginprompt', 'tutorial', 'calib', 'msgload', 'profile', 'results', 'pause', 'admin', 'nowplaying']) {
+  for (const id of ['title', 'tutprompt', 'loginprompt', 'tutorial', 'calib', 'profile', 'results', 'pause', 'admin', 'nowplaying']) {
     const page = await open('index.html?demo=menu');
     await page.evaluate(id => { for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id; }, id);
     await visit(page, ctx, 'markup/' + id);

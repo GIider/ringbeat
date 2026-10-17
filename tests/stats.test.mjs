@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createStats, gradeTally, favourite, topSongs, formatDuration, currentStreak, dayKey, STATS_KEY } from '../src/stats.js';
 import { createScores } from '../src/scores.js';
 import { MESSAGES, defaultSeen, unread, markRead } from '../src/changelog.js';
-import { MENU_IDS, menuFrame, menuFrames, letterFrame, ICON_W, ICON_H } from '../src/menuicons.js';
+import { MENU_IDS, menuFrame, menuFrames, ICON_W, ICON_H } from '../src/menuicons.js';
 import { GLYPHS } from '../src/pixelfont.js';
 import { VERSION } from '../src/version.js';
 
@@ -173,11 +173,12 @@ test('menu icons: every item animates, frames are equal-size 1-bit sprites', () 
         assert.equal(f[0].length, ICON_W, id);
       }
       assert.ok(new Set(frames.map(f => f.join('/'))).size >= 2, `${id} has no animation`);
+      assert.deepEqual(menuFrame(id, frames.length), frames[0], `${id}: loops after its last frame`);
+      assert.ok(frames.every(f => f.some(r => r.slice(0, 13).includes('#'))), `${id}: phone drawn in every frame`);
     }
     assert.deepEqual(menuFrame(id, -1), menuFrame(id, menuFrames(id).length - 1), `${id}: negative frames wrap`);
   }
   assert.notDeepEqual(menuFrame('messages', 1, { unread: true }), menuFrame('messages', 1), 'unread envelope looks different');
-  for (const n of [0, 1, 2]) assert.ok(rectangular(letterFrame(n)));
 });
 
 test('topSongs: sums plays across difficulties, orders by plays then id, limits, skips 0 plays', () => {

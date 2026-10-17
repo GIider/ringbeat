@@ -75,7 +75,6 @@ export const de = {
   'AP runs': 'AP-Durchgänge',
 
   // ---- messages ----
-  'Opening message': 'Nachricht wird geöffnet',
   'From:': 'Von:',
   'New player': 'Neuer Spieler',
   'Player 1': 'Spieler 1',

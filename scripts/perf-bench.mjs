@@ -16,7 +16,7 @@ import { customEntry } from '../src/library.js';
 import { MAX_RTTTL } from '../src/mysongs.js';
 import { runBot, LADDER } from '../src/bot.js';
 import { Game } from '../src/game.js';
-import { menuFrame, menuFrames, MENU_IDS, letterFrame } from '../src/menuicons.js';
+import { menuFrame, menuFrames, MENU_IDS } from '../src/menuicons.js';
 import { spriteSVG, spriteURL, spriteHTML, compose, SPRITES } from '../src/pixelart.js';
 import { coverRows } from '../src/cover.js';
 import { CAMEOS } from '../src/cameo.js';
@@ -249,7 +249,6 @@ const cases = [
   // -- menu / pixel-art / animation (pure parts; DOM parts live in perf-menus) --
   ['menuicons.menuFrame (all ids x 8 ticks)', () => { for (const id of MENU_IDS) for (let n = 0; n < 8; n++) sink += menuFrame(id, n, { unread: n & 1 }).length; }],
   ['menuicons.menuFrames (all ids, preload)', () => { for (const id of MENU_IDS) sink += menuFrames(id).length; }],
-  ['menuicons.letterFrame x3', () => { for (let i = 0; i < 3; i++) sink += letterFrame(i).length; }],
   ['pixelart.spriteSVG (all menu frames)', () => { for (const id of MENU_IDS) for (let n = 0; n < 4; n++) sink += spriteSVG(menuFrame(id, n)).length; }],
   ['pixelart.spriteURL warm (menu icon tick)', () => { for (const id of MENU_IDS) sink += spriteURL(menuFrame(id, 1)).length; }],
   ['pixelart.spriteHTML x60 (list rows)', () => { for (let i = 0; i < 60; i++) sink += spriteHTML(SPRITES.custom || Object.values(SPRITES)[0], 2).length; }],

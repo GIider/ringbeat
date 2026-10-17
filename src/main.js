@@ -1,5 +1,5 @@
 // Bootstrap, screen state machine, wiring.
-// States: title -> menu -> (select | mysongs -> songmenu / composer / custom | stats | inbox -> msgload -> message | profile
+// States: title -> menu -> (select | mysongs -> songmenu / composer / custom | stats | inbox -> message | profile
 //   | settings <-> calibration); first visit to Tones: tutprompt -> tutorial
 //   select <-> (diffpick <-> mods) -> countin -> playing <-> paused (-> resuming) -> results -> select
 // Every screen is a <section> inside the phone's LCD; during play the #nowplaying screen holds the highway canvas.
@@ -27,7 +27,7 @@ import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { GLYPHS, FAMILY } from './pixelfont.js';
-import { MENU_IDS, menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
+import { MENU_IDS, menuFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
 import { createAdmin, PAGE as ADMIN_PAGE, playerLine, runLine, logLine } from './admin.js';
@@ -110,7 +110,7 @@ const pad = new Pad();
 let state = 'title';
 let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lanes show
 const screens = {
-  title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
+  title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
   hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
@@ -125,7 +125,6 @@ function show(name) {
   titleFx(name === 'title');
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
-  if (name !== 'msgload') clearTimeout(msgTimer);
   if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
   const el = screens[name];
   if (el) {
@@ -879,7 +878,7 @@ function refreshMenu() {
   if (has) admin.lock(); // the flag or the sign-in is gone
   if (state === 'admin') openMenu(); else if (state === 'menu') renderMenu();
 }
-const MENU_FRAME_MS = 300;
+const MENU_FRAME_MS = 130;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 let menuIdx = 0, menuTick = 0, menuNext = 0;
 if (adminOn()) MENU.push(ADMIN_ITEM);
@@ -1179,9 +1178,8 @@ function wireAdmin() {
 }
 
 // ---- messages: the changelog as an SMS inbox ----
-let msgIdx = 0, msgTimer = 0;
+let msgIdx = 0;
 function openInbox(focusVersion = '') {
-  clearTimeout(msgTimer);
   const list = $('inbox-list');
   list.textContent = '';
   for (const [i, m] of MESSAGES.entries()) {
@@ -1196,23 +1194,7 @@ function openInbox(focusVersion = '') {
   setState('inbox', 'inbox');
   marqueeAll(list.querySelectorAll('.t')); // shown first, so the marquee can measure the rows
 }
-// Short "opening" animation (envelope + segment bar), then the message itself.
-function openMessage(i) {
-  if (!MESSAGES[i]) return;
-  msgIdx = i;
-  clearTimeout(msgTimer);
-  const STEPS = still.matches ? 1 : 5, bar = $('ml-bar');
-  bar.innerHTML = '<i></i>'.repeat(8);
-  let k = 0;
-  const step = () => {
-    setSprite($('ml-icon'), letterFrame(Math.floor(k * 3 / (STEPS + 1))), unit * 2);
-    Array.from(bar.children).forEach((c, j) => c.classList.toggle('on', j < Math.round(k * 8 / STEPS)));
-    if (k++ >= STEPS) { msgTimer = setTimeout(() => showMessage(i), still.matches ? 150 : 60); return; }
-    msgTimer = setTimeout(step, 45);
-  };
-  setState('msgload', 'msgload');
-  step();
-}
+function openMessage(i) { if (MESSAGES[i]) showMessage(i); }
 // The 3310's "Special" SMS alert: ... -- ... (only once audio is running).
 function smsTone() {
   if (!synth.ctx || synth.ctx.state !== 'running') return;
@@ -1231,8 +1213,6 @@ function showMessage(i, quiet = false) {
   setState('message', 'message');
   if (!quiet) smsTone();
 }
-// Any key during the opening animation jumps straight to the message.
-const skipMessageLoad = () => { if (state === 'msgload') showMessage(msgIdx); };
 // Flip to a neighbouring message (+1 = older) without the animation.
 const stepMessage = d => { if (MESSAGES[msgIdx + d]) showMessage(msgIdx + d, true); };
 // A results page taller than the screen (the world top 10 plus the players around the player) scrolls with up/down.
@@ -2394,7 +2374,6 @@ function back() {
     case 'hub': leaveHub(); break;
     case 'stats': case 'inbox': case 'profile': openMenu(); break;
     case 'admin': adminBack(); break;
-    case 'msgload': openInbox(MESSAGES[msgIdx].version); break;
     case 'message': openInbox(MESSAGES[msgIdx].version); break;
     case 'tutorial': finishTutorial(); break;
     case 'tutprompt': skipTutPrompt(); break;
@@ -2420,7 +2399,6 @@ function back() {
 
 function menuButton(index) {
   if (state === 'welcome') { skipWelcome(); return; }
-  if (state === 'msgload' && index !== BTN.B) { skipMessageLoad(); return; }
   const root = activeScreen();
   switch (index) {
     case BTN.A: case BTN.START:
@@ -2541,7 +2519,6 @@ function phoneKey(key) {
     return;
   }
   if (!inPlay()) synth.keyClick();
-  if (state === 'msgload' && key !== 'softR') { skipMessageLoad(); return; }
   if (state === 'title') { startFromTitle(); return; }
   if (state === 'welcome') { skipWelcome(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
@@ -2932,7 +2909,6 @@ function wire() {
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
-  $('msgload').addEventListener('click', skipMessageLoad);
   $('welcome').addEventListener('click', skipWelcome);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
@@ -3091,7 +3067,6 @@ function onKey(e) {
     if (capturingSlot >= 0) { capturingSlot = -1; renderBindings(); } else back();
     return;
   }
-  if (state === 'msgload' && !typing && !e.repeat && !e.code.startsWith('Shift') && e.code !== 'Tab') { e.preventDefault(); skipMessageLoad(); return; }
   if (state === 'results' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); navigate(e.code === 'BracketRight' ? 'right' : 'left'); return;
   }

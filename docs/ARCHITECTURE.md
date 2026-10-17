@@ -58,7 +58,7 @@ src/
   pixelfont.js    5x7 glyph table + bold cut for the LCD font (scripts/build-font.mjs -> TrueType)
   pixelart.js     1-bit sprites (signal, battery, envelope, ringing phone, category icons) + SVG data-URI / CSS-mask helpers
   admin.js        dev-mode client for the Worker's /admin/* routes (the Admin menu app); the admin token stays in memory only
-  menuicons.js    animated 3310-style main-menu icons (folder card + symbol + pressing hand)
+  menuicons.js    animated 3310-style main-menu icons (small 3310 + symbol)
   cover.js        procedural 72x28 picture-message art per song id
   marquee.js      scrolls text that is too wide for its box
   cameo.js        pure simulations of the idle cameos (snake, Space Impact, SMS, signal wobble, low battery,

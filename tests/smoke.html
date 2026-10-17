@@ -367,16 +367,15 @@ f.addEventListener('load', async () => {
     log(/Notes/.test($('stat-tab').textContent) && $('stat-page').textContent.includes('Accuracy'), 'Notes page');
     key('Escape'); await sleep(80);
 
-    // messages: inbox -> opening animation -> SMS -> read
+    // messages: inbox -> SMS -> read
     rb.settings.msgSeen = [];
     key('4'); await sleep(30); $('mm-go').click(); await sleep(80);
     const rowsMsg = d.querySelectorAll('#inbox-list button');
     log(vis('inbox') && rowsMsg.length >= 2 && rowsMsg[0].classList.contains('new'), 'inbox lists unread messages');
     rowsMsg[0].click(); await sleep(60);
-    log(vis('msgload'), 'opening-message animation');
-    await sleep(1200);
+    await sleep(60);
     log(vis('message') && $('sms-body').textContent.length > 20 && $('sms-from').textContent === 'Ringbeat', 'message shown');
-    phoneKey('softL'); await sleep(1300);
+    phoneKey('softL'); await sleep(100);
     log(vis('message') && $('sms-date').textContent.includes(rb.settings.msgSeen[1] || '?'), 'Next opens the following message');
     key('Escape'); await sleep(80);
     log(vis('inbox') && !d.querySelectorAll('#inbox-list button')[0].classList.contains('new'), 'back to inbox, message read');

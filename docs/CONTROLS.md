@@ -23,7 +23,7 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 | Song select: toggle favorite | `V` |
 | Results pages | `←` `→`, or `[` `]` |
 | Stats pages | `←` `→`; `↑` `↓` scroll the Top page |
-| Message | `↑` `↓` scroll, `←` `→` previous / next message; any key skips the opening animation |
+| Message | `↑` `↓` scroll, `←` `→` previous / next message |
 | Tutorial cards | `←` `→` back / forward over lessons already played |
 | Calibration | any key taps |
 | Profiler | `F3` toggle, `F4` copy report (see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) |

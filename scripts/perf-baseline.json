@@ -334,16 +334,6 @@
   "opsPerSec": 1895.5458,
   "allocBytes": 32351.56
  },
- "menuicons.letterFrame x3": {
-  "iters": 12274,
-  "mean": 0.0163,
-  "p50": 0.0158,
-  "p95": 0.0169,
-  "p99": 0.0202,
-  "max": 0.1979,
-  "opsPerSec": 61368.7987,
-  "allocBytes": 23298.88
- },
  "pixelart.spriteSVG (all menu frames)": {
   "iters": 473,
   "mean": 0.4233,
