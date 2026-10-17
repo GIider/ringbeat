@@ -6,7 +6,7 @@
 
 import { generateChart } from './chart.js';
 import * as mods from './mods.js';
-import { Synth } from './synth.js';
+import { Synth, VOICES } from './synth.js';
 import { Game } from './game.js';
 import { planBot, LADDER } from './bot.js';
 import { createAutoplay } from './autoplay.js';
@@ -62,7 +62,11 @@ const recent = new Float32Array(16);
 let recentN = 0;
 // Juice: layered sound + vibration on top of the renderer's visual effects. All gated by settings.juice.
 let prevCombo = 0;
-const buzz = ms => { if (settings.juice && settings.haptics && navigator.vibrate) { try { navigator.vibrate(ms); } catch { /* ignore */ } } };
+const buzz = ms => {
+  if (!settings.juice || !settings.haptics) return;
+  if (navigator.vibrate) { try { navigator.vibrate(ms); } catch { /* ignore */ } }
+  pad.rumble(Math.max(30, ms * 2)); // the shortest phone buzzes are too brief for a rumble motor
+};
 function juiceJudge(lane, j) {
   const c = game.combo;
   if (game.judgedCount <= 1) prevCombo = 0; // new run: don't inherit the last song's combo
@@ -1931,10 +1935,20 @@ const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'controller', 'genera
 // Button mapping is only offered while a controller is connected.
 const settingsTabs = () => ALL_SETTINGS_TABS.filter(t => t !== 'controller' || pad.connected);
 let shownTabs = '';
+// The Vibration option lives where it applies: with Effects on a phone (navigator.vibrate), else with the Controller
+// settings when a rumble-capable controller is connected, else nowhere.
+function placeHaptics() {
+  const row = $('pref-haptics').closest('label');
+  // desktop Chromium has navigator.vibrate too (a no-op), so a touch screen is what marks a phone
+  const home = navigator.vibrate && navigator.maxTouchPoints > 0 ? document.querySelector('[data-panel=effects]') : pad.canRumble ? $('pad-extras') : null;
+  row.hidden = !home;
+  if (home && row.parentNode !== home) home.appendChild(row);
+}
 function setSettingsTab(id, focus = false) {
   const tabs = settingsTabs();
   if (!tabs.includes(id)) id = tabs[0];
-  shownTabs = tabs.join();
+  shownTabs = tabs.join() + pad.canRumble;
+  placeHaptics();
   settingsTab = id;
   capturingSlot = -1;
   for (const b of document.querySelectorAll('#set-tabs button')) {
@@ -1955,7 +1969,7 @@ function stepSettingsTab(step) {
 }
 // A controller was plugged in or removed while Settings is open.
 function syncSettingsTabs() {
-  if (state === 'settings' && settingsTabs().join() !== shownTabs) setSettingsTab(settingsTab);
+  if (state === 'settings' && settingsTabs().join() + pad.canRumble !== shownTabs) setSettingsTab(settingsTab);
 }
 function openSettings(from = 'menu') {
   settingsFrom = from;
@@ -2212,7 +2226,8 @@ function wire() {
   cp.onchange = () => { settings.comboPopup = cp.checked; renderer.comboPopup = cp.checked; save(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
-  const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: tr(settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth') }); };
+  const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
+  const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: voiceName() }); };
   const langLabel = () => { $('set-lang').textContent = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
   // Everything that was drawn from text is redrawn; screens opened later render fresh.
   const relocalize = () => {
@@ -2238,7 +2253,7 @@ function wire() {
     save(); setLang(settings.lang); relocalize();
   };
   $('set-voice').onclick = () => {
-    settings.voice = synth.voice = settings.voice === 'buzzer' ? 'smooth' : 'buzzer';
+    settings.voice = synth.voice = VOICES[(VOICES.indexOf(settings.voice) + 1) % VOICES.length];
     save(); voiceLabel();
     synth.ensure();
     synth.playNote({ midi: 76, when: synth.ctx.currentTime + 0.02, duration: 0.12 });

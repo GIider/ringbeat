@@ -71,7 +71,8 @@ action, right = Back.
   it; tap a song to select it, tap the selected song again to play. Tap the icon of the selected song to toggle its favorite.
 - **Composer:** on touch / narrow screens a note pad (C–B, rest, length, dot, sharp, pitch, delete) replaces the keys.
 - Sliders get a taller touch target on touch / narrow screens. With *Hit effects* and *Vibration* on, phones buzz on
-  Perfect hits and when a combo breaks.
+  Perfect hits and when a combo breaks; controllers with rumble do the same. *Vibration* sits under Effects on a phone and
+  under Controller on a desktop with a rumble-capable controller, and is hidden otherwise.
 
 ## Gamepad (Standard Gamepad API)
 

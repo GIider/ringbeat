@@ -80,10 +80,12 @@ f.addEventListener('load', async () => {
     log($('dp-tabs').hidden, 'difficulty screen: no World/Local tabs when signed out');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
-    const v0 = $('set-voice').textContent;
+    const v0 = $('set-voice').textContent, voice0 = hookOf().settings.voice, seen = new Set([voice0]);
     $('set-voice').click();
-    log($('set-voice').textContent !== v0 && hookOf().settings.voice === (v0.includes('Buzzer') ? 'smooth' : 'buzzer'), 'tone toggle: ' + $('set-voice').textContent);
-    $('set-voice').click();
+    log($('set-voice').textContent !== v0 && hookOf().settings.voice === 'smooth', 'tone cycle: ' + $('set-voice').textContent);
+    seen.add('smooth');
+    for (let i = 0; i < 20 && hookOf().settings.voice !== voice0; i++) { $('set-voice').click(); seen.add(hookOf().settings.voice); }
+    log(seen.size === 10 && $('set-voice').textContent === v0, 'tone cycle visits 10 voices and wraps (' + seen.size + ')');
     log(d.body.dataset.mode === 'menu', 'menu mode');
 
     key('Escape'); await sleep(80);
@@ -101,6 +103,22 @@ f.addEventListener('load', async () => {
     await sleep(700);
     d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await sleep(30);
     log(!d.querySelector('[data-panel=controller]').hidden, 'controller connected: Effects -> Controller tab');
+    {
+      // Vibration: nowhere on a desktop without rumble; under Controller with a rumble pad; under Effects on a phone
+      const row = d.getElementById('pref-haptics').closest('label'), where = () => row.hidden ? 'hidden' : row.parentNode.dataset.panel || row.parentNode.id;
+      d.querySelector('#set-tabs [data-tab=effects]').click();
+      log(where() === 'hidden', 'vibration hidden without phone or rumble pad (' + where() + ')');
+      nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0, vibrationActuator: { type: 'dual-rumble', playEffect: () => Promise.resolve() } }];
+      await sleep(700);
+      log(where() === 'pad-extras', 'vibration under Controller with a rumble pad (' + where() + ')');
+      Object.defineProperty(nav, 'maxTouchPoints', { value: 5, configurable: true });
+      d.querySelector('#set-tabs [data-tab=sound]').click(); await sleep(700);
+      d.querySelector('#set-tabs [data-tab=effects]').click();
+      log(where() === 'effects', 'vibration under Effects on a phone (' + where() + ')');
+      delete nav.maxTouchPoints;
+      d.querySelector('#set-tabs [data-tab=effects]').click();
+      log(where() === 'pad-extras', 'vibration back under Controller on desktop (' + where() + ')');
+    }
     d.querySelector('#set-tabs [data-tab=controller]').click();
     log(!d.querySelector('[data-panel=controller]').hidden && d.querySelector('[data-panel=sound]').hidden, 'settings tabs: Controller shown, Sound hidden');
     d.querySelector('#bind-grid button').click();

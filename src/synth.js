@@ -7,11 +7,29 @@ const disconnectAll = function () { for (const n of this) { try { n.disconnect()
 const ATTACK = 0.005, DECAY = 0.06, SUSTAIN = 0.5, RELEASE = 0.08, PEAK = 0.22;
 const BUZZ = 0.13; // buzzer level: a bare square is loud, keep it near the smooth voice's sustain
 
+// Instrument voices beyond the buzzer/smooth pair, as data for Synth._voiced(). Per voice:
+//   layers  oscillators summed together: type | pulse (duty), mult (frequency ratio), gain, detune (cents)
+//   a/d/s/r envelope (s is a fraction of peak), peak, lp {from, to, time} filter sweep, vib cents (onset after 0.15 s),
+//   arp semitone steps and step length, fm {ratio, index, decay} (index decays so the attack rings like a bell)
+const VOICE_SPECS = {
+  pulse:    { layers: [{ pulse: 0.25 }], a: 0.003, d: 0.05, s: 0.6, r: 0.06, peak: 0.2 },
+  triangle: { layers: [{ type: 'triangle' }], a: 0.004, d: 0.04, s: 0.8, r: 0.07, peak: 0.26 },
+  arp:      { layers: [{ type: 'square' }], a: 0.003, d: 0.05, s: 0.7, r: 0.06, peak: 0.17, arp: [0, 4, 7], step: 0.04 },
+  bell:     { layers: [{ type: 'sine' }], a: 0.002, d: 0.4, s: 0.15, r: 0.15, peak: 0.35, fm: { ratio: 3.5, index: 2.2, decay: 0.3 } },
+  organ:    { layers: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.5 }, { type: 'sine', mult: 3, gain: 0.25 }], a: 0.01, d: 0.01, s: 1, r: 0.03, peak: 0.13 },
+  pluck:    { layers: [{ type: 'triangle' }, { type: 'sine', mult: 2, gain: 0.3 }], a: 0.002, d: 0.25, s: 0, r: 0.05, peak: 0.3, lp: { from: 3200, to: 400, time: 0.18 } },
+  saw:      { layers: [{ type: 'sawtooth' }, { type: 'sawtooth', detune: 6, gain: 0.5 }], a: 0.01, d: 0.08, s: 0.6, r: 0.08, peak: 0.13, lp: { from: 1800, to: 1800, time: 0 }, vib: 12 },
+  gameboy:  { layers: [{ type: 'square' }], a: 0.002, d: 0.03, s: 0.8, r: 0.04, peak: 0.14, vib: 20 },
+};
+export const VOICES = ['buzzer', 'smooth', ...Object.keys(VOICE_SPECS)];
+const ARP_SPAN = 12; // seconds of arpeggio steps scheduled ahead for a note held without a known end
+const pulseWaves = new WeakMap();
+
 export class Synth {
   constructor() {
     this.ctx = null;
     this.volume = 0.7;
-    this.voice = 'buzzer'; // 'buzzer' (phone piezo) | 'smooth' (two detuned squares with a soft envelope)
+    this.voice = 'buzzer'; // one of VOICES: 'buzzer' (phone piezo) | 'smooth' (two detuned squares with a soft envelope) | VOICE_SPECS keys
   }
 
   // Call from a user gesture. Creates the context once, and resumes it if suspended.
@@ -69,7 +87,86 @@ export class Synth {
   // Instrument voice. Auto-ends at when+duration; release() can cut it earlier (hold notes).
   // Omit duration (Infinity) to sustain until release().
   playNote(opts) {
-    return this.voice === 'buzzer' ? this._buzz(opts) : this._smooth(opts);
+    if (this.voice === 'buzzer') return this._buzz(opts);
+    const spec = VOICE_SPECS[this.voice];
+    return spec ? this._voiced(spec, opts) : this._smooth(opts);
+  }
+
+  // PeriodicWave for a pulse of the given duty cycle (Fourier series of a rectangular wave), cached per context.
+  _pulseWave(duty) {
+    let m = pulseWaves.get(this.ctx);
+    if (!m) pulseWaves.set(this.ctx, m = new Map());
+    if (!m.has(duty)) {
+      const N = 48, re = new Float32Array(N), im = new Float32Array(N);
+      for (let n = 1; n < N; n++) { re[n] = Math.sin(2 * Math.PI * n * duty) / (n * Math.PI); im[n] = (1 - Math.cos(2 * Math.PI * n * duty)) / (n * Math.PI); }
+      m.set(duty, this.ctx.createPeriodicWave(re, im));
+    }
+    return m.get(duty);
+  }
+
+  // Data-driven voice (see VOICE_SPECS). Same contract as _buzz/_smooth: auto-ends at when+duration, release() cuts early.
+  _voiced(spec, { midi, when, duration = Infinity }) {
+    const ctx = this.ctx;
+    const t = Math.max(when, ctx.currentTime);
+    const freq = freqOf(midi);
+    const nodes = [], oscs = [];
+    const add = n => (nodes.push(n), n);
+    const env = add(ctx.createGain()), rel = add(ctx.createGain()); // release on its own node, like _smooth
+    const mix = add(ctx.createGain());
+    let tail = mix;
+    if (spec.lp) {
+      const lp = add(ctx.createBiquadFilter()); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(spec.lp.from, t);
+      if (spec.lp.time) lp.frequency.exponentialRampToValueAtTime(spec.lp.to, t + spec.lp.time);
+      tail = tail.connect(lp);
+    }
+    tail.connect(env).connect(rel).connect(this.bus);
+    const vib = spec.vib && add(ctx.createGain());
+    if (vib) {
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 5.5; oscs.push(lfo); add(lfo);
+      vib.gain.setValueAtTime(0, t); vib.gain.linearRampToValueAtTime(spec.vib, t + 0.2);
+      lfo.connect(vib);
+    }
+    for (const L of spec.layers) {
+      const o = add(ctx.createOscillator()); oscs.push(o);
+      if (L.pulse) o.setPeriodicWave(this._pulseWave(L.pulse)); else o.type = L.type;
+      o.frequency.value = freq * (L.mult || 1);
+      if (L.detune) o.detune.value = L.detune;
+      if (vib) vib.connect(o.detune);
+      if (spec.arp) {
+        const stop = t + Math.min(duration, ARP_SPAN);
+        for (let i = 0, at = t; at < stop; i++, at += spec.step) o.frequency.setValueAtTime(freq * 2 ** (spec.arp[i % spec.arp.length] / 12), at);
+      }
+      if (spec.fm) {
+        const m = add(ctx.createOscillator()); oscs.push(m); m.frequency.value = freq * spec.fm.ratio;
+        const mg = add(ctx.createGain()), depth = freq * spec.fm.ratio * spec.fm.index;
+        mg.gain.setValueAtTime(depth, t); mg.gain.exponentialRampToValueAtTime(depth * 0.05, t + spec.fm.decay);
+        m.connect(mg).connect(o.frequency);
+      }
+      const g = add(ctx.createGain()); g.gain.value = L.gain ?? 1;
+      o.connect(g).connect(mix);
+    }
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(spec.peak, t + spec.a);
+    env.gain.linearRampToValueAtTime(spec.peak * spec.s, t + spec.a + spec.d);
+    for (const o of oscs) o.start(t);
+    this._cleanup(oscs[0], nodes);
+    let ended = false;
+    const end = at => {
+      at = Math.max(at, t + spec.a);
+      rel.gain.cancelScheduledValues(at); rel.gain.setValueAtTime(1, at);
+      rel.gain.linearRampToValueAtTime(0, at + spec.r);
+      for (const o of oscs) { try { o.stop(at + spec.r + 0.02); } catch {} }
+    };
+    if (Number.isFinite(duration)) end(t + duration);
+    return {
+      release(at = ctx.currentTime) {
+        if (ended) return;
+        ended = true;
+        if (Number.isFinite(duration)) at = Math.min(at, t + duration);
+        end(at);
+      },
+    };
   }
 
   // Piezo buzzer: one square wave, hard on/off, band-limited and peaked around the piezo's resonance.

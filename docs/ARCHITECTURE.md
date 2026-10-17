@@ -46,7 +46,7 @@ src/
   swipe.js        swipe detection (touch / pen / mouse): main menu, song-select categories, stats, results, messages,
                   tutorial cards
   calibration.js  latency calibration: 12 ticks at 90 BPM, median offset
-  synth.js        Web Audio voices (piezo buzzer, smooth), ticks, stray buzz, miss thud, key click, jingles
+  synth.js        Web Audio voices (piezo buzzer, smooth, plus data-driven VOICE_SPECS), ticks, stray buzz, miss thud, key click, jingles
 
   -- drawing and UI --
   render.js       the LCD canvas: highway, two HUD rows, judgement chips, banners, hit effects, the Hidden mod; text

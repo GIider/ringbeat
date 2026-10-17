@@ -4,6 +4,7 @@ import { normalize as normalizeMods } from './mods.js';
 import { defaultSeen } from './changelog.js';
 import { LANGS, detect } from './i18n.js';
 import { SYNCED_SETTINGS } from './cloudmerge.js';
+import { VOICES } from './synth.js';
 
 const STORE_KEY = 'ringbeat.v1';
 
@@ -19,7 +20,7 @@ function fromRaw(raw) {
   volume: num(raw.volume, 0, 1, 0.7),
   // '' = follow the browser language until the player picks one in Settings
   lang: LANGS[raw.lang] ? raw.lang : '',
-  voice: raw.voice === 'smooth' ? 'smooth' : 'buzzer',
+  voice: VOICES.includes(raw.voice) ? raw.voice : 'buzzer',
   scrollTime: num(raw.scrollTime, 1, 2.5, 1.6),
   backing: typeof raw.backing === 'boolean' ? raw.backing : false, // off for new players; saved choices are kept
   rollAudio: raw.rollAudio === true, // first press of a roll plays the song's real notes (scoring still follows mashing)

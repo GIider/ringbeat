@@ -46,6 +46,15 @@ export class Pad {
 
   get connected() { return this.list().length > 0; }
 
+  // Controller rumble (Chromium); other browsers expose no actuator.
+  get canRumble() { return this.list().some(p => p.vibrationActuator && p.vibrationActuator.playEffect); }
+  rumble(ms) {
+    for (const p of this.list()) {
+      const a = p.vibrationActuator;
+      if (a && a.playEffect) { try { a.playEffect(a.type || 'dual-rumble', { duration: ms, strongMagnitude: 0.5, weakMagnitude: 0.5 }).catch(() => {}); } catch { /* ignore */ } }
+    }
+  }
+
   list() {
     try { return Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(Boolean); }
     catch { return []; }

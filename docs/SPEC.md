@@ -115,7 +115,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 ### Settings
 
 - **Items:**
-  - Tone (buzzer / smooth)
+  - Tone (buzzer / smooth / pulse / triangle / arpeggio / bell / organ / pluck / sawtooth / Game Boy)
   - Language (English / Deutsch; follows the browser until set)
   - Volume
   - Scroll time

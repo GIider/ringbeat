@@ -52,7 +52,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - **Input and sound:**
   - Keyboard, touch and gamepad (rebindable), with clickable phone keys.
   - Latency calibration.
-  - Buzzer or smooth instrument voice.
+  - Ten instrument voices (buzzer, smooth, pulse, triangle, arpeggio, bell, organ, pluck, sawtooth, Game Boy).
 - **Languages:** English and German (follows the browser language, switchable in Settings).
 
 ## Online (optional)

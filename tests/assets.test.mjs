@@ -153,5 +153,8 @@ test('settings.voice defaults to the buzzer and only accepts known voices', asyn
   store.set('ringbeat.v1', JSON.stringify({ voice: 'smooth' }));
   const b = await import('../src/settings.js?smooth');
   assert.equal(b.settings.voice, 'smooth');
+  store.set('ringbeat.v1', JSON.stringify({ voice: 'gameboy' }));
+  const c = await import('../src/settings.js?gameboy');
+  assert.equal(c.settings.voice, 'gameboy');
   delete globalThis.localStorage;
 });
