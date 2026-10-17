@@ -958,6 +958,16 @@ function showMessage(i, quiet = false) {
 const skipMessageLoad = () => { if (state === 'msgload') showMessage(msgIdx); };
 // Flip to a neighbouring message (+1 = older) without the animation.
 const stepMessage = d => { if (MESSAGES[msgIdx + d]) showMessage(msgIdx + d, true); };
+// A results page taller than the screen (the world top 10 plus the players around the player) scrolls with up/down.
+// -> false when the page fits, so the keys move between the buttons as before.
+function scrollResults(dir) {
+  const page = document.querySelector(`#results .r-page[data-page="${resultsPage}"]`);
+  if (!page || page.scrollHeight <= page.clientHeight) return false;
+  const at = page.scrollTop, max = page.scrollHeight - page.clientHeight;
+  if (dir === 'up' ? at <= 0 : at >= max) return false; // at the end: on to the buttons
+  page.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, page.clientHeight * 0.6);
+  return true;
+}
 function scrollMessage(dir) {
   const b = $('sms-body');
   b.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(20, b.clientHeight * 0.4);
@@ -1193,7 +1203,7 @@ function paintDpWorldLines(b, near, box, msg) {
   for (const r of lines) {
     const li = document.createElement('li');
     li.value = r.rank;
-    li.className = r.gap ? 'gap' : r.dev ? 'dev' : r.me ? 'cur' : '';
+    li.className = r.gap ? 'gap' : [r.me && 'cur', r.dev && 'dev'].filter(Boolean).join(' ');
     li.innerHTML = `${esc(r.name || '')} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
     ol.appendChild(li);
   }
@@ -1650,11 +1660,14 @@ let worldToken = 0;
 function worldLines(top, near) {
   const out = [];
   let last = 0;
-  for (const r of top.filter(r => !near.some(n => n.rank === r.rank))) { out.push(r); last = r.rank; }
+  // `near` may be older than `top`: a top row is dropped when it shares a rank or a name with a near row, and the
+  // rest stay in score order.
+  const rest = top.filter(r => !near.some(n => n.rank === r.rank || (n.name && n.name === r.name)));
+  for (const r of rest.sort((a, b) => b.score - a.score)) { out.push(r); last = r.rank; }
   if (near.length && near[0].rank > last + 1) out.push({ rank: 0, score: '…', grade: '', name: '', gap: true });
   return out.concat(near);
 }
-// The World page: the top three from the leaderboard snapshot, then the players around the player's rank (they came
+// The World page: the top ten (from the answer that ranked the run, else the leaderboard snapshot), then the players around the player's rank (they came
 // back with the sync that ranked the run). Nothing here makes a request of its own.
 function paintWorld(songId, diff, token = worldToken) {
   const ol = $('r-world-list'), msg = $('r-world-empty');
@@ -1679,7 +1692,9 @@ function paintWorld(songId, diff, token = worldToken) {
     say(ol.children.length ? '' : tr('No world ranks yet.'));
   };
   if (near.length) paint([]); else say(tr('Loading…'));
-  cloud.board(songId, diff, b => paint((b && b.runs) || [])).then(b => paint((b && b.runs) || []));
+  const fresh = cloud.rankTop(songId, diff);
+  if (fresh) paint(fresh);
+  else cloud.board(songId, diff, b => paint((b && b.runs) || [])).then(b => paint((b && b.runs) || []));
 }
 async function showWorldRank(songId, diff, runId, isNewBest, score) {
   const el = $('r-world'), token = worldToken;
@@ -2044,6 +2059,7 @@ function navigate(dir) {
   if (state === 'menu') { menuStep(dir === 'up' || dir === 'left' ? -1 : 1); return; }
   if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
+  if (state === 'results' && (dir === 'up' || dir === 'down') && scrollResults(dir)) return;
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
   if (state === 'diffpick' && (dir === 'left' || dir === 'right') && dpTabs()) {

@@ -177,11 +177,11 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The tab comes back | Same, but only when the last sync is over 10 minutes old |
 | A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
 | A new player name, "On leaderboards" | Shown at once, sent with that same push within 30 s (and before signing out) |
-| A new best | One push from the results screen; the world rank comes back with it. Meanwhile `guessRank` shows a dimmed rank from the cached snapshot (empty board: #1) when the score lands in the top 3; the answer replaces it |
+| A new best | One push from the results screen; the world rank comes back with it. Meanwhile `guessRank` shows a dimmed rank from the cached snapshot (empty board: #1) when the score lands in the top 10; the answer replaces it |
 | Scores and stats | A push within 10 minutes, or when the tab is hidden, whichever comes first |
 | The tab is hidden | A push, only if something changed (`keepalive` when the body is under 60 KB) |
 | The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (a ranked run patches a cached overview from the answer); it goes with whatever else is waiting |
-| The results screen's World page | Nothing: the top 3 come from `GET /boards`, the players around the player from the push that ranked the run |
+| The results screen's World page | Nothing: the top 10 come from `GET /boards`, the players around the player from the push that ranked the run |
 | After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
 | The difficulty picker, app start | `GET /boards`, at most once per 30 seconds for every song (the screen repaints when a newer one arrives) (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
 
@@ -194,9 +194,9 @@ How it stays small:
 - **Never in the way.** A sync that comes due during a song (or a pause) waits until the song is over. Requests
   time out after 8 s, are skipped when the browser is offline, and back off after a failure (1, 2, 4 … 30 minutes;
   5 after a 429). The Sync button ignores the backoff.
-- **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 3 of every song
+- **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 10 of every song
   and difficulty. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
-  changed. A run that ranks in the top 3 is written into the snapshot by the sync that ranked it, so other players see it within about 30 seconds (names, opt-outs and hides wait for the cron's rebuild, every 5 minutes); the player's own rank is fresh on the results screen.
+  changed. A run that ranks in the top 10 is written into the snapshot by the sync that ranked it, so other players see it within about 30 seconds (names, opt-outs and hides wait for the cron's rebuild, every 5 minutes); the player's own rank is fresh on the results screen.
 - **No preflights for public reads.** `GET /boards` sends no credentials, so the browser needs no CORS preflight.
   Signed-in requests go to one URL, so one preflight is cached for all of them.
 
@@ -214,7 +214,7 @@ the device keeps its own data.
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
 | `DELETE /me` | Deletes the profile and everything stored with it |
 | `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?, wantRanks?}` | The game's one sync request; every part optional (see below) |
-| `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |
+| `GET /boards` | **No sign-in needed.** The top 10 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |
 | `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
 | `/admin/*` (`flagged`, `hide`, `verify`, `players`, `runs`, `ban`, `run/delete`, `player/delete`, `unflag`, `stats`, `purge`, `rebuild`, `log`) | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
@@ -230,8 +230,9 @@ the device keeps its own data.
 - `devicesSince`: the answer has `deviceIds` (all slots), `devices` (the docs of other devices' slots written
   after that time) and the `profile`, so a rename on another device shows here.
 - `runs`: up to 50. Invalid ones are dropped, repeats ignored. The answer has `runs: [{clientRunId, verified,
-  score?}]`, and `ranks: {"song|diff": {rank, total, near}}` wherever a run just ranked. `near` is the player and the
-  two players above and below ([{rank, name, score, grade, me?}]), already read to find the rank.
+  score?}]`, and `ranks: {"song|diff": {rank, total, near, top}}` wherever a run just ranked. `near` is the player and the
+  two players above and below ([{rank, name, score, grade, me?}]), already read to find the rank. `top` is the world top 10 of that board right now, in the
+  snapshot's row shape.
 - `wantRanks: true`: the answer has `myRanks: [{songId, diff, score, rank, total}]`, the caller's rank on every board
   they have a verified run on, best percentile first (at most 500). Only those boards are read (`runs_user`, then
   `runs_rank`), not the whole table.

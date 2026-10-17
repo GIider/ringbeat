@@ -281,8 +281,9 @@ textarea::placeholder { color: var(--ink-dim); }
 #results { display: flex; flex-direction: column; overflow: hidden; }
 .r-tabs { justify-content: center; margin: 2px 0; }
 .r-pages { flex: 1; min-height: 0; overflow: hidden; }
-.r-page { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.r-page { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: safe center; text-align: center; }
 .r-page[hidden] { display: none; }
+.r-page { overflow-y: auto; } /* safe centre: from the top once the world top 10 outgrows the screen */
 .r-foot { margin: 2px 0 0; }
 .menu.r-foot > button { padding-top: 0; padding-bottom: 0; min-height: 0; line-height: 1.35; }
 .grade { font-size: calc(var(--fs) * 3); font-weight: 700; line-height: 1; }
@@ -410,6 +411,7 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .top li.gap { list-style: none; }
 .top li.cur { background: var(--ink); color: var(--lcd); font-weight: 700; }
+.top li.cur::marker { color: var(--ink); }
 .badge.dev { background: var(--ink); color: var(--lcd); border-color: var(--ink); }
 .top li.dev { animation: dev-blink 1.6s steps(2, jump-none) infinite; }
 .top li.cur.dev .badge.dev { background: var(--lcd); color: var(--ink); border-color: var(--lcd); }

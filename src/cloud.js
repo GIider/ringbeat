@@ -21,6 +21,7 @@ const KEEPALIVE_MAX = 60_000;      // browsers drop keepalive bodies over 64 KB
 export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when the last sync is older than this
 export const PUSH_EVERY = 10 * 60e3;   // new scores, stats and runs wait at most this long (or until the tab is hidden)
 export const SHARED_DELAY = 30e3;      // settings, favourites and my songs: changes come in bursts
+export const BOARD_TOP = 10;   // runs per board in the snapshot and in a sync's answer (the server's BOARD_TOP)
 export const BOARDS_TTL = 30e3;   // the leaderboard snapshot (the server patches it as runs rank; fetched when a screen asks)
 export const RANKS_TTL = 10 * 60e3;    // the stats screen's overview of the player's ranks
 export const SYNC_COOLDOWN = 30e3;     // the Sync button: once per this, counted from the last sync or press
@@ -75,7 +76,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
     sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
-    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, near?, at }: the world rank last seen
+    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, near?, top?, at }: the world rank last seen
     myRanks: st.myRanks && Array.isArray(st.myRanks.rows) && isNum(st.myRanks.at) ? st.myRanks : { at: 0, rows: [] }, // every board the player is on
     rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
     pendingProfile: obj(st.pendingProfile),            // { displayName?, public? } waiting for the next push
@@ -283,7 +284,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       }
       for (const v of r.runs || []) verdicts[v.clientRunId] = v;
       for (const [key, v] of Object.entries(r.ranks || {})) {
-        st.ranks[key] = { rank: v.rank, total: v.total, near: v.near, at: now() };
+        st.ranks[key] = { rank: v.rank, total: v.total, near: v.near, top: v.top, at: now() };
         if (!Array.isArray(r.myRanks)) patchRanked(key, v);
       }
       if (Array.isArray(r.myRanks)) st.myRanks = { at: now(), rows: r.myRanks };
@@ -308,13 +309,18 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       rows.sort((a, b) => a.rank / a.total - b.rank / b.total || (a.songId < b.songId ? -1 : 1));
       st.myRanks.rows = rows.slice(0, 500);
     }
-    const top = boards.value && boards.value.boards[key];
+    if (!boards.value) return;
+    if (Array.isArray(v.top)) boards.value.boards[key] = v.top; // the server's own top, no guessing
+    else patchGuess(key, me, v.total);
+    try { storage.setItem(BOARDS_KEY, JSON.stringify({ at: boards.at, value: boards.value })); } catch { /* ignore */ }
+  }
+  function patchGuess(key, me, total) {
+    const top = boards.value.boards[key];
     if (!top) return;
     const next = top.filter(r => r.name !== me.name);
     next.push({ name: me.name, score: me.score, grade: me.grade, accuracy: 0, maxCombo: 0, mods: [], playedAt: now() });
     next.sort((a, b) => b.score - a.score);
-    boards.value.boards[key] = next.slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, total: v.total }));
-    try { storage.setItem(BOARDS_KEY, JSON.stringify({ at: boards.at, value: boards.value })); } catch { /* ignore */ }
+    boards.value.boards[key] = next.slice(0, BOARD_TOP).map((r, i) => ({ ...r, rank: i + 1, total }));
   }
 
   // What the connection is doing, for the status bar: 'idle', 'send' or 'recv' (a request is out), 'error' (the last round failed).
@@ -465,6 +471,12 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     rank: (songId, diff) => st.ranks[songId + '|' + diff] || null,
     // The players around the player on one board, from the sync that ranked their run: [{ rank, name, score, grade,
     // me? }] or null. No request.
+    // The world top runs as the sync that ranked the player's run saw them, or null.
+    // Only while fresh; after that the snapshot is as good.
+    rankTop(songId, diff) {
+      const k = st.ranks[songId + '|' + diff];
+      return k && k.top && now() - k.at < BOARDS_TTL ? k.top : null;
+    },
     rankNear: (songId, diff) => (st.ranks[songId + '|' + diff] || {}).near || null,
     // The player's rank on every board they are on, for the stats screen: { rows: [{ songId, diff, score, rank, total }],
     // at, loading }. Served from the last answer; asks (one sync, with whatever else is waiting) only when it is older
@@ -499,14 +511,14 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (onFresh && boards.loading && boards.value) boards.loading.then(() => { if (boards.value) onFresh(view()); });
       return view();
     },
-    // Where a score would land, from the snapshot alone (no request): { rank, total } for the top 3, else null. A guess:
+    // Where a score would land, from the snapshot alone (no request): { rank, total } for the top 10, else null. A guess:
     // the snapshot is up to 25 minutes old, so the answer to submit() has the last word.
     guessRank(songId, diff, score) {
       const v = boards.value, key = songId + '|' + diff;
       if (!st.token || !v || v.rules !== st.rules || !v.boards) return null;
       const rows = v.boards[key] || [], known = st.ranks[key];
       const rank = rows.filter(r => r.score >= score).length + 1; // a tie goes to the earlier run
-      if (rank > 3) return null;
+      if (rank > BOARD_TOP) return null;
       return { rank, total: known ? known.total : (rows.length ? rows[0].total : 0) + 1 };
     },
     // On leaderboards or not; goes up with the next push. -> the profile as shown.

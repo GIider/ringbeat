@@ -413,11 +413,11 @@ export const de = {
   // ---- inbox messages (changelog) ----
   'Leaderboards': 'Bestenlisten',
   ['Signed in? Your runs now count on world leaderboards.\n' +
-    'The results screen shows your world rank, and each song shows the world top 3 under your own runs.\n' +
+    'The results screen shows your world rank, and each song shows the world top 10 under your own runs.\n' +
     'The server replays your key presses to check every score.\n' +
     'Rather stay off the boards? Profile -> On leaderboards.']:
     'Angemeldet? Deine Durchgänge zählen jetzt in weltweiten Bestenlisten.\n' +
-    'Der Ergebnis-Bildschirm zeigt deinen Weltrang, und jeder Song zeigt die Welt-Top-3 unter deinen eigenen Durchgängen.\n' +
+    'Der Ergebnis-Bildschirm zeigt deinen Weltrang, und jeder Song zeigt die Welt-Top-10 unter deinen eigenen Durchgängen.\n' +
     'Der Server spielt deine Tastendrücke nach und prüft so jede Punktzahl.\n' +
     'Lieber nicht in den Listen? Profil -> In Bestenlisten.',
   'Online profile': 'Online-Profil',

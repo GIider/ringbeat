@@ -658,7 +658,10 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   a.calls.length = 0;
   assert.equal((await a.cloud.submit())[id].verified, 1);
   assert.equal(a.calls.length, 1, 'upload and rank in one request');
-  assert.deepEqual({ ...a.cloud.rank('ode', 'normal'), at: 0 }, { rank: 1, total: 1, near: [{ rank: 1, name: 'Alice', score: res.score, grade: res.grade, me: true }], at: 0 });
+  const mine = a.cloud.rank('ode', 'normal');
+  assert.deepEqual({ ...mine, top: undefined, at: 0 }, { rank: 1, total: 1, near: [{ rank: 1, name: 'Alice', score: res.score, grade: res.grade, accuracy: mine.near[0].accuracy, maxCombo: mine.near[0].maxCombo, fc: true, ap: false, mods: [], me: true }], top: undefined, at: 0 });
+  assert.deepEqual(mine.top.map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]], 'the world top comes back in the same answer');
+  assert.deepEqual(a.cloud.rankTop('ode', 'normal').map(r => r.name), ['Alice']);
   assert.equal(a.cloud.serverRules(), RULES);
 
   const boards = async () => (await srv.call('/boards')).json();
@@ -691,6 +694,38 @@ test('POST /sync: a run in the top 3 is in the GET /boards snapshot at once, wit
   }
   const top = (await boards()).boards['ode|normal'];
   assert.deepEqual(top.map(r => [r.rank, r.name]), [[1, 'Bob'], [2, 'Alice']]);
+  assert.deepEqual(b.cloud.rankTop('ode', 'normal').map(r => r.name), ['Bob', 'Alice'], 'the answer carries the top too');
+});
+
+test('POST /sync: a run ranking 4th-10th returns the world top 10 and is in the snapshot at once', async () => {
+  const srv = server();
+  const devs = [];
+  for (let i = 0; i < 12; i++) {
+    const d = device(srv);
+    await d.cloud.takeLoginHash(await githubSignIn(srv, 100 + i, { login: 'p' + i, name: 'Player' + i }));
+    devs.push(d);
+  }
+  const scores = [];
+  for (const [i, d] of devs.entries()) {
+    const { run, result: res } = played('ode', 'normal', LADDER[i % 8], null, i + 1);
+    const id = d.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    d.calls.length = 0;
+    assert.equal((await d.cloud.submit())[id].verified, 1);
+    assert.equal(d.calls.length, 1, 'upload, rank and top in one request');
+    scores.push(res.score);
+    srv.tick(1000);
+  }
+  const last = devs[11], k = last.cloud.rank('ode', 'normal'), top = last.cloud.rankTop('ode', 'normal');
+  assert.equal(k.total, 12);
+  assert.ok(k.rank >= 4 && k.rank <= 10, 'the last player lands between 4th and 10th, got ' + k.rank);
+  assert.equal(top.length, 10, 'ten rows even though twelve players are on the board');
+  const want = [...scores].sort((a, b) => b - a).slice(0, 10);
+  assert.deepEqual(top.map(r => r.score), want, 'the top is the ten best, in order');
+  assert.deepEqual(top.map(r => r.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.ok(top.some(r => r.name === 'Player11'), 'the player is in the top 10');
+  const snap = (await (await srv.call('/boards')).json()).boards['ode|normal'];
+  assert.deepEqual(snap.map(r => [r.rank, r.name, r.score]), top.map(r => [r.rank, r.name, r.score]), 'the snapshot already shows it');
+  assert.ok(k.near.some(r => r.me), 'near still comes along');
 });
 
 test('POST /sync: the players around a new rank come back; the ranks overview is one request, then cached', async () => {

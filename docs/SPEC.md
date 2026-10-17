@@ -88,7 +88,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Stats:** accuracy, max combo, judgement counts, ghost hits.
   - **Timing:** early/late histogram, average offset.
   - **Top:** the song's top runs on this device, or "Run not saved".
-  - **World:** the world top 3 and the players around the player's rank (signed in); no request of its own.
+  - **World:** the world top 10 and the players around the player's rank (signed in); no request of its own.
 - **Buttons:** *Retry* / *Next song* (the next song in the current filtered list) / *Tones* (or the screen the run came
   from: *My song*, *Composer*, *RTTTL text*).
 - **Failed runs:** a Sudden-death fail is titled *Failed*.
@@ -213,7 +213,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Any
   other run shows the world rank last seen for that board, or nothing when there is none yet. Signed out: *Sign in
   for world ranks*.
-- **Song detail** (the difficulty picker): the world top 3 for the focused difficulty, under the local top runs.
+- **Song detail** (the difficulty picker): the world top 10 for the focused difficulty, under the local top runs.
   Boards are readable signed out; they are cached for a minute.
 
 ## Stats

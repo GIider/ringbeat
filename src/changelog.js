@@ -7,7 +7,7 @@ export const MESSAGES = [
   {
     version: '2.1', date: '2026-10-17', title: 'Leaderboards',
     body: 'Signed in? Your runs now count on world leaderboards.\n' +
-      'The results screen shows your world rank, and each song shows the world top 3 under your own runs.\n' +
+      'The results screen shows your world rank, and each song shows the world top 10 under your own runs.\n' +
       'The server replays your key presses to check every score.\n' +
       'Rather stay off the boards? Profile -> On leaderboards.',
   },

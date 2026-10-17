@@ -28,7 +28,7 @@ const MAX_RTTTL = 8000;      // mysongs.js MAX_RTTTL
 const VERIFY_PER_REQUEST = 4; // re-plays per request (CPU budget); the rest wait for the cron
 const VERIFY_PER_CRON = 20;
 const BOARD_MAX = 100;
-const BOARD_TOP = 3;          // runs per song and difficulty in the GET /boards snapshot
+const BOARD_TOP = 10;         // runs per song and difficulty in the GET /boards snapshot and in a sync's ranks
 const BUILTIN = new Map(SONGS.map(s => [s.id, s.rtttl]));
 
 export default {
@@ -233,10 +233,12 @@ export async function handle(req, env, now = Date.now()) {
           const [songId, diff] = [key.slice(0, key.lastIndexOf('|')), key.slice(key.lastIndexOf('|') + 1)];
           const rows = await board(env, songId, diff, { me: uid });
           const me = rows.find(r => r.me);
+          const top = await board(env, songId, diff, { limit: BOARD_TOP }); // the world top now, for the results screen
           // The players around them come along (already read for the rank): the results screen's World page.
-          if (me && me.rank <= BOARD_TOP) await patchTop(env, songId, diff, now); // the snapshot shows it now, not at the next cron
-          if (me) out.ranks[key] = { rank: me.rank, total: me.total,
-            near: rows.map(r => ({ rank: r.rank, name: r.name, score: r.score, grade: r.grade, ...(r.me && { me: true }) })) };
+          if (me && me.rank <= BOARD_TOP) await patchTop(env, songId, diff, now, top); // the snapshot shows it now, not at the next cron
+          if (me) out.ranks[key] = { rank: me.rank, total: me.total, top,
+            near: rows.map(r => ({ rank: r.rank, name: r.name, score: r.score, grade: r.grade, accuracy: r.accuracy,
+              maxCombo: r.maxCombo, fc: r.fc, ap: r.ap, mods: r.mods, ...(r.dev && { dev: true }), ...(r.me && { me: true }) })) };
         }
       }
       // The stats screen's online page: the caller's rank on every board they are on, in this same round trip.
@@ -405,10 +407,10 @@ async function adminRoute(env, route, url, body, now, json, fail) {
 
 // Writes one board's top runs into the GET /boards snapshot at once (one atomic statement, so concurrent syncs can't
 // lose each other's edit). A key the JSON path can't hold is left to the cron's rebuild.
-async function patchTop(env, songId, diff, now) {
+async function patchTop(env, songId, diff, now, top) {
   const key = songId + '|' + diff;
   if (/["\\]/.test(key)) return;
-  const top = await board(env, songId, diff, { limit: BOARD_TOP });
+  top ||= await board(env, songId, diff, { limit: BOARD_TOP });
   await env.DB.prepare(`UPDATE board_tops SET doc = json_set(doc, ?1, json(?2)), built = ?3 WHERE id = 1 AND rules = ?4`)
     .bind(`$."${key}"`, JSON.stringify(top), now, String(RULES)).run();
 }
