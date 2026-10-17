@@ -119,6 +119,16 @@ test('worker: CORS only for allowed origins; unknown routes and missing tokens a
   assert.equal((await srv.call('/auth/github/callback?code=1&state=nope')).status, 400);
 });
 
+test('worker: the profile carries dev only for a flagged account', async () => {
+  const srv = server();
+  const { h, id } = await signedIn(srv, 9, 'dev9');
+  assert.equal('dev' in (await (await srv.call('/me', { headers: h })).json()).profile, false);
+  srv.env.DB.db.prepare('UPDATE users SET dev = 1 WHERE id = ?').run(id);
+  assert.equal((await (await srv.call('/me', { headers: h })).json()).profile.dev, true);
+  const sync = await (await srv.call('/sync', { method: 'POST', headers: h, body: JSON.stringify({ deviceId: 'device0001', devicesSince: 0 }) })).json();
+  assert.equal(sync.profile.dev, true);
+});
+
 test('worker: sign-in stores only the GitHub id; codes are single use; names are checked; delete removes everything', async () => {
   const srv = server();
   const code = (await githubSignIn(srv, 7)).slice('#login='.length);

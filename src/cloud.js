@@ -392,6 +392,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     available: () => !!apiBase,
     signedIn: () => !!st.token,
     profile: () => st.profile,
+    // Signed in with the developer flag (set by hand in D1): shows the Admin app in the menu.
+    isDev: () => !!(st.token && st.profile && st.profile.dev),
     lastSync: () => st.syncedAt,
     pendingRuns: () => st.outbox.length,
     // 'off' signed out (or no API), else 'idle' | 'send' | 'recv' | 'error'.

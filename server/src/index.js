@@ -680,9 +680,9 @@ async function userFor(env, provider, subject, suggested, now) {
 }
 
 async function profile(env, uid) {
-  const u = await env.DB.prepare('SELECT id, display_name, created, public FROM users WHERE id = ?').bind(uid).first();
+  const u = await env.DB.prepare('SELECT id, display_name, created, public, dev FROM users WHERE id = ?').bind(uid).first();
   const { results } = await env.DB.prepare('SELECT provider FROM identities WHERE user_id = ?').bind(uid).all();
-  return u && { id: u.id, name: u.display_name, created: u.created, public: !!u.public, logins: results.map(r => r.provider) };
+  return u && { id: u.id, name: u.display_name, created: u.created, public: !!u.public, logins: results.map(r => r.provider), ...(u.dev && { dev: true }) };
 }
 
 function randomToken() {

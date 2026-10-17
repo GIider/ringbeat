@@ -60,6 +60,20 @@ async function adminSmoke(context, name) {
   const text = sel => page.locator(sel).first().innerText();
   const fail = why => { console.log(`[${name}] admin smoke failed: ${why}`, errors.join(' | ')); return false; };
   try {
+    // Without ?dev the item comes from the signed-in profile's dev flag (the API is unreachable here, so it stays signed in).
+    for (const dev of [true, false]) {
+      const p2 = await context.newPage();
+      await p2.route(url => url.href.startsWith(API_BASE) && !url.pathname.startsWith('/admin/'), r => r.abort());
+      await p2.addInitScript(d => localStorage.setItem('ringbeat.cloud.v1', JSON.stringify({ token: 'x', profile: { id: 'u', name: 'Me', logins: ['github'], ...(d && { dev: true }) } })), dev);
+      await p2.goto(`http://127.0.0.1:${port}/`);
+      await p2.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
+      await p2.keyboard.press('Space');
+      await p2.waitForSelector('#mm-title');
+      await p2.keyboard.press('7');
+      const title = await p2.locator('#mm-title').innerText();
+      await p2.close();
+      if ((title === 'Admin') !== dev) return fail(`Admin item ${dev ? 'missing for' : 'shown to'} a ${dev ? 'dev' : 'non-dev'} profile`);
+    }
     await page.goto(`http://127.0.0.1:${port}/?dev`);
     await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
     await page.keyboard.press('Space');

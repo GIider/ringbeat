@@ -339,6 +339,7 @@ const showNet = () => netSignal.setState(netView());
 addEventListener('online', showNet);
 addEventListener('offline', showNet);
 cloud.onChange(e => {
+  if (e === 'profile' || e === 'signedin' || e === 'signedout' || e.synced) refreshMenu();
   if (e.net || e === 'signedin' || e === 'signedout') showNet();
   if (e.synced) {
     if (e.synced.has('settings')) {
@@ -618,11 +619,23 @@ const MENU = [
   { id: 'messages', title: 'Messages', open: () => openInbox() },
   { id: 'profile', title: 'Profile', open: () => openProfile() },
   { id: 'settings', title: 'Settings', open: () => openSettings('menu') },
-  ...(DEV ? [{ id: 'admin', title: 'Admin', open: () => openAdmin() }] : []),
 ];
+// The Admin app shows in dev mode (?dev) and for a signed-in player with the developer flag; the token still gates it.
+const ADMIN_ITEM = { id: 'admin', title: 'Admin', open: () => openAdmin() };
+const adminOn = () => DEV || cloud.isDev();
+function refreshMenu() {
+  const has = MENU.includes(ADMIN_ITEM);
+  if (has === adminOn()) return;
+  const id = MENU[menuIdx].id;
+  if (has) MENU.pop(); else MENU.push(ADMIN_ITEM);
+  menuIdx = Math.max(0, MENU.findIndex(m => m.id === id));
+  if (has) admin.lock(); // the flag or the sign-in is gone
+  if (state === 'admin') openMenu(); else if (state === 'menu') renderMenu();
+}
 const MENU_FRAME_MS = 300;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 let menuIdx = 0, menuTick = 0, menuNext = 0;
+if (adminOn()) MENU.push(ADMIN_ITEM);
 let unit = 2; // CSS px per LCD pixel (set by layout)
 const unreadCount = () => unread(settings.msgSeen).length;
 // The icon is drawn at 2-4 LCD pixels per sprite pixel, as big as the screen comfortably allows.

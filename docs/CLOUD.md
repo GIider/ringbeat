@@ -144,7 +144,7 @@ these routes answer 404.
   sign-in rows, force a leaderboard snapshot rebuild.
 - `GET /admin/log`: the newest 50 entries of `admin_log`; every change above (and `hide`) writes one.
 
-The game's **Admin** app (dev mode, `?dev`) drives these routes. The token is typed in and kept in memory only.
+The game's **Admin** app (dev mode `?dev`, or a signed-in account whose profile carries `dev: true`, set by hand with `UPDATE users SET dev = 1 WHERE id = ?`) drives these routes. The flag only shows the app; the token is the gate. The token is typed in and kept in memory only.
 
 **Opt-out.** Profile → "On leaderboards" (`profile.public` in the next `POST /sync`). A player who opts out leaves the public boards but
 still sees their own rank.

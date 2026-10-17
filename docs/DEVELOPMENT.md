@@ -104,7 +104,7 @@ Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 | Hook | Effect |
 |---|---|
 | `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
-| `?dev` | Dev mode. Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)), a panel with a button per cameo plus stop, IMEI, wipe and Konami, the **request log** (below) and the **Admin** menu app (7th item; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
+| `?dev` | Dev mode. Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)), a panel with a button per cameo plus stop, IMEI, wipe and Konami, the **request log** (below) and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
 | `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
 | `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, cloud, state}` for devtools and `tests/smoke.html` |

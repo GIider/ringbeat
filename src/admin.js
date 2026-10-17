@@ -1,4 +1,4 @@
-// Admin client for the Worker's /admin/* routes (docs/CLOUD.md › Moderation). Dev mode only (?dev). The admin token
+// Admin client for the Worker's /admin/* routes (docs/CLOUD.md › Moderation). Dev mode (?dev) or a signed-in dev-flag account. The admin token
 // lives in this closure and nowhere else: not in storage, not in the cloud state, and a wrong one never signs the
 // player out (this has its own fetch path, unlike cloud.js request()).
 export const TIMEOUT = 8000;
