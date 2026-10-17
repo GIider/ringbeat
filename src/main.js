@@ -1482,7 +1482,10 @@ function askDifficulty(entry, ret, retLabel, goBack, uid) {
     b.disabled = !n;
     b.toggleAttribute('data-default', d === settings.difficulty && !!n);
     b.onfocus = () => { dpDiff = d; renderDpPanel(); };
+    // Touch: the first tap only selects the difficulty (showing its runs), a second tap on it starts the song.
+    b.onpointerdown = ev => { b.dataset.arm = ev.pointerType === 'touch' && document.activeElement !== b ? '1' : ''; };
     b.onclick = () => {
+      if (b.dataset.arm) { b.dataset.arm = ''; b.focus(); return; }
       settings.difficulty = d;
       if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
       save();
