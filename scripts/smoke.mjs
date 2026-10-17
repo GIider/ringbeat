@@ -39,6 +39,7 @@ async function run(name) {
     if (ok) ok = await adminSmoke(context, name);
     if (ok) ok = await boardsSmoke(context, name);
     if (ok) ok = await resultsEnterSmoke(context, name);
+    if (ok) ok = await listWrapSmoke(context, name);
   } catch (e) {
     console.error(`smoke test could not run (${name}):`, e.message);
   } finally {
@@ -161,6 +162,40 @@ async function resultsEnterSmoke(context, name) {
     }
     if (errors.length) return fail('page errors');
     console.log(`[${name}] results-enter smoke ok`);
+    return true;
+  } catch (e) { return fail(e.message); } finally { await page.close(); }
+}
+// Up from the first song wraps to the last song (it used to open the category hub); the hub stays on G.
+async function listWrapSmoke(context, name) {
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const fail = why => { console.log(`[${name}] list-wrap smoke failed: ${why}`, errors.join(' | ')); return false; };
+  const cur = () => page.evaluate(() => ({ state: window.__ringbeat.state, id: (document.querySelector('#song-list .cur') || {}).dataset?.id, ids: Array.from(document.querySelectorAll('#song-list > *')).map(b => b.dataset.id).filter(Boolean) }));
+  try {
+    await page.addInitScript(() => localStorage.setItem('ringbeat.settings.v1', JSON.stringify({ tutorialDone: true })));
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.waitForFunction(() => window.__ringbeat && window.__ringbeat.state === 'title', null, { timeout: 15000 });
+    await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => window.__ringbeat.state === 'menu', null, { timeout: 5000 });
+    await page.keyboard.press('Digit1');
+    await page.evaluate(() => document.getElementById('mm-go').click());
+    await page.waitForFunction(() => window.__ringbeat.state === 'select', null, { timeout: 5000 });
+    // jump to the first song, then let the 400 ms "fresh press" guard pass
+    for (let i = 0; i < 100 && (await cur()).id !== (await cur()).ids[0]; i++) { await page.keyboard.press('PageUp'); await page.waitForTimeout(30); }
+    await page.waitForTimeout(500);
+    let c = await cur();
+    if (c.id !== c.ids[0]) return fail('could not reach the first song ' + JSON.stringify({ ...c, ids: c.ids.slice(0, 3), n: c.ids.length }));
+    await page.keyboard.press('ArrowUp');
+    c = await cur();
+    if (c.state !== 'select') return fail(`Up from the first song left the list (${c.state})`);
+    if (c.id !== c.ids[c.ids.length - 1]) return fail('Up from the first song did not land on the last song');
+    await page.keyboard.press('KeyG');
+    await page.waitForFunction(() => document.getElementById('hub-grid').children.length > 0, null, { timeout: 3000 }).catch(() => {});
+    if (!(await page.evaluate(() => document.getElementById('hub-grid').children.length))) return fail('G no longer opens the category hub');
+    if (errors.length) return fail('page errors');
+    console.log(`[${name}] list-wrap smoke ok`);
     return true;
   } catch (e) { return fail(e.message); } finally { await page.close(); }
 }

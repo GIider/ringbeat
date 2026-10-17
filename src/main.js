@@ -2467,9 +2467,9 @@ function navigate(dir) {
     return;
   }
   if (state === 'select' && (dir === 'left' || dir === 'right') && document.activeElement.id !== 'sel-q') { cycleCategory(dir === 'left' ? -1 : 1); return; }
-  // Up from the first song (a fresh press, not a held key running into the top) opens the category hub.
+  // Up from the first song (a fresh press, not a held key running into the top) wraps to the last song.
   if (state === 'select' && dir === 'up' && !searchOpen() && performance.now() - selMoveAt > 400
-    && visible()[0] && visible()[0].id === selectedId) { openHub(); return; }
+    && visible()[0] && visible()[0].id === selectedId) { jumpTo(visible().length - 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     stepResultsPage(dir === 'left' ? -1 : 1);
     return;
@@ -2502,7 +2502,7 @@ function softRightDown() {
   window.addEventListener('pointercancel', up);
 }
 // Phone keypad shortcuts in the song list: 1/3 page, 7/9 group, 0 random (* and # stay free for the secret dial codes;
-// Up from the first song opens the categories).
+// Up from the first song wraps to the last).
 function selectKey(key) {
   switch (key) {
     case '1': jumpPage(-1); break;

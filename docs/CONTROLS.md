@@ -54,7 +54,7 @@ The drawn phone's keys work, laid out like a 3310:
   runs a gag (see [SPEC.md › Extras](SPEC.md#extras)).
 - **▲▼ rocker** (right): up / down.
 - **Song list keypad:** `1` / `3` page up / down, `7` / `9` previous / next group, `0` random song. (`*` and `#` stay free for
-  the secret dial codes; Up from the first song opens the categories.)
+  the secret dial codes; Up from the first song wraps to the last.)
 - **Keypad:** `5` = select (pauses during play), `2` `8` `4` `6` = up / down / left / right. In the composer the keypad
   is the note entry, as on the keyboard.
 
@@ -95,7 +95,7 @@ star band, BPM band or duration band. A scroll thumb on the right edge shows whe
 | Action | Keyboard | Controller | Touch |
 |---|---|---|---|
 | Next / previous category | `◄ ►`, `[` `]` | LB / RB | swipe the list, header arrows |
-| Category hub (all groups + counts) | `G`, or Up from the first song | Y | tap the header |
+| Category hub (all groups + counts) | `G` | Y | tap the header |
 | Page up / down | PageUp / PageDown | hold the d-pad (speeds up) | scroll |
 | First / last song | Home / End | | |
 | Previous / next group | `,` `.` | Back / RT | A–Z strip (Title sort) |
