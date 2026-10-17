@@ -261,6 +261,13 @@ export const HEART_BROKEN = [
   '....#..#...',
   '.....#.....',
 ];
+// HEART_BROKEN cut along its crack (per-row split column) into two same-size sprites that overlay into the broken heart:
+// the unfavorite animation flies the halves apart.
+const HEART_SPLIT = [5, 5, 5, 5, 6, 5, 5, 5, 5, 5];
+export const HEART_HALVES = [
+  HEART_BROKEN.map((r, i) => r.slice(0, HEART_SPLIT[i]).padEnd(r.length, '.')),
+  HEART_BROKEN.map((r, i) => '.'.repeat(HEART_SPLIT[i]) + r.slice(HEART_SPLIT[i])),
+];
 // The pop-up icons, by name (the Glyphs & icons gallery lists them and replays their animation).
 export const POPUPS = { heart: HEART, 'heart broken': HEART_BROKEN };
 

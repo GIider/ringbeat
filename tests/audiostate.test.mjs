@@ -82,3 +82,19 @@ test('Game.pause marks audio as not wanted so statechange will not fight it', ()
   g.pause();
   assert.equal(synth.wantRunning, false);
 });
+
+test('favorite sounds play only on a running context', () => {
+  for (const [state, expect] of [['running', true], ['suspended', false]]) {
+    for (const sfx of ['favAdd', 'favBreak']) {
+      fakeAudio(state);
+      const s = new Synth(); s.ensure();
+      let started = 0;
+      const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} });
+      const node = () => { const n = { connect: () => n, disconnect() {}, gain: param(), frequency: param(), start() { started++; }, stop() {} }; return n; };
+      Object.assign(s.ctx, { state, sampleRate: 8000, createOscillator: node, createGain: node, createBiquadFilter: node,
+        createBufferSource: node, createBuffer: (c, len) => ({ getChannelData: () => new Float32Array(len) }) });
+      s[sfx]();
+      assert.equal(started > 0, expect, `${sfx} while ${state}`);
+    }
+  }
+});

@@ -37,7 +37,7 @@ import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_BROKEN, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
+import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -118,7 +118,7 @@ function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   document.body.classList.toggle('in-select', name === 'select');
-  if (name !== 'select') dismissBubble();
+  if (name !== 'select') dismissFx();
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
   if (name !== 'msgload') clearTimeout(msgTimer);
@@ -324,36 +324,48 @@ function showToast(fill, ms) {
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
-// Thought bubble with a pixel icon beside a song's genre icon (the label is for screen readers only). It is pinned to
-// that song's row: it follows the row while the list scrolls and is dismissed once the row is out of view or gone.
-let bubbleTimer = 0, bubbleId = '';
-function favBubble(id, rows, label, kind, ms = 1100) {
-  const b = $('fav-bubble');
-  b.innerHTML = spriteHTML(rows, 4) + `<span class="sr">${esc(label)}</span>`;
-  bubbleId = id;
-  b.hidden = false; // measured in placeBubble
-  if (!placeBubble()) return;
-  b.classList.remove('add', 'break'); void b.offsetWidth; b.classList.add(kind);
-  clearTimeout(bubbleTimer);
-  bubbleTimer = setTimeout(dismissBubble, ms);
+// Favorite effect over a song's genre icon (the label is for screen readers only). Added: the heart grows out of the icon
+// and floats away. Removed: the heart appears, then cracks into two halves and pixel shards. Both are pinned to the row:
+// the effect follows it while the list scrolls and is dismissed once the row is out of view or gone.
+const SHARDS = [[-16, -12, -90], [14, -16, 120], [-20, 6, 60], [19, 10, -140], [-6, 20, 200], [8, 22, -70]]; // dx, dy, rot
+const FX_MS = { add: 950, break: 850 };
+const FX_CRACK_MS = 260; // the heart holds this long before it cracks (see .fx.break in style.css; favBreak's crackAt)
+function favFxHTML(kind) {
+  if (kind === 'add') return `<span class="fx add"><span class="fx-heart">${spriteHTML(HEART, 4)}</span></span>`;
+  const half = (r, side) => `<span class="fx-half ${side}">${spriteHTML(r, 4)}</span>`;
+  return `<span class="fx break"><span class="fx-whole">${spriteHTML(HEART, 4)}</span>${half(HEART_HALVES[0], 'l')}${half(HEART_HALVES[1], 'r')}` +
+    SHARDS.map(([x, y, r], i) => `<i class="fx-shard" style="--dx:${x}px;--dy:${y}px;--rot:${r}deg;--n:${i}"></i>`).join('') + '</span>';
 }
-function dismissBubble() {
-  clearTimeout(bubbleTimer);
-  bubbleId = '';
-  $('fav-bubble').hidden = true;
+let fxTimer = 0, fxId = '';
+function favFx(id, kind) {
+  const b = $('fav-fx');
+  b.innerHTML = favFxHTML(kind) + `<span class="sr">${esc(tr(kind === 'add' ? 'Favorite added' : 'Favorite removed'))}</span>`;
+  fxId = id;
+  b.hidden = false; // measured in placeFx
+  if (!placeFx()) return;
+  if (kind === 'add') synth.favAdd(); else synth.favBreak(FX_CRACK_MS / 1000);
+  clearTimeout(fxTimer);
+  fxTimer = setTimeout(dismissFx, FX_MS[kind]);
 }
-// Put the bubble beside its row's icon; false (and dismissed) when that row is not fully inside the list viewport.
-function placeBubble() {
-  const b = $('fav-bubble');
+function dismissFx() {
+  clearTimeout(fxTimer);
+  fxId = '';
+  $('fav-fx').hidden = true;
+}
+// Centre the effect on the first letter of its row's title, a little above the row; false (and dismissed) when that row is not fully inside the list viewport.
+function placeFx() {
+  const b = $('fav-fx');
   if (b.hidden) return false;
-  const row = Array.from($('song-list').children).find(r => r.dataset.id === bubbleId), icon = row && row.querySelector('.spr.cat');
-  if (!icon) { dismissBubble(); return false; }
-  const ir = icon.getBoundingClientRect(), list = $('song-list').getBoundingClientRect(), lr = $('lcd').getBoundingClientRect(), br = b.getBoundingClientRect();
-  if (ir.top < list.top || ir.bottom > list.bottom) { dismissBubble(); return false; }
-  const above = ir.top - br.height - 12 >= lr.top + 2; // otherwise below the icon, tail pointing up
-  b.classList.toggle('below', !above);
-  b.style.left = Math.max(lr.left + 14, Math.min(lr.right - br.width - 4, ir.right + 12)) + 'px';
-  b.style.top = (above ? ir.top - br.height - 12 : ir.bottom + 12) + 'px';
+  const row = Array.from($('song-list').children).find(r => r.dataset.id === fxId), icon = row && row.querySelector('.spr.cat');
+  if (!icon) { dismissFx(); return false; }
+  const ir = icon.getBoundingClientRect(), list = $('song-list').getBoundingClientRect();
+  if (ir.top < list.top || ir.bottom > list.bottom) { dismissFx(); return false; }
+  // Over the first letter of the song's title (not the icon at the LCD edge, where the heart would be cut off).
+  const t = row.querySelector('.t'), text = t && t.firstChild, rg = document.createRange();
+  if (text && text.nodeType === 3 && text.length) rg.setStart(text, 0), rg.setEnd(text, 1);
+  const fr = text && text.nodeType === 3 && text.length ? rg.getBoundingClientRect() : t ? t.getBoundingClientRect() : ir;
+  b.style.left = fr.left + Math.min(fr.width, 14) / 2 + 'px';
+  b.style.top = ir.top + ir.height / 2 - 10 + 'px';
   return true;
 }
 
@@ -531,7 +543,7 @@ function updateThumb() {
 }
 {
   const l = $('song-list');
-  l.addEventListener('scroll', () => { queueThumb(); placeBubble(); }, { passive: true });
+  l.addEventListener('scroll', () => { queueThumb(); placeFx(); }, { passive: true });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateThumb).observe(l);
 }
 // A-Z strip (touch, sorted by title): the letters present, drag along it to jump.
@@ -671,8 +683,8 @@ function toggleFavorite(id = selectedId) {
   save();
   renderList();
   if (state === 'select') focusCurrentRow(); // the list may have re-sorted around the cursor
-  // After focusCurrentRow's frame has put the row back in view, so the bubble finds the icon where it ended up.
-  requestAnimationFrame(() => requestAnimationFrame(() => (on ? favBubble(id, HEART, tr('Favorite added'), 'add') : favBubble(id, HEART_BROKEN, tr('Favorite removed'), 'break'))));
+  // After focusCurrentRow's frame has put the row back in view, so the effect finds the icon where it ended up.
+  requestAnimationFrame(() => requestAnimationFrame(() => favFx(id, on ? 'add' : 'break')));
 }
 
 function renderList() {
@@ -706,7 +718,7 @@ function renderList() {
   renderAz();
   markSelected();
   queueThumb();
-  placeBubble(); // the rows were rebuilt: re-pin the bubble (or drop it when its song left the list)
+  placeFx(); // the rows were rebuilt: re-pin the effect (or drop it when its song left the list)
 }
 // One delegated set of row handlers instead of three listeners per row (the list is rebuilt on every view change).
 {
@@ -1655,7 +1667,7 @@ function buildGlyphs() {
     const text = `<span class="gl-ch" style="font-family:'${FAMILY}'">${esc(ch)}<b>${esc(ch)}</b></span>`;
     return cell(`${ch} ${cp} ${g.w}×${g.rows.length}`, text + spriteHTML(g.rows, 3), g.w * 3);
   });
-  // Pop-ups: focusing one replays its animation (heart pops, broken heart shakes), as the favorite bubble does.
+  // Pop-ups: focusing one replays its animation (heart pops, broken heart shakes), as the favorite effect does.
   const pops = Object.entries(POPUPS).map(([k, r]) => cell(`popup ${k} ${r[0].length}×${r.length}`, `<span class="gl-pop">${spriteHTML(r, 3)}</span>`, r[0].length * 3, ` data-pop="${k === 'heart' ? 'add' : 'break'}"`));
   const menu = MENU_IDS.map(id => cell(`menu ${id} ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame(id, 0), 2), ICON_W * 2, `data-menu="${id}"`));
   const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
@@ -1663,12 +1675,19 @@ function buildGlyphs() {
   glyphsBuilt = true;
 }
 // A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
-let glyphAnim = null;
+let glyphAnim = null, popTimer = 0;
+function popPlay(el, kind) {
+  clearTimeout(popTimer);
+  el.querySelector('.fx')?.remove();
+  el.classList.add('playing'); // hides the resting sprite under the effect
+  el.insertAdjacentHTML('beforeend', favFxHTML(kind));
+  if (kind === 'add') synth.favAdd(); else synth.favBreak(FX_CRACK_MS / 1000);
+  popTimer = setTimeout(() => { el.classList.remove('playing'); el.querySelector('.fx')?.remove(); }, FX_MS[kind]);
+}
 function glyphAnimate(cell) {
   if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0), 2); glyphAnim = null; }
   if (cell && cell.dataset.pop && !still.matches) {
-    const el = cell.querySelector('.gl-pop');
-    el.classList.remove('add', 'break'); void el.offsetWidth; el.classList.add(cell.dataset.pop);
+    popPlay(cell.querySelector('.gl-pop'), cell.dataset.pop);
     return;
   }
   const id = cell && cell.dataset.menu;
@@ -3001,7 +3020,6 @@ function onKey(e) {
   if (state === 'select' && !typing && tag !== 'SELECT' && e.code === 'KeyV' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     if (e.repeat) return;
-    synth.keyClick();
     toggleFavorite();
     return;
   }

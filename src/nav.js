@@ -26,7 +26,18 @@ export function move(root, dir) {
   const gap = (a0, a1, b0, b1) => Math.max(0, a0 - b1, b0 - a1);
   // In a grid (data-rows) left/right stay in the current row, so a wide cell above or below is only reached with up/down.
   const inRow = el => { const r = rectOf(el); return gap(cr.top, cr.bottom, r.top, r.bottom) === 0; };
-  const pool = (dir === 'left' || dir === 'right') && cur.closest('[data-rows]') ? items.filter(inRow) : items;
+  let pool = (dir === 'left' || dir === 'right') && cur.closest('[data-rows]') ? items.filter(inRow) : items;
+  // Up/down out of a grid go to the nearest row first, then the best column within it: otherwise a full-width control
+  // further down (like Back) beats a sparse next row whose cells are all far to the side.
+  if ((dir === 'up' || dir === 'down') && cur.closest('[data-rows]')) {
+    const sign = dir === 'down' ? 1 : -1;
+    let near = null, nearD = Infinity;
+    for (const el of pool) {
+      const d = sign * (center(rectOf(el)).y - c.y);
+      if (d >= 3 && d < nearD) { nearD = d; near = el; }
+    }
+    if (near) { const nr = rectOf(near); pool = pool.filter(el => { const r = rectOf(el); return gap(nr.top, nr.bottom, r.top, r.bottom) === 0; }); }
+  }
   let best = null, bestScore = Infinity;
   for (const el of pool) {
     if (el === cur) continue;

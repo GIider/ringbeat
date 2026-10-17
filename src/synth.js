@@ -229,6 +229,41 @@ export class Synth {
   }
   tickUp(step) { this._beeps([[72 + (step % 12), 0, 0.02]], 0.04); }
 
+  // Favorite added: a bright rising sparkle that trails off as the heart floats away.
+  favAdd() {
+    this._beeps([[79, 0, 0.05], [84, 0.05, 0.05], [91, 0.1, 0.05], [96, 0.15, 0.12]], 0.045);
+    this._beeps([[103, 0.1, 0.03], [108, 0.18, 0.06]], 0.02);
+  }
+
+  // Favorite removed: a small pop as the heart appears, then (as it cracks, `crackAt` seconds later) a low thud, a noise
+  // crunch and two falling beeps.
+  favBreak(crackAt = 0.26) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    this._beeps([[84, 0, 0.04]], 0.04);
+    const t = ctx.currentTime + crackAt;
+    const o = ctx.createOscillator(); o.type = 'square';
+    o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.09, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(g).connect(this.bus);
+    o.start(t); o.stop(t + 0.13);
+    this._cleanup(o, [o, g]);
+    const len = Math.ceil(ctx.sampleRate * 0.07), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const n = ctx.createBufferSource(); n.buffer = buf;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.1, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    n.connect(hp).connect(ng).connect(this.bus);
+    n.start(t);
+    this._cleanup(n, [n, hp, ng]);
+    this._beeps([[64, crackAt + 0.04, 0.04], [55, crackAt + 0.09, 0.09]], 0.04);
+  }
+
   // Menu key beep.
   keyClick() {
     const ctx = this.ctx;

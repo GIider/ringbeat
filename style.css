@@ -386,22 +386,48 @@ td + td { text-align: right; font-weight: 700; }
   background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
   padding: 8px 12px; text-align: center; font-weight: 700; pointer-events: none; }
 .toast.on-lcd { bottom: auto; transform: translate(-50%, -50%); }
-/* Favorite bubble: a pixel thought bubble beside the selected row's genre icon; the two small squares are its tail. */
-.bubble { position: fixed; z-index: 20; padding: 6px 8px; line-height: 0; background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink); pointer-events: none; transform-origin: 0 100%; }
-.bubble[hidden] { display: none; }
-.bubble::before, .bubble::after { content: ""; position: absolute; background: var(--lcd); border: var(--u) solid var(--ink); }
-.bubble::before { width: 8px; height: 8px; left: -6px; bottom: -9px; }
-.bubble::after { width: 4px; height: 4px; left: -13px; bottom: -16px; }
-.bubble.below { transform-origin: 0 0; }
-.bubble.below::before { bottom: auto; top: -9px; }
-.bubble.below::after { bottom: auto; top: -16px; }
-.bubble.add, .gl-pop.add { animation: heart-pop .25s ease-out; }
-.bubble.break, .gl-pop.break { animation: heart-break .45s ease-out; }
-.gl-pop { display: inline-block; line-height: 0; }
-@keyframes heart-pop { 0% { scale: .4; } 60% { scale: 1.15; } 100% { scale: 1; } }
-@keyframes heart-break { 0% { scale: 1.1; } 25% { translate: -3px 0; } 50% { translate: 3px 0; } 75% { translate: -2px 2px; } 100% { translate: 0 0; } }
-@media (prefers-reduced-motion: reduce) { .bubble.add, .bubble.break, .gl-pop.add, .gl-pop.break { animation: none; } }
+/* Favorite effect, centred on the selected row's genre icon (#fav-fx is a zero-size anchor; every part is centred on it).
+   Added: the heart grows out of the icon and floats away. Removed: the heart appears, jitters, then cracks into two halves
+   and pixel shards (the 0.26s delay matches FX_CRACK_MS in main.js). Only translate/scale/rotate/opacity are animated. */
+#fav-fx { position: fixed; z-index: 20; width: 0; height: 0; color: var(--ink); line-height: 0; pointer-events: none; }
+#fav-fx[hidden] { display: none; }
+.fx { position: absolute; left: 0; top: 0; }
+.fx > span, .fx > i { position: absolute; left: 0; top: 0; }
+.fx .spr { translate: -50% -50%; /* LCD-coloured outline so the ink heart reads over the dark selected row */
+  filter: drop-shadow(1px 0 0 var(--lcd)) drop-shadow(-1px 0 0 var(--lcd)) drop-shadow(0 1px 0 var(--lcd)) drop-shadow(0 -1px 0 var(--lcd)); }
+.fx-heart { animation: heart-float .95s cubic-bezier(.2, .7, .3, 1) both; }
+.fx-whole { animation: heart-appear .26s ease-out both; }
+.fx-half { animation: .6s cubic-bezier(.3, 0, .8, .6) .26s both; opacity: 0; }
+.fx-half.l { animation-name: half-l; }
+.fx-half.r { animation-name: half-r; }
+.fx-shard { width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; background: currentColor; opacity: 0; animation: shard .5s steps(5) .26s both; animation-delay: calc(.26s + var(--n) * .01s); }
+.gl-pop { display: inline-block; position: relative; line-height: 0; }
+.gl-pop > .fx { left: 50%; top: 50%; }
+.gl-pop.playing > .spr { visibility: hidden; }
+@keyframes heart-float {
+  0% { scale: .3; translate: 0 0; rotate: 0deg; opacity: 1; }
+  18% { scale: 1.2; }
+  30% { scale: 1; translate: 0 -4px; rotate: -6deg; opacity: 1; }
+  65% { translate: 5px -22px; rotate: 7deg; opacity: .9; }
+  100% { scale: .85; translate: -3px -40px; rotate: -4deg; opacity: 0; }
+}
+@keyframes heart-appear {
+  0% { scale: .4; translate: 0 0; opacity: 1; }
+  45% { scale: 1.15; }
+  60% { scale: 1; translate: 0 0; }
+  70% { translate: -2px 1px; }
+  80% { translate: 2px -1px; }
+  90% { translate: -1px 0; opacity: 1; }
+  100% { scale: 1; translate: 0 0; opacity: 0; }
+}
+@keyframes half-l { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: -16px 26px; rotate: -32deg; } }
+@keyframes half-r { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: 16px 30px; rotate: 38deg; } }
+@keyframes shard { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: var(--dx) calc(var(--dy) + 14px); rotate: var(--rot); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-heart, .fx-half.l, .fx-half.r { animation: fx-fade .6s ease-out both; }
+  .fx-whole, .fx-shard { display: none; }
+}
+@keyframes fx-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);
