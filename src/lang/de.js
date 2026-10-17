@@ -412,6 +412,15 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Online, nearly stable': 'Online, fast stabil',
+  ['The online features are settling down, and we are celebrating!\n' +
+    'Sign-in, cloud save and world leaderboards are getting steadier with every update.\n' +
+    'Also new: 30 NES, SNES and arcade classics in Video Games.\n' +
+    'Found a bug? Tell us and keep playing.']:
+    'Die Online-Funktionen werden stabiler, und das feiern wir!\n' +
+    'Anmeldung, Cloud-Speicher und weltweite Bestenlisten werden mit jedem Update zuverlässiger.\n' +
+    'Neu außerdem: 30 NES-, SNES- und Arcade-Klassiker bei Videospiele.\n' +
+    'Einen Fehler gefunden? Sag Bescheid und spiel weiter.',
   'Leaderboards': 'Bestenlisten',
   ['Signed in? Your runs now count on world leaderboards.\n' +
     'The results screen shows your world rank, and each song shows the world top 10 under your own runs.\n' +

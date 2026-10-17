@@ -5,6 +5,13 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.2', date: '2026-10-17', title: 'Online, nearly stable',
+    body: 'The online features are settling down, and we are celebrating!\n' +
+      'Sign-in, cloud save and world leaderboards are getting steadier with every update.\n' +
+      'Also new: 30 NES, SNES and arcade classics in Video Games.\n' +
+      'Found a bug? Tell us and keep playing.',
+  },
+  {
     version: '2.1', date: '2026-10-17', title: 'Leaderboards',
     body: 'Signed in? Your runs now count on world leaderboards.\n' +
       'The results screen shows your world rank, and each song shows the world top 10 under your own runs.\n' +
