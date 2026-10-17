@@ -33,7 +33,7 @@ Notes that don't make the chart are played automatically as `backing`. The exact
 
 ## Built-in songs
 
-`src/songs.js` holds the catalogue (183 songs; check with `node -e "import('./src/songs.js').then(m=>console.log(m.SONGS.length))"`).
+`src/songs.js` holds the catalogue (209 songs; check with `node -e "import('./src/songs.js').then(m=>console.log(m.SONGS.length))"`).
 
 - `SONGS` entries are `{ id, category, title, tag, rtttl }`:
   - `id`: unique and stable. Highscores, stats and `difficulty.json` are keyed by it, so never rename a shipped id.
@@ -45,7 +45,8 @@ Notes that don't make the chart are played automatically as `backing`. The exact
 
 ### Adding a built-in song
 
-1. Add the entry to `SONGS` (or `FULL_SONGS`) with a new unique `id` and an existing `category`.
+1. Add the entry to `SONGS` (or `FULL_SONGS`) with a new unique `id` and an existing `category`. Source libraries are cached
+   in the gitignored `song-libs/`; `npm run songs:fetch` downloads them once (`-- --force` refreshes).
 2. Check that it parses without warnings and charts on both difficulties: `node --test tests/rtttl.test.mjs tests/core.test.mjs`.
 3. Every character in the title needs a glyph in the LCD font (`assets.test.mjs`; see
    [DEVELOPMENT.md › Editing the pixel font](DEVELOPMENT.md#editing-the-pixel-font)). Titles are never translated.

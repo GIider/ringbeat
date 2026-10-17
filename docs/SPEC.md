@@ -45,7 +45,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ### Song select
 
-- **Catalogue:** 183 built-in songs (10 of them full-length, 1–2 min, classical or folk) in 7 categories: Classical,
+- **Catalogue:** 209 built-in songs (10 of them full-length, 1–2 min, classical or folk) in 7 categories: Classical,
   Pop & Rock, Eurodance, NDW & Synth, TV & Film, Video Games, Folk & Kids. A *Custom* category holds the player's saved
   songs; it appears only when there are some, and they always sort last.
 - **Changing the view:**
