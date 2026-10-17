@@ -3,7 +3,8 @@
 // Routes and data model: docs/CLOUD.md.
 //
 // Env: DB (D1), GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET (secret), ALLOWED_ORIGINS (comma list; "http://localhost:*"
-// allows any local port), LIMITER (optional rate-limit binding), ADMIN_TOKEN (optional secret: moderation routes).
+// allows any local port), LIMITER (optional rate-limit binding), ADMIN_TOKEN (optional secret: moderation routes),
+// DEV_LOGIN ("1" in server/.dev.vars only: the GitHub-free /auth/dev/start for local development).
 import { RULES, replay, decodeLog } from '../../src/replay.js';
 import { generateChart } from '../../src/chart.js';
 import { parseRTTTL } from '../../src/rtttl.js';
@@ -84,12 +85,17 @@ export async function handle(req, env, now = Date.now()) {
       const gh = await githubUser(env, code, new URL('/auth/github/callback', url).href);
       if (!gh) return back('github');
       const userId = await userFor(env, 'github', gh.subject, playerName(gh.name) || playerName(gh.login), now);
-      const login = randomToken();
-      await env.DB.batch([
-        env.DB.prepare('DELETE FROM login_codes WHERE expires < ?').bind(now),
-        env.DB.prepare('INSERT INTO login_codes (code_hash, user_id, expires) VALUES (?, ?, ?)').bind(await sha256(login), userId, now + CODE_MS),
-      ]);
-      return Response.redirect(row.return_to + '#login=' + login, 302);
+      return Response.redirect(row.return_to + '#login=' + await loginCode(env, userId, now), 302);
+    }
+    // Local development only: signs in as a made-up player without GitHub. Answers only when DEV_LOGIN=1 is set in
+    // server/.dev.vars (never in wrangler.toml), and never on a workers.dev host.
+    if (route === 'GET /auth/dev/start') {
+      if (env.DEV_LOGIN !== '1' || url.hostname.endsWith('.workers.dev')) return fail(404, 'not found');
+      const ret = returnUrl(url.searchParams.get('return'), env);
+      if (!ret) return new Response('Bad return address', { status: 400 });
+      const name = playerName(url.searchParams.get('name')) || 'Dev';
+      const userId = await userFor(env, 'dev', name, name, now);
+      return Response.redirect(ret + '#login=' + await loginCode(env, userId, now), 302);
     }
 
     // ---- API (fetch from the game) ----
@@ -688,6 +694,16 @@ async function githubUser(env, code, redirectUri) {
 
 // The profile a login belongs to; a first login creates it, named after the provider's display name when it gives
 // a usable one. A profile still on its generated Player-XXXX name takes that name on its next sign-in.
+// A one-time code the game trades for a session (POST /auth/exchange). -> the code.
+async function loginCode(env, userId, now) {
+  const login = randomToken();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM login_codes WHERE expires < ?').bind(now),
+    env.DB.prepare('INSERT INTO login_codes (code_hash, user_id, expires) VALUES (?, ?, ?)').bind(await sha256(login), userId, now + CODE_MS),
+  ]);
+  return login;
+}
+
 async function userFor(env, provider, subject, suggested, now) {
   const row = await env.DB.prepare(`SELECT i.user_id, u.display_name FROM identities i JOIN users u ON u.id = i.user_id
     WHERE i.provider = ? AND i.subject = ?`).bind(provider, subject).first();

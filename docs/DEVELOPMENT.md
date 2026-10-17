@@ -21,6 +21,8 @@ Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html`
 |---|---|
 | `npm start` | Dev server on port 8000 (see [Dev server](#dev-server)) |
 | `npm run dev` | Same server with live reload |
+| `npm run dev:cloud` | Live-reload game server **plus** the local Worker/D1 with bot-filled boards and a GitHub-free sign-in ([CLOUD.md](CLOUD.md#local-development)). `npm run dev:cloud:fresh` first wipes the local D1 |
+| `npm run seed` | Re-fills the local D1 with bot players and their server-verified runs (`--bots=`, `--songs=`, `--seed=`); `npm run seed:reset` removes only the bots |
 | `npm test` | Node unit tests (`tests/*.test.mjs`), then the headless Chromium smoke test |
 | `npm run smoke` | Only the smoke test (`scripts/smoke.mjs` → `tests/smoke.html`) |
 | `npm run coverage` | Node unit tests with `--experimental-test-coverage` |
@@ -46,6 +48,8 @@ Not wired to npm: `node scripts/i18n-keys.mjs [--lang=de] [--all]` lists untrans
 - Sends `Cache-Control: no-store`, so a reload always gets fresh modules.
 - `--dev` (`npm run dev`) watches the project (ignoring `node_modules`, `.git`, `dist`) and injects a small
   EventSource client into HTML pages that reloads the page shortly after any file changes.
+- `--cloud` (used by `npm run dev:cloud`) also makes the game talk to the local API on port 8787 of the same host and
+  use its dev sign-in. Add `?api=prod` to the page URL to use the live API from the dev server instead.
 
 ## Tests
 
@@ -108,6 +112,7 @@ Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 | `?dev` | Dev mode. Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)), a panel with a button per cameo plus stop, IMEI, wipe and Konami, the **request log** (below) and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
 | `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
+| `?api=prod` | With `npm run dev:cloud`: skip the local API and use the live one for this page load |
 | `window.__ringbeat` | `{game, scores, stats, settings, perf, mysongs, cloud, state}` for devtools and `tests/smoke.html` |
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |

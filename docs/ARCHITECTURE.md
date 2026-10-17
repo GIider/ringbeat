@@ -94,7 +94,10 @@ src/
   netsignal.js    the status-bar signal icon as a connection light for signed-in players: bars climb while sending, drop while receiving
 
 scripts/
-  serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload)
+  serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload, --cloud points the game at the local API)
+  dev-cloud.mjs       npm run dev:cloud: .dev.vars, local D1 migrations and seed, Worker + game server side by side
+  seed-local.mjs      fills the local D1 with bot players and their Worker-verified runs (npm run seed)
+  lib/botrun.mjs      a bot plays a song headlessly and the run is encoded as the game uploads it (seed-local, cloud.test)
   smoke.mjs           runs tests/smoke.html in headless Playwright browsers
   build-dist.mjs      stages dist/ and stamps its version.js
   version-lib.mjs     derives the version from the changelog + git

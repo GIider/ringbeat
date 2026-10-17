@@ -318,26 +318,32 @@ Schema changes go into a new numbered file in `server/migrations/`, followed by 
 
 ## Local development
 
-1. Create a second OAuth App with the callback `http://localhost:8787/auth/github/callback`.
-2. Put its id and secret into `server/.dev.vars` (this file is not committed), together with the pages the local API
-   should accept. `:*` allows any port. The live API accepts only `https://giider.github.io`, so a dev server can't
-   sign in against it.
-   ```
-   GITHUB_CLIENT_ID=...
-   GITHUB_CLIENT_SECRET=...
-   ALLOWED_ORIGINS=http://localhost:*,http://<your LAN IP>:*
-   ```
-3. Start the API on port 8787 with a local D1:
-   ```sh
-   cd server
-   npm run dev
-   ```
-4. In the game's devtools, point it at the local API, then reload:
-   ```js
-   localStorage.setItem('ringbeat.api', 'http://localhost:8787')
-   ```
-   From another device, use the API machine's address instead of `localhost`. Its OAuth App callback then has to
-   use that address too.
+```sh
+npm run dev:cloud
+```
+
+This one command:
+- creates `server/.dev.vars` if it is missing (or adds `DEV_LOGIN=1` to an existing one, keeping your other settings);
+- applies the migrations to the local D1 (`server/.wrangler/`, git-ignored) and, when it has no bot players yet, seeds it;
+- starts the Worker on `http://localhost:8787` and the live-reload game server on `http://localhost:8000`, which points
+  the game at that Worker. Use `?api=prod` on the page URL to use the live API instead.
+
+**Sign-in.** The Profile screen's sign-in goes to `GET /auth/dev/start`, which signs you in as a made-up player with
+no GitHub involved (`&name=` picks the display name). The route answers only when `DEV_LOGIN=1` is set in
+`server/.dev.vars`; it is not in `wrangler.toml`, a test checks that, and it also refuses `*.workers.dev` hosts, so the
+deployed API has no such door.
+
+**Bot-filled boards.** `npm run seed` (`scripts/seed-local.mjs`) creates 40 bot players (`bot-*`, a few with the
+developer flag) whose skills come from the bot ladder in `src/bot.js`. Each plays a spread of the built-in songs on both
+difficulties with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers
+are the server's, exactly as for a real run. Options: `--bots=N`, `--songs=N`, `--seed=N`. Seeding is repeatable
+(it replaces only `bot-*` rows, never your own account); `npm run seed:reset` removes them, `npm run dev:cloud:fresh`
+wipes the whole local D1 first.
+
+**Real GitHub sign-in locally** (rarely needed, e.g. to test the OAuth flow itself): create a second OAuth App with
+the callback `http://localhost:8787/auth/github/callback`, put its id and secret into `server/.dev.vars`, set
+`localStorage['ringbeat.devlogin']` to empty and reload. The live API accepts only `https://giider.github.io`, so
+the local API is the one a dev server can sign in to.
 
 `tests/cloud.test.mjs` runs the Worker against an in-memory SQLite stand-in for D1 (`node:sqlite`) with GitHub faked,
 including two simulated devices syncing through it. `tests/cloudmerge.test.mjs` covers the merges, so neither needs

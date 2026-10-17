@@ -64,10 +64,11 @@ function freshRanks(ranks) {
 
 // scores / stats / mysongs: the stores from scores.js, stats.js, mysongs.js.
 // prefs: { sharedSettings, applyShared } from settings.js.
+// devLogin: sign in through the local API's GitHub-free /auth/dev/start (npm run dev:cloud).
 // isBusy: true while a song is playing or paused; no sync starts then.
 // debug: called with every request ({ why, method, path, body, sent, status, received, ms, response, error }) and every
 // sync that was held back ({ why, skipped }); the `?dev` request log (netdebug.js). Leave it out and nothing is measured.
-export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE, storage = browserStorage(),
+export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE, devLogin = false, storage = browserStorage(),
   fetch = (...a) => globalThis.fetch(...a), now = () => Date.now(), gameVersion = '', isBusy = () => false,
   timeoutMs = 8000, setTimer = defaultTimer, clearTimer = id => clearTimeout(id), debug = null }) {
   let st;
@@ -409,7 +410,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     // 'synced' after a sync that changed something (with the Set of what), 'signedin', 'signedout', 'profile',
     // { net } when netState() changes.
     onChange: f => listeners.push(f),
-    signInUrl: returnTo => apiBase + '/auth/github/start?return=' + encodeURIComponent(returnTo),
+    signInUrl: returnTo => apiBase + (devLogin ? '/auth/dev/start' : '/auth/github/start') + '?return=' + encodeURIComponent(returnTo),
 
     // Finishes a sign-in: the API sends the browser back with #login=<one-time code>. -> true when signed in.
     async takeLoginHash(hash) {

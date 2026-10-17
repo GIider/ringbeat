@@ -1,5 +1,7 @@
 // Dev server reachable from the local network. Usage: npm start [-- <port>]  (or PORT=9000 npm start)
 // `npm run dev` adds live reload: the page reloads whenever a file under the project changes.
+// `--cloud` (npm run dev:cloud) also points the game at the local API on port 8787 with its GitHub-free sign-in;
+// `?api=prod` on the page skips that.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { watch } from 'node:fs';
@@ -10,8 +12,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const args = process.argv.slice(2);
 const DEV = args.includes('--dev');
+const CLOUD = args.includes('--cloud');
 const PORT = Number(args.find(a => /^\d+$/.test(a)) || process.env.PORT || 8000);
 const clients = new Set();
+const LOCAL_API = '<script>if (!/[?&]api=prod\\b/.test(location.search)) try { localStorage.setItem("ringbeat.api", location.protocol + "//" + location.hostname + ":8787"); localStorage.setItem("ringbeat.devlogin", "1"); } catch {}</script>';
 const RELOAD = '<script>new EventSource("/__reload").onmessage = () => location.reload();</script>';
 if (DEV) {
   let timer;
@@ -48,7 +52,7 @@ createServer(async (req, res) => {
     if (file !== ROOT && !file.startsWith(ROOT + sep)) throw Object.assign(new Error('forbidden'), { code: 403 });
     if (!(await stat(file)).isFile()) throw Object.assign(new Error('not found'), { code: 404 });
     let body = await readFile(file);
-    if (DEV && extname(file) === '.html') body = Buffer.from(body.toString().replace('</body>', RELOAD + '</body>'));
+    if (DEV && extname(file) === '.html') body = Buffer.from(body.toString().replace('</body>', (CLOUD ? LOCAL_API : '') + RELOAD + '</body>'));
     res.writeHead(200, {
       'Content-Type': TYPES[extname(file)] || 'application/octet-stream',
       'Cache-Control': 'no-store',
@@ -60,7 +64,7 @@ createServer(async (req, res) => {
     res.end(code === 403 ? 'Forbidden' : 'Not found');
   }
 }).listen(PORT, '0.0.0.0', () => {
-  console.log(`Ringbeat ${DEV ? 'dev server (live reload)' : 'server'}:\n  http://localhost:${PORT}`);
+  console.log(`Ringbeat ${DEV ? 'dev server (live reload)' : 'server'}${CLOUD ? ', local API on :8787' : ''}:\n  http://localhost:${PORT}`);
   for (const addrs of Object.values(networkInterfaces()))
     for (const a of addrs || [])
       if (a.family === 'IPv4' && !a.internal) console.log(`  http://${a.address}:${PORT}`);

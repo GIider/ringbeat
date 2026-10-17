@@ -327,13 +327,18 @@ let customs = [];        // library entries for the player's saved songs ({...en
 let selectedId = '';
 
 // ---- cloud save: optional online profile (see docs/CLOUD.md); `ringbeat.api` in localStorage points at a local API ----
+// `npm run dev:cloud` sets ringbeat.devlogin: the local API then offers a GitHub-free sign-in. ?api=prod undoes both.
+if (new URLSearchParams(location.search).get('api') === 'prod') {
+  try { localStorage.removeItem('ringbeat.api'); localStorage.removeItem('ringbeat.devlogin'); } catch { /* ignore */ }
+}
 const apiBase = (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })();
+const devLogin = (() => { try { return !!localStorage.getItem('ringbeat.devlogin') && !!localStorage.getItem('ringbeat.api'); } catch { return false; } })();
 const netDebug = DEV ? createNetDebug() : null;
 const cloud = createCloud({
   scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
   isBusy: () => inPlay() || state === 'paused', // no sync while a song runs
   debug: netDebug,
-  apiBase,
+  apiBase, devLogin,
 });
 onSave(() => cloud.schedule());
 let settingsArrived = () => {}; // set up in wire()

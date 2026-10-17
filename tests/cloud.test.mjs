@@ -12,6 +12,7 @@ import { parseRTTTL } from '../src/rtttl.js';
 import { SONGS } from '../src/songs.js';
 import { hashString } from '../src/library.js';
 import * as mods from '../src/mods.js';
+import { played } from '../scripts/lib/botrun.mjs';
 import { createCloud, CLOUD_KEY, BOARDS_KEY } from '../src/cloud.js';
 import { createAdmin, AdminError, playerLine, runLine, logLine } from '../src/admin.js';
 import { createNetDebug, describe, line } from '../src/netdebug.js';
@@ -388,28 +389,6 @@ test('cloud: a newer snapshot with the player in it overrides the rank and total
 });
 
 // ---- leaderboards: the Worker re-plays each run's input log and ranks its own score ----
-
-// A run as the game uploads it: a bot plays `songId` with the game's frame loop, the log is encoded.
-function played(songId, diff, skill, loadout = null, seed = 1, rtttl = SONGS.find(s => s.id === songId)?.rtttl) {
-  const m = mods.normalize(loadout);
-  const chart = mods.applyChart(generateChart(parseRTTTL(rtttl), { difficulty: diff }), m);
-  const g = headlessGame();
-  let res = null;
-  g.onFinish = r => { res = r; };
-  g.start({ ...chart, notes: chart.notes.map(n => ({ ...n })) }, { leadIn: 0, ...mods.gameOptions(m) });
-  const ev = planBot(chart, skill, seed);
-  let i = 0;
-  for (let t = 0; !res; t += 1 / 60) {
-    for (; i < ev.length && ev[i].t <= t; i++) (ev[i].type === 'press' ? g.press : g.release).call(g, ev[i].lane, ev[i].t);
-    g.update(t);
-  }
-  const mult = mods.isActive(m) ? mods.multiplier(m) : 1;
-  return {
-    result: { ...res, score: Math.round(res.score * mult), mult },
-    run: { songId, diff, score: Math.round(res.score * mult), grade: res.grade, accuracy: res.accuracy, maxCombo: res.maxCombo,
-      fc: res.fc, ap: res.ap, mods: mods.tags(m), mult, playedAt: seed, replay: encodeLog(g.log), rules: RULES, loadout: m },
-  };
-}
 
 async function signedIn(srv, githubId, name) {
   const code = (await githubSignIn(srv, githubId, { login: name, name })).slice('#login='.length);
@@ -1266,4 +1245,29 @@ test('POST /sync: a device slot is rewritten in place, and only the newest 20 de
   assert.equal(slots().length, 20);
   assert.equal(slots().at(-1), 'device0002');
   assert.equal(JSON.parse(srv.env.DB.db.prepare("SELECT doc FROM device_slots WHERE device_id = 'device0002'").get().doc).n, 99);
+});
+
+// ---- local development: the GitHub-free sign-in ----
+
+test('dev login: 404 unless DEV_LOGIN is set; then it signs in without GitHub', async () => {
+  const srv = server();
+  const url = '/auth/dev/start?return=' + encodeURIComponent(GAME) + '&name=Tester';
+  assert.equal((await srv.call(url)).status, 404);
+  srv.env.DEV_LOGIN = '1';
+  const res = await srv.call(url);
+  assert.equal(res.status, 302);
+  const code = res.headers.get('Location').slice((GAME + '#login=').length);
+  const ex = await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) });
+  assert.equal(ex.status, 200);
+  assert.equal((await ex.json()).profile.name, 'Tester');
+  assert.equal((await srv.call('/auth/dev/start?return=' + encodeURIComponent('https://evil.example/'))).status, 400);
+});
+
+test('dev login: never on a workers.dev host, and never configured in wrangler.toml', async () => {
+  const srv = server();
+  srv.env.DEV_LOGIN = '1';
+  const res = await handle(new Request('https://ringbeat-api.x.workers.dev/auth/dev/start?return=' + encodeURIComponent(GAME),
+    { headers: { Origin: 'https://giider.github.io' } }), srv.env, 1);
+  assert.equal(res.status, 404);
+  assert.ok(!/DEV_LOGIN/.test(readFileSync(new URL('../server/wrangler.toml', import.meta.url), 'utf8').replace(/^\s*#.*$/gm, '')));
 });
