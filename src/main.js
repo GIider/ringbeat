@@ -1679,7 +1679,7 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${esc(r.name || '')}${devHTML(r)}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${esc(r.name || '')}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
     if (r.dev) li.classList.add('dev');
     if (cls) li.className = cls;
     ol.appendChild(li);
