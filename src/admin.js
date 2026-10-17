@@ -8,7 +8,8 @@ export class AdminError extends Error {
   constructor(status) { super('admin ' + status); this.status = status; }
 }
 
-export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis) }) {
+// debug: the `?dev` request log callback (netdebug.js), as in cloud.js; the token is never passed to it.
+export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis), debug = null }) {
   let token = '';
   const qs = o => {
     const p = new URLSearchParams();
@@ -16,16 +17,22 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
     return p.size ? '?' + p : '';
   };
   async function call(method, path, body) {
+    const text = body === undefined ? undefined : JSON.stringify(body);
+    const t0 = Date.now(), log = debug && { why: 'admin', method, path, body: body ?? null, sent: text ? text.length : 0 };
+    const done = extra => { if (log) debug({ ...log, ms: Date.now() - t0, ...extra }); };
     let res;
     try {
       res = await fetch(apiBase + path, {
         method, signal: AbortSignal.timeout(TIMEOUT),
-        headers: { Authorization: 'Bearer ' + token, ...(body !== undefined && { 'Content-Type': 'application/json' }) },
-        ...(body !== undefined && { body: JSON.stringify(body) }),
+        headers: { Authorization: 'Bearer ' + token, ...(text !== undefined && { 'Content-Type': 'application/json' }) },
+        ...(text !== undefined && { body: text }),
       });
-    } catch { throw new AdminError(0); }
-    if (!res.ok) throw new AdminError(res.status); // 404 is both a bad token and a missing target
-    return res.status === 204 ? null : res.json();
+    } catch { done({ error: 'network' }); throw new AdminError(0); }
+    if (!res.ok) { done({ status: res.status }); throw new AdminError(res.status); } // 404 is both a bad token and a missing target
+    if (res.status === 204) { done({ status: 204, received: 0 }); return null; }
+    const raw = await res.text(), data = JSON.parse(raw);
+    done({ status: res.status, received: raw.length, response: data });
+    return data;
   }
   const post = (path, body) => call('POST', path, body);
   return {
@@ -49,6 +56,7 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
     hidePlayer: (userId, hidden) => post('/admin/hide', { userId, hidden }),
     unflag: runId => post('/admin/unflag', { runId }),
     purgeExpired: () => post('/admin/purge', { what: 'expired' }),
+    purgeStuck: () => post('/admin/purge', { what: 'stuck' }),
     rebuild: () => post('/admin/rebuild', {}),
     verify: () => post('/admin/verify', {}),
   };

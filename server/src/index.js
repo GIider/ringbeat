@@ -374,14 +374,16 @@ async function adminRoute(env, route, url, body, now, json, fail) {
   }
   if (route === 'GET /admin/stats') {
     const one = sql => env.DB.prepare(sql).bind(...(sql.includes('?') ? [now] : [])).first();
-    const [counts, pending, expired, board] = await Promise.all([
+    const rules = env.DB.prepare(`SELECT COALESCE(SUM(replay IS NOT NULL AND rules = ?1), 0) AS pending,
+      COALESCE(SUM(${STUCK}), 0) AS stuck FROM runs WHERE verified = 0`).bind(String(RULES)).first();
+    const [counts, expired, board] = await Promise.all([
       Promise.all(TABLES.map(t => one(`SELECT COUNT(*) AS n FROM ${t}`))),
-      one('SELECT COUNT(*) AS n FROM runs WHERE verified = 0'),
       one(`SELECT (SELECT COUNT(*) FROM sessions WHERE expires < ?1) + (SELECT COUNT(*) FROM oauth_states WHERE expires < ?1)
         + (SELECT COUNT(*) FROM login_codes WHERE expires < ?1) AS n`),
       one('SELECT built, dirty FROM board_tops WHERE id = 1'),
     ]);
-    return json({ counts: Object.fromEntries(TABLES.map((t, i) => [t, counts[i].n])), pending: pending.n, expired: expired.n,
+    const { pending, stuck } = await rules;
+    return json({ counts: Object.fromEntries(TABLES.map((t, i) => [t, counts[i].n])), pending, stuck, expired: expired.n,
       built: board?.built || 0, dirty: !!board?.dirty });
   }
   if (route === 'POST /admin/purge') {
@@ -390,6 +392,11 @@ async function adminRoute(env, route, url, body, now, json, fail) {
       const n = rs.reduce((a, r) => a + r.meta.changes, 0);
       await audit(env, now, 'purge expired', '', String(n)).run();
       return json({ removed: n });
+    }
+    if (body.what === 'stuck') {
+      const r = await env.DB.prepare(`DELETE FROM runs WHERE verified = 0 AND ${STUCK}`).bind(String(RULES)).run();
+      await audit(env, now, 'purge unverifiable', '', String(r.meta.changes)).run();
+      return json({ removed: r.meta.changes });
     }
     return fail(400, 'bad purge');
   }
@@ -556,6 +563,9 @@ function flagsFor(chart, log, res) {
   }
   return f.join(',');
 }
+
+// Waiting runs (verified = 0) that can never be re-played: no replay (history) or another RULES. Binds RULES as ?1.
+const STUCK = '(replay IS NULL OR rules IS NOT ?1)';
 
 // Drops waiting runs that cannot change a board: not above the player's verified best on that song, or beaten by another
 // waiting run of theirs (equal claims: the lower id stays). -> how many.

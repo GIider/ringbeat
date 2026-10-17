@@ -1049,6 +1049,39 @@ test('admin client: a wrong token is refused and forgotten, the right one works 
   await assert.rejects(offline.unlock('x'), e => e.status === 0);
 });
 
+test('admin: pending counts only re-playable runs; stuck ones (no replay / other rules) are listed and cleared', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const seen = [];
+  const admin = createAdmin({ apiBase: API, fetch: (url, init) => srv.call(url.slice(API.length), init), debug: e => seen.push(e) });
+  await admin.unlock('admin-secret');
+  const ann = await signedIn(srv, 1, 'Ann');
+  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'ok' }]);
+  const db = srv.env.DB.db;
+  const copy = (id, set) => db.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult,
+    game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
+    SELECT user_id, ?, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at,
+    replay, verified, rules, loadout, rtttl, flags FROM runs WHERE client_run_id = 'ok'`).run(id) && db.prepare(`UPDATE runs SET ${set} WHERE client_run_id = ?`).run(id);
+  copy('wait', "verified = 0");
+  copy('hist', 'verified = 0, replay = NULL, rules = NULL');
+  copy('old', "verified = 0, rules = '0'");
+  copy('bad', 'verified = -1, replay = NULL');
+  let st = await admin.stats();
+  assert.deepEqual([st.pending, st.stuck], [1, 2]);
+  assert.equal(await verifyPending(srv.env), 1);
+  assert.equal((await admin.purgeStuck()).removed, 2);
+  st = await admin.stats();
+  assert.deepEqual([st.pending, st.stuck], [0, 0]);
+  assert.deepEqual(db.prepare('SELECT client_run_id AS id FROM runs ORDER BY client_run_id').all().map(r => r.id), ['bad', 'ok', 'wait']);
+  assert.ok((await admin.log()).some(l => l.action === 'purge unverifiable' && l.detail === '2'));
+  // The dev request log sees admin calls, never the token.
+  const purge = seen.find(e => e.path === '/admin/purge');
+  assert.equal(purge.why, 'admin');
+  assert.equal(purge.status, 200);
+  assert.match(describe(purge), /removed 2/);
+  assert.ok(!JSON.stringify(seen).includes('admin-secret'));
+});
+
 // ---- fewer requests: guessed ranks, patched caches, only bests go up ----
 
 test('guessRank: from the snapshot alone; the sync answer patches the overview and the snapshot', async () => {

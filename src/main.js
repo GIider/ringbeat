@@ -320,10 +320,11 @@ let selectedId = '';
 
 // ---- cloud save: optional online profile (see docs/CLOUD.md); `ringbeat.api` in localStorage points at a local API ----
 const apiBase = (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })();
+const netDebug = DEV ? createNetDebug() : null;
 const cloud = createCloud({
   scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
   isBusy: () => inPlay() || state === 'paused', // no sync while a song runs
-  debug: DEV ? createNetDebug() : null,
+  debug: netDebug,
   apiBase,
 });
 onSave(() => cloud.schedule());
@@ -801,7 +802,7 @@ function renderStats() {
 
 // ---- admin (dev mode, ?dev): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
 // The token is kept in memory only. Views form a stack; Back pops it and reloads the view underneath. ----
-const admin = createAdmin({ apiBase });
+const admin = createAdmin({ apiBase, debug: netDebug });
 let adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
 function openAdmin() {
   adStack = []; adMsg = ''; adArm = '';
@@ -853,8 +854,8 @@ async function adminShow(view) {
         break;
       case 'maint': {
         const st = await admin.stats();
-        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}</p>` +
-          btn('purge', tr('Purge expired')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
+        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}<br>${esc(tr('{n} runs unverifiable', { n: st.stuck }))}</p>` +
+          btn('purge', tr('Purge expired')) + btn('purgestuck', tr('Clear unverifiable runs')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
         break;
       }
       case 'log': {
@@ -913,6 +914,7 @@ function wireAdmin() {
       case 'hiderun': adminDo(() => admin.hideRun(view.r.id, !view.r.hidden), tr('Done'), { back: true }); break;
       case 'delrun': if (adminArmed(b, 'delrun')) adminDo(() => admin.deleteRun(view.r.id), tr('Run deleted'), { back: true }); break;
       case 'purge': adminDo(async () => tr('Removed {n}', { n: (await admin.purgeExpired()).removed })); break;
+      case 'purgestuck': if (adminArmed(b, 'purgestuck')) adminDo(async () => tr('Removed {n}', { n: (await admin.purgeStuck()).removed })); break;
       case 'rebuild': adminDo(() => admin.rebuild(), tr('Boards rebuilt')); break;
       case 'verify': adminDo(async () => tr('Verified {n}', { n: (await admin.verify()).verified })); break;
     }

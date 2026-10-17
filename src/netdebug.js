@@ -19,6 +19,11 @@ export function describe(e) {
   if (r.devices) got.push(Object.keys(r.devices).length + '/' + (r.deviceIds || []).length + ' slots');
   if (r.runs) got.push(r.runs.map(v => (v.verified === 1 ? 'ranked' : v.verified === -1 ? 'invalid' : 'pending')).join(' '));
   if (r.ranks) for (const [k, v] of Object.entries(r.ranks)) got.push(`${k} #${v.rank}/${v.total}`);
+  if (e.why === 'admin') {
+    if ('pending' in r) got.push(`pending ${r.pending}, unverifiable ${r.stuck}`);
+    if ('verified' in r) got.push(`verified ${r.verified}`);
+    if ('removed' in r) got.push(`removed ${r.removed}`);
+  }
   if (r.boards) got.push(Object.keys(r.boards).length + ' boards');
   return [sent.join(', '), got.join(', ')].filter(Boolean).join(' → ');
 }

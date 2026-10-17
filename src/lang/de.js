@@ -523,5 +523,7 @@ export const de = {
   'Whitelisted': 'Freigegeben',
   'Wrong token': 'Falsches Token',
   'Wrong token or not found': 'Falsches Token oder nicht gefunden',
+  '{n} runs unverifiable': '{n} Läufe nicht prüfbar',
+  'Clear unverifiable runs': 'Nicht prüfbare Läufe löschen',
   '{n} runs pending, {m} expired rows': '{n} Läufe offen, {m} abgelaufene Zeilen',
 };
