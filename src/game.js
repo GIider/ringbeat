@@ -311,7 +311,9 @@ export class Game {
     this.timer = null;
     if (this.synth.ctx) {
       this.synth.stopAll();
-      if (this.state === 'paused') this.synth.ctx.resume();
+      const c = this.synth.ctx;
+      this.synth.wantRunning = true;
+      if (this.state === 'paused' || (c.state && c.state !== 'running')) c.resume().catch(() => {});
     }
     this.state = 'idle';
     this.active = false;

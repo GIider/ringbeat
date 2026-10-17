@@ -1,4 +1,4 @@
-// Sign-in intro: a 5 s scene over the whole LCD (power-on, ripples, two rings that interlock, a burst, the player's name).
+// Sign-in intro: a 5.8 s scene over the whole LCD (power-on, ripples, two rings that interlock, a burst, the player's name).
 // Pure simulation like the cameos in cameo.js: a sim is { step(), draw(put), done, tick, ... }; it advances one tick per step()
 // (20 Hz). runWelcome() is the only DOM piece: a canvas painted one cell per sim pixel.
 import { GLYPHS } from './pixelfont.js';
@@ -7,10 +7,11 @@ import { INK } from './render.js';
 
 export const CELL = 4;       // CSS px per LCD cell (same grid as the cameos)
 export const TICK_MS = 50;
-// Tick marks of the script (50 ms each): 5.0 s in all.
-export const T = { RINGS: 16, SLIDE: 18, LOCK: 38, FLASH: 48, HOLD: 70, FADE: 76, TYPE: 78, TITLE: 90, CLEAR: 94, END: 100 };
+// Tick marks of the script (50 ms each): 5.8 s in all.
+export const T = { RINGS: 16, SLIDE: 18, LOCK: 38, FLASH: 48, HOLD: 70, FADE: 76, TYPE: 78, TITLE: 102, CLEAR: 102, END: 116 };
 export const HOLD_LIMIT = 120; // ticks the scene waits for the sign-in answer at T.HOLD before giving up (6 s)
 
+const DITHER = 1.3; // dither level gained per tick while the scene dissolves (T.CLEAR to T.END)
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 export const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)]; // 0-15: a cell is inked while bayer < level (0 empty ... 16 solid)
 
@@ -87,7 +88,7 @@ export function createWelcome(w, h) {
     // ripples: one every 8 ticks from the middle, plus one when the rings touch
     const births = [T.LOCK];
     for (let b = T.RINGS; b <= a; b += 8) if (t < T.FADE || b < T.FADE + s.hold) births.push(b);
-    const fade = t >= T.CLEAR ? (t - T.CLEAR + 1) * 3 : 0; // the last ticks dither everything out, ripples too
+    const fade = t >= T.CLEAR ? (t - T.CLEAR + 1) * DITHER : 0; // the last ticks dither everything out, ripples too
     const box = t >= T.TYPE && s.chars.length ? nameBox() : null; // ripples keep clear of the name
     const ripple = (x, y) => {
       if (fade && bayer(Math.round(x), Math.round(y)) < fade) return;
@@ -139,7 +140,7 @@ export function createWelcome(w, h) {
   // The name, typed in large; blinking caret; dithers out just before the menu opens.
   function text(put, t) {
     const n = s.chars.length, per = n > 8 ? 1 : 2, shown = Math.min(n, Math.floor((t - T.TYPE) / per) + 1);
-    const level = t >= T.CLEAR ? (t - T.CLEAR + 1) * 3 : 0;
+    const level = t >= T.CLEAR ? (t - T.CLEAR + 1) * DITHER : 0;
     const vis = (x, y) => bayer(x, y) >= level;
     for (let i = 0; i < shown; i++) {
       const c = s.chars[i];

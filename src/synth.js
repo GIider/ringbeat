@@ -34,6 +34,7 @@ export class Synth {
 
   // Call from a user gesture. Creates the context once, and resumes it if suspended.
   ensure() {
+    if (this.ctx && this.ctx.state === 'closed') this.ctx = null; // a closed context can't be revived; build a fresh one
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = this.ctx = new AC({ latencyHint: 'interactive' });
@@ -52,6 +53,13 @@ export class Synth {
     this.wantRunning = true;
     if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
     return this.ctx;
+  }
+
+  // Revive a context that went quiet (no-op before the first ensure()). Re-arms the auto-resume in onstatechange.
+  wake() {
+    if (!this.ctx) return;
+    this.wantRunning = true;
+    if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
   }
 
   setVolume(v) {

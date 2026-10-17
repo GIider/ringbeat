@@ -460,8 +460,8 @@ test('gamepad: a throwing getGamepads means no pads', () => {
   });
 });
 
-test('welcome intro: 5 s script, parks for the sign-in answer, stays inside the grid', () => {
-  assert.equal(WT.END * TICK_MS, 5000);
+test('welcome intro: 5.8 s script, parks for the sign-in answer, stays inside the grid', () => {
+  assert.equal(WT.END * TICK_MS, 5800);
   for (const [w, h] of [[85, 103], [100, 200], [40, 40]]) {
     const run = (release, ticks) => {
       const s = createWelcome(w, h);

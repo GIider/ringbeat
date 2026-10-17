@@ -2368,7 +2368,7 @@ function releasePad(index, ts) {
 function back() {
   switch (state) {
     case 'title': break;
-    case 'welcome': skipWelcome(); break;
+    case 'welcome': break; // the intro always plays through
     case 'menu': setState('title', 'title'); break;
     case 'select': stopPreview(); openMenu('tones'); break;
     case 'hub': leaveHub(); break;
@@ -2398,7 +2398,7 @@ function back() {
 }
 
 function menuButton(index) {
-  if (state === 'welcome') { skipWelcome(); return; }
+  if (state === 'welcome') return;
   const root = activeScreen();
   switch (index) {
     case BTN.A: case BTN.START:
@@ -2523,7 +2523,7 @@ function phoneKey(key) {
   }
   if (!inPlay()) synth.keyClick();
   if (state === 'title') { startFromTitle(); return; }
-  if (state === 'welcome') { skipWelcome(); return; }
+  if (state === 'welcome') return;
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
   if (state === 'select' && selectKey(key)) return;
   switch (key) {
@@ -2539,11 +2539,11 @@ function phoneKey(key) {
 
 // ---- wiring ----
 // Back from signing in: the full-LCD intro (welcome.js) replaces the title screen while the one-time code is exchanged, then the menu.
-// Silent (no gesture yet); any key or tap skips. A failed exchange falls back to the title.
+// Silent (no gesture yet); input is ignored until it ends. A failed exchange falls back to the title.
 let welcomeStop = null;
 // Signal and battery icons are hidden (not removed, so the title bar keeps its layout) while the intro runs.
 const statusIcons = on => { for (const id of ['st-signal', 'st-battery']) $(id).style.visibility = on ? '' : 'hidden'; };
-function welcomeEnd(to, gesture) {
+function welcomeEnd(to) {
   if (welcomeStop) welcomeStop();
   welcomeStop = null;
   $('welcome-fx').hidden = true;
@@ -2551,7 +2551,7 @@ function welcomeEnd(to, gesture) {
   statusIcons(true);
   if (to === 'title') setState('title', 'title');
   else if (to === 'none') return; // somebody else already navigated away
-  else if (gesture) startFromTitle(); else openMenu('tones');
+  else openMenu('tones');
 }
 function welcomeStart(exchange) {
   let ok = null, cancelled = false;
@@ -2583,7 +2583,6 @@ function welcomeStart(exchange) {
     });
   });
 }
-const skipWelcome = () => { if (state === 'welcome') welcomeEnd('menu', true); };
 
 // The title's ringing 3310 (titlefx.js) on the LCD canvas while the title is up. Reduced motion paints one still frame.
 let titleStop = null, titleOn = false;
@@ -2912,7 +2911,6 @@ function wire() {
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
-  $('welcome').addEventListener('click', skipWelcome);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
@@ -2963,11 +2961,11 @@ function wire() {
   window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
   window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); });
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
-  const wake = () => { if (synth.ctx && synth.ctx.state !== 'running' && game.state !== 'paused') synth.ctx.resume(); };
+  const wake = () => { if (game.state !== 'paused') synth.wake(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { pauseGame(); cloud.flush(); } else cloud.wake(); // audio clock keeps running when hidden
+    if (document.hidden) { pauseGame(); cloud.flush(); } else { cloud.wake(); if (game.state !== 'paused') synth.wake(); } // audio clock keeps running when hidden
   });
   window.addEventListener('pagehide', commitTime);
 
@@ -3025,7 +3023,7 @@ function onKey(e) {
     return;
   }
   if (state === 'welcome') {
-    if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); skipWelcome(); }
+    if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); }
     return;
   }
   if (state === 'title') {
