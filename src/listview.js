@@ -58,6 +58,18 @@ export function sectionOf(e, sort, diff) {
   return '';
 }
 
+// Header text for a section key: the band as a range ("3 - 3.5", "120 - 139", "0:40 - 0:49"); letters and custom stay as they are.
+export function sectionRange(sec, sort, fmtStars = String) {
+  if (!sec) return sec;
+  if (sort === 'diff-asc' && !isNaN(sec)) return `${fmtStars(+sec - 0.5)} - ${fmtStars(+sec)}`;
+  if (sort === 'bpm' && !isNaN(sec)) return `${sec} - ${+sec + 19}`;
+  if (sort === 'length') {
+    const m = /^(\d+):(\d\d)\+$/.exec(sec), lo = m ? +m[1] * 60 + +m[2] : 0, hi = lo + 9, t = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+    if (m || sec === '<0:10') return `${t(lo)} - ${t(hi)}`;
+  }
+  return sec;
+}
+
 // Index to jump to for the previous (-1) / next (+1) section; the previous step first returns to the start of the current section.
 export function jumpSection(list, idx, step, sort, diff) {
   if (!list.length) return -1;

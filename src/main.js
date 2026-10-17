@@ -22,7 +22,7 @@ import { esc, badgeHTML, nameHTML, starsBar } from './rowfmt.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
 import { onSwipe } from './swipe.js';
-import { SORTS, applyView, nextOf, prevOf, ratingOf, sectionOf, jumpSection, randomOf } from './listview.js';
+import { SORTS, applyView, nextOf, prevOf, ratingOf, sectionOf, sectionRange, jumpSection, randomOf } from './listview.js';
 import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
@@ -141,8 +141,8 @@ function setState(s, screen) { state = s; show(screen); input.enabled = s === 'c
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
   $('st-title').textContent = tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
+  for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar; show them before measuring
   marquee($('st-title'));
-  for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
   // single "Select". The bare LCD keeps both tappable labels.
   const phone = phoneMode();
@@ -508,7 +508,7 @@ function renderPosition() {
   const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
   if (!t) return;
   let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
-  if (sec && settings.view.sort === 'diff-asc' && !isNaN(sec)) sec = `${fmt(+sec - 0.5, 1)} - ${fmt(+sec, 1)}`; // the half-star band, same format as the stars value
+  sec = sectionRange(sec, settings.view.sort, r => fmt(r, 1)); // the band as a range, stars in the same format as the stars value
     const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
   cat.textContent = pos;
   if (screens.select.dataset.sub !== t.label) { screens.select.dataset.sub = t.label; if (state === 'select') refreshChrome(screens.select); }

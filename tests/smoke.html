@@ -84,6 +84,11 @@ f.addEventListener('load', async () => {
     $('sel-sort').click(); await sleep(50);
     d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await sleep(80);
     log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);
+    for (const [sort, re] of [['bpm', /\d+ - \d+$/], ['length', /\d+:\d\d - \d+:\d\d$/]]) {
+      $('sel-sort').click(); await sleep(50);
+      d.querySelector(`#hub-grid [data-sort="${sort}"]`).click(); await sleep(80);
+      log(re.test($('sel-cat').textContent), `sort by ${sort}: header shows the range`, $('sel-cat').textContent);
+    }
     $('sel-sort').click(); await sleep(50);
     d.querySelector('#hub-grid [data-sort="title"]').click(); await sleep(80);
     log(!/ - /.test($('sel-cat').textContent), 'sort by title: header shows a letter, no range', $('sel-cat').textContent);

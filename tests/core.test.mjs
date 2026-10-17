@@ -237,7 +237,7 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
 
 // ---- bots + list view ----
 import { runBot, LADDER, measureChart } from '../src/bot.js';
-import { applyView, sectionOf, jumpSection, randomOf } from '../src/listview.js';
+import { applyView, sectionOf, sectionRange, jumpSection, randomOf } from '../src/listview.js';
 
 const botChart = d => generateChart(parseRTTTL(SONGS.find(s => s.id === 'twinkle').rtttl), { difficulty: d });
 
@@ -352,6 +352,15 @@ test('listview: sections and section jumps', () => {
   assert.equal(sectionOf({ ...es[0], rating: { normal: 0.2 } }, 'diff-asc', 'normal'), '0.5');
   assert.equal(sectionOf({ ...es[0], rating: { normal: 10 } }, 'diff-asc', 'normal'), '5');
   assert.equal(sectionOf(es[0], 'length', 'normal'), '0:40+');
+  assert.equal(sectionRange('3.5', 'diff-asc'), '3 - 3.5');
+  assert.equal(sectionRange('0.5', 'diff-asc'), '0 - 0.5');
+  assert.equal(sectionRange('120', 'bpm'), '120 - 139');
+  assert.equal(sectionRange('0:40+', 'length'), '0:40 - 0:49');
+  assert.equal(sectionRange('1:10+', 'length'), '1:10 - 1:19');
+  assert.equal(sectionRange('<0:10', 'length'), '0:00 - 0:09');
+  assert.equal(sectionRange('T', 'title'), 'T');
+  assert.equal(sectionRange('*', 'bpm'), '*');
+  assert.equal(sectionRange('', 'bpm'), '');
   assert.equal(sectionOf({ ...es[0], length: 9 }, 'length', 'normal'), '<0:10');
   assert.equal(sectionOf(es[0], 'fav', 'normal'), '');
   assert.equal(sectionOf({ ...es[0], id: 'custom:1' }, 'title', 'normal'), '*');
