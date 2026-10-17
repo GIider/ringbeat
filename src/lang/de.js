@@ -98,7 +98,6 @@ export const de = {
   'Names: 3-16 letters, digits, space . _ -': 'Namen: 3-16 Buchstaben, Ziffern, Leerzeichen . _ -',
   'No connection, try again later': 'Keine Verbindung, versuch es später',
   'Name saved': 'Name gespeichert',
-  'Signed in': 'Angemeldet',
   'Signed out': 'Abgemeldet',
   'Sign-in failed': 'Anmeldung fehlgeschlagen',
   'On leaderboards: On': 'In Bestenlisten: An',

@@ -152,6 +152,8 @@ textarea::placeholder { color: var(--ink-dim); }
 .boot-art { margin: 6px 0; animation: boot-in .9s .25s steps(6) both; }
 .blink { font-weight: 700; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { visibility: hidden; } }
+@keyframes hello-in { from { clip-path: inset(0 100% 0 0); } }
+.st-title.hello { animation: hello-in .8s steps(10) both; }
 @keyframes boot-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* ---------- main menu: one item per screen (3310) ---------- */
@@ -460,7 +462,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   .scrolls .mq { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
   .grade.stamp, .menu > button:focus, .menu > .hl, #st-signal.blip { animation: none; }
-  .mm-body.slide-up, .mm-body.slide-down, .gbar i, .mixbar { animation: none; }
+  .st-title.hello, .mm-body.slide-up, .mm-body.slide-down, .gbar i, .mixbar { animation: none; }
 }
 
 /* ---------- composer ---------- */

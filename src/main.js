@@ -138,9 +138,16 @@ function show(name) {
 const phoneMode = () => !document.body.classList.contains('compact');
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
 // Status bar title + soft-key labels come from the visible screen's data attributes.
+let welcomeName = false;
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
-  $('st-title').textContent = tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
+  // The menu has no title of its own; while signed in, the player's name takes its place as the login indicator.
+  const who = el === screens.menu && cloud.signedIn() ? (cloud.profile() || {}).name || '' : '';
+  const hello = !!who && welcomeName && state === 'menu';
+  if (hello) welcomeName = false; // the name animates in once, the first time the menu shows it after signing in
+  $('st-title').classList.remove('hello');
+  if (hello) { void $('st-title').offsetWidth; $('st-title').classList.add('hello'); }
+  $('st-title').textContent = who || tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
   for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar; show them before measuring
   $('st-title').classList.toggle('tap', el === screens.select);
   marquee($('st-title'));
@@ -407,6 +414,7 @@ addEventListener('online', showNet);
 addEventListener('offline', showNet);
 cloud.onChange(e => {
   if (e === 'profile' || e === 'signedin' || e === 'signedout' || e.synced) refreshMenu();
+  if ((e === 'profile' || e === 'signedin' || e === 'signedout') && state === 'menu') refreshChrome();
   if (e.net || e === 'signedin' || e === 'signedout') showNet();
   if (e.synced) {
     if (e.synced.has('settings')) {
@@ -2924,7 +2932,7 @@ function wire() {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync('signed in'); cloud.board('', 'normal'); } }, () => toast('Sign-in failed'));
+    else cloud.takeLoginHash(hash).then(ok => { if (ok) { welcomeName = true; refreshChrome(); cloud.sync('signed in'); cloud.board('', 'normal'); } }, () => toast('Sign-in failed'));
   } else cloud.sync('start');
   cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 

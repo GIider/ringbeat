@@ -75,7 +75,9 @@ async function adminSmoke(context, name) {
       await p2.waitForSelector('#mm-title');
       await p2.keyboard.press('7');
       const title = await p2.locator('#mm-title').innerText();
+      const who = await p2.locator('#st-title').innerText();
       await p2.close();
+      if (who !== 'Me') return fail(`signed-in menu shows "${who}" in the title bar instead of the player name`);
       if ((title === 'Admin') !== dev) return fail(`Admin item ${dev ? 'missing for' : 'shown to'} a ${dev ? 'dev' : 'non-dev'} profile`);
     }
     await page.goto(`http://127.0.0.1:${port}/?dev`);
@@ -84,6 +86,7 @@ async function adminSmoke(context, name) {
     await page.waitForSelector('#mm-title');
     await page.keyboard.press('7');
     if ((await text('#mm-title')) !== 'Admin') return fail('no Admin menu item');
+    if ((await text('#st-title')) !== '') return fail('signed-out menu has a title bar label');
     await page.evaluate(() => document.getElementById('mm-go').click());
     await page.fill('#ad-token', 'nope');
     await page.click('[data-act=unlock]');
