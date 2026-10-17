@@ -233,6 +233,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .dp-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #diffpick .menu > button { flex-wrap: nowrap; }
 .dp-panel { min-height: 3.2em; }
+.dp-seg { justify-content: center; margin: 2px 0; }
 .sel-sub { text-align: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-list { flex: 1; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);
   scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }

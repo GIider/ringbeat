@@ -104,6 +104,7 @@ export const de = {
 
   // ---- leaderboards ----
   'World': 'Welt',
+  'Local': 'Lokal',
   'Sign in for world ranks': 'Anmelden für Weltranglisten',
   'World rank…': 'Weltrang…',
   'World rank: no connection': 'Weltrang: keine Verbindung',

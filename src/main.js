@@ -352,6 +352,7 @@ cloud.onChange(e => {
     else if (state === 'menu') renderMenu();
   }
   if (e.ranks && state === 'stats') renderStats();
+  if ((e === 'signedin' || e === 'signedout' || e.ranks) && state === 'diffpick') { if (e === 'signedin') dpTab = 'world'; renderDpPanel(); }
   if (e === 'profile' || e === 'signedin') $('pf-name-input').value = (cloud.profile() || {}).name || '';
   if (state === 'profile') renderProfile();
 });
@@ -1143,14 +1144,27 @@ function importSharedText(text) {
 
 // -- difficulty picker: also the song's detail screen (rating per difficulty, top runs for the focused one) --
 function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
-let dpBack = null, dpEntry = null, dpDiff = 'normal';
+let dpBack = null, dpEntry = null, dpDiff = 'normal', dpTab = 'local';
+// Signed-in players get World (first) and Local tabs; everyone else just sees their local runs.
+const dpTabs = () => cloud.available() && cloud.signedIn();
+function setDpTab(tab) {
+  dpTab = tab;
+  renderDpPanel();
+}
 function renderDpPanel() {
   const e = dpEntry, d = dpDiff;
   if (!e) return;
-  const box = $('dp-panel');
+  const box = $('dp-panel'), bar = $('dp-tabs');
+  const tabs = dpTabs();
+  if (!tabs) dpTab = 'local';
+  bar.hidden = !tabs;
+  for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
   box.textContent = '';
   if (!d) return; // Mods focused: no scores
-  const rec = scores.get(e.id, e.only || d);
+  if (dpTab === 'world') paintDpWorld(e, e.only || d, box); else paintDpLocal(e, e.only || d, box);
+}
+function paintDpLocal(e, d, box) {
+  const rec = scores.get(e.id, d);
   const ol = document.createElement('ol');
   ol.className = 'top';
   for (const r of (rec ? rec.top : [])) {
@@ -1159,22 +1173,32 @@ function renderDpPanel() {
     ol.appendChild(li);
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
-  renderDpWorld(e, e.only || d, box);
 }
-// The world top 3 under the local runs, once the board arrives (cached for a minute).
-async function renderDpWorld(e, d, box) {
+// The world top runs from the leaderboard snapshot (cached 15 minutes) and the players around the player's rank.
+async function paintDpWorld(e, d, box) {
+  const msg = text => { box.innerHTML = `<div class="hint">${esc(text)}</div>`; };
+  const near = cloud.rankNear(e.id, d) || [];
+  if (!near.length) msg(tr('Loading…'));
   const b = await cloud.board(e.id, d);
-  if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || !b || b.rules !== RULES || !b.runs.length) return;
-  box.querySelector('.dp-world')?.remove();
-  const div = document.createElement('div');
-  div.className = 'dp-world';
-  div.innerHTML = `<div class="hint">${esc(tr('World'))}</div><ol class="top">${b.runs.slice(0, 3).map(r =>
-    `<li${r.dev ? ' class="dev"' : ''}>${esc(r.name)} · ${r.score}${badgeHTML(r, true)}${devHTML(r)}</li>`).join('')}</ol>`;
-  box.appendChild(div);
+  if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || dpTab !== 'world') return;
+  const lines = b && b.rules === RULES ? worldLines(b.runs, near) : [];
+  if (!lines.length) return msg(tr('No world ranks yet.'));
+  const ol = document.createElement('ol');
+  ol.className = 'top';
+  for (const r of lines) {
+    const li = document.createElement('li');
+    li.value = r.rank;
+    li.className = r.gap ? 'gap' : r.dev ? 'dev' : r.me ? 'cur' : '';
+    li.innerHTML = `${esc(r.name || '')} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
+    ol.appendChild(li);
+  }
+  box.textContent = '';
+  box.appendChild(ol);
 }
 function askDifficulty(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
   dpEntry = entry;
+  dpTab = dpTabs() ? 'world' : 'local';
   setSprite($('dp-cover'), coverRows(entry.id, entry.category), 2);
   $('dp-title').textContent = entry.title;
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
@@ -1617,6 +1641,14 @@ game.onFinish = r => {
 // other run can't move the player's rank, so the rank last seen shows without a request. The API re-plays each run and
 // ranks its own score (docs/CLOUD.md › Leaderboards).
 let worldToken = 0;
+// The snapshot's top runs, then a gap marker, then the players around the player's rank (without repeating any).
+function worldLines(top, near) {
+  const out = [];
+  let last = 0;
+  for (const r of top.filter(r => !near.some(n => n.rank === r.rank))) { out.push(r); last = r.rank; }
+  if (near.length && near[0].rank > last + 1) out.push({ rank: 0, score: '…', grade: '', name: '', gap: true });
+  return out.concat(near);
+}
 // The World page: the top three from the leaderboard snapshot, then the players around the player's rank (they came
 // back with the sync that ranked the run). Nothing here makes a request of its own.
 function paintWorld(songId, diff, token = worldToken) {
@@ -1638,10 +1670,7 @@ function paintWorld(songId, diff, token = worldToken) {
   const paint = top => {
     if (token !== worldToken) return;
     ol.textContent = '';
-    let last = 0;
-    for (const r of top.filter(r => !near.some(n => n.rank === r.rank))) { add(r); last = r.rank; }
-    if (near.length && near[0].rank > last + 1) add({ rank: 0, score: '…', grade: '', name: '' }, 'gap');
-    for (const r of near) add(r);
+    for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
   };
   if (near.length) paint([]); else say(tr('Loading…'));
@@ -2012,6 +2041,11 @@ function navigate(dir) {
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
+  if (state === 'diffpick' && (dir === 'left' || dir === 'right') && dpTabs()) {
+    const tab = dir === 'left' ? 'world' : 'local';
+    if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); }
+    return;
+  }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     const p = resultsPage;
@@ -2347,6 +2381,7 @@ function wire() {
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;
   for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
+  for (const t of document.querySelectorAll('#dp-tabs button')) t.onclick = () => setDpTab(t.dataset.tab);
   // horizontal swipe flips results pages
   onSwipe($('results'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   // swipe through the tutorial lessons (swipe left = next)

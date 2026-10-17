@@ -77,6 +77,7 @@ f.addEventListener('load', async () => {
     log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones', 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
+    log($('dp-tabs').hidden, 'difficulty screen: no World/Local tabs when signed out');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
     const v0 = $('set-voice').textContent;

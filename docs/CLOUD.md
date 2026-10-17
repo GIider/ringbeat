@@ -179,7 +179,7 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (a ranked run patches a cached overview from the answer); it goes with whatever else is waiting |
 | The results screen's World page | Nothing: the top 3 come from `GET /boards`, the players around the player from the push that ranked the run |
 | After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
-| The difficulty picker, app start | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot |
+| The difficulty picker, app start | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
 
 How it stays small:
 - **Dirty checks.** The client keeps fingerprints of the shared document and of its own slot as last synced. A
