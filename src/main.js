@@ -1377,6 +1377,9 @@ function importSharedText(text) {
 
 // -- song screen: the song's details, its top runs and the Play button --
 function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
+// One-row text (leaderboard lines, the Play and Mods rows): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
+const oneRow = html => `<span class="ln"><span class="mq">${html}</span></span>`;
+const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln, .dp-line'));
 let dpBack = null, dpEntry = null, dpTab = 'local';
 // Signed-in players get World (first) and Local tabs; everyone else just sees their local runs.
 const dpTabs = () => cloud.available() && cloud.signedIn();
@@ -1393,7 +1396,7 @@ function renderDpPanel() {
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
   box.textContent = '';
-  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else paintDpLocal(e, e.chart, box);
+  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); marqueeRows(box); }
 }
 function paintDpLocal(e, d, box) {
   const rec = scores.get(e.id, d);
@@ -1401,7 +1404,7 @@ function paintDpLocal(e, d, box) {
   ol.className = 'top';
   for (const r of (rec ? rec.top : [])) {
     const li = document.createElement('li');
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`;
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
@@ -1426,11 +1429,12 @@ function paintDpWorldLines(b, near, box, msg) {
     const li = document.createElement('li');
     li.value = r.rank;
     li.className = r.gap ? 'gap' : r.me ? 'cur' : '';
-    li.innerHTML = `${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}`;
+    li.innerHTML = oneRow(`${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   box.textContent = '';
   box.appendChild(ol);
+  marqueeRows(box);
 }
 function openSongScreen(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
@@ -1440,7 +1444,7 @@ function openSongScreen(entry, ret, retLabel, goBack, uid) {
   $('dp-title').textContent = entry.title;
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
   const play = $('dp-play'), n = entry.notes[entry.chart] || 0;
-  play.innerHTML = '<span class="dp-line">' + esc(tr('Play')) + ` · ${starsText(ratingOf(entry))} ${estMark(entry)}${starsValue(ratingOf(entry))} · ${tn(n, '{n} note', '{n} notes')}` + '</span>';
+  play.innerHTML = '<span class="dp-line"><span class="mq">' + esc(tr('Play')) + ` · ${starsText(ratingOf(entry))} ${estMark(entry)}${starsValue(ratingOf(entry))} · ${tn(n, '{n} note', '{n} notes')}` + '</span></span>';
   play.disabled = !n;
   play.onclick = () => {
     if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
@@ -1450,6 +1454,7 @@ function openSongScreen(entry, ret, retLabel, goBack, uid) {
   renderDpPanel();
   refreshModsButton();
   setState('songscreen', 'songscreen');
+  marqueeRows($('songscreen')); // measured once the screen is shown
 }
 
 // -- composer --
@@ -1581,8 +1586,9 @@ function openCustom(text = '', uid = '') {
 // ---- mods (sticky loadout, edited on its own screen opened from the difficulty picker) ----
 function refreshModsButton() {
   const on = mods.isActive(settings.mods);
-  $('btn-mods').innerHTML = `<span class="dp-line">${esc(tr('Mods: {summary}', { summary: tr(mods.summary(settings.mods)) }) + (on ? ' ▸' : ''))}</span>`;
+  $('btn-mods').innerHTML = `<span class="dp-line"><span class="mq">${esc(tr('Mods: {summary}', { summary: tr(mods.summary(settings.mods)) }) + (on ? ' ▸' : ''))}</span></span>`;
   $('btn-mods').classList.toggle('sel', on);
+  marqueeAll($('btn-mods').querySelectorAll('.dp-line'));
 }
 const MOD_HINTS = {
   'm-speed': 'Plays the song faster or slower. Pitch stays the same.',
@@ -1928,7 +1934,7 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`;
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`);
     if (cls) li.className = cls;
     ol.appendChild(li);
   };
@@ -1938,6 +1944,7 @@ function paintWorld(songId, diff, token = worldToken) {
     ol.textContent = '';
     for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
+    marqueeAll(ol.querySelectorAll('.ln'));
     if (worldRefresh) worldRefresh();
   };
   if (near.length) paint([]); else say(tr('Loading…'));
@@ -1988,7 +1995,7 @@ function renderTopRuns() {
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
     if (topRuns.rank === i + 1) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`;
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
@@ -1999,6 +2006,7 @@ function setResultsPage(n) {
   resultsPage = Math.max(0, Math.min(resultsPages() - 1, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
+  marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln'));
 }
 
 function stepResultsPage(step) {
