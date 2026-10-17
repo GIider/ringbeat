@@ -101,6 +101,7 @@ scripts/
   lib/seedplan.mjs    who plays what in the seeded boards: skill pyramid, per-board tiers, random modifiers
   lib/botrun.mjs      a bot plays a song headlessly and the run is encoded as the game uploads it (seed-local, cloud.test)
   smoke.mjs           runs tests/smoke.html in headless Playwright browsers
+  overflow-audit.mjs  visits the screens in en/de at 320-900px and fails on cut-off text without the marquee
   build-dist.mjs      stages dist/ and stamps its version.js
   version-lib.mjs     derives the version from the changelog + git
   build-font.mjs      compiles src/pixelfont.js to assets/fonts/*.ttf

@@ -347,7 +347,10 @@ test('listview: sections and section jumps', () => {
   const es = ['Apple', 'Axe', 'Beta', '99 Balloons', 'Cat', 'Cow', 'Cub'].map(t => ({ id: t, title: t, bpm: 100, length: 40, stars: {}, rating: { normal: 4 } }));
   assert.equal(sectionOf(es[0], 'title', 'normal'), 'A');
   assert.equal(sectionOf(es[3], 'title', 'normal'), '#');
-  assert.equal(sectionOf({ ...es[0], rating: { normal: 7 } }, 'diff-asc', 'normal'), '4');
+  assert.equal(sectionOf({ ...es[0], rating: { normal: 7 } }, 'diff-asc', 'normal'), '3.5');
+  assert.equal(sectionOf({ ...es[0], rating: { normal: 6 } }, 'diff-asc', 'normal'), '3');
+  assert.equal(sectionOf({ ...es[0], rating: { normal: 0.2 } }, 'diff-asc', 'normal'), '0.5');
+  assert.equal(sectionOf({ ...es[0], rating: { normal: 10 } }, 'diff-asc', 'normal'), '5');
   assert.equal(sectionOf(es[0], 'length', 'normal'), '0:40+');
   assert.equal(sectionOf({ ...es[0], length: 9 }, 'length', 'normal'), '<0:10');
   assert.equal(sectionOf(es[0], 'fav', 'normal'), '');

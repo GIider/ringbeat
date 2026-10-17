@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "start": "node scripts/serve.mjs",
-    "test": "node --test tests/*.test.mjs && node scripts/smoke.mjs",
+    "test": "node --test tests/*.test.mjs && node scripts/smoke.mjs && node scripts/overflow-audit.mjs",
     "dev": "node scripts/serve.mjs --dev",
     "dev:cloud": "node scripts/dev-cloud.mjs",
     "dev:cloud:fresh": "node scripts/dev-cloud.mjs --fresh",
@@ -24,6 +24,7 @@
     "perf": "node --expose-gc scripts/perf-bench.mjs",
     "perf:play": "node scripts/perf-play.mjs",
     "perf:menus": "node scripts/perf-menus.mjs",
+    "audit:overflow": "node scripts/overflow-audit.mjs",
     "screenshots": "node scripts/screenshots.mjs",
     "font": "node scripts/build-font.mjs"
   },

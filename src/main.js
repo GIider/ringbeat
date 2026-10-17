@@ -505,8 +505,14 @@ let viewList = [], viewTab = null;
 function renderPosition() {
   const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
   if (!t) return;
-  const sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
-  $('sel-cat').textContent = `${tr(t.label)} ${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
+  let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
+  if (sec && settings.view.sort === 'diff-asc' && !isNaN(sec)) sec = fmt(+sec, 1); // same format as the stars value
+  // The label gives way (ellipsis, marquee when it still overflows); the position and section stay readable.
+  const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
+  if (!cat.firstElementChild) cat.innerHTML = '<span class="cat-lbl"></span> <span class="cat-pos"></span>';
+  const lbl = cat.firstElementChild;
+  cat.lastElementChild.textContent = pos;
+  if (lbl.textContent !== tr(t.label)) { lbl.textContent = tr(t.label); marquee(lbl); }
   $('sel-sort').textContent = tr(SORTS.find(x => x.id === settings.view.sort).label);
 }
 // Move the cursor to list index `i` (clamped) and keep it in view.
@@ -600,7 +606,10 @@ function closeSearch() {
   const q = $('sel-q');
   q.addEventListener('input', () => { searchQuery = q.value; applySearch(); });
   q.addEventListener('keydown', ev => {
-    if (ev.code === 'Enter' || ev.code === 'ArrowDown') { ev.preventDefault(); ev.stopPropagation(); focusCurrentRow(); }
+    if (ev.code === 'Enter' || ev.code === 'ArrowDown') {
+      ev.preventDefault(); ev.stopPropagation();
+      if (ev.code === 'Enter' && searchQuery === '') closeSearch(); else focusCurrentRow();
+    }
   });
   $('sel-find').addEventListener('pointerdown', ev => ev.preventDefault());
   $('sel-find').addEventListener('click', () => (searchOpen() ? closeSearch() : openSearch()));
@@ -863,10 +872,17 @@ function paintMenuIcon() {
   if (k * unit !== iconPx) { iconPx = k * unit; el._spr = ''; } // setSprite only resizes when the image changes
   setSprite(el, menuFrame(it.id, menuTick, { unread: it.id === 'messages' && unreadCount() > 0 }), iconPx);
 }
+// The title is double size; a long one ("Einstellungen") drops to one and a half times so it still fits the LCD.
+function fitMenuTitle() {
+  const t = $('mm-title');
+  t.classList.remove('sm');
+  if (t.scrollWidth > t.clientWidth) t.classList.add('sm');
+}
 function renderMenu(dir = 0) {
   const it = MENU[menuIdx], n = unreadCount();
   $('mm-title').textContent = tr(it.title);
   $('mm-go').textContent = tr(it.title);
+  fitMenuTitle();
   $('mm-num').textContent = menuIdx + 1;
   $('mm-thumb').style.setProperty('--p', (menuIdx / (MENU.length - 1)).toFixed(3));
   $('mm-hint').textContent = it.id === 'messages' && n ? tn(n, '{n} new message', '{n} new messages') : '';
@@ -2878,7 +2894,7 @@ function wire() {
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
+  window.addEventListener('resize', () => { layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); marquee($('sel-cat').firstElementChild); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
@@ -3004,10 +3020,13 @@ function onKey(e) {
     else jumpSectionStep(e.code === 'Period' ? 1 : -1);
     return;
   }
-  if (state === 'select' && !typing && !e.repeat && ['Slash', 'KeyR', 'KeyG'].includes(e.code) && !e.shiftKey) {
+  // "/" is matched by the character it types, not its key: on layouts like German it sits on Shift+7
+  const slash = e.key === '/' || e.code === 'Slash';
+  if (state === 'select' && !typing && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey
+    && (slash || (['KeyR', 'KeyG'].includes(e.code) && !e.shiftKey))) {
     e.preventDefault();
     synth.keyClick();
-    if (e.code === 'Slash') openSearch(); else if (e.code === 'KeyR') randomSong(); else openHub();
+    if (slash) openSearch(); else if (e.code === 'KeyR') randomSong(); else openHub();
     return;
   }
   if (state === 'select' && !typing && tag !== 'SELECT' && ['KeyD', 'KeyF'].includes(e.code)) {

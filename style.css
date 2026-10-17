@@ -158,7 +158,8 @@ textarea::placeholder { color: var(--ink-dim); }
 .mm { display: flex; flex-direction: column; overflow: hidden; padding-right: calc(var(--u) * 10); }
 .mm-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: calc(var(--u) * 3); cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-.mm-title { font-weight: 700; font-size: calc(var(--fs) * 2); line-height: 1; white-space: nowrap; }
+.mm-title { font-weight: 700; font-size: calc(var(--fs) * 2); line-height: 1; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mm-title.sm { font-size: calc(var(--fs) * 1.5); }
 .mm-art { display: flex; align-items: center; gap: calc(var(--u) * 3); }
 .mm-arrow { background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--ink-dim); }
 .mm-arrow:hover { color: var(--ink); }
@@ -227,7 +228,9 @@ textarea::placeholder { color: var(--ink-dim); }
 /* ---------- song select ---------- */
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.sel-head .arrow { font-size: var(--fs); background: none; border: 0; padding: 4px 10px; cursor: pointer; }
+.sel-head .sel-cat { flex: 0 1 auto; }
+.sel-head .arrow { flex: none; font-size: var(--fs); background: none; border: 0; padding: 4px 10px; cursor: pointer; }
+@media (max-width: 600px) { .sel-head { gap: 2px; } .sel-head .arrow { padding: 4px 5px; } }
 .sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
 .sel-hint { color: var(--ink-dim); white-space: normal; text-align: center; }
 .seg { display: flex; gap: 2px; }
@@ -235,7 +238,9 @@ textarea::placeholder { color: var(--ink-dim); }
 .seg button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }
 .seg button.has-fc::after, .seg button.has-ap::after { content: "✓"; margin-left: 2px; }
 .seg button.has-ap::after { content: "★"; }
-.sel-cat { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-cat { font-weight: 700; display: flex; justify-content: center; min-width: 0; white-space: nowrap; }
+.sel-cat .cat-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sel-cat .cat-pos { flex: none; margin-left: .5em; }
 /* Settings tabs: a pager like Stats (only the current tab shows, between arrows) so any label fits the LCD */
 #set-tabs { margin: 0 0 2px; }
 #set-tabs button, #r-tabs button { display: none; padding: 0 4px; }

@@ -52,7 +52,7 @@ export function randomOf(list, currentId, rnd = Math.random) {
 export function sectionOf(e, sort, diff) {
   if (String(e.id).startsWith('custom:')) return '*';
   if (sort === 'title') { const c = e.title.trim()[0] || '#'; return /[a-z]/i.test(c) ? c.toUpperCase() : '#'; }
-  if (sort === 'diff-asc') return String(Math.min(5, Math.max(1, Math.ceil(ratingOf(e, diff) / 2))));
+  if (sort === 'diff-asc') return String(Math.min(10, Math.max(1, Math.ceil(ratingOf(e, diff)))) / 2); // half-star steps
   if (sort === 'bpm') return String(Math.floor(e.bpm / 20) * 20);
   if (sort === 'length') { const s = Math.floor(e.length / 10) * 10; return s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}+` : '<0:10'; }
   return '';
