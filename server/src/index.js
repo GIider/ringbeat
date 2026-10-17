@@ -37,13 +37,24 @@ export default {
   scheduled: (ev, env, ctx) => ctx.waitUntil(prunePending(env).then(() => verifyPending(env)).then(() => rebuildBoards(env, Date.now()))),
 };
 
+// Local development only (DEV_LOGIN=1): adds `Server-Timing: total` to every answer, for the request log and `npm run bench:net`.
 export async function handle(req, env, now = Date.now()) {
+  if (env.DEV_LOGIN !== '1') return respond(req, env, now);
+  const t0 = performance.now(), res = await respond(req, env, now);
+  const out = new Response(res.body, res);
+  out.headers.append('Server-Timing', `total;dur=${(performance.now() - t0).toFixed(1)}`);
+  return out;
+}
+
+async function respond(req, env, now) {
   const url = new URL(req.url);
   const origin = req.headers.get('Origin') || '';
   const cors = originAllowed(origin, env) ? {
     'Access-Control-Allow-Origin': origin, 'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400',
+    // So the dev request log can read the wire size (Resource Timing) and the encoding the edge chose.
+    'Timing-Allow-Origin': origin, 'Access-Control-Expose-Headers': 'Content-Encoding, Server-Timing',
   } : {};
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const json = (body, status = 200, extra = {}) => new Response(body === null ? null : JSON.stringify(body), {
@@ -117,12 +128,15 @@ export async function handle(req, env, now = Date.now()) {
     // ---- public: leaderboards ----
     if (route === 'GET /boards') {
       // Every song's top runs from one stored snapshot (rebuilt by the cron): one row read, however many songs.
+      const t0 = performance.now();
       let row = await env.DB.prepare('SELECT rules, doc, built FROM board_tops WHERE id = 1').first();
       if (!row || row.rules !== String(RULES)) row = await rebuildBoards(env, now, { force: true });
+      const timing = env.DEV_LOGIN === '1' ? { 'Server-Timing': `db;dur=${(performance.now() - t0).toFixed(1)}` } : {};
       const etag = `"${row.built}"`;
-      if (req.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers: { ...cors, ETag: etag, 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' } });
+      // Cloudflare's edge sends (and browsers then replay) a weak W/"…" tag when it compresses the body.
+      if ((req.headers.get('If-None-Match') || '').split(',').some(t => t.trim().replace(/^W\//, '') === etag)) return new Response(null, { status: 304, headers: { ...cors, ETag: etag, 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30', ...timing } });
       return new Response(`{"rules":${RULES},"built":${row.built},"boards":${row.doc}}`, {
-        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30', ETag: etag },
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30', ETag: etag, ...timing },
       });
     }
     const boardRoute = /^\/board\/([^/]+)\/([a-z]+)(\/me)?$/.exec(url.pathname);

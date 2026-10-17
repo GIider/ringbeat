@@ -19,6 +19,7 @@
     "build": "node scripts/build-dist.mjs",
     "bench": "node scripts/bench.mjs",
     "bench:tutorial": "node scripts/tutorial-bench.mjs",
+    "bench:net": "node scripts/net-bench.mjs",
     "perf": "node --expose-gc scripts/perf-bench.mjs",
     "perf:play": "node scripts/perf-play.mjs",
     "perf:menus": "node scripts/perf-menus.mjs",

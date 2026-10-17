@@ -94,6 +94,26 @@ profiler. It reports:
 Headless software rendering is slower than a real GPU, so use these numbers for before/after comparisons, not as absolute
 fps.
 
+## Cloud requests
+
+`npm run bench:net` (`scripts/net-bench.mjs`) measures what the API costs on the wire, with no sign-in and read-only GETs.
+- **Formats** (`--offline`): the `GET /boards` snapshot (367 boards x 10 rows, seeded, about the size of the live one) in
+  its current shape and in candidate shapes (slim rows, top 3 only): raw, gzip and brotli size, exact decompress time,
+  `JSON.parse` and expand time.
+- **Live** (`--live`, `--url <api>`, default `http://localhost:8787` from `npm run dev:cloud`): per `Accept-Encoding`, the
+  encoding the API chose, bytes on the wire vs decoded, exact decompress time of the wire bytes, TTFB and total time
+  (median / p95 over `--runs`), the dev-only `Server-Timing` (db, total), and whether `If-None-Match` gets a 304 (as sent,
+  as a weak `W/` copy, and wrong). A local `wrangler dev` does not compress like Cloudflare's edge, so take wire sizes
+  from the deployed URL.
+
+In the browser, the `?dev` request log shows the same sizes per request ([DEVELOPMENT.md](DEVELOPMENT.md#debug-urls-and-hooks)).
+Findings so far (measured 2026-10-17): the 574 KB seen in the log was the decoded size of the local seeded database
+(367 boards); the same payload is about 86 KB gzipped and 67-93 KB brotli, and a top-3-only snapshot about 26 KB. The
+deployed API's snapshot was small (8.3 KB decoded, 1.4 KB on the wire). The edge sends `W/"…"` ETags on compressed
+answers, which the Worker used to refuse, so browsers never got a 304; fixed by comparing the tag without `W/`.
+
+Its "decoded" size is the text length, which is not what crosses the network: judge payload changes by the wire column.
+
 ## Baselines
 
 `scripts/perf-baseline.json` and `scripts/perf-menus-baseline.json` were recorded on the maintainer's machine. They are

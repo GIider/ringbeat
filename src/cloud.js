@@ -66,7 +66,7 @@ function freshRanks(ranks) {
 // prefs: { sharedSettings, applyShared } from settings.js.
 // devLogin: sign in through the local API's GitHub-free /auth/dev/start (npm run dev:cloud).
 // isBusy: true while a song is playing or paused; no sync starts then.
-// debug: called with every request ({ why, method, path, body, sent, status, received, ms, response, error }) and every
+// debug: called with every request ({ why, method, path, url, body, sent, status, received, ms, read, parse, encoding, response, error }) and every
 // sync that was held back ({ why, skipped }); the `?dev` request log (netdebug.js). Leave it out and nothing is measured.
 export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE, devLogin = false, storage = browserStorage(),
   fetch = (...a) => globalThis.fetch(...a), now = () => Date.now(), gameVersion = '', isBusy = () => false,
@@ -110,6 +110,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   };
   if (st.token) showRemote();
 
+  const tick = () => (globalThis.performance ? performance.now() : Date.now());
+
   async function request(method, path, body, { keepalive = false, auth = true, why = '' } = {}) {
     const text = body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body);
     const log = debug && { why, method, path, keepalive, body: text === undefined ? null : JSON.parse(text), sent: text ? text.length : 0, t0: Date.now() };
@@ -129,8 +131,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     if (!res.ok) { done({ status: res.status }); throw new HttpError(res.status); }
     if (res.status === 204) { done({ status: 204, received: 0 }); return null; }
     if (!log) return res.json();
-    const reply = await res.text();
-    done({ status: res.status, received: reply.length, response: JSON.parse(reply) });
+    const t0 = tick(), reply = await res.text(), t1 = tick(), response = JSON.parse(reply), t2 = tick();
+    // `read` includes the browser decompressing the body as it arrives; netdebug.js adds the sizes on the wire.
+    done({ status: res.status, received: reply.length, response, url: apiBase + path, read: t1 - t0, parse: t2 - t1,
+      encoding: (res.headers && res.headers.get && res.headers.get('Content-Encoding')) || '' });
     return JSON.parse(reply);
   }
 

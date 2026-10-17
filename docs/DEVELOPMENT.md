@@ -28,6 +28,7 @@ Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html`
 | `npm run coverage` | Node unit tests with `--experimental-test-coverage` |
 | `npm run build` | Stage the runtime files into `dist/`, version-stamped (see [RELEASING.md](RELEASING.md#the-dist-build)) |
 | `npm run bench` | Re-measure every built-in song with the bot ladder → `src/difficulty.json` (`-- --runs N`, default 30; see [SONGS.md](SONGS.md#difficulty-ratings)) |
+| `npm run bench:net` | Cloud request cost: `GET /boards` formats (raw / gzip / brotli size, decompress, parse) and a live API (encoding, wire vs decoded bytes, timings, 304s); `-- --url <api> --runs N --offline --live` (see [PERFORMANCE.md](PERFORMANCE.md#cloud-requests)) |
 | `npm run bench:tutorial` | Per tutorial lesson: play time, note density, and how bots of four skill levels fare (`-- --runs N`, default 200) |
 | `npm run perf` | Node micro-benchmarks (see [PERFORMANCE.md](PERFORMANCE.md)) |
 | `npm run perf:play` | Plays songs in headless Chromium and reports frame pacing |
@@ -67,6 +68,7 @@ audio/canvas:
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
 | `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion), leaderboards (re-played scores, bad runs, RULES, best per player, opt-out, moderation, flags, the cron) and two simulated devices syncing |
 | `cloudmerge.test.mjs` | Cloud merges: shared document (settings, favourites, songs, deletes), combined scores and stats, the stores' sync hooks |
+| `netbench.test.mjs` | The `bench:net` helpers: percentiles, the synthetic snapshot, slim/top-N variants round-trip |
 | `netsignal.test.mjs` | The status-bar signal icon as a connection light: bar order, minimum busy time, reduced motion, blocked while playing |
 | `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
 | `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
@@ -121,10 +123,15 @@ Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 **Request log.** In dev mode, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
 - why each one went out: `start`, `tab back`, `push`, `new best`, `tab hidden`, `boards`, `Sync button`, `signed in`;
 - what it carried (`shared`, `device`, runs and replay size, `pull`) and what came back (slots, verdicts, ranks);
-- status, characters up and down, and time;
+- status, bytes up, and bytes down as compressed on the wire and decoded (`↓61.2 KB wire br / 574.0 KB`; `↓0 B (304)` when
+  the browser revalidated and got no body, `(cache)` when it answered from cache), and total time;
+- where the time went: `read` (receiving the body, which includes the browser decompressing it), `parse` (`JSON.parse`),
+  and `unzip ~` (an estimate of the decompression alone, made by timing the same work on this page; the browser does not
+  expose the real figure, `npm run bench:net` measures it exactly). Wire sizes need the API to send `Timing-Allow-Origin`
+  (it does); without them the log shows the decoded size only;
 - syncs that were held back and why (a song playing, backing off, synced recently).
 
-The top line counts requests and characters for the session. Each request is also a collapsed console group with the
+The top line counts requests and bytes (wire / decoded) for the session. Each request is also a collapsed console group with the
 full body sent and received. See [CLOUD.md › Requests](CLOUD.md#requests) for when requests go out.
 
 To start fresh, clear the `ringbeat.*` keys in `localStorage` (list in

@@ -105,6 +105,8 @@ scripts/
   build-font.mjs      compiles src/pixelfont.js to assets/fonts/*.ttf
   bench.mjs           measures every built-in song -> src/difficulty.json
   tutorial-bench.mjs  measures each tutorial lesson with bots
+  net-bench.mjs       npm run bench:net: wire size, compression, decompress and 304 behavior of the cloud API
+  lib/netbench.mjs    net-bench's helpers: synthetic /boards snapshot, format variants, compression sizes
   i18n-keys.mjs       lists untranslated strings
   screenshots.mjs     README screenshots from ?demo= states
   perf-bench.mjs      node micro-benchmarks; perf-baseline.json is a saved run
@@ -119,7 +121,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, boardsview, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, netsignal, replay, rtttl, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, netbench, netsignal, replay, rtttl, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

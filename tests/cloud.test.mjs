@@ -15,7 +15,7 @@ import * as mods from '../src/mods.js';
 import { played } from '../scripts/lib/botrun.mjs';
 import { createCloud, CLOUD_KEY, BOARDS_KEY } from '../src/cloud.js';
 import { createAdmin, AdminError, playerLine, runLine, logLine } from '../src/admin.js';
-import { createNetDebug, describe, line } from '../src/netdebug.js';
+import { createNetDebug, describe, line, wireOf, estimateUnzip } from '../src/netdebug.js';
 import { createScores } from '../src/scores.js';
 import { createStats } from '../src/stats.js';
 import { createMySongs } from '../src/mysongs.js';
@@ -102,6 +102,34 @@ function device(srv, t = { now: 1000 }, opts = {}) {
   const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => t.now, gameVersion: '1.6.0', ...opts });
   return { storage, scores, stats, mysongs, prefs, cloud, t, calls };
 }
+
+test('worker: the request log can read sizes and encodings; Server-Timing only in local development', async () => {
+  const srv = server();
+  const res = await srv.call('/boards');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Timing-Allow-Origin'), 'https://giider.github.io');
+  assert.match(res.headers.get('Access-Control-Expose-Headers'), /Content-Encoding/);
+  assert.equal(res.headers.get('Server-Timing'), null, 'production answers carry no timing');
+  assert.equal((await srv.call('/boards', { headers: { Origin: 'https://evil.example' } })).headers.get('Timing-Allow-Origin'), null);
+
+  srv.env.DEV_LOGIN = '1';
+  const dev = await srv.call('/boards');
+  assert.match(dev.headers.get('Server-Timing'), /^db;dur=[\d.]+, total;dur=[\d.]+$/);
+  assert.match((await srv.call('/boards', { headers: { 'If-None-Match': dev.headers.get('ETag') } })).headers.get('Server-Timing'), /db;dur/);
+  assert.match((await srv.call('/me/export')).headers.get('Server-Timing'), /^total;dur=/);
+});
+
+test('worker: GET /boards answers 304 to the ETag as sent, to its weak W/ form (compressed answers) and inside a list', async () => {
+  const srv = server();
+  const etag = (await srv.call('/boards')).headers.get('ETag');
+  for (const value of [etag, 'W/' + etag, `"0", W/${etag}`]) {
+    const r = await srv.call('/boards', { headers: { 'If-None-Match': value } });
+    assert.equal(r.status, 304, value);
+    assert.equal(r.headers.get('ETag'), etag);
+  }
+  assert.equal((await srv.call('/boards', { headers: { 'If-None-Match': '"0"' } })).status, 200);
+  assert.equal((await srv.call('/boards', { headers: { 'If-None-Match': '' } })).status, 200);
+});
 
 const result = (score, date) => ({ score, date, grade: 'A', accuracy: 0.9, maxCombo: 12, fc: false, ap: false });
 
@@ -894,7 +922,7 @@ test('dev request log: every request with why, what and sizes; held-back syncs; 
   const best = entries.at(-1);
   assert.equal(best.why, 'new best');
   assert.equal(describe(best), 'device, 1 run (replays 2.0 KB) → invalid');
-  assert.match(line(best, new Date(0)), /new best +POST \/sync 200 ↑[\d.]+ KB ↓\d+ B \d+ ms · device, 1 run/);
+  assert.match(line(best, new Date(0)), /new best +POST \/sync 200 ↑[\d.]+ KB ↓\d+ B \d+ ms · read [\d.]+ ms · parse [\d.]+ ms · device, 1 run/);
   assert.ok(id);
 
   a.prefs.set('voice', 'smooth');
@@ -917,6 +945,47 @@ test('dev request log: every request with why, what and sizes; held-back syncs; 
   const plain = device(srv);
   await plain.cloud.takeLoginHash(await githubSignIn(srv));
   assert.equal((await plain.cloud.sync()).ok, true);
+});
+
+test('dev request log: wire size beside the decoded size, 304 and cache answers, a decompress estimate', async () => {
+  const e = { why: 'boards', method: 'GET', path: '/boards', url: 'https://api/boards', status: 200, sent: 0, received: 574 * 1024, ms: 90,
+    read: 38.2, parse: 6, encoding: 'br', response: { boards: {} } };
+  const at = entry => ({ getEntriesByName: (u, t) => (u === 'https://api/boards' && t === 'resource' ? [{ encodedBodySize: 0, transferSize: 0, decodedBodySize: 0 }, entry] : []) });
+  assert.deepEqual(wireOf('https://api/boards', at({ encodedBodySize: 61_000, transferSize: 61_300, decodedBodySize: 587_776 })),
+    { wire: 61_000, transfer: 61_300, decoded: 587_776, source: '' });
+  assert.equal(wireOf('https://api/boards', at({ encodedBodySize: 61_000, transferSize: 300, decodedBodySize: 587_776 })).source, '304');
+  assert.equal(wireOf('https://api/boards', at({ encodedBodySize: 61_000, transferSize: 0, decodedBodySize: 587_776 })).source, 'cache');
+  assert.deepEqual(wireOf('https://api/boards', at({ encodedBodySize: 0, transferSize: 0, decodedBodySize: 0 })), {}, 'sizes hidden cross-origin');
+  assert.deepEqual(wireOf('https://api/other', at({ encodedBodySize: 1, transferSize: 1, decodedBodySize: 1 })), {});
+  assert.deepEqual(wireOf('', null), {});
+
+  assert.match(line({ ...e, wire: 61_000, decoded: 587_776 }, new Date(0)), /↓59\.6 KB wire br \/ 574\.0 KB 90 ms · read 38 ms · parse 6\.0 ms/);
+  assert.match(line({ ...e, wire: 61_000, decoded: 587_776, unzip: 4.25 }, new Date(0)), /read 38 ms · unzip ~4\.3 ms · parse/);
+  assert.match(line({ ...e, wire: 61_000, source: '304' }, new Date(0)), /↓0 B \(304\)/);
+  assert.match(line({ ...e, wire: 61_000, decoded: 587_776, source: 'cache' }, new Date(0)), /\(cache\)/);
+
+  // The panel: totals count wire bytes, and the estimate arrives later and rewrites the line.
+  const out = [];
+  const con = { groupCollapsed: t => out.push(t), log: () => {}, groupEnd: () => {}, debug: () => {} };
+  const entry = { ...e, response: { boards: { a: [] } } };
+  const log = createNetDebug({ doc: null, out: con, perf: at({ encodedBodySize: 61_000, transferSize: 61_300, decodedBodySize: 587_776 }), unzip: async (text, enc) => (text.length && enc === 'br' ? 3 : null) });
+  log(entry);
+  assert.equal(log.totals().wire, 61_000);
+  assert.equal(log.totals().down, 574 * 1024);
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(entry.unzip, 3);
+  log({ ...e, url: 'https://api/boards', encoding: '', response: null });
+  assert.equal(log.totals().requests, 2);
+});
+
+test('estimateUnzip: times a real decompression, or says it cannot', async () => {
+  const text = JSON.stringify({ boards: Object.fromEntries(Array.from({ length: 50 }, (_, i) => ['s' + i, [{ name: 'Nova', score: i * 1000 }]])) });
+  const t = await estimateUnzip(text, 'gzip');
+  assert.ok(t >= 0 && t < 1000, 'gzip: ' + t);
+  assert.equal(await estimateUnzip(text, ''), null, 'not compressed');
+  assert.equal(await estimateUnzip(text, 'zstd'), null);
+  assert.equal(await estimateUnzip(text, 'gzip', { CS: null }), null, 'no streams in this browser');
+  assert.equal(await estimateUnzip(text, 'br', { CS: class { constructor() { throw new TypeError('unsupported'); } } }), null);
 });
 
 test('the Sync button: once per cooldown, counted from the last sync; no request while cooling', async () => {
