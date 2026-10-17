@@ -163,3 +163,12 @@ test('settings.voice defaults to the buzzer and only accepts known voices', asyn
   assert.equal(c.settings.voice, 'gameboy');
   delete globalThis.localStorage;
 });
+
+test('song library: no two songs share the same RTTTL (name ignored)', () => {
+  const tune = s => s.rtttl.slice(s.rtttl.indexOf(':') + 1).replace(/\s+/g, '').toLowerCase(); // drop the name, keep settings + notes
+  const seen = new Map();
+  for (const s of SONGS) {
+    assert.ok(!seen.has(tune(s)), `${s.id} duplicates ${seen.get(tune(s))}`);
+    seen.set(tune(s), s.id);
+  }
+});
