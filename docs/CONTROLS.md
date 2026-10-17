@@ -12,7 +12,7 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 |---|---|
 | Lanes (4) | `D` `F` `J` `K` |
 | Title | any key |
-| Main menu | `↑` `↓` (or `←` `→`) browse, `1`–`6` jump to an item, `Enter` open, `Esc` / `Backspace` back to the title |
+| Main menu | `↑` `↓` (or `←` `→`) browse, `1`–`6` (`7` with the Admin item) jump to an item, `Enter` open, `Esc` / `Backspace` back to the title |
 | Menu navigation | arrows (spatial focus), `Enter` / `Space` activate, `Tab` also works |
 | Back / pause / resume | `Esc` or `Backspace` (`Esc` also cancels a controller-button capture) |
 | Restart (count-in, play, pause, results) | `R` |

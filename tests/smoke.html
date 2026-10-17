@@ -90,10 +90,54 @@ f.addEventListener('load', async () => {
     log(vis('menu') && $('mm-title').textContent === 'Tones', 'back from Tones -> menu');
     key('6'); await sleep(30); $('mm-go').click(); await sleep(80);
     log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'menu -> settings + 4 bindings');
+    // no controller: no Controller tab (Effects -> General), and clicking it goes nowhere
+    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await sleep(30);
+    log(!d.querySelector('[data-panel=general]').hidden, 'no controller: Effects -> General, Controller tab skipped');
+    d.querySelector('#set-tabs [data-tab=controller]').click();
+    log(d.querySelector('[data-panel=controller]').hidden, 'no controller: Controller tab unavailable');
+    // plug one in while Settings is open
+    const nav = d.defaultView.navigator, getPads = nav.getGamepads;
+    nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0 }];
+    await sleep(700);
+    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await sleep(30);
+    log(!d.querySelector('[data-panel=controller]').hidden, 'controller connected: Effects -> Controller tab');
+    d.querySelector('#set-tabs [data-tab=controller]').click();
+    log(!d.querySelector('[data-panel=controller]').hidden && d.querySelector('[data-panel=sound]').hidden, 'settings tabs: Controller shown, Sound hidden');
     d.querySelector('#bind-grid button').click();
     log(d.querySelector('#bind-grid button').classList.contains('capture'), 'rebind capture mode');
     key('Escape'); await sleep(50);
     log(vis('settings'), 'Esc cancels capture only');
+    nav.getGamepads = getPads; // unplug while on the Controller tab -> falls back
+    await sleep(700);
+    log(d.querySelector('[data-panel=controller]').hidden && !!d.querySelector('#settings .set-panel:not([hidden])'), 'controller removed: leaves the Controller tab');
+    {
+      // every tab, in every language, stays inside the LCD: tab bar, arrows and panel controls
+      const fits = () => {
+        const lcd = d.getElementById('settings').getBoundingClientRect(), bad = [];
+        for (const el of d.querySelectorAll('#set-tabs > *, #set-tabs ~ .set-panel:not([hidden]) *, #btn-settings-back')) {
+          const r = el.getBoundingClientRect();
+          if (r.width && (r.left < lcd.left - 1 || r.right > lcd.right + 1)) bad.push(el.id || el.textContent.trim().slice(0, 12));
+        }
+        return bad;
+      };
+      for (const lang of ['English', 'German']) {
+        for (const tab of ['sound', 'gameplay', 'effects', 'general']) {
+          d.querySelector('#set-tabs [data-tab=' + tab + ']').click(); await sleep(20);
+          const bad = fits();
+          log(!bad.length && d.getElementById('settings').scrollWidth <= d.getElementById('settings').clientWidth, 'settings ' + tab + ' fits the LCD (' + lang + ')' + (bad.length ? ': ' + bad.join(',') : ''));
+        }
+        if (lang === 'English') { $('set-lang').click(); await sleep(30); }
+        if (lang === 'German') log(['btn-reset-scores', 'btn-tutorial', 'btn-bind-reset'].every(id => !/^(Reset|Replay)/.test($(id).textContent)), 'settings buttons are translated (German)');
+      }
+      $('set-lang').click(); await sleep(30); // back to English
+      log(d.querySelectorAll('#set-tabs button:not(.sel)').length === 4 && [...d.querySelectorAll('#set-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'only the current tab is shown');
+    }
+    d.querySelector('#set-tabs [data-tab=gameplay]').click(); d.querySelector('#scroll').focus(); await sleep(20);
+    log(d.querySelector('#scroll').closest('.menu > *').classList.contains('hl'), 'focused control is highlighted');
+    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs button.sel').focus(); await sleep(20);
+    log(!d.querySelector('#settings .hl'), 'tab pager focused: no list item stays highlighted');
+    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs [data-tab=sound]').focus(); key('ArrowRight'); await sleep(50);
+    log(!d.querySelector('[data-panel=gameplay]').hidden, 'ArrowRight on a tab -> next tab');
     key('Escape'); await sleep(100);
     log(vis('menu') && $('mm-title').textContent === 'Settings', 'Esc -> back to the menu on Settings');
 

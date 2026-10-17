@@ -28,7 +28,6 @@
     <b data-i18n>Keys</b>
     <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> <span data-i18n>move, adjust</span></div>
     <div><kbd data-i18n>Enter</kbd> <span data-i18n>select</span></div>
-    <div><kbd>1</kbd>–<kbd>6</kbd> <span data-i18n>menu item</span></div>
     <div><kbd data-i18n>Esc</kbd><kbd data-i18n>Bksp</kbd> <span data-i18n>back · pause</span></div>
     <div><kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd> <span data-i18n>play (in song)</span></div>
     <div><kbd>R</kbd> <span data-i18n>restart</span></div>
@@ -276,28 +275,44 @@
 
         <!-- Settings -->
         <section id="settings" class="screen" hidden data-title="Settings" data-soft-left="Select" data-soft-right="Back">
-          <div class="menu">
-            <button id="set-voice">Tone: Buzzer</button>
-            <button id="set-lang">Language: English</button>
+          <div id="set-tabs" class="dp-tabs st-tabs seg" role="tablist">
+            <span id="set-prev" class="arrow" aria-hidden="true">◄</span>
+            <button type="button" role="tab" data-tab="sound" data-i18n>Sound</button>
+            <button type="button" role="tab" data-tab="gameplay" data-i18n>Gameplay</button>
+            <button type="button" role="tab" data-tab="effects" data-i18n>Effects</button>
+            <button type="button" role="tab" data-tab="controller" data-i18n>Controller</button>
+            <button type="button" role="tab" data-tab="general" data-i18n>General</button>
+            <span id="set-next" class="arrow" aria-hidden="true">►</span>
+          </div>
+          <div class="set-panel menu" data-panel="sound" role="tabpanel">
             <label class="item"><span data-i18n>Volume</span> <input id="volume" type="range" min="0" max="100" step="10"></label>
-            <label class="item"><span data-i18n>Scroll time</span> <span id="scroll-val"></span>
-              <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
+            <button id="set-voice">Tone: Buzzer</button>
             <label class="item check"><input id="backing" type="checkbox"> <span data-i18n>Backing pulse</span></label>
             <label class="item check"><input id="pref-rollaudio" type="checkbox"> <span data-i18n>Auto-play rolls</span></label>
+          </div>
+          <div class="set-panel menu" data-panel="gameplay" role="tabpanel" hidden>
+            <label class="item"><span data-i18n>Scroll time</span> <span id="scroll-val"></span>
+              <input id="scroll" type="range" min="1" max="2.5" step="0.1"></label>
+            <button id="btn-calibrate" class="menu-only"><span data-i18n>Latency:</span> <b id="menu-offset">0 ms</b></button>
             <label class="item check"><input id="pref-preview" type="checkbox"> <span data-i18n>Song preview</span></label>
-            <label class="item check"><input id="pref-gags" type="checkbox"> <span data-i18n>Idle animations</span></label>
+          </div>
+          <div class="set-panel menu" data-panel="effects" role="tabpanel" hidden>
             <label class="item check"><input id="pref-juice" type="checkbox"> <span data-i18n>Hit effects</span></label>
             <label class="item check"><input id="pref-haptics" type="checkbox"> <span data-i18n>Vibration</span></label>
             <label class="item check"><input id="pref-combopopup" type="checkbox"> <span data-i18n>Combo popup</span></label>
-            <button id="btn-calibrate" class="menu-only"><span data-i18n>Latency:</span> <b id="menu-offset">0 ms</b></button>
+            <label class="item check"><input id="pref-gags" type="checkbox"> <span data-i18n>Idle animations</span></label>
           </div>
-          <div class="lbl" data-i18n>Controller</div>
-          <div id="pad-status" class="hint"></div>
-          <div id="bind-grid" class="menu bind-grid"></div>
-          <div class="menu">
-            <button id="btn-bind-reset" data-i18n>Reset buttons</button>
+          <div class="set-panel" data-panel="controller" role="tabpanel" hidden>
+            <div id="pad-status" class="hint"></div>
+            <div id="bind-grid" class="menu bind-grid"></div>
+            <div class="menu"><button id="btn-bind-reset" data-i18n>Reset buttons</button></div>
+          </div>
+          <div class="set-panel menu" data-panel="general" role="tabpanel" hidden>
+            <button id="set-lang">Language: English</button>
             <button id="btn-tutorial" class="menu-only" data-i18n>Replay tutorial</button>
-            <button id="btn-reset-scores" class="menu-only">Reset scores &amp; stats</button>
+            <button id="btn-reset-scores" class="menu-only" data-i18n>Reset scores &amp; stats</button>
+          </div>
+          <div class="menu">
             <button id="btn-settings-back" data-i18n>Back</button>
           </div>
         </section>

@@ -70,7 +70,7 @@ function juiceJudge(lane, j) {
     if (prevCombo >= 10) { synth.breakSlide(); buzz(20); }
   } else {
     if (j === 'perfect') { synth.ping(72); buzz(8); }
-    if (c > prevCombo && (c === 10 || c === 25 || (settings.comboPopup && c >= 50 && c % 50 === 0))) {
+    if (c > prevCombo && (c === 10 || c === 25 || (c >= 50 && c % 50 === 0))) {
       synth.chirp();
       const sg = $('st-signal'); sg.classList.remove('blip'); void sg.offsetWidth; sg.classList.add('blip');
     }
@@ -157,6 +157,7 @@ function focusDefault(el) {
 // The highlighted list item follows focus but stays lit while focus is elsewhere (e.g. on a phone key).
 let lit = null;
 function light(el) {
+  if (el && el.closest && el.closest('#set-tabs') && lit) { lit.classList.remove('hl'); lit = null; return; }
   const item = el && el.closest && el.closest('.menu > *');
   if (!item || item === lit) return;
   if (lit) lit.classList.remove('hl');
@@ -1912,7 +1913,7 @@ function renderBindings() {
 }
 function updatePadStatus() {
   const first = pad.list()[0];
-  $('pad-status').textContent = first ? tr('Connected: {id}', { id: first.id }) : tr('No controller detected — press a button on it.');
+  $('pad-status').textContent = first ? tr('Connected: {id}', { id: first.id }) : '';
 }
 function bindButton(index) {
   const s = capturingSlot;
@@ -1925,6 +1926,37 @@ function bindButton(index) {
   save(); renderBindings();
 }
 let settingsFrom = 'menu';
+let settingsTab = 'sound';
+const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'controller', 'general'];
+// Button mapping is only offered while a controller is connected.
+const settingsTabs = () => ALL_SETTINGS_TABS.filter(t => t !== 'controller' || pad.connected);
+let shownTabs = '';
+function setSettingsTab(id, focus = false) {
+  const tabs = settingsTabs();
+  if (!tabs.includes(id)) id = tabs[0];
+  shownTabs = tabs.join();
+  settingsTab = id;
+  capturingSlot = -1;
+  for (const b of document.querySelectorAll('#set-tabs button')) {
+    const on = b.dataset.tab === id;
+    b.classList.toggle('sel', on); b.setAttribute('aria-selected', on);
+  }
+  const at = tabs.indexOf(id);
+  $('set-prev').classList.toggle('off', at === 0); $('set-next').classList.toggle('off', at === tabs.length - 1);
+  for (const p of document.querySelectorAll('#settings .set-panel')) p.hidden = p.dataset.panel !== id;
+  paintRanges(screens.settings);
+  if (focus) $('set-tabs').querySelector('.sel').focus();
+}
+function stepSettingsTab(step) {
+  const tabs = settingsTabs(), i = tabs.indexOf(settingsTab) + step;
+  if (i < 0 || i >= tabs.length) return;
+  synth.keyClick();
+  setSettingsTab(tabs[i], true);
+}
+// A controller was plugged in or removed while Settings is open.
+function syncSettingsTabs() {
+  if (state === 'settings' && settingsTabs().join() !== shownTabs) setSettingsTab(settingsTab);
+}
 function openSettings(from = 'menu') {
   settingsFrom = from;
   document.querySelectorAll('#settings .menu-only').forEach(el => { el.hidden = from === 'paused'; });
@@ -1932,6 +1964,7 @@ function openSettings(from = 'menu') {
   renderBindings();
   showOffset();
   setState('settings', 'settings');
+  setSettingsTab(settingsTab);
 }
 
 function closeSettings() {
@@ -1967,9 +2000,10 @@ function selectHints() {
     : tr('◄► Cat · D/F Sort · J/K Diff · V Fav');
 }
 
-pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); };
+pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); syncSettingsTabs(); };
 pad.onDisconnect = () => {
   toast('Controller disconnected');
+  syncSettingsTabs();
   if (state === 'countin' || state === 'playing' || state === 'resuming') pauseGame();
 };
 
@@ -2082,6 +2116,10 @@ function navigate(dir) {
   if (state === 'diffpick' && (dir === 'left' || dir === 'right') && dpTabs()) {
     const tab = dir === 'left' ? 'world' : 'local';
     if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); }
+    return;
+  }
+  if (state === 'settings' && (dir === 'left' || dir === 'right') && document.activeElement.closest('#set-tabs')) {
+    stepSettingsTab(dir === 'left' ? -1 : 1);
     return;
   }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
@@ -2207,6 +2245,10 @@ function wire() {
   };
   document.addEventListener('input', e => { if (e.target.type === 'range') paintRange(e.target); });
   $('btn-calibrate').onclick = startCalibration;
+  $('set-prev').onclick = () => stepSettingsTab(-1);
+  $('set-next').onclick = () => stepSettingsTab(1);
+  for (const t of document.querySelectorAll('#set-tabs button')) t.onclick = () => { synth.keyClick(); setSettingsTab(t.dataset.tab); };
+  onSwipe(screens.settings, (dir, e) => { if (e.target.type !== 'range') stepSettingsTab(dir === 'left' ? 1 : -1); });
   $('btn-pause-settings').onclick = () => openSettings('paused');
   $('btn-settings-back').onclick = closeSettings;
   $('btn-bind-reset').onclick = () => { settings.padBindings = cloneBindings(DEFAULT_BINDINGS); capturingSlot = -1; save(); renderBindings(); toast('Controller buttons reset'); };
@@ -2754,7 +2796,7 @@ function frame() {
     }
     return;
   }
-  if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) updatePadStatus();
+  if (state === 'settings' && (frame.n = (frame.n || 0) + 1) % 30 === 0) { updatePadStatus(); syncSettingsTabs(); }
   if (state === 'menu') menuAnim(performance.now());
   if (demoRun) {
     const now = performance.now() / 1000;
