@@ -17,7 +17,7 @@ import { MAX_RTTTL } from '../src/mysongs.js';
 import { runBot, LADDER } from '../src/bot.js';
 import { Game } from '../src/game.js';
 import { menuFrame, menuFrames, MENU_IDS, letterFrame } from '../src/menuicons.js';
-import { spriteSVG, spriteURL, spriteHTML, compose, ringing, SPRITES } from '../src/pixelart.js';
+import { spriteSVG, spriteURL, spriteHTML, compose, SPRITES } from '../src/pixelart.js';
 import { coverRows } from '../src/cover.js';
 import { CAMEOS } from '../src/cameo.js';
 import { eventAudioTime } from '../src/input.js';
@@ -253,7 +253,6 @@ const cases = [
   ['pixelart.spriteSVG (all menu frames)', () => { for (const id of MENU_IDS) for (let n = 0; n < 4; n++) sink += spriteSVG(menuFrame(id, n)).length; }],
   ['pixelart.spriteURL warm (menu icon tick)', () => { for (const id of MENU_IDS) sink += spriteURL(menuFrame(id, 1)).length; }],
   ['pixelart.spriteHTML x60 (list rows)', () => { for (let i = 0; i < 60; i++) sink += spriteHTML(SPRITES.custom || Object.values(SPRITES)[0], 2).length; }],
-  ['pixelart.compose ringing x2', () => { sink += ringing(0).length + ringing(1).length; }],
   ['cover.coverRows (all songs, cold)', () => { for (const e of lib) sink += coverRows(e.id + Math.random(), e.category).length; }],
   ['cover.coverRows (all songs, warm)', () => { for (const e of lib) sink += coverRows(e.id, e.category).length; }],
   ...CAMEOS.map(c => [`cameo.${c.id} (full run: step+draw)`, () => {

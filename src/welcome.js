@@ -11,9 +11,9 @@ export const T = { RINGS: 16, SLIDE: 18, LOCK: 38, FLASH: 48, HOLD: 70, FADE: 76
 export const HOLD_LIMIT = 120; // ticks the scene waits for the sign-in answer at T.HOLD before giving up (6 s)
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)]; // 0-15: a cell is inked while bayer < level (0 empty ... 16 solid)
+export const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)]; // 0-15: a cell is inked while bayer < level (0 empty ... 16 solid)
 
-function circle(put, cx, cy, r) {
+export function circle(put, cx, cy, r) {
   if (r < 1) { put(cx, cy); return; }
   let x = r, y = 0, e = 1 - r;
   while (x >= y) {
@@ -36,7 +36,7 @@ function line(put, x0, y0, x1, y1, dash = 0, phase = 0) {
     if (e2 <= dx) { e += dx; y0 += sy; }
   }
 }
-const stamp = (put, rows, ox, oy) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') put(ox + x, oy + y); });
+export const stamp = (put, rows, ox, oy) => rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') put(ox + x, oy + y); });
 
 // The player's name in the 5x7 LCD font, centred on row `cy`; wraps onto two lines when a line won't fit.
 // -> [{ ch, g, x, y }] in reading order (x, y = top-left of the cap line).
@@ -82,7 +82,7 @@ export function createWelcome(w, h) {
   s.draw = put0 => {
     const put = (x, y) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) put0(x, y); };
     const t = s.tick, a = t + s.hold;
-    if (t < T.RINGS) { power(put, t); return; }
+    if (t < T.RINGS) { power(put, t, w, h); return; }
 
     // ripples: one every 8 ticks from the middle, plus one when the rings touch
     const births = [T.LOCK];
@@ -156,15 +156,16 @@ export function createWelcome(w, h) {
     }
   }
 
-  // Power-on: the LCD fills with a dither ramp to solid ink, then wipes clear from the middle out.
-  function power(put, t) {
-    const level = t < 10 ? Math.ceil((t + 1) * 1.6) : 17, mid = h >> 1;
-    for (let y = 0; y < h; y++) {
-      if (t >= 12 && Math.abs(y - mid) < (t - 11) * (h / 8)) continue;
-      for (let x = 0; x < w; x++) if (bayer(x, y) < level) put(x, y);
-    }
-  }
   return s;
+}
+
+// Power-on: the LCD fills with a dither ramp to solid ink (ticks 0-9), then wipes clear from the middle out (12 on).
+export function power(put, t, w, h) {
+  const level = t < 10 ? Math.ceil((t + 1) * 1.6) : 17, mid = h >> 1;
+  for (let y = 0; y < h; y++) {
+    if (t >= 12 && Math.abs(y - mid) < (t - 11) * (h / 8)) continue;
+    for (let x = 0; x < w; x++) if (bayer(x, y) < level) put(x, y);
+  }
 }
 
 // -- DOM: size the canvas to its parent in cells, and run a sim on it at TICK_MS --

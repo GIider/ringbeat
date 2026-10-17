@@ -39,6 +39,7 @@
   <div id="phone" class="no-anim">
     <div id="lcd" class="lcd">
       <canvas id="welcome-fx" class="welcome-fx" aria-hidden="true" hidden></canvas>
+      <canvas id="title-fx" class="welcome-fx" aria-hidden="true" hidden></canvas>
       <div class="statusbar" aria-hidden="true">
         <i id="st-signal" class="spr"></i>
         <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1" data-i18n-attr="aria-label" hidden>◄</button>
@@ -56,8 +57,7 @@
 
         <!-- Title / boot -->
         <section id="title" class="screen boot" hidden data-title="" data-soft-left="Start" data-soft-right="">
-          <div class="boot-logo">RINGBEAT</div>
-          <i id="boot-art" class="spr boot-art"></i>
+          <h1 class="sr">Ringbeat</h1>
           <p class="blink" data-i18n>Press any key or tap</p>
           <p class="boot-version"><a id="boot-version" href="https://github.com/GIider/ringbeat" target="_blank" rel="noopener" title="Ringbeat on GitHub" data-i18n-attr="title"></a></p>
           <p id="boot-build" class="boot-version boot-build"></p>

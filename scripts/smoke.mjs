@@ -99,6 +99,11 @@ async function adminSmoke(context, name) {
         if (who !== 'Neo') { await p3.close(); return fail(`sign-in intro ended with "${who}" in the title bar`); }
       } else {
         await p3.waitForSelector('#title:not([hidden])', { timeout: 6000 });
+        // the title's ringing phone paints its canvas, and the canvas goes away with the title
+        await p3.waitForFunction(() => { const c = document.getElementById('title-fx'); return !c.hidden && c.width > 40 && c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v); }, null, { timeout: 4000 });
+        await p3.keyboard.press('Space');
+        await p3.waitForSelector('#mm-title');
+        if (await p3.evaluate(() => !document.getElementById('title-fx').hidden)) { await p3.close(); return fail('title canvas left behind after leaving the title'); }
       }
       await p3.close();
     }

@@ -13,6 +13,7 @@ import { Pad, BTN, buttonName, cloneBindings, DEFAULT_BINDINGS } from '../src/ga
 import { createSms, createSignalWobble, createLowBattery, createScheduler, CAMEOS } from '../src/cameo.js';
 import { formatImei, fakeImei } from '../src/secrets.js';
 import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES, SPRITES_FAV, categorySprite } from '../src/pixelart.js';
+import { createTitle, layoutTitle, dropDy, T as TT, REST as TITLE_REST } from '../src/titlefx.js';
 import { createWelcome, layoutName, T as WT, TICK_MS } from '../src/welcome.js';
 import { CATEGORIES } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
@@ -505,6 +506,39 @@ test('welcome intro: the name is laid out inside the grid, wrapping long ones', 
   assert.equal(rows.size, 2, 'wraps onto two lines');
   assert.ok(long.every(c => c.x >= 0 && c.x + c.g.w <= 85 && c.y >= 0));
   assert.equal(layoutName('', 85, 47).length, 0);
+});
+
+test('title scene: powers on, drops the phone, rings forever and stays inside the grid', () => {
+  for (const [w, h] of [[85, 103], [100, 200], [60, 60], [40, 40]]) {
+    const s = createTitle(w, h), seen = [];
+    for (let i = 0; i < TT.RING + 3 * TT.LOOP; i++) {
+      let n = 0;
+      s.draw((x, y) => { assert.ok(Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < w && y < h); n++; });
+      seen.push(n);
+      s.step();
+    }
+    assert.ok(!s.done, 'never ends');
+    assert.ok(seen.slice(0, 12).every(n => n > 0), 'power-on paints');
+    assert.ok(seen[TT.RING + 5] > 100 && seen[TT.RING + TT.LOOP + 5] > 100, 'the logo scene paints');
+    assert.deepEqual(seen.slice(TT.RING + TT.LOOP, TT.RING + 2 * TT.LOOP), seen.slice(TT.RING + 2 * TT.LOOP, TT.RING + 3 * TT.LOOP), 'the loop repeats exactly');
+  }
+});
+
+test('title scene: layout keeps the phone below the logo, or drops it on a short grid', () => {
+  const tall = layoutTitle(85, 103);
+  assert.ok(tall.phone && tall.py > tall.chars[0].y + 7 && tall.px >= 0 && tall.px + 24 <= 85);
+  assert.ok(!layoutTitle(85, 50).phone, 'too short for the stack: logo alone');
+  assert.ok(layoutTitle(85, 50).chars.every(c => c.x >= 0 && c.x + c.g.w <= 85));
+  assert.equal(dropDy(-1, 20), null);
+  assert.ok(dropDy(0, 20) < -40 && dropDy(6, 20) <= 0 && dropDy(40, 20) === 0, 'falls from above the grid, ends at rest');
+});
+
+test('title scene: the still frame (reduced motion) has the whole scene', () => {
+  const s = createTitle(85, 103);
+  s.jump(TITLE_REST);
+  let n = 0;
+  s.draw(() => n++);
+  assert.ok(n > 300, 'logo and phone are there');
 });
 
 // ---- cameo status sims & scheduler ----

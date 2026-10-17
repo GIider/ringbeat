@@ -25,7 +25,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 | Screen | Purpose |
 |---|---|
-| Title | Boot screen with "Press any key", the version (linking to GitHub) and the build line. The first boot plays a short power-on jingle. The key press also satisfies the browser's audio-gesture requirement. |
+| Title | Boot screen: an LCD scene (power-on, a Nokia 3310 drops in and bounces, the RINGBEAT logo lands letter by letter) that then rings in an 8.4 s loop (vibrating phone, sound waves, floating notes, a falling-note highway on the phone's own screen, a glint and a ripple across the logo); reduced motion shows one still frame. Below it "Press any key", the version (linking to GitHub) and the build line. The first boot plays a short power-on jingle. The key press also satisfies the browser's audio-gesture requirement. |
 | Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (folder card + symbol + a hand pressing a key), a numbered scrollbar on the right and a centred *Select*. You can browse with ↑↓/←→, keypad 2/8, digits 1–6 (7 for Admin), swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
 | Login prompt | Shown once per device after the tutorial (played or skipped, or *No thanks* on the tutorial prompt) to a player who isn't signed in: *Sign in with GitHub* / *Not now*. |
 | Tutorial prompt | Shown the first time Tones is opened, unless the player has already picked a song: *Play tutorial* / *No thanks*. See [Tutorial](#tutorial). |

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { GLYPHS, boldGlyph, parseFont, CAP } from '../src/pixelfont.js';
 import { buildTTF, glyphRects } from '../scripts/build-font.mjs';
-import { SPRITES, POPUPS, HEART, HEART_BROKEN, HEART_HALVES, signal, battery, ringing, spriteSVG } from '../src/pixelart.js';
+import { SPRITES, POPUPS, HEART, HEART_BROKEN, HEART_HALVES, signal, battery, spriteSVG } from '../src/pixelart.js';
 import { coverRows, COVER_W, COVER_H } from '../src/cover.js';
 import { SONGS } from '../src/songs.js';
 
@@ -146,8 +146,6 @@ test('sprites are rectangular 1-bit art', () => {
     HEART_BROKEN);
   for (let i = 0; i <= 5; i++) assert.ok(rectangular(signal(i)));
   for (let i = 0; i <= 4; i++) assert.ok(rectangular(battery(i)));
-  assert.ok(rectangular(ringing(0)) && rectangular(ringing(1)));
-  assert.notDeepEqual(ringing(0), ringing(1));
   const ink = rows => rows.join('').split('#').length - 1;
   assert.ok(ink(signal(5)) > ink(signal(1)) && ink(battery(4)) > ink(battery(0)));
   assert.match(spriteSVG(['#.', '##']), /<rect x="0" y="1" width="2" height="1"\/>/);

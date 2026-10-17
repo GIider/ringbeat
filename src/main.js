@@ -37,8 +37,9 @@ import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
-import { createWelcome, measureGrid, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
+import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
+import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
+import { createTitle, REST as TITLE_REST } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -121,6 +122,7 @@ function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   document.body.classList.toggle('in-select', name === 'select');
   if (name !== 'select') dismissFx();
+  titleFx(name === 'title');
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
   if (name !== 'msgload') clearTimeout(msgTimer);
@@ -2601,6 +2603,29 @@ function welcomeStart(exchange) {
 }
 const skipWelcome = () => { if (state === 'welcome') welcomeEnd('menu', true); };
 
+// The title's ringing 3310 (titlefx.js) on the LCD canvas while the title is up. Reduced motion paints one still frame.
+let titleStop = null, titleOn = false;
+function titleFx(on) {
+  titleOn = on;
+  if (titleStop) titleStop();
+  titleStop = null;
+  const fx = $('title-fx');
+  fx.hidden = !on;
+  if (!on) return;
+  requestAnimationFrame(() => { // measured once the phone is laid out
+    if (!titleOn || titleStop) return;
+    const { w, h } = measureGrid(fx);
+    const lcd = fx.parentElement.getBoundingClientRect().bottom, text = $('title').querySelector('.blink').getBoundingClientRect().top;
+    const sim = createTitle(w, h, Math.ceil((lcd - text) / CELL) + 1); // the DOM text under the scene is kept clear
+    if (!still.matches) { titleStop = runWelcome(fx, sim); return; }
+    sim.jump(TITLE_REST);
+    const ctx = fx.getContext('2d');
+    ctx.fillStyle = getComputedStyle(fx).color;
+    sim.draw((x, y) => ctx.fillRect(x, y, 1, 1));
+    titleStop = () => ctx.clearRect(0, 0, fx.width, fx.height);
+  });
+}
+
 let booted = false;
 function startFromTitle() {
   synth.ensure();
@@ -2946,12 +2971,11 @@ function wire() {
   }
   $('soft-left').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
-  setSprite($('boot-art'), ringing(0), 3);
   $('boot-version').textContent = 'v' + VERSION;
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
+  window.addEventListener('resize', () => { if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'title') titleFx(true); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);

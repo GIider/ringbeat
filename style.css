@@ -141,7 +141,7 @@ textarea::placeholder { color: var(--ink-dim); }
 
 /* ---------- title / boot ---------- */
 .boot { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
-.boot-logo { font-weight: 700; font-size: calc(var(--fs) * 2); letter-spacing: 2px; animation: boot-in .9s steps(6) both; }
+#title { justify-content: flex-end; padding-bottom: 4%; }
 .loading { display: flex; align-items: center; justify-content: center; }
 .ld-bars { display: flex; gap: calc(var(--u) * 2); }
 .ld-bars i { width: calc(var(--u) * 3); height: calc(var(--u) * 6); background: var(--ink); opacity: .15;
@@ -153,7 +153,6 @@ textarea::placeholder { color: var(--ink-dim); }
 .boot-build { margin-top: 2px; opacity: .45; }
 .boot-version a { color: inherit; text-decoration: none; pointer-events: auto; }
 .boot-version a:hover, .boot-version a:focus-visible { text-decoration: underline; opacity: 1; }
-.boot-art { margin: 6px 0; animation: boot-in .9s .25s steps(6) both; }
 .blink { font-weight: 700; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { visibility: hidden; } }
 @keyframes hello-in { from { clip-path: inset(0 100% 0 0); } }
@@ -161,7 +160,6 @@ textarea::placeholder { color: var(--ink-dim); }
 #welcome { justify-content: flex-end; padding-bottom: 14%; }
 #welcome-msg { margin: 0; padding: 0 6px; background: var(--lcd); }
 #welcome-msg.ok { animation: none; }
-@keyframes boot-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* ---------- main menu: one item per screen (3310) ---------- */
 .mm { display: flex; flex-direction: column; overflow: hidden; padding-right: calc(var(--u) * 10); }
@@ -464,7 +462,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 
 @media (prefers-reduced-motion: reduce) {
   #phone { transition: none !important; }
-  .boot-logo, .boot-art, .blink, .ld-bars i { animation: none; }
+  .blink, .ld-bars i { animation: none; }
   .scrolls { text-overflow: ellipsis; }
   .scrolls .mq { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
