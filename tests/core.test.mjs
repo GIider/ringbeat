@@ -335,6 +335,14 @@ test('listview: sort', () => {
   assert.deepEqual(ids({ sort: 'title' }), ['a', 'b', 'c', 'custom:x']);
 });
 
+test('listview: unplayed keeps a just-played song', () => {
+  const es = [{ id: 'a' }, { id: 'b' }, { id: 'c' }].map(e => ({ ...e, title: e.id, stars: {}, rating: { normal: e.id.charCodeAt(0) - 96 } }));
+  const sc = { get: id => id === 'a' ? { top: [{}] } : null };
+  const ids = keep => applyView(es, { category: 'unplayed' }, 'normal', sc, [], [], '', keep).map(e => e.id);
+  assert.deepEqual(ids([]), ['b', 'c']);
+  assert.deepEqual(ids(['a']), ['a', 'b', 'c']);
+});
+
 test('listview: category filter', () => {
   const es = [{ id: 'a', category: 'pop' }, { id: 'b', category: 'classical' }, { id: 'custom:x', category: 'custom' }].map(e => ({ ...e, title: e.id, stars: {} }));
   const sc = { get: () => null };

@@ -14,14 +14,14 @@ export const ratingOf = (e, d) => (e.rating && e.rating[d] != null ? e.rating[d]
 // Not offered on the difficulty the song is not available on.
 const playable = (e, diff) => !(e.only && e.only !== diff);
 
-// `search` filters by title / tag substring; `recent` is the played-song ids, newest first (the Recent view keeps that order).
-export function applyView(entries, { sort = 'diff-asc', category = 'all' }, diff, scores, favorites = [], recent = [], search = '') {
+// `search` filters by title / tag substring; `recent` is the played-song ids, newest first (the Recent view keeps that order); `keep` are ids the Unplayed view still lists after being played.
+export function applyView(entries, { sort = 'diff-asc', category = 'all' }, diff, scores, favorites = [], recent = [], search = '', keep = []) {
   let list = entries.map((e, i) => ({ e, i }));
   if (category === 'favorites') list = list.filter(x => favorites.includes(x.e.id));
   else if (category === 'recent') {
     list = list.filter(x => recent.includes(x.e.id));
     return list.sort((a, b) => recent.indexOf(a.e.id) - recent.indexOf(b.e.id)).map(x => x.e).filter(matches(search));
-  } else if (category === 'unplayed') list = list.filter(x => playable(x.e, diff) && !scores.get(x.e.id, diff));
+  } else if (category === 'unplayed') list = list.filter(x => (playable(x.e, diff) && !scores.get(x.e.id, diff)) || keep.includes(x.e.id));
   else if (category !== 'all') list = list.filter(x => x.e.category === category);
   const isFav = x => favorites.includes(x.e.id);
   const cmp = {

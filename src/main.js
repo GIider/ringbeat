@@ -454,7 +454,7 @@ const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter (for the current difficulty).
-const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery);
+const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery, unplayedKeep ? [unplayedKeep] : []);
 let searchQuery = '', selMoveAt = 0; // title/tag filter typed in the picker (not persisted); when the cursor last moved
 // New players start on the top of the default view (easiest first, Normal), computed from the current ratings.
 const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, 'normal', scores)[0] || builtins[0]).id;
@@ -500,7 +500,7 @@ function categoryTabs() {
   const count = t => t.id === 'all' ? all.length
     : t.id === 'favorites' ? all.filter(e => isFavorite(e.id) || favKeep.has(e.id)).length
     : t.id === 'recent' ? all.filter(e => settings.recent.includes(e.id)).length
-    : t.id === 'unplayed' ? all.filter(e => !(e.only && e.only !== d) && !scores.get(e.id, d)).length
+    : t.id === 'unplayed' ? all.filter(e => e.id === unplayedKeep || (!(e.only && e.only !== d) && !scores.get(e.id, d))).length
     : all.filter(e => e.category === t.id).length;
   // Smart views (Recent, Unplayed) come right after All and only show up while they have songs.
   const tabs = [{ id: 'all', label: 'All' }, { id: 'recent', label: 'Recent' }, { id: 'unplayed', label: 'Unplayed' }, ...CATEGORIES];
@@ -679,7 +679,7 @@ function jumpSectionStep(step) {
   jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort, settings.difficulty));
 }
 function setCategory(id) {
-  favKeep.clear();
+  favKeep.clear(); unplayedKeep = null;
   settings.view.category = id; save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
@@ -697,6 +697,8 @@ const isFavorite = id => settings.favorites.includes(id);
 // Songs unfavorited while the Favorites view is open stay listed there (so an accidental tap can be undone) until the
 // view is left: changing category, or opening Tones again.
 const favKeep = new Set();
+// The song just played from the Unplayed view stays listed there (keeping the player's place) until they change category or play another song.
+let unplayedKeep = null;
 function toggleFavorite(id = selectedId) {
   if (!entryById(id)) return;
   const on = !isFavorite(id);
@@ -859,7 +861,7 @@ function openSelect() {
 
 // ---- main menu: one item per screen, big animated icon, numbered scrollbar (3310 style) ----
 const MENU = [
-  { id: 'tones', title: 'Tones', open: () => { favKeep.clear(); if (settings.tutorialDone) openSelect(); else openTutPrompt(); } },
+  { id: 'tones', title: 'Tones', open: () => { favKeep.clear(); unplayedKeep = null; if (settings.tutorialDone) openSelect(); else openTutPrompt(); } },
   { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
   { id: 'stats', title: 'Stats', open: () => openStats() },
   { id: 'messages', title: 'Messages', open: () => { smsToned = false; openInbox(); } },
@@ -1741,7 +1743,8 @@ function startRun(r) {
     if (alt) { toast(tr('No notes on {from}: playing {to}', { from: cap(r.diff), to: cap(alt) })); r.diff = alt; }
   }
   run = r;
-  if (!r.tutorial && r.entry) { settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
+  if (!r.tutorial && r.entry) {
+    if (r.entry.id !== unplayedKeep) unplayedKeep = settings.view.category === 'unplayed' && !scores.get(r.entry.id, r.diff) ? r.entry.id : null; settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
   runTime = 0; lastSongT = null;
   for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr(r.retLabel || 'Tones');
   stopPreview();
