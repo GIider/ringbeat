@@ -1328,7 +1328,9 @@ test('dev login: 404 unless DEV_LOGIN is set; then it signs in without GitHub', 
   const code = res.headers.get('Location').slice((GAME + '#login=').length);
   const ex = await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) });
   assert.equal(ex.status, 200);
-  assert.equal((await ex.json()).profile.name, 'Tester');
+  const { profile } = await ex.json();
+  assert.equal(profile.name, 'Tester');
+  assert.equal(profile.dev, true); // the local test account is flagged as a developer
   assert.equal((await srv.call('/auth/dev/start?return=' + encodeURIComponent('https://evil.example/'))).status, 400);
 });
 
@@ -1339,4 +1341,21 @@ test('dev login: never on a workers.dev host, and never configured in wrangler.t
     { headers: { Origin: 'https://giider.github.io' } }), srv.env, 1);
   assert.equal(res.status, 404);
   assert.ok(!/DEV_LOGIN/.test(readFileSync(new URL('../server/wrangler.toml', import.meta.url), 'utf8').replace(/^\s*#.*$/gm, '')));
+});
+
+test('the request log can be switched off: nothing is logged or drawn while off', async () => {
+  const { createNetDebug } = await import('../src/netdebug.js');
+  const made = [], doc = { createElement: () => { const el = { remove() { made.splice(made.indexOf(el), 1); } }; made.push(el); return el; }, body: { appendChild() {} } };
+  const out = { groupCollapsed() {}, groupEnd() {}, log() {}, debug() {} };
+  const log = createNetDebug({ doc, out, perf: null });
+  log({ why: 'start', skipped: 'offline' });
+  assert.equal(made.length, 1);
+  log.enable(false);
+  assert.equal(log.enabled, false);
+  assert.equal(made.length, 0);
+  log({ why: 'start', skipped: 'offline' });
+  assert.equal(made.length, 0);
+  log.enable(true);
+  assert.equal(log.enabled, true);
+  assert.equal(made.length, 1); // the panel shows as soon as it is switched on
 });

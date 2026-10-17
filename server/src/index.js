@@ -106,6 +106,7 @@ async function respond(req, env, now) {
       if (!ret) return new Response('Bad return address', { status: 400 });
       const name = playerName(url.searchParams.get('name')) || 'Dev';
       const userId = await userFor(env, 'dev', name, name, now);
+      await env.DB.prepare('UPDATE users SET dev = 1 WHERE id = ?').bind(userId).run(); // the local test account carries the developer flag
       return Response.redirect(ret + '#login=' + await loginCode(env, userId, now), 302);
     }
 

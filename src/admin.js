@@ -8,7 +8,7 @@ export class AdminError extends Error {
   constructor(status) { super('admin ' + status); this.status = status; }
 }
 
-// debug: the `?dev` request log callback (netdebug.js), as in cloud.js; the token is never passed to it.
+// debug: the request log callback (netdebug.js), as in cloud.js; the token is never passed to it.
 export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis), debug = null }) {
   let token = '';
   const qs = o => {
@@ -18,7 +18,7 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
   };
   async function call(method, path, body) {
     const text = body === undefined ? undefined : JSON.stringify(body);
-    const t0 = Date.now(), log = debug && { why: 'admin', method, path, body: body ?? null, sent: text ? text.length : 0 };
+    const t0 = Date.now(), log = debug && debug.enabled !== false && { why: 'admin', method, path, body: body ?? null, sent: text ? text.length : 0 };
     const done = extra => { if (log) debug({ ...log, ms: Date.now() - t0, ...extra }); };
     let res;
     try {

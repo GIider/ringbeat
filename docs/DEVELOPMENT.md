@@ -112,7 +112,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 | Hook | Effect |
 |---|---|
 | `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `menu`, `select`, `info`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `message` (anything else lands on `select`). `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
-| `?dev` | Dev mode. Turns on the profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)), a panel with a button per cameo plus stop, IMEI, wipe and Konami, the **request log** (below) and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
+| `?dev` | Dev mode: a panel with a button per cameo plus stop, IMEI, wipe and Konami, and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
 | `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
 | `?api=prod` | With `npm run dev:cloud`: skip the local API and use the live one for this page load |
@@ -120,7 +120,9 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
 
-**Request log.** In dev mode, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
+The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account.
+
+**Request log.** With *Request tracker* on, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
 - why each one went out: `start`, `tab back`, `push`, `new best`, `tab hidden`, `boards`, `Sync button`, `signed in`;
 - what it carried (`shared`, `device`, runs and replay size, `pull`) and what came back (slots, verdicts, ranks);
 - status, bytes up, and bytes down as compressed on the wire and decoded (`↓61.2 KB wire br / 574.0 KB`; `↓0 B (304)` when

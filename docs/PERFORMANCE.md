@@ -8,8 +8,10 @@ stutter. Four tools measure it. Timings are machine-specific, so always compare 
 ## In the browser
 
 Turn on the profiler with either of these:
-- open the page with `?dev` (dev mode: also the cameo panel and the request log; not remembered);
-- press **F3** in any screen; this toggles it and remembers the choice in `localStorage` as `ringbeat.perf`.
+- tick **Settings › Developer › Performance overlay**;
+- press **F3** in any screen; this toggles the same setting.
+
+The choice is the synced `perfOverlay` setting, so it follows the player account.
 
 The overlay shows:
 - FPS;
@@ -106,7 +108,7 @@ fps.
   as a weak `W/` copy, and wrong). A local `wrangler dev` does not compress like Cloudflare's edge, so take wire sizes
   from the deployed URL.
 
-In the browser, the `?dev` request log shows the same sizes per request ([DEVELOPMENT.md](DEVELOPMENT.md#debug-urls-and-hooks)).
+In the browser, the request log (Settings › Developer › Request tracker) shows the same sizes per request ([DEVELOPMENT.md](DEVELOPMENT.md#debug-urls-and-hooks)).
 Findings so far (measured 2026-10-17): the 574 KB seen in the log was the decoded size of the local seeded database
 (367 boards); the same payload is about 86 KB gzipped and 67-93 KB brotli, and a top-3-only snapshot about 26 KB. The
 deployed API's snapshot was small (8.3 KB decoded, 1.4 KB on the wire). The edge sends `W/"…"` ETags on compressed

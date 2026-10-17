@@ -182,3 +182,12 @@ test('settings: language is kept only when supported; otherwise the browser lang
     if (orig) Object.defineProperty(globalThis, 'navigator', orig); else delete globalThis.navigator;
   }
 });
+
+test('developer toggles default off, sanitise to booleans, and sync with the account', async () => {
+  let { settings: s } = await load({});
+  assert.deepEqual([s.perfOverlay, s.netTracker], [false, false]);
+  ({ settings: s } = await load({ perfOverlay: 'yes', netTracker: true }));
+  assert.deepEqual([s.perfOverlay, s.netTracker], [false, true]);
+  const { SYNCED_SETTINGS } = await import('../src/cloudmerge.js');
+  assert.ok(SYNCED_SETTINGS.includes('perfOverlay') && SYNCED_SETTINGS.includes('netTracker'));
+});

@@ -143,7 +143,7 @@ f.addEventListener('load', async () => {
         return bad;
       };
       for (const lang of ['English', 'German']) {
-        for (const tab of ['sound', 'gameplay', 'effects', 'general']) {
+        for (const tab of ['sound', 'gameplay', 'effects', 'general', 'developer']) {
           d.querySelector('#set-tabs [data-tab=' + tab + ']').click(); await sleep(20);
           const bad = fits();
           log(!bad.length && d.getElementById('settings').scrollWidth <= d.getElementById('settings').clientWidth, 'settings ' + tab + ' fits the LCD (' + lang + ')' + (bad.length ? ': ' + bad.join(',') : ''));
@@ -152,7 +152,12 @@ f.addEventListener('load', async () => {
         if (lang === 'German') log(['btn-reset-scores', 'btn-tutorial', 'btn-bind-reset'].every(id => !/^(Reset|Replay)/.test($(id).textContent)), 'settings buttons are translated (German)');
       }
       $('set-lang').click(); await sleep(30); // back to English
-      log(d.querySelectorAll('#set-tabs button:not(.sel)').length === 4 && [...d.querySelectorAll('#set-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'only the current tab is shown');
+      d.querySelector('#set-tabs [data-tab=developer]').click(); await sleep(20);
+      $('pref-net').click(); $('pref-perf').click(); await sleep(60);
+      log(hookOf().settings.netTracker && hookOf().settings.perfOverlay && hookOf().perf.enabled, 'developer tab: both toggles turn on and are saved in the settings');
+      $('pref-perf').click(); $('pref-net').click(); await sleep(60);
+      log(!hookOf().settings.netTracker && !hookOf().settings.perfOverlay && !hookOf().perf.enabled && !d.querySelector('.net-debug'), 'developer tab: both toggles turn off again');
+      log(d.querySelectorAll('#set-tabs button:not(.sel)').length === 5 && [...d.querySelectorAll('#set-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'only the current tab is shown');
     }
     d.querySelector('#set-tabs [data-tab=gameplay]').click(); d.querySelector('#scroll').focus(); await sleep(20);
     log(d.querySelector('#scroll').closest('.menu > *').classList.contains('hl'), 'focused control is highlighted');

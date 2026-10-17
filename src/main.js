@@ -172,8 +172,8 @@ function light(el) {
 }
 const activeScreen = () => screens[state === 'countin' || state === 'playing' || state === 'resuming' ? '' : state];
 
-// ---- dev mode: ?dev turns on the profiler overlay, the cameo panel and the request log; ?dev=<cameo id> (or now)
-// also plays cameos every few seconds (docs/DEVELOPMENT.md › Debug URLs and hooks) ----
+// ---- dev mode: ?dev shows the cameo panel and the Admin app; ?dev=<cameo id> (or now) also plays cameos every few seconds.
+// The profiler overlay and the request log are Settings › Developer (docs/DEVELOPMENT.md › Debug URLs and hooks) ----
 const DEV = new URLSearchParams(location.search).has('dev');
 const DEV_CAMEO = DEV ? new URLSearchParams(location.search).get('dev') || 'debug' : '';
 
@@ -333,7 +333,8 @@ if (new URLSearchParams(location.search).get('api') === 'prod') {
 }
 const apiBase = (() => { try { return localStorage.getItem('ringbeat.api') || API_BASE; } catch { return API_BASE; } })();
 const devLogin = (() => { try { return !!localStorage.getItem('ringbeat.devlogin') && !!localStorage.getItem('ringbeat.api'); } catch { return false; } })();
-const netDebug = DEV ? createNetDebug() : null;
+const netDebug = createNetDebug();
+netDebug.enable(settings.netTracker);
 const cloud = createCloud({
   scores, stats, mysongs, prefs: { sharedSettings, applyShared }, gameVersion: VERSION,
   isBusy: () => inPlay() || state === 'paused', // no sync while a song runs
@@ -799,7 +800,7 @@ function renderStats() {
   }
 }
 
-// ---- admin (dev mode, ?dev): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
+// ---- admin (?dev or a dev-flag account): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
 // The token is kept in memory only. Views form a stack; Back pops it and reloads the view underneath. ----
 const admin = createAdmin({ apiBase, debug: netDebug });
 let adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
@@ -1939,7 +1940,7 @@ function bindButton(index) {
 }
 let settingsFrom = 'menu';
 let settingsTab = 'sound';
-const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'controller', 'general'];
+const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'controller', 'general', 'developer'];
 // Button mapping is only offered while a controller is connected.
 const settingsTabs = () => ALL_SETTINGS_TABS.filter(t => t !== 'controller' || pad.connected);
 let shownTabs = '';
@@ -2231,6 +2232,10 @@ function wire() {
   const cp = $('pref-combopopup');
   cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
   cp.onchange = () => { settings.comboPopup = cp.checked; renderer.comboPopup = cp.checked; save(); };
+  const po = $('pref-perf'), nt = $('pref-net');
+  po.checked = settings.perfOverlay; nt.checked = settings.netTracker;
+  po.onchange = () => setPerf(po.checked);
+  nt.onchange = () => { settings.netTracker = nt.checked; netDebug.enable(nt.checked); save(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
@@ -2251,6 +2256,9 @@ function wire() {
     ra.checked = settings.rollAudio; jc.checked = settings.juice; hp.checked = settings.haptics;
     cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
     renderer.scrollTime = settings.scrollTime; game.backing = settings.backing; game.rollAudio = settings.rollAudio; synth.voice = settings.voice;
+    po.checked = settings.perfOverlay; nt.checked = settings.netTracker;
+    if (settings.perfOverlay !== perf.enabled) setPerf(settings.perfOverlay, false);
+    netDebug.enable(settings.netTracker);
     syncJuice(); paintRanges(screens.settings); cameo.sync();
     setLang(effectiveLang()); relocalize();
   };
@@ -2811,7 +2819,9 @@ function demo(kind) {
 const hud = createHud(perf);
 function setPerf(on, remember = true) {
   perf.enable(on);
-  if (remember) try { localStorage.setItem('ringbeat.perf', on ? '1' : ''); } catch { /* storage blocked */ }
+  if (remember) { settings.perfOverlay = on; save(); }
+  const box = document.getElementById('pref-perf');
+  if (box) box.checked = on;
   if (on) { perf.reset(); hud.show(); } else hud.hide();
 }
 
@@ -2900,8 +2910,10 @@ layout(); // place the phone before the first paint, without the slide
 if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
 const demoKind = new URLSearchParams(location.search).get('demo');
 if (demoKind) demo(demoKind);
-let perfOn = false;
-try { perfOn = !!localStorage.getItem('ringbeat.perf'); } catch { /* storage blocked */ }
-if (DEV || perfOn) setPerf(true, perfOn); // ?dev alone doesn't leave it on for later visits
+try { // the overlay used to be remembered outside the settings: adopt that once
+  if (localStorage.getItem('ringbeat.perf')) { settings.perfOverlay = true; save(); }
+  localStorage.removeItem('ringbeat.perf');
+} catch { /* storage blocked */ }
+if (settings.perfOverlay) setPerf(true, false);
 requestAnimationFrame(frame);
 window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, admin, get state() { return state; } }; // debug/test hook (tests/smoke.html)

@@ -28,6 +28,8 @@ function fromRaw(raw) {
   idleGags: raw.idleGags !== false,
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
   haptics: raw.haptics !== false,   // vibration on supporting devices (needs juice)
+  perfOverlay: raw.perfOverlay === true, // developer: the profiler overlay (Settings › Developer)
+  netTracker: raw.netTracker === true,   // developer: the cloud request log
   comboPopup: raw.comboPopup !== false, // 50-combo milestones: "N COMBO" banner, frame flash and shake (the chirp always plays)
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',

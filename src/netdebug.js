@@ -1,6 +1,6 @@
-// The `?dev` request log: every cloud request (why it went out, what it carried, sizes, status, time) and every sync
+// The request log (Settings › Developer): every cloud request (why it went out, what it carried, sizes, status, time) and every sync
 // held back, as a corner panel, with the full bodies in the console. Plugged into cloud.js as its `debug` callback;
-// only created in dev mode (docs/DEVELOPMENT.md › Debug URLs and hooks).
+// off until switched on in Settings › Developer (docs/DEVELOPMENT.md › Debug URLs and hooks).
 
 export const size = n => (n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB');
 
@@ -75,9 +75,9 @@ export function line(e, time = new Date()) {
 
 export function createNetDebug({ max = 10, doc = globalThis.document, out = globalThis.console, perf = globalThis.performance, unzip = estimateUnzip } = {}) {
   const totals = { requests: 0, up: 0, down: 0, wire: 0 }, lines = [];
-  let el = null;
+  let el = null, enabled = true;
   function render() {
-    if (!doc) return;
+    if (!doc || !enabled) return;
     if (!el) {
       el = doc.createElement('pre');
       el.className = 'net-debug';
@@ -86,6 +86,7 @@ export function createNetDebug({ max = 10, doc = globalThis.document, out = glob
     el.textContent = `cloud: ${totals.requests} requests · ↑${size(totals.up)} ↓${size(totals.wire)} wire / ${size(totals.down)}\n` + lines.map(l => l.text).join('\n');
   }
   function log(e) {
+    if (!enabled) return;
     if (e.method && !e.skipped && e.url) Object.assign(e, wireOf(e.url, perf));
     const text = line(e);
     if (e.method && !e.skipped) {
@@ -111,6 +112,16 @@ export function createNetDebug({ max = 10, doc = globalThis.document, out = glob
       });
     }
   }
+  // Off: nothing is logged or drawn (cloud.js and admin.js then skip measuring too). On: starts from a clean slate.
+  log.enable = on => {
+    on = !!on;
+    if (on === enabled) return;
+    enabled = on;
+    if (on) { Object.assign(totals, { requests: 0, up: 0, down: 0, wire: 0 }); lines.length = 0; render(); return; } // shows the panel at once, before the first request
+    if (el) el.remove();
+    el = null;
+  };
+  Object.defineProperty(log, 'enabled', { get: () => enabled });
   log.totals = () => ({ ...totals });
   return log;
 }

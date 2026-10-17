@@ -129,6 +129,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Controller (status, lane-binding buttons, *Reset buttons*; see [CONTROLS.md › Gamepad](CONTROLS.md#gamepad-standard-gamepad-api))
   - Replay tutorial
   - Reset scores & stats (two-step confirm)
+  - Developer tab: Performance overlay (also F3) and Request tracker; both sync to the player account, `?dev` does not affect them
 - **From pause:** Latency, Replay tutorial and Reset are hidden.
 
 ## Gameplay

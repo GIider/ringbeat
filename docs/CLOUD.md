@@ -333,7 +333,7 @@ This one command:
   the game at that Worker. Use `?api=prod` on the page URL to use the live API instead.
 
 **Sign-in.** The Profile screen's sign-in goes to `GET /auth/dev/start`, which signs you in as a made-up player with
-no GitHub involved (`&name=` picks the display name). The route answers only when `DEV_LOGIN=1` is set in
+no GitHub involved (`&name=` picks the display name) and flags that account as a developer (`dev`, so the Admin app shows). The route answers only when `DEV_LOGIN=1` is set in
 `server/.dev.vars`; it is not in `wrangler.toml`, a test checks that, and it also refuses `*.workers.dev` hosts, so the
 deployed API has no such door.
 

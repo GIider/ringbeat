@@ -90,7 +90,7 @@ src/
   lang/de.js      the German dictionary
   perf.js         frame / section profiler (ring buffers, percentiles); no-op until enabled
   perfhud.js      the profiler's corner overlay + report copy (see PERFORMANCE.md)
-  netdebug.js     the ?dev request log: every cloud request and held-back sync as a corner panel + console groups
+  netdebug.js     the request log (Settings › Developer): every cloud request and held-back sync as a corner panel + console groups
   netsignal.js    the status-bar signal icon as a connection light for signed-in players: bars climb while sending, drop while receiving
 
 scripts/
@@ -187,7 +187,6 @@ defaults.
 | `ringbeat.boards.v1` | `cloud.js` | The leaderboard snapshot (`GET /boards`) and when it came, kept 30 seconds |
 | `ringbeat.device.v1` | `cloud.js` | This device's random id |
 | `ringbeat.api` | `main.js` | Developer override of the API address (see [CLOUD.md](CLOUD.md#local-development)) |
-| `ringbeat.perf` | `main.js` | Profiler left on with F3 |
 
 `ringbeat.v1` also holds `_t` (when each synced setting last changed) and `_fav` (favourite marks with times) for cloud
 sync. Grade counts on the Stats screen are derived from the highscores, never stored twice. Custom songs' scores are keyed by
