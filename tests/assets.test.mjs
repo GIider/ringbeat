@@ -62,7 +62,9 @@ test('umlauts: base letter metrics kept, dots centred in the bold cut', () => {
   }
   for (const u of 'äöüÄÖÜ') {
     const g = GLYPHS[u];
-    assert.equal(boldGlyph(g).rows[g.rows.indexOf('.#.#.')], '##..##', `${u} bold dots`);
+    const i = g.rows.indexOf('.#.#.'), b = boldGlyph(g).rows, up = i > 0; // lowercase dots rise a row in bold, leaving a gap above the letter
+    assert.equal(b[up ? i - 1 : i], '##..##', `${u} bold dots`);
+    if (up) assert.equal(b[i], '......', `${u} gap under the bold dots`);
   }
 });
 

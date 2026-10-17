@@ -1242,7 +1242,12 @@ export function boldGlyph(g) {
     for (let x = 0; x <= r.length; x++) out += (r[x] === '#' || r[x - 1] === '#') ? '#' : '.';
     return out;
   });
-  if (g.dotted) rows[g.rows.indexOf('.#.#.')] = '##..##'; // centred on the 6-wide bold body
+  if (g.dotted) {
+    const i = g.rows.indexOf('.#.#.');
+    rows[i] = '##..##'; // centred on the 6-wide bold body
+    // Lowercase dots sit right on the letter; bold, they would merge with its top or stems (ü), so they rise one row.
+    if (i > 0 && !/#/.test(rows[i - 1])) { rows[i - 1] = rows[i]; rows[i] = '.'.repeat(rows[i].length); }
+  }
   return g.up ? { w: g.w + 1, rows, up: g.up, dotted: g.dotted } : { w: g.w + 1, rows, dotted: g.dotted };
 }
 
