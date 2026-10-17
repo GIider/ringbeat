@@ -158,7 +158,7 @@ export async function handle(req, env, now = Date.now()) {
 
     const auth = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(req.headers.get('Authorization') || '');
     const tokenHash = auth && await sha256(auth[1]);
-    const session = tokenHash && await env.DB.prepare(`SELECT s.user_id, s.expires, u.banned FROM sessions s
+    const session = tokenHash && await env.DB.prepare(`SELECT s.user_id, s.expires, u.banned, u.reset_at FROM sessions s
       JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`).bind(tokenHash).first();
     if (!session || session.expires < now) {
       return url.pathname === '/' ? new Response('Ringbeat API', { headers: cors }) : fail(401, 'sign in');
@@ -189,7 +189,7 @@ export async function handle(req, env, now = Date.now()) {
       let budget = VERIFY_PER_REQUEST;
       if (body.shared !== undefined || Number.isInteger(body.sharedRev)) {
         if (body.shared !== undefined) budget--; // the merge takes CPU too
-        const r = await syncShared(env, uid, body, now);
+        const r = await syncShared(env, session, body, now);
         if (r === 'bad') return fail(400, 'bad doc');
         if (r === 'busy') return fail(409, 'stale');
         if (r) out.shared = r;
@@ -225,7 +225,7 @@ export async function handle(req, env, now = Date.now()) {
         out.devices = Object.fromEntries(results.filter(r => r.doc !== null).map(r => [r.device_id, JSON.parse(r.doc)]));
       }
       if (body.runs && body.runs.length) {
-        const runs = await storeRuns(env, uid, body.runs, budget, now);
+        const runs = await storeRuns(env, session, body.runs, budget, now);
         out.runs = verdicts(runs);
         // The caller's world rank wherever a run just ranked: the results screen needs no second request.
         out.ranks = {};
@@ -268,7 +268,8 @@ async function putDevice(env, uid, deviceId, doc, now) {
 // POST /sync's shared document. A sent document is merged here with the stored one (the same merge every device
 // runs), written only when that changes it, and guarded by rev. -> { rev, doc? } (doc left out when the caller
 // already has it), null when the caller is up to date, 'bad' or 'busy' (lost the race three times).
-async function syncShared(env, uid, body, now) {
+async function syncShared(env, session, body, now) {
+  const uid = session.user_id;
   const read = () => env.DB.prepare('SELECT doc, rev FROM shared_docs WHERE user_id = ?').bind(uid).first();
   let row = await read();
   if (body.shared === undefined) {
@@ -280,7 +281,7 @@ async function syncShared(env, uid, body, now) {
     // The first device to fill an empty profile stamps its never-changed settings with its own clock (stampUnset).
     const merged = stored ? mergeShared(body.shared, stored) : stampUnset(body.shared, isNum(body.stampAt) ? body.stampAt : now);
     const reply = rev => ({ rev, ...(!sameShared(merged, body.shared) && { doc: merged }) });
-    await applyReset(env, uid, merged.resetAt);
+    await applyReset(env, session, merged.resetAt);
     if (stored && sameShared(merged, stored)) return reply(row.rev);
     const doc = docText(merged);
     if (!doc) return 'bad';
@@ -295,17 +296,19 @@ async function syncShared(env, uid, body, now) {
 
 // A "reset scores & stats" reached the shared document: the player's stored runs up to then go, and with them their
 // leaderboard entries. Runs played after it stay. Nothing is written unless the reset is newer than the last one seen.
-async function applyReset(env, uid, resetAt) {
-  if (!isNum(resetAt) || resetAt <= 0) return;
+async function applyReset(env, session, resetAt) {
+  if (!isNum(resetAt) || resetAt <= session.reset_at) return;
+  const uid = session.user_id;
   const r = await env.DB.prepare('UPDATE users SET reset_at = ? WHERE id = ? AND reset_at < ?').bind(resetAt, uid, resetAt).run();
+  session.reset_at = resetAt;
   if (!r.meta.changes) return;
   await env.DB.batch([env.DB.prepare('DELETE FROM runs WHERE user_id = ? AND played_at <= ?').bind(uid, resetAt), boardsChanged(env)]);
 }
 
 // Cleans, re-plays (up to `budget`; the rest wait for the cron with verified = 0) and stores runs. -> the clean runs.
-async function storeRuns(env, uid, raw, budget, now) {
+async function storeRuns(env, session, raw, budget, now) {
+  const uid = session.user_id, resetAt = session.reset_at;
   // Runs played before the player's last reset (a device that was offline) are not stored again.
-  const resetAt = (await env.DB.prepare('SELECT reset_at FROM users WHERE id = ?').bind(uid).first() || {}).reset_at || 0;
   const runs = raw.map(cleanRun).filter(r => r && (!resetAt || r.playedAt > resetAt));
   for (const r of runs) {
     // The server's own numbers replace the client's.
