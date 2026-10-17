@@ -33,7 +33,7 @@ const BUILTIN = new Map(SONGS.map(s => [s.id, s.rtttl]));
 
 export default {
   fetch: (req, env) => handle(req, env),
-  scheduled: (ev, env, ctx) => ctx.waitUntil(verifyPending(env).then(() => rebuildBoards(env, Date.now()))),
+  scheduled: (ev, env, ctx) => ctx.waitUntil(prunePending(env).then(() => verifyPending(env)).then(() => rebuildBoards(env, Date.now()))),
 };
 
 export async function handle(req, env, now = Date.now()) {
@@ -147,7 +147,10 @@ export async function handle(req, env, now = Date.now()) {
         if (r.meta.changes) await env.DB.batch([boardsChanged(env), audit(env, now, hidden ? 'hide' : 'unhide', Number.isInteger(body.runId) ? 'run ' + body.runId : 'user ' + body.userId)]);
         return r.meta.changes ? json(null) : fail(404, 'no such run or user');
       }
-      if (route === 'POST /admin/verify') return json({ verified: await verifyPending(env) });
+      if (route === 'POST /admin/verify') {
+        const pruned = await prunePending(env);
+        return json({ verified: await verifyPending(env), pruned });
+      }
       return adminRoute(env, route, url, body, now, json, fail);
     }
 
@@ -539,10 +542,22 @@ function flagsFor(chart, log, res) {
   return f.join(',');
 }
 
+// Drops waiting runs that cannot change a board: not above the player's verified best on that song, or beaten by another
+// waiting run of theirs (equal claims: the lower id stays). -> how many.
+export async function prunePending(env) {
+  const r = await env.DB.prepare(`DELETE FROM runs WHERE verified = 0 AND replay IS NOT NULL AND rules = ?1 AND (
+      EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id AND b.diff = runs.diff
+        AND b.rules = runs.rules AND b.verified = 1 AND b.hidden = 0 AND b.score >= runs.score)
+      OR EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id AND b.diff = runs.diff
+        AND b.rules = runs.rules AND b.verified = 0 AND b.replay IS NOT NULL
+        AND (b.score > runs.score OR (b.score = runs.score AND b.id < runs.id))))`).bind(String(RULES)).run();
+  return r.meta.changes;
+}
+
 // Re-play runs waiting for it (over a request's budget, or posted before a deploy): the cron and POST /admin/verify.
 export async function verifyPending(env, limit = VERIFY_PER_CRON) {
   const { results } = await env.DB.prepare(`SELECT id, song_id, diff, replay, loadout, rtttl FROM runs
-    WHERE verified = 0 AND replay IS NOT NULL AND rules = ? LIMIT ?`).bind(String(RULES), limit).all();
+    WHERE verified = 0 AND replay IS NOT NULL AND rules = ? ORDER BY score DESC LIMIT ?`).bind(String(RULES), limit).all();
   if (!results.length) return 0;
   await env.DB.batch(results.map(row => {
     const v = verifyRun({ songId: row.song_id, diff: row.diff, replay: row.replay, loadout: row.loadout, rtttl: row.rtttl });

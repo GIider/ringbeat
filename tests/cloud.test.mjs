@@ -468,8 +468,8 @@ test('leaderboards: runs over a request\'s budget are verified later; automated-
   const r = await u.post(runs);
   assert.deepEqual(r.runs.map(x => x.verified), [1, 1, 1, 1, 0, 0]);
   const admin = { Authorization: 'Bearer admin-secret' };
-  assert.deepEqual(await (await srv.call('/admin/verify', { method: 'POST', headers: admin })).json(), { verified: 2 });
-  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs WHERE verified = 1').get().n, 6);
+  assert.deepEqual(await (await srv.call('/admin/verify', { method: 'POST', headers: admin })).json(), { verified: 1, pruned: 1 }, 'of the two waiting runs, one cannot beat the others and is dropped');
+  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs WHERE verified = 1').get().n, 5);
   assert.equal(await verifyPending(srv.env), 0);
 
   // The demo mod's perfect timing, shifted by a constant: still flagged.
