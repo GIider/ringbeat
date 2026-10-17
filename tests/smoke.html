@@ -92,6 +92,19 @@ f.addEventListener('load', async () => {
     $('st-title').click(); await sleep(50);
     log(vis('hub') && $('hub').dataset.title === 'Categories', 'tapping the title bar opens the category screen');
     key('Backspace'); await sleep(80);
+    {
+      // Favorite toggle: the icon of the selected row plus the space beside it, so a fingertip doesn't start the song instead.
+      const row = d.querySelector('.song-row.cur'), id = row.dataset.id, fav = () => hookOf().settings.favorites.includes(id), was = fav();
+      const ir = row.querySelector('.spr.cat').getBoundingClientRect(), rr = row.getBoundingClientRect();
+      const tap = x => { const o = { bubbles: true, clientX: x, clientY: ir.top + ir.height / 2, pointerType: 'touch' }, t = d.querySelector('.song-row.cur .t'); // rows are rebuilt on every toggle
+        t.dispatchEvent(new w.PointerEvent('pointerdown', o)); t.dispatchEvent(new w.MouseEvent('click', { ...o, detail: 1 })); };
+      tap(ir.right + 8); await sleep(60);
+      log(fav() !== was && vis('select'), 'tapping beside the selected row\'s icon toggles the favorite', `fav=${fav()}`);
+      tap(ir.right + 8); await sleep(60);
+      log(fav() === was && vis('select'), 'a second tap beside the icon toggles it back');
+      tap(rr.right - 4); await sleep(60);
+      log(fav() === was, 'a tap far from the icon does not toggle the favorite');
+    }
     $('sel-sort').click(); await sleep(50);
     d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await sleep(80);
     log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);

@@ -737,17 +737,24 @@ function renderList() {
   // Touch has no reliable double-click: a tap on the row that was already selected (before focus moved) plays it.
   let tapWasSelected = false, pressWasSelected = false; // pressWasSelected: any pointer (focusin selects the row before the click lands)
   const swiped = onSwipe(box, dir => cycleCategory(dir === 'left' ? 1 : -1));
+  // The favorite toggle is the icon plus some room around it (a fingertip is much wider than the 2px-scale sprite).
+  const inFavZone = ev => {
+    const row = ev.target.closest && ev.target.closest('.song-row'), icon = row && row.querySelector('.spr.cat');
+    if (!icon) return false;
+    const r = icon.getBoundingClientRect();
+    return ev.clientX <= r.right + Math.max(row.clientHeight * 0.75, 22);
+  };
   box.addEventListener('pointerdown', ev => { pressWasSelected = rowId(ev) === selectedId; tapWasSelected = ev.pointerType !== 'mouse' && pressWasSelected; });
   box.addEventListener('click', ev => {
     const id = rowId(ev);
     if (!id || swiped()) return;
     // The icon of the selected row is the favorite toggle (a first tap on another row only selects it).
-    if (pressWasSelected && selectedId === id && ev.detail !== 0 && ev.target.closest('.spr.cat')) { toggleFavorite(id); tapWasSelected = pressWasSelected = false; return; }
+    if (pressWasSelected && selectedId === id && ev.detail !== 0 && inFavZone(ev)) { toggleFavorite(id); tapWasSelected = pressWasSelected = false; return; }
     if (selectedId !== id) selectSong(id, false);
     else if (ev.detail === 0 || tapWasSelected) playSelected(); // keyboard / gamepad confirm or touch re-tap; mouse uses double-click
     tapWasSelected = pressWasSelected = false;
   });
-  box.addEventListener('dblclick', ev => { if (rowId(ev) && !ev.target.closest('.spr.cat')) playSelected(); });
+  box.addEventListener('dblclick', ev => { if (rowId(ev) && !inFavZone(ev)) playSelected(); });
 }
 function markSelected() {
   for (const b of $('song-list').children) {
