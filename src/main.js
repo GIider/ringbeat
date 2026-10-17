@@ -51,6 +51,8 @@ setLang(effectiveLang());
 
 // ---- core objects ----
 const synth = new Synth();
+let stepVoice = () => {}; // set in init: cycles the Tone setting and previews it
+let tonePreview = null; // separate synth for Tone previews while paused
 synth.volume = settings.volume;
 synth.voice = settings.voice;
 const game = new Game(synth);
@@ -1014,7 +1016,7 @@ function renderProfile() {
     : [tr('New player')]).flatMap((t, i) => i ? [document.createElement('br'), t] : [t]));
   $('pf-signin').hidden = on;
   $('pf-signin').disabled = !cloud.available();
-  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-public', 'pf-signout', 'pf-delete']) $(id).hidden = !on;
+  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-public', 'pf-signout', 'pf-export', 'pf-delete']) $(id).hidden = !on;
   $('pf-public').textContent = tr(p && p.public === false ? 'On leaderboards: Off' : 'On leaderboards: On');
   $('pf-signin').toggleAttribute('data-default', !on);
   $('pf-sync').toggleAttribute('data-default', on);
@@ -2141,6 +2143,10 @@ function navigate(dir) {
     stepSettingsTab(dir === 'left' ? -1 : 1);
     return;
   }
+  if (state === 'settings' && (dir === 'left' || dir === 'right') && document.activeElement.id === 'set-voice') {
+    stepVoice(dir === 'left' ? -1 : 1);
+    return;
+  }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     stepResultsPage(dir === 'left' ? -1 : 1);
@@ -2255,13 +2261,17 @@ function wire() {
     settings.lang = codes[(codes.indexOf(getLang()) + 1) % codes.length];
     save(); setLang(settings.lang); relocalize();
   };
-  $('set-voice').onclick = () => {
-    settings.voice = synth.voice = VOICES[(VOICES.indexOf(settings.voice) + 1) % VOICES.length];
+  stepVoice = (sign = 1) => {
+    settings.voice = synth.voice = VOICES[(VOICES.indexOf(settings.voice) + sign + VOICES.length) % VOICES.length];
     save(); voiceLabel();
-    if (game.state === 'paused') return; // ensure() would resume the suspended context and un-freeze song time
-    synth.ensure();
-    synth.playNote({ midi: 76, when: synth.ctx.currentTime + 0.02, duration: 0.12 });
+    // While paused, ensure() on the main synth would resume its suspended context and un-freeze song time,
+    // so the preview goes through a separate synth with its own AudioContext.
+    const s = game.state === 'paused' ? (tonePreview ||= new Synth()) : synth;
+    s.ensure();
+    if (s !== synth) { s.voice = synth.voice; s.setVolume(synth.volume); }
+    s.playNote({ midi: 76, when: s.ctx.currentTime + 0.02, duration: 0.12 });
   };
+  $('set-voice').onclick = () => stepVoice(1);
   document.addEventListener('input', e => { if (e.target.type === 'range') paintRange(e.target); });
   $('btn-calibrate').onclick = startCalibration;
   $('set-prev').onclick = () => stepSettingsTab(-1);
@@ -2384,6 +2394,9 @@ function wire() {
     profileAction(() => cloud.setPublic(off), tr(off ? 'Your name shows on leaderboards' : 'Your runs are hidden from leaderboards'));
   };
   $('pf-signout').onclick = () => profileAction(() => cloud.signOut(), tr('Signed out'));
+  $('pf-export').onclick = () => profileAction(async () => {
+    download('ringbeat-export.json', JSON.stringify(await cloud.exportData(), null, 2), 'application/json');
+  }, tr('Data exported'));
   $('pf-delete').onclick = () => {
     if (Date.now() - pfDeleteArmed > 4000) {
       pfDeleteArmed = Date.now(); pfMsg = tr('Deletes the online profile and its data. This device keeps its own. Press again to delete.'); renderProfile();
