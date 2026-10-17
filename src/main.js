@@ -2561,11 +2561,14 @@ function phoneKey(key) {
 // Back from signing in: the full-LCD intro (welcome.js) replaces the title screen while the one-time code is exchanged, then the menu.
 // Silent (no gesture yet); any key or tap skips. A failed exchange falls back to the title.
 let welcomeStop = null;
+// Signal and battery icons are hidden (not removed, so the title bar keeps its layout) while the intro runs.
+const statusIcons = on => { for (const id of ['st-signal', 'st-battery']) $(id).style.visibility = on ? '' : 'hidden'; };
 function welcomeEnd(to, gesture) {
   if (welcomeStop) welcomeStop();
   welcomeStop = null;
   $('welcome-fx').hidden = true;
   cameoSignal = false; phoneIdle();
+  statusIcons(true);
   if (to === 'title') setState('title', 'title');
   else if (to === 'none') return; // somebody else already navigated away
   else if (gesture) startFromTitle(); else openMenu('tones');
@@ -2573,11 +2576,11 @@ function welcomeEnd(to, gesture) {
 function welcomeStart(exchange) {
   let ok = null, cancelled = false;
   setState('welcome', 'welcome');
-  cameoSignal = true; // the intro owns the signal icon
+  cameoSignal = true; // the intro owns the status bar
+  statusIcons(false);
   const fx = $('welcome-fx'), msg = $('welcome-msg'), bar = $('st-title');
   fx.hidden = false;
   msg.hidden = false; msg.classList.remove('ok'); msg.textContent = tr('Connecting…');
-  setSprite($('st-signal'), signal(0), 2);
   welcomeStop = () => { cancelled = true; };
   requestAnimationFrame(() => { // measured once the phone is laid out
     if (cancelled) return;
@@ -2589,7 +2592,6 @@ function welcomeStart(exchange) {
         if (state !== 'welcome') { welcomeEnd('none'); return; }
         if (ok === false || sim.hold > HOLD_LIMIT) { if (sim.hold > HOLD_LIMIT) toast('Sign-in failed'); welcomeEnd('title'); return; }
         if (still.matches) sim.jump(WT.FADE);
-        setSprite($('st-signal'), signal(sim.hold ? (sim.hold >> 1) % 6 : sim.signal()), 2); // bars cycle while it waits for the answer
         if (sim.tick === WT.FLASH) { msg.textContent = tr('Connected'); msg.classList.add('ok'); }
         if (sim.tick === WT.FADE) msg.hidden = true;
         if (sim.tick === WT.TITLE) { // the same name types into the title bar as the big one finishes

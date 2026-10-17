@@ -77,7 +77,6 @@ export function createWelcome(w, h) {
   s.release = name => { s.ready = true; s.name = name; s.chars = layoutName(name, w, cy); };
   // Reduced motion: jump over the show (never past the wait for the name).
   s.jump = t => { s.tick = Math.max(s.tick, Math.min(t, s.ready ? t : T.HOLD)); };
-  s.signal = () => Math.min(5, Math.ceil(s.tick * 5 / (T.RINGS - 4)));
 
   s.draw = put0 => {
     const put = (x, y) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < w && y < h) put0(x, y); };
