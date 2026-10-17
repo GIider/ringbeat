@@ -70,7 +70,7 @@ function juiceJudge(lane, j) {
     if (prevCombo >= 10) { synth.breakSlide(); buzz(20); }
   } else {
     if (j === 'perfect') { synth.ping(72); buzz(8); }
-    if (c > prevCombo && (c === 10 || c === 25 || (c >= 50 && c % 50 === 0))) {
+    if (c > prevCombo && (c === 10 || c === 25 || (settings.comboPopup && c >= 50 && c % 50 === 0))) {
       synth.chirp();
       const sg = $('st-signal'); sg.classList.remove('blip'); void sg.offsetWidth; sg.classList.add('blip');
     }

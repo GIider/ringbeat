@@ -542,8 +542,10 @@ export class Renderer {
     const cmb = game.combo;
     if (cmb !== this.lastCombo) {
       if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) {
-        if (this.comboPopup) this._banner(tr('{n} COMBO', { n: cmb }), now);
-        this.frameT = now; this.shakeT = now;
+        if (this.comboPopup) {
+          this._banner(tr('{n} COMBO', { n: cmb }), now);
+          this.frameT = now; this.shakeT = now;
+        }
       }
       if (cmb > this.lastCombo && cmb >= 10 && cmb % 10 === 0) this.popT = now;
       this.lastCombo = cmb;
