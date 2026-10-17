@@ -121,7 +121,7 @@ input[type=range]::-moz-range-track { height: 14px; mask: var(--seg);
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 2px; height: 14px; background: transparent; }
 input[type=range]::-moz-range-thumb { width: 0; height: 0; border: 0; background: transparent; }
 input[type=range]:disabled { opacity: .4; }
-input[type=checkbox] { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin: 0; border: var(--u) solid currentColor;
+input[type=checkbox] { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin: 0; border: var(--u) solid currentColor; color: inherit; /* not the UA's FieldText: white under color-scheme: dark in Chromium */
   background: transparent; flex: none; cursor: pointer; }
 input[type=checkbox]:checked { background: currentColor; box-shadow: inset 0 0 0 3px var(--lcd); }
 .menu > .item:focus-within input[type=checkbox]:checked { box-shadow: inset 0 0 0 3px var(--ink); }
@@ -229,8 +229,7 @@ textarea::placeholder { color: var(--ink-dim); }
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .sel-head .sel-cat { flex: 0 1 auto; }
-.sel-head .arrow { flex: none; font-size: var(--fs); background: none; border: 0; padding: 4px 10px; cursor: pointer; }
-@media (max-width: 600px) { .sel-head { gap: 2px; } .sel-head .arrow { padding: 4px 5px; } }
+.statusbar .arrow { flex: none; font: inherit; color: inherit; background: none; border: 0; padding: 0 4px; cursor: pointer; }
 .sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
 .seg { display: flex; gap: 2px; }
 .seg button { background: none; border: var(--u) solid transparent; padding: 1px 6px; cursor: pointer; min-height: 0; }
@@ -238,8 +237,6 @@ textarea::placeholder { color: var(--ink-dim); }
 .seg button.has-fc::after, .seg button.has-ap::after { content: "✓"; margin-left: 2px; }
 .seg button.has-ap::after { content: "★"; }
 .sel-cat { font-weight: 700; display: flex; justify-content: center; min-width: 0; white-space: nowrap; }
-.sel-cat .cat-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.sel-cat .cat-pos { flex: none; margin-left: .5em; }
 /* Settings tabs: a pager like Stats (only the current tab shows, between arrows) so any label fits the LCD */
 #set-tabs { margin: 0 0 2px; }
 #set-tabs button, #r-tabs button { display: none; padding: 0 4px; }

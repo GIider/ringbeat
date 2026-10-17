@@ -40,7 +40,9 @@
     <div id="lcd" class="lcd">
       <div class="statusbar" aria-hidden="true">
         <i id="st-signal" class="spr"></i>
+        <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1" data-i18n-attr="aria-label" hidden>◄</button>
         <span id="st-title" class="st-title"></span>
+        <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1" data-i18n-attr="aria-label" hidden>►</button>
         <i id="st-battery" class="spr"></i>
       </div>
       <div class="screens">
@@ -132,9 +134,7 @@
         <!-- Song select: "Tones" -->
         <section id="select" class="screen" hidden data-title="Tones" data-soft-left="Select" data-soft-right="Back">
           <div class="sel-head">
-            <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1" data-i18n-attr="aria-label">◄</button>
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
-            <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1" data-i18n-attr="aria-label">►</button>
           </div>
           <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-find" class="chip" aria-label="Find a song" tabindex="-1" data-i18n-attr="aria-label" data-i18n>Find</button></div>
           <label id="sel-search" class="sel-search" hidden><span>/</span> <input id="sel-q" type="text" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Find a song" data-i18n-attr="aria-label"></label>

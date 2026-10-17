@@ -11,11 +11,12 @@ import { fileURLToPath } from 'node:url';
 // desktop = full phone artwork; compact (<600px wide) = bare LCD, as on a real phone
 const views = {
   desktop: { width: 1280, height: 1100 },
+  narrow: { width: 1000, height: 1100 }, // same phone, but too narrow for the key legends beside it
   compact: { width: 480, height: 800 },
 };
 // [demo state, view] pairs used by the README
 const shots = [
-  ['menu', 'desktop'], ['select', 'desktop'], ['mods', 'desktop'], ['play', 'desktop'], ['play', 'compact'],
+  ['menu', 'narrow'], ['select', 'desktop'], ['mods', 'narrow'], ['play', 'narrow'], ['play', 'compact'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.
 let magick = null;
@@ -55,7 +56,7 @@ try {
     await page.goto(`http://127.0.0.1:${port}/index.html?demo=${kind}`);
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 300)))));
-    const name = `${kind}-${view}.png`;
+    const name = `${kind}-${view === 'narrow' ? 'desktop' : view}.png`;
     const fresh = join(tmp, name);
     await page.screenshot({ path: fresh });
     if (magick) execFileSync(magick, [fresh, '-colors', '128', '-strip', 'PNG8:' + fresh]);

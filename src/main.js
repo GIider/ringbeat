@@ -142,6 +142,7 @@ function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].h
   if (!el) return;
   $('st-title').textContent = tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
   marquee($('st-title'));
+  for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
   // single "Select". The bare LCD keeps both tappable labels.
   const phone = phoneMode();
