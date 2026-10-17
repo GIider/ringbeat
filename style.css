@@ -268,7 +268,7 @@ textarea::placeholder { color: var(--ink-dim); }
 #dp-cover { margin: 0 auto 2px; }
 .d-best { min-height: 1.2em; }
 .top { margin: 0 0 6px; padding-left: 1.6em; }
-.top li { margin: 1px 0; padding: 0 3px; }
+.top li { margin: 1px 0; padding: 0 3px 0 calc(3px + var(--u)); }
 
 /* ---------- now playing ---------- */
 .np { padding: 0; overflow: hidden; }
@@ -413,8 +413,8 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .top li.cur { background: color-mix(in srgb, var(--ink) 16%, transparent); box-shadow: inset 3px 0 0 var(--ink); font-weight: 700; }
 .top .badge { margin-top: 1px; }
 .badge.dev { background: var(--ink); color: var(--lcd); border-color: var(--ink); }
-.nm.dev { color: #7a1f6b; background: linear-gradient(90deg, #c0262d, #c46a00, #8a8a00, #1f8a2e, #0f7f8f, #2a45b8, #7a2fb0, #c0262d) 0 0 / 200% 100%;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: dev-wave 3s linear infinite; }
+.nm.dev { color: var(--ink); background: linear-gradient(90deg, var(--ink), var(--ink-dim), #5f7f2f, var(--ink-dim), var(--ink)) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: dev-wave 3s steps(8) infinite; }
 @keyframes dev-wave { to { background-position: -200% 0; } }
 @supports not (background-clip: text) { .nm.dev { color: var(--ink); background: none; -webkit-text-fill-color: currentColor; } }
 @media (prefers-reduced-motion: reduce) { .nm.dev { animation: none; } }

@@ -76,7 +76,8 @@ export const de = {
   'From:': 'Von:',
   'New player': 'Neuer Spieler',
   'Player 1': 'Spieler 1',
-  'Since {date} · {time} played': 'Seit {date} · {time} gespielt',
+  'Since {date}': 'Seit {date}',
+  '{time} played': '{time} gespielt',
 
   // ---- online profile ----
   'Sign in with GitHub': 'Mit GitHub anmelden',

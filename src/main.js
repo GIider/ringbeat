@@ -1003,8 +1003,11 @@ function openProfile() {
 }
 function renderProfile() {
   const s = stats.get(), on = cloud.signedIn(), p = cloud.profile();
-  $('pf-name').textContent = on && p ? p.name : tr('Player 1');
-  $('pf-meta').textContent = s.firstPlayed ? tr('Since {date} · {time} played', { date: dayKey(s.firstPlayed), time: formatDuration(s.playtime) }) : tr('New player');
+  const pname = on && p ? p.name : tr('Player 1');
+  $('pf-name').innerHTML = DEV || cloud.isDev() ? nameHTML({ name: pname, dev: true }) + devHTML({ dev: true }) : esc(pname);
+  $('pf-meta').replaceChildren(...(s.firstPlayed
+    ? [tr('Since {date}', { date: dayKey(s.firstPlayed) }), tr('{time} played', { time: formatDuration(s.playtime) })]
+    : [tr('New player')]).flatMap((t, i) => i ? [document.createElement('br'), t] : [t]));
   $('pf-signin').hidden = on;
   $('pf-signin').disabled = !cloud.available();
   for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-public', 'pf-signout', 'pf-delete']) $(id).hidden = !on;
