@@ -161,7 +161,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     const own = scores.own();
     for (const [songId, diffs] of Object.entries(own)) {
       for (const [diff, e] of Object.entries(diffs)) {
-        for (const r of e.top) queue({ clientRunId: runId(songId, diff, r.date), songId, diff, ...r, playedAt: r.date, gameVersion: '' });
+        const r = e.top[0]; // only the best run per board can change a leaderboard
+        if (r) queue({ clientRunId: runId(songId, diff, r.date), songId, diff, ...r, playedAt: r.date, gameVersion: '' });
       }
     }
     st.backfilled = true;
@@ -171,8 +172,12 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   // The same run gets the same id from queueRun and the backfill, so the API stores it once.
   const runId = (songId, diff, playedAt) => `${deviceId}:${songId}:${diff}:${playedAt}`;
 
+  // Runs from the outbox's first `sending` entries are in a request right now: they stay.
+  let sending = 0;
   function queue(run) {
     const { date, ...rest } = run;
+    // A better run on the same board replaces the ones still waiting: only the best can rank.
+    st.outbox = st.outbox.filter((r, i) => i < sending || r.songId !== rest.songId || r.diff !== rest.diff || r.score > rest.score);
     st.outbox.push(rest);
     if (st.outbox.length > MAX_OUTBOX) st.outbox.splice(0, st.outbox.length - MAX_OUTBOX);
     let chars = st.outbox.reduce((n, r) => n + (r.replay ? r.replay.length : 0), 0);
@@ -231,7 +236,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       };
       const text = JSON.stringify(body);
       setNet(sendShared || sendDevice || sendProfile || batch.length ? 'send' : 'recv');
-      const r = await request('POST', '/sync', text, { keepalive: keepalive && text.length <= KEEPALIVE_MAX, why: first ? why : why + ' (more runs)' });
+      sending = batch.length;
+      let r;
+      try { r = await request('POST', '/sync', text, { keepalive: keepalive && text.length <= KEEPALIVE_MAX, why: first ? why : why + ' (more runs)' }); }
+      finally { sending = 0; }
       if (isNum(r.rules)) st.rules = r.rules;
       if (r.shared) {
         st.sharedRev = r.shared.rev;
@@ -256,9 +264,11 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         showRemote();
       }
       for (const v of r.runs || []) verdicts[v.clientRunId] = v;
-      for (const [key, v] of Object.entries(r.ranks || {})) st.ranks[key] = { rank: v.rank, total: v.total, near: v.near, at: now() };
+      for (const [key, v] of Object.entries(r.ranks || {})) {
+        st.ranks[key] = { rank: v.rank, total: v.total, near: v.near, at: now() };
+        if (!Array.isArray(r.myRanks)) patchRanked(key, v);
+      }
       if (Array.isArray(r.myRanks)) st.myRanks = { at: now(), rows: r.myRanks };
-      else if (Object.keys(r.ranks || {}).length) st.myRanks.at = 0; // a run just ranked: the overview is out of date
       if (batch.length) st.outbox.splice(0, batch.length);
       if (pull && first) st.syncedAt = now();
       persist();
@@ -266,6 +276,27 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (pull) backfillRuns(); // after the first answer, so a reset from another device is applied first
     } while (st.outbox.length);
     return { ok: true, changed, verdicts };
+  }
+
+  // A run just ranked: the answer already says where the player stands, so the ranks overview and the board snapshot
+  // are edited to match instead of being fetched again.
+  function patchRanked(key, v) {
+    const me = (v.near || []).find(n => n.me);
+    if (!me) { st.myRanks.at = 0; return; } // no score to patch with: ask again
+    const cut = key.lastIndexOf('|'), songId = key.slice(0, cut), diff = key.slice(cut + 1);
+    if (st.myRanks.at) { // never fetched: a partial list would pass for the whole one
+      const rows = st.myRanks.rows.filter(r => r.songId !== songId || r.diff !== diff);
+      rows.push({ songId, diff, score: me.score, rank: v.rank, total: v.total });
+      rows.sort((a, b) => a.rank / a.total - b.rank / b.total || (a.songId < b.songId ? -1 : 1));
+      st.myRanks.rows = rows.slice(0, 500);
+    }
+    const top = boards.value && boards.value.boards[key];
+    if (!top) return;
+    const next = top.filter(r => r.name !== me.name);
+    next.push({ name: me.name, score: me.score, grade: me.grade, accuracy: 0, maxCombo: 0, mods: [], playedAt: now() });
+    next.sort((a, b) => b.score - a.score);
+    boards.value.boards[key] = next.slice(0, 3).map((r, i) => ({ ...r, rank: i + 1, total: v.total }));
+    try { storage.setItem(BOARDS_KEY, JSON.stringify({ at: boards.at, value: boards.value })); } catch { /* ignore */ }
   }
 
   // What the connection is doing, for the status bar: 'idle', 'send' or 'recv' (a request is out), 'error' (the last round failed).
@@ -447,6 +478,16 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (boards.loading && !boards.value) await boards.loading; // an old snapshot shows while a new one loads
       const v = boards.value;
       return v ? { rules: v.rules, runs: v.boards[songId + '|' + diff] || [] } : null;
+    },
+    // Where a score would land, from the snapshot alone (no request): { rank, total } for the top 3, else null. A guess:
+    // the snapshot is up to 25 minutes old, so the answer to submit() has the last word.
+    guessRank(songId, diff, score) {
+      const v = boards.value, key = songId + '|' + diff;
+      if (!st.token || !v || v.rules !== st.rules || !v.boards) return null;
+      const rows = v.boards[key] || [], known = st.ranks[key];
+      const rank = rows.filter(r => r.score >= score).length + 1; // a tie goes to the earlier run
+      if (rank > 3) return null;
+      return { rank, total: known ? known.total : (rows.length ? rows[0].total : 0) + 1 };
     },
     // On leaderboards or not; goes up with the next push. -> the profile as shown.
     setPublic: on => changeProfile({ public: !!on }),

@@ -501,7 +501,7 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
   assert.deepEqual(b.runs.map(x => [x.name, x.score]), [['Alice', result.score]]);
 
   // A big outbox goes up in several requests below the API's body limit; old replays give way first.
-  for (let i = 0; i < 40; i++) a.cloud.queueRun('ode', 'normal', { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
+  for (let i = 0; i < 40; i++) a.cloud.queueRun('ode' + i, 'normal', { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
   const stored = JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox;
   assert.ok(stored.reduce((n, r) => n + (r.replay || '').length, 0) <= 1_000_000);
   assert.ok(!stored[0].replay && stored[39].replay);
@@ -540,7 +540,7 @@ test('requests: a 20-song session with 5 new bests costs one request per best, p
     const rec = a.scores.record('s1', 'normal', r);
     a.stats.recordRun({ diff: 'normal', result: r });
     a.cloud.schedule();
-    const id = rec.rank ? a.cloud.queueRun('s1', 'normal', r) : null;
+    const id = rec.isNewBest ? a.cloud.queueRun('s1', 'normal', r) : null;
     if (id) queued++;
     if (rec.isNewBest) { bests++; assert.ok((await a.cloud.submit())[id]); }
   }
@@ -558,8 +558,8 @@ test('requests: a 20-song session with 5 new bests costs one request per best, p
   a.t.now += 11 * 60e3;
   a.cloud.wake(); await settle(); await settle();
   assert.equal(a.calls.length, 7);
-  // Top-list runs only (the rest never leave the device); the ones that weren't bests went up with the hide flush.
-  assert.ok(queued < scoresPlayed.length);
+  // New bests only: the other runs never leave the device.
+  assert.equal(queued, 5);
   assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs').get().n, queued);
 });
 
@@ -956,4 +956,48 @@ test('admin client: a wrong token is refused and forgotten, the right one works 
   await assert.rejects(admin.stats(), e => e.status === 404);
   const offline = createAdmin({ apiBase: API, fetch: async () => { throw new TypeError('offline'); } });
   await assert.rejects(offline.unlock('x'), e => e.status === 0);
+});
+
+// ---- fewer requests: guessed ranks, patched caches, only bests go up ----
+
+test('guessRank: from the snapshot alone; the sync answer patches the overview and the snapshot', async () => {
+  const srv = server();
+  const a = device(srv), b = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await b.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
+  await a.cloud.sync();
+  await a.cloud.board('ode', 'normal'); // empty snapshot
+  assert.deepEqual(a.cloud.guessRank('ode', 'normal', 5), { rank: 1, total: 1 }, 'nobody on the board: #1 without asking');
+  const bob = played('ode', 'normal', LADDER[4]);
+  b.cloud.queueRun('ode', 'normal', { ...bob.result, date: 50 }, [], { replay: bob.run.replay, rules: RULES, loadout: null });
+  await b.cloud.submit();
+  srv.tick(20 * 60e3);
+  await rebuildBoards(srv.env, 5_000_000);
+  a.t.now += 20 * 60e3;
+  await a.cloud.board('ode', 'normal'); await settle(); await settle(); // the old snapshot shows while a fresh one loads: Bob is #1
+  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score + 1).rank, 1);
+  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score - 1).rank, 2);
+  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score - 1).total, 2);
+
+  a.cloud.myRanks(); await settle(); await settle(); // the overview is cached
+  const mine = played('ode', 'normal', LADDER[2]);
+  a.cloud.queueRun('ode', 'normal', { ...mine.result, date: 60 }, [], { replay: mine.run.replay, rules: RULES, loadout: null });
+  await a.cloud.submit();
+  a.calls.length = 0;
+  const rows = a.cloud.myRanks().rows;
+  await settle();
+  assert.equal(a.calls.length, 0, 'the overview was patched, not refetched');
+  assert.deepEqual(rows.map(r => [r.songId, r.rank, r.total]), [['ode', 2, 2]]);
+  const snap = await a.cloud.board('ode', 'normal');
+  assert.deepEqual(snap.runs.map(r => r.name), ['Bob', 'Alice'], 'the snapshot shows the new score');
+});
+
+test('queue: a better run replaces waiting ones on the same board; backfill sends one run per board', async () => {
+  const srv = server();
+  const a = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv));
+  a.cloud.queueRun('s1', 'normal', result(100, 1));
+  a.cloud.queueRun('s1', 'normal', result(300, 2));
+  a.cloud.queueRun('s1', 'hard', result(50, 3));
+  assert.equal(a.cloud.pendingRuns(), 2, 'one per board, the best');
 });

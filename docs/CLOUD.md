@@ -3,7 +3,7 @@
 # Cloud save and leaderboards
 
 Signing in on the Profile screen is optional. It creates an **online profile**, and that profile keeps settings,
-favourites, my songs, scores and stats the same on every device. Runs that make the local top 5 are also stored on
+favourites, my songs, scores and stats the same on every device. A new best on a board is also stored on
 the server, and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
@@ -54,9 +54,10 @@ The merge is commutative and idempotent. A device sends its copy and the Worker 
 another device wrote in between, the Worker merges with the newer copy and tries again. The answer carries the
 merged document only when it differs from what the device sent.
 
-**Runs.** A finished run (not demo, tutorial or failed) that makes the local top 5 for its song and difficulty goes
-into an outbox (`ringbeat.cloud.v1`). Lower runs never leave the device: they can't be the player's best on any
-board, and the scores and stats they changed travel in the device slot anyway.
+**Runs.** A finished run (not demo, tutorial or failed) that is a new best for its song and difficulty goes
+into an outbox (`ringbeat.cloud.v1`); a better run replaces waiting ones on the same board. Other runs never leave
+the device: they can't change the player's place on any board, and the scores and stats they changed travel in the
+device slot anyway. The first sync after sign-in sends the best run per board.
 - A run carries song id, difficulty, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
   time.
 - Its id is `device:song:difficulty:time`. The first sync after signing in also uploads the device's existing top
@@ -172,13 +173,13 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The tab comes back | Same, but only when the last sync is over 10 minutes old |
 | A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
 | A new player name, "On leaderboards" | Shown at once, sent with that same push within 30 s (and before signing out) |
-| A new best | One push from the results screen; the world rank comes back with it |
-| Scores, stats, other top-5 runs | A push within 10 minutes, or when the tab is hidden, whichever comes first |
+| A new best | One push from the results screen; the world rank comes back with it. Meanwhile `guessRank` shows a dimmed rank from the cached snapshot (empty board: #1) when the score lands in the top 3; the answer replaces it |
+| Scores and stats | A push within 10 minutes, or when the tab is hidden, whichever comes first |
 | The tab is hidden | A push, only if something changed (`keepalive` when the body is under 60 KB) |
-| The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (or a run just ranked); it goes with whatever else is waiting |
+| The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (a ranked run patches a cached overview from the answer); it goes with whatever else is waiting |
 | The results screen's World page | Nothing: the top 3 come from `GET /boards`, the players around the player from the push that ranked the run |
 | After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
-| The difficulty picker | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`) |
+| The difficulty picker, app start | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot |
 
 How it stays small:
 - **Dirty checks.** The client keeps fingerprints of the shared document and of its own slot as last synced. A

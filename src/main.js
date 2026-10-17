@@ -1596,12 +1596,12 @@ game.onFinish = r => {
   } else if (run) {
     r.date = Date.now();
     const rec = scores.record(run.entry.id, run.diff, r);
-    // Only runs in the top list go up: a lower one can't be the player's best on any board.
-    const runId = rec.rank ? cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
+    // Only a new best goes up: a lower run can't change the player's place on any board.
+    const runId = rec.isNewBest ? cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
       replay: game.log ? encodeLog(game.log) : undefined, rules: RULES, loadout: run.modsUsed, // no log: ?demo=results
       rtttl: run.entry.id.startsWith('custom:') ? run.entry.rtttl : undefined,
     }) : null;
-    showWorldRank(run.entry.id, run.diff, runId, rec.isNewBest);
+    showWorldRank(run.entry.id, run.diff, runId, rec.isNewBest, r.score);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
@@ -1647,7 +1647,7 @@ function paintWorld(songId, diff, token = worldToken) {
   if (near.length) paint([]); else say(tr('Loading…'));
   cloud.board(songId, diff).then(b => paint((b && b.runs) || []));
 }
-async function showWorldRank(songId, diff, runId, isNewBest) {
+async function showWorldRank(songId, diff, runId, isNewBest, score) {
   const el = $('r-world'), token = worldToken;
   if (!cloud.available()) return;
   el.hidden = false;
@@ -1663,10 +1663,14 @@ async function showWorldRank(songId, diff, runId, isNewBest) {
     if (text) el.textContent = text;
     return;
   }
-  el.textContent = tr('World rank…');
+  // The snapshot already says where this score lands: show that (dimmed) while the server's answer is on its way.
+  const guess = cloud.guessRank(songId, diff, score);
+  el.textContent = guess ? tr('World #{n} of {total}', { n: guess.rank, total: guess.total }) : tr('World rank…');
+  el.style.opacity = guess ? '.6' : '';
   const verdict = (await cloud.submit())[runId];
   if (token !== worldToken) return;
   paintWorld(songId, diff, token);
+  el.style.opacity = '';
   el.textContent = !verdict ? tr('World rank: no connection')
     : cloud.serverRules() !== RULES ? tr('Not ranked: update the game')
     : verdict.verified === -1 ? tr('Not ranked')
@@ -2394,6 +2398,7 @@ function wire() {
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
     else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync('signed in'); } }, () => toast('Sign-in failed'));
   } else cloud.sync('start');
+  cloud.board('', 'normal'); // warms the world snapshot if it is stale, so the first picker and results are instant
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
