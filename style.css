@@ -82,6 +82,7 @@ h2 { margin: 2px 0 6px; font-size: var(--fs); font-weight: 700; }
 .sub { margin: 0 0 6px; }
 .lbl { display: block; color: var(--ink-dim); margin: 8px 0 2px; }
 .hint { color: var(--ink-dim); margin: 4px 0; }
+#m-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ad-log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .center { text-align: center; }
 .sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

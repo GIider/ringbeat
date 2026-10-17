@@ -1423,10 +1423,14 @@ function updateModsUI() {
   $('m-mult').textContent = mods.multText(mods.multiplier(m));
   paintRanges($('mods'));
 }
+function setModHint(id) {
+  $('m-hint').textContent = tr(MOD_HINTS[id]);
+  marquee($('m-hint'));
+}
 function openMods() {
   updateModsUI();
-  $('m-hint').textContent = tr(MOD_HINTS['m-speed']);
-  setState('mods', 'mods');
+  setState('mods', 'mods'); // shown first, so the marquee can measure the hint
+  setModHint('m-speed');
 }
 function closeMods() {
   refreshModsButton();
@@ -2360,8 +2364,7 @@ function wire() {
   $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
   $('btn-mods-back').onclick = closeMods;
   $('mods').addEventListener('focusin', e => {
-    const h = MOD_HINTS[e.target.id];
-    if (h) $('m-hint').textContent = tr(h);
+    if (MOD_HINTS[e.target.id]) setModHint(e.target.id);
   });
 
   // my songs
