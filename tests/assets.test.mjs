@@ -2,11 +2,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GLYPHS, boldGlyph, CAP } from '../src/pixelfont.js';
+import { GLYPHS, boldGlyph, parseFont, CAP } from '../src/pixelfont.js';
 import { buildTTF, glyphRects } from '../scripts/build-font.mjs';
 import { SPRITES, POPUPS, HEART, HEART_BROKEN, HEART_HALVES, signal, battery, ringing, spriteSVG } from '../src/pixelart.js';
 import { coverRows, COVER_W, COVER_H } from '../src/cover.js';
 import { SONGS } from '../src/songs.js';
+
+test('parseFont reads glyph drawings, flags and named characters', () => {
+  const g = parseFont('// c\n@space\n..\n..\n\n@Ä raised dotted\n.#.#.\n#####\n\n@backtick\n#.\n');
+  assert.deepEqual(g[' '], { w: 2, rows: ['..', '..'] });
+  assert.deepEqual(g['Ä'], { w: 5, rows: ['.#.#.', '#####'], up: 1, dotted: true });
+  assert.deepEqual(g['`'], { w: 2, rows: ['#.'] });
+});
+
+test('parseFont rejects malformed glyphs', () => {
+  assert.throws(() => parseFont('@A\n##\n#'), /'A'.*wide/);
+  assert.throws(() => parseFont('@A\n#x'), /'A'.*only contain/);
+  assert.throws(() => parseFont('@A\n#\n\n@A\n#'), /duplicate glyph 'A'/);
+  assert.throws(() => parseFont('@A bold\n#'), /unknown flag 'bold'/);
+  assert.throws(() => parseFont('@AB\n#'), /bad glyph header/);
+  assert.throws(() => parseFont('@A\n\n@B\n#'), /no rows/);
+  assert.throws(() => parseFont('##'), /outside a glyph/);
+});
 
 const rectangular = rows => rows.every(r => r.length === rows[0].length && /^[#.]+$/.test(r));
 
