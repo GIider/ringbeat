@@ -825,7 +825,10 @@ async function adminShow(view) {
   try {
     switch (view.v) {
       case 'unlock':
-        html = `<label class="item"><span>${esc(tr('Token'))}</span> <input id="ad-token" type="text" spellcheck="false" autocomplete="off"></label>${btn('unlock', tr('Unlock'))}`;
+        // A real (empty) form owns the controls through form="…" so password managers see a login, while the controls stay direct children of .menu for styling and focus nav.
+        html = `<form id="ad-form"></form><input type="text" name="username" value="admin" autocomplete="username" form="ad-form" hidden>`
+          + `<label class="item"><span>${esc(tr('Token'))}</span> <input id="ad-token" name="password" type="password" form="ad-form" spellcheck="false" autocomplete="current-password"></label>`
+          + btn('unlock', tr('Unlock')).replace('<button ', '<button type="submit" form="ad-form" ');
         break;
       case 'root':
         html = btn('players', tr('Players')) + btn('flagged', tr('Flagged runs')) + btn('maint', tr('Maintenance')) + btn('log', tr('Log')) + btn('lock', tr('Lock'));
@@ -887,6 +890,7 @@ function adminArmed(b, key) {
   return false;
 }
 function wireAdmin() {
+  $('ad-list').onsubmit = e => e.preventDefault(); // the unlock form never navigates; the button's click handler does the work
   $('ad-list').onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;

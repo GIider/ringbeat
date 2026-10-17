@@ -24,7 +24,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; }
 body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-textarea, input[type=text] { -webkit-user-select: text; user-select: text; }
+textarea, input[type=text], input[type=password] { -webkit-user-select: text; user-select: text; }
 body { background: radial-gradient(ellipse at 50% 40%, #1a2416 0%, var(--room) 70%); color: var(--ink);
   font-family: var(--font); font-size: var(--fs); -webkit-font-smoothing: none; font-smooth: never; }
 button { font: inherit; color: inherit; }
