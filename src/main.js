@@ -2308,8 +2308,8 @@ function selectHints() {
   const rows = pad
     ? [[[bn(BTN.LB), bn(BTN.RB)], tr('Category')], [[bn(BTN.LT)], tr('Sort')], [[bn(BTN.Y)], tr('All categories')],
       [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X)], tr('Random')]]
-    : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Difficulty')], [['V'], tr('Favorite')],
-      [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [[',', '.'], tr('Group')], [['/'], tr('Find')]];
+    : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Group')], [['.'], tr('Difficulty')], [['V'], tr('Favorite')],
+      [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [['/'], tr('Find')]];
   const side = $('sel-keys');
   side.replaceChildren();
   const head = document.createElement('b');
@@ -3010,13 +3010,20 @@ function onKey(e) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
   }
   if (state === 'select' && !typing && tag !== 'SELECT' && !e.ctrlKey && !e.metaKey && !e.altKey
-    && ['PageUp', 'PageDown', 'Home', 'End', 'Comma', 'Period'].includes(e.code)) {
+    && ['PageUp', 'PageDown', 'Home', 'End'].includes(e.code)) {
     e.preventDefault();
     setDevice('kbd');
     synth.keyClick();
     if (e.code === 'PageUp' || e.code === 'PageDown') jumpPage(e.code === 'PageDown' ? 1 : -1);
-    else if (e.code === 'Home' || e.code === 'End') jumpTo(e.code === 'Home' ? 0 : Infinity);
-    else jumpSectionStep(e.code === 'Period' ? 1 : -1);
+    else jumpTo(e.code === 'Home' ? 0 : Infinity);
+    return;
+  }
+  if (state === 'select' && !typing && tag !== 'SELECT' && !e.ctrlKey && !e.metaKey && !e.altKey
+    && (e.code === 'KeyJ' || e.code === 'KeyK')) {
+    e.preventDefault();
+    setDevice('kbd');
+    synth.keyClick();
+    jumpSectionStep(e.code === 'KeyK' ? 1 : -1);
     return;
   }
   // "/" is matched by the character it types, not its key: on layouts like German it sits on Shift+7
@@ -3041,11 +3048,11 @@ function onKey(e) {
     toggleFavorite();
     return;
   }
-  if (state === 'select' && !typing && tag !== 'SELECT' && (e.code === 'KeyJ' || e.code === 'KeyK')) {
+  if (state === 'select' && !typing && tag !== 'SELECT' && e.code === 'Period' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     if (e.repeat) return;
     synth.keyClick();
-    cycleDifficulty(e.code === 'KeyK' ? 1 : -1);
+    cycleDifficulty(1);
     return;
   }
   if (state === 'menu' && !typing && !e.repeat && /^[1-9]$/.test(e.key) && +e.key <= MENU.length) {

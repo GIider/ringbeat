@@ -19,7 +19,7 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 | Sliders | `←` `→` |
 | Song select: category | `←` `→`, or `[` `]` |
 | Song select: sort (previous / next) | `D` / `F` |
-| Song select: list difficulty | `J` / `K` |
+| Song select: list difficulty (toggle) | `.` |
 | Song select: toggle favorite | `V` |
 | Results pages | `←` `→`, or `[` `]` |
 | Stats pages | `←` `→`; `↑` `↓` scroll the Top page |
@@ -98,7 +98,7 @@ star band, BPM band or duration band. A scroll thumb on the right edge shows whe
 | Category hub (all groups + counts) | `G` | Y | tap the header |
 | Page up / down | PageUp / PageDown | hold the d-pad (speeds up) | scroll |
 | First / last song | Home / End | | |
-| Previous / next group | `,` `.` | Back / RT | A–Z strip (Title sort) |
+| Previous / next group | `J` `K` | Back / RT | A–Z strip (Title sort) |
 | Find (live title / tag filter) | `/` (Esc clears) | | **Find** chip |
 | Random song in the current view | `R` | X | |
 

@@ -75,6 +75,14 @@ f.addEventListener('load', async () => {
     log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
     log(catOf() === cat0, 'left arrow switches back');
+    const diff0 = hookOf().settings.difficulty;
+    key('Period'); await sleep(50);
+    const diff1 = hookOf().settings.difficulty;
+    key('Period'); await sleep(50);
+    log(diff1 !== diff0 && hookOf().settings.difficulty === diff0, 'period toggles the difficulty', diff0 + ' ' + diff1);
+    const sec0 = $('sel-cat').textContent;
+    key('KeyJ'); await sleep(80); key('KeyK'); await sleep(80);
+    log(hookOf().settings.difficulty === diff0 && vis('select') && $('sel-cat').textContent.length > 0, 'J/K jump groups without touching the difficulty', sec0);
     log($('soft-left').textContent === 'Select' && /^Tones · ./.test($('st-title').textContent), 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');

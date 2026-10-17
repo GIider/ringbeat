@@ -83,7 +83,7 @@ the game never needs the network and `localStorage` stays the source of truth.
 
 `D F J K` play the 4 lanes; on touch, tap the lanes; on a gamepad, use the d-pad / face buttons / shoulders. `Esc` pauses and `R` restarts.
 In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or click the phone's Menu, C and ▲▼ keys and keypad.
-On song select, `D`/`F` changes the sort, `J`/`K` the difficulty and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
+On song select, `D`/`F` changes the sort, `.` toggles the difficulty, `J`/`K` jump between groups and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
 
 ## Documentation
 
