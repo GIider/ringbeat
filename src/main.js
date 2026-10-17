@@ -935,6 +935,7 @@ function openInbox(focusVersion = '') {
     list.append(b);
   }
   setState('inbox', 'inbox');
+  marqueeAll(list.querySelectorAll('.t')); // shown first, so the marquee can measure the rows
 }
 // Short "opening" animation (envelope + segment bar), then the message itself.
 function openMessage(i) {
@@ -2168,6 +2169,9 @@ function wire() {
   syncJuice();
   jc.onchange = () => { settings.juice = jc.checked; syncJuice(); save(); };
   hp.onchange = () => { settings.haptics = hp.checked; save(); };
+  const cp = $('pref-combopopup');
+  cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
+  cp.onchange = () => { settings.comboPopup = cp.checked; renderer.comboPopup = cp.checked; save(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: tr(settings.voice === 'buzzer' ? 'Buzzer' : 'Smooth') }); };
@@ -2185,6 +2189,7 @@ function wire() {
     sc.value = settings.scrollTime; $('scroll-val').textContent = sc.value + 's';
     bk.checked = settings.backing; pv.checked = settings.preview; $('pref-gags').checked = settings.idleGags;
     ra.checked = settings.rollAudio; jc.checked = settings.juice; hp.checked = settings.haptics;
+    cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
     renderer.scrollTime = settings.scrollTime; game.backing = settings.backing; game.rollAudio = settings.rollAudio; synth.voice = settings.voice;
     syncJuice(); paintRanges(screens.settings); cameo.sync();
     setLang(effectiveLang()); relocalize();
@@ -2449,7 +2454,7 @@ function wire() {
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); });
+  window.addEventListener('resize', () => { layout(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);

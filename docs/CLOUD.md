@@ -13,6 +13,13 @@ the server, and runs the server could re-play itself rank on public **leaderboar
   while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
   [Requests](#requests).
 
+At a glance:
+- Optional: sign in with GitHub on the Profile screen; signed out, the game never needs the network.
+- Synced: settings, favourites and my songs (one shared document); scores and stats (one slot per device).
+- Leaderboards: the game uploads a run's inputs, and the Worker re-plays them to get the score.
+- Code: client in `src/cloud.js` and `src/cloudmerge.js`, API in `server/src/`, replay and scoring in `src/replay.js`.
+- There is no multiplayer or live play; the online features are profiles, sync and leaderboards.
+
 What is stored online, and how to delete it: [PRIVACY.md](PRIVACY.md).
 
 ## Sync model

@@ -17,7 +17,7 @@ a quick start; come here for the details.
 | Doc | What's in it |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Module map of `src/`, `scripts/` and `tests/`, key design decisions, storage keys |
-| [CLOUD.md](CLOUD.md) | Online profiles, cloud save and leaderboards: sync model, sign-in flow, replay verification, the API in `server/`, setup and deploy |
+| [CLOUD.md](CLOUD.md) | Online profiles, cloud save and leaderboards: sync model, sign-in flow, replay verification, the API in `server/`, moderation, setup and deploy |
 | [PRIVACY.md](PRIVACY.md) | What an online profile stores and why, who receives it, your rights, and how to delete it |
 
 ## Contributing
@@ -45,6 +45,8 @@ a quick start; come here for the details.
 | Change a glyph in the LCD font | [DEVELOPMENT.md › Editing the pixel font](DEVELOPMENT.md#editing-the-pixel-font) |
 | Check a change didn't slow frames down | [PERFORMANCE.md](PERFORMANCE.md) |
 | Look up a timing window or score rule | [SPEC.md › Gameplay](SPEC.md#gameplay) |
+| Understand how leaderboard scores are verified | [CLOUD.md › Leaderboards](CLOUD.md#leaderboards) |
+| Delete my online data, or see what is stored | [PRIVACY.md](PRIVACY.md) |
 | Deploy or run the cloud-save API | [CLOUD.md › Setup and deploy](CLOUD.md#setup-and-deploy) |
 
 `tests/docs.test.mjs` keeps this set honest: it fails on broken links between docs, on a source file, script or test

@@ -7,6 +7,8 @@ dressed up as a late-90s candybar phone: every menu lives on the phone's green L
 runs inside that LCD.
 All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). There are no dependencies and no
 build step, and the few assets (pixel font, phone artwork) are made in this repo; see [Assets](#assets).
+Everything works offline and signed out. An optional GitHub sign-in adds cloud save and server-verified world
+leaderboards; see [Online](#online-optional).
 
 ## Screenshots
 
@@ -36,14 +38,14 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - 2 difficulties (Normal, Hard) with bot-measured ratings.
 - **Scoring:**
   - Local highscores (top 5 per song and difficulty).
-  - Optional GitHub sign-in: cloud save across devices and world leaderboards with server-checked scores.
+  - Optional online profile with world leaderboards (see [Online](#online-optional)).
   - Full combo / all perfect indicators.
   - Timing histogram.
   - Holds, rolls, slides and double notes, all derived from the melody.
 - **Modifiers:** speed, mirror, hidden, sudden death, judging, demo autoplay.
 - **Menus and extras:**
   - 3310-style main menu (Tones, My songs, Stats, Messages, Profile, Settings) with animated icons.
-  - Lifetime stats (playtime, score, grades, streaks).
+  - Lifetime stats (playtime, score, grades, streaks, and an Online page with your world ranks).
   - Changelog delivered as SMS.
   - First-run tutorial.
   - Idle cameos and a few easter eggs.
@@ -52,6 +54,23 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - Latency calibration.
   - Buzzer or smooth instrument voice.
 - **Languages:** English and German (follows the browser language, switchable in Settings).
+
+## Online (optional)
+
+There is no multiplayer; the online side is a profile, cloud save and leaderboards. It is all opt-in: signed out,
+the game never needs the network and `localStorage` stays the source of truth.
+
+- **Sign in with GitHub** (Menu → Profile). Settings, favorites, my songs, scores and stats then follow you to every
+  device. Scores and stats from all your devices count together, and *Reset scores & stats* resets them all.
+- **World leaderboards** rank each player's best run per song and difficulty. The score on a board is always the
+  server's: the game uploads your key presses and the API re-plays them through the same game code, so a claimed score
+  can't be faked. Runs under older scoring rules don't rank ("Not ranked: update the game").
+- **Where you see it:** *World #n of total* on the results screen, the world top 10 under your own runs on each song,
+  and an Online page in Stats. Prefer to stay off the boards? Profile → *On leaderboards: Off*.
+- **Your data:** you can sign out or delete the online profile and everything stored with it at any time; see
+  [PRIVACY.md](docs/PRIVACY.md).
+- **Self-hosting:** the API is a Cloudflare Worker + D1 in `server/`; setup, local development (a local API needs its
+  own GitHub OAuth App) and the full design are in [docs/CLOUD.md](docs/CLOUD.md).
 
 ## Controls
 
@@ -65,6 +84,8 @@ The [docs index](docs/README.md) maps everything. The most-used pages:
 
 - [SPEC.md](docs/SPEC.md): screens, gameplay rules, scoring, modifiers, tutorial
 - [CONTROLS.md](docs/CONTROLS.md): every input
+- [CLOUD.md](docs/CLOUD.md): online profile, cloud save, leaderboards, the API and its deploy
+- [PRIVACY.md](docs/PRIVACY.md): what an online profile stores, and how to delete it
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md): module map and design decisions
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md): setup, scripts, tests, hooks, debug URLs
 - [SONGS.md](docs/SONGS.md): RTTTL format, adding songs, difficulty ratings, share links

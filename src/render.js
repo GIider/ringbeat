@@ -75,6 +75,7 @@ export class Renderer {
     this.ringI = 0; this.labelI = 0;
     // Juice (all stepped, fixed pools): debris on perfects, receptor punch, tiny shake, combo-break strike, milestone frame.
     this.juice = true;
+    this.comboPopup = true; // "N COMBO" banner at every 50th combo
     this.debris = Array.from({ length: DEBRIS_POOL }, () => ({ t: -10, lane: 0, dx: 0, dy: 0 }));
     this.debrisI = 0;
     this.punch = new Float64Array(4).fill(-10);
@@ -541,7 +542,7 @@ export class Renderer {
     const cmb = game.combo;
     if (cmb !== this.lastCombo) {
       if (cmb > this.lastCombo && cmb >= 50 && cmb % 50 === 0) {
-        this._banner(tr('{n} COMBO', { n: cmb }), now);
+        if (this.comboPopup) this._banner(tr('{n} COMBO', { n: cmb }), now);
         this.frameT = now; this.shakeT = now;
       }
       if (cmb > this.lastCombo && cmb >= 10 && cmb % 10 === 0) this.popT = now;

@@ -351,6 +351,7 @@ export const de = {
   'Idle animations': 'Leerlauf-Animationen',
   'Hit effects': 'Trefferfeedback',
   'Vibration': 'Vibration',
+  'Combo popup': 'Combo-Einblendung',
   'Latency:': 'Latenz:',
   'Controller': 'Controller',
   'Reset buttons': 'Tasten zurücksetzen',
