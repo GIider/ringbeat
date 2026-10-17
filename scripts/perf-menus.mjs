@@ -77,6 +77,15 @@ async function scenarios({ customs }) {
   await idle('select: idle 2 s (preview + cameo)', 2000);
   await run('stats: open + flip pages', [['Enter'], ['ArrowRight'], ['ArrowRight'], ['ArrowRight'], ['ArrowRight'], ['ArrowLeft'], ['ArrowLeft'], ['ArrowLeft'], ['ArrowLeft'], ['Escape']],
     { setup: async () => { await toMenu(); key('Digit3', '3'); await sleep(200); }, warm: 0 });
+  // Every built-in and custom song has a score, so the Top page lists them all and each long title goes through the marquee.
+  await run('stats: Top page, every song played (flip)', [['Enter'], ['ArrowRight'], ['ArrowRight'], ['ArrowRight'], ['ArrowLeft'], ['ArrowLeft'], ['ArrowLeft'], ['Escape']], {
+    setup: async () => {
+      const { buildLibrary, customEntry } = await import('/src/library.js');
+      const ids = buildLibrary().map(e => e.id);
+      for (const s of JSON.parse(localStorage.getItem('ringbeat.songs.v1') || '[]')) ids.push(customEntry(s.rtttl).id);
+      ids.forEach((id, i) => { for (const d of ['normal', 'hard']) rb.scores.record(id, d, { score: 1000 + i, grade: 'B', accuracy: 90, maxCombo: 10 }); });
+      await toMenu(); key('Digit3', '3'); await sleep(200);
+    }, warm: 0 });
   await run('inbox: open + back', [['Enter'], ['ArrowDown'], ['ArrowUp'], ['Escape']],
     { setup: async () => { await toMenu(); key('Digit4', '4'); await sleep(200); }, warm: 0 });
   await run('settings: open + back', [['Enter'], ['Escape']],
@@ -102,7 +111,7 @@ try {
     await ctx.addInitScript(n => {
       try {
         const rt = (i) => `cust${i}:d=8,o=${5 + (i % 2)},b=${100 + i * 5}:c,e,g,${i % 3 ? 'a' : 'p'},c6,g,e,c,d,f,a,c6,a,f,d,4c`;
-        localStorage.setItem('ringbeat.songs.v1', JSON.stringify(Array.from({ length: n }, (_, i) => ({ uid: 'u' + i, name: 'Custom ' + i, rtttl: rt(i), updated: i }))));
+        localStorage.setItem('ringbeat.songs.v1', JSON.stringify(Array.from({ length: n }, (_, i) => ({ uid: 'u' + i, name: 'Custom ' + i + ' with a deliberately long title that must scroll', rtttl: rt(i), updated: i }))));
       } catch { /* ignore */ }
     }, customs);
     const page = await ctx.newPage();

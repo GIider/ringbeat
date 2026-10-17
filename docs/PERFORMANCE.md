@@ -60,7 +60,7 @@ cameo sims.
 - the main menu;
 - the song list;
 - categories and sorts;
-- stats;
+- stats, including the Top page with a score for every song (long titles go through the marquee);
 - the inbox;
 - settings.
 

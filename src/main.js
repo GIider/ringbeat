@@ -43,7 +43,7 @@ import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, form
 import { createHud, copyReport } from './perfhud.js';
 import { createNetDebug } from './netdebug.js';
 import { createNetSignal } from './netsignal.js';
-import { marquee } from './marquee.js';
+import { marquee, marqueeAll } from './marquee.js';
 
 const $ = id => document.getElementById(id);
 setLang(effectiveLang());
@@ -759,6 +759,7 @@ function renderStats() {
       ? `<div class="hint center">${tn(rows.length, '{n} song played', '{n} songs played')}</div><div class="st-top">${rows.map((r, i) =>
         `<div class="st-row"><span class="rk">${i + 1}.</span><b class="st-name">${esc(r.e.title)}</b><span class="n">${r.plays}×</span></div>`).join('')}</div>`
       : empty || `<p class="hint center">${tr('No songs played yet.')}</p>`;
+    marqueeAll(box.querySelectorAll('.st-name'));
   } else if (page === 'Grades') {
     const t = gradeTally(list, statDiff), max = Math.max(1, ...GRADES.map(g => t[g]));
     const total = statDiff === 'all' ? entries().length : entries().filter(e => e.only ? e.only === statDiff : e.notes[statDiff] > 0).length;
