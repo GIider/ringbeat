@@ -248,7 +248,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 
 | Mod | Values | Effect | Score |
 |---|---|---|---|
-| Speed | 0.8 / 0.9 / 1.0 / 1.1 / 1.2 / 1.3× | time axis scaled; pitch unchanged | ×0.8 … ×1.3 |
+| Speed | 0.5 / 0.6 / 0.7 / 0.8 / 0.9 / 1.0 / 1.1 / 1.2 / 1.3× | time axis scaled; pitch unchanged | ×0.5 … ×1.3 |
 | Mirror | on/off | lanes flipped left↔right | ×1.00 |
 | Hidden | on/off | notes are not drawn in the last 35 % of the approach (held notes stay visible) | ×1.10 |
 | Sudden death | on/off | the first miss, dropped hold or stray press ends the run (*Failed*, not saved) | ×1.20 |

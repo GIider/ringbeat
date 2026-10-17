@@ -245,7 +245,7 @@ f.addEventListener('load', async () => {
     $('btn-mods').click(); await sleep(50);
     log(vis('mods') && !vis('diffpick') && $('m-mult').textContent === '×1.00', 'mods screen opens');
     $('m-hidden').checked = true; $('m-hidden').dispatchEvent(new w.Event('change'));
-    $('m-speed').value = 4; $('m-speed').dispatchEvent(new w.Event('input'));
+    $('m-speed').value = 7; $('m-speed').dispatchEvent(new w.Event('input'));
     log($('m-mult').textContent === '×1.32', 'mods multiplier updates live', $('m-mult').textContent);
     key('Escape'); await sleep(80);
     log(vis('diffpick') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to difficulty with a mods summary', $('btn-mods').textContent);

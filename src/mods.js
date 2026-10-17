@@ -1,8 +1,8 @@
 // Modifiers: a small, sticky loadout that makes a song easier or harder (and scales the recorded score).
 // Pure logic, no DOM. Mods are applied as chart transforms where possible plus a few Game options.
-export const SPEEDS = [0.8, 0.9, 1, 1.1, 1.2, 1.3];
+export const SPEEDS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
 export const JUDGES = ['lenient', 'off', 'strict'];
-const SPEED_MULT = { 0.8: 0.8, 0.9: 0.9, 1: 1, 1.1: 1.1, 1.2: 1.2, 1.3: 1.3 };
+const SPEED_MULT = { 0.5: 0.5, 0.6: 0.6, 0.7: 0.7, 0.8: 0.8, 0.9: 0.9, 1: 1, 1.1: 1.1, 1.2: 1.2, 1.3: 1.3 };
 const JUDGE_SCALE = { lenient: 1.4, off: 1, strict: 0.7 };
 const JUDGE_MULT = { lenient: 0.8, off: 1, strict: 1.15 };
 export const HIDDEN_MULT = 1.1;
