@@ -223,6 +223,7 @@ the device keeps its own data.
 | `POST /auth/exchange` `{code}` | → `{token, profile}` |
 | `POST /auth/logout` | Ends this token |
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
+| `GET /me/export` | Everything stored about the caller as one JSON file (profile, identities, shared document, device slots, runs with replays; no token hashes). Also answers a banned player |
 | `DELETE /me` | Deletes the profile and everything stored with it |
 | `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?, wantRanks?}` | The game's one sync request; every part optional (see below) |
 | `GET /boards` | **No sign-in needed.** The top 10 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |

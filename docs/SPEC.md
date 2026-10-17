@@ -177,6 +177,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`; shown at once, sent with the next sync);
   - *On leaderboards: On/Off* (Off: the player's runs leave the public boards; they still see their own rank);
   - *Sign out*;
+  - *Export my data* (downloads everything the server stores about the player as JSON);
   - *Delete online profile* (press twice; this device keeps its own data).
 
   *Privacy policy* is always shown (signed in or out). It opens [PRIVACY.md](PRIVACY.md) on GitHub in a new tab.

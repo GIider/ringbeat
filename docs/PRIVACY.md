@@ -64,8 +64,10 @@ cheat can be banned. A ban is a flag on the profile, so deleting the profile rem
 
 Under the GDPR (and similar laws) you can:
 
-- **See and export your data.** Everything the game holds is in your browser; for the server copy, ask via the contact
-  above. The data is small and can be sent as a file.
+- **See and export your data.** **Export my data** (Profile screen, signed in) downloads everything the server stores
+  about you as one JSON file: profile, sign-in identity, synced settings and songs, scores and stats per device, and
+  your runs with their replays. Sign-in tokens are left out (they are stored only as hashes). The data in your browser
+  is yours on the device already.
 - **Correct it.** Change your player name on the Profile screen.
 - **Delete it.** **Delete online profile** (Profile screen, press twice) removes the profile and everything stored with
   it from the server at once. Your devices keep their own local data.

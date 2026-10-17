@@ -163,8 +163,10 @@ export async function handle(req, env, now = Date.now()) {
     if (!session || session.expires < now) {
       return url.pathname === '/' ? new Response('Ringbeat API', { headers: cors }) : fail(401, 'sign in');
     }
-    if (session.banned) return fail(403, 'banned');
     const uid = session.user_id;
+    // The right of access holds for banned players too, so this route comes before the ban check.
+    if (route === 'GET /me/export') return json(await exportUser(env, uid, now), 200, { 'Content-Disposition': 'attachment; filename="ringbeat-export.json"' });
+    if (session.banned) return fail(403, 'banned');
 
     if (route === 'POST /auth/logout') {
       await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
@@ -708,6 +710,28 @@ async function profile(env, uid) {
   const u = await env.DB.prepare('SELECT id, display_name, created, public, dev FROM users WHERE id = ?').bind(uid).first();
   const { results } = await env.DB.prepare('SELECT provider FROM identities WHERE user_id = ?').bind(uid).all();
   return u && { id: u.id, name: u.display_name, created: u.created, public: !!u.public, logins: results.map(r => r.provider), ...(u.dev && { dev: true }) };
+}
+
+// Everything stored about one player, for GET /me/export (GDPR access and portability). Sign-in tokens are left out:
+// they are stored only as hashes and are credentials, not data about the player.
+async function exportUser(env, uid, now) {
+  const all = async (sql) => (await env.DB.prepare(sql).bind(uid).all()).results;
+  const u = await env.DB.prepare('SELECT id, display_name, created, public, hidden, banned, dev, reset_at FROM users WHERE id = ?').bind(uid).first();
+  const parse = t => { try { return JSON.parse(t); } catch { return t; } };
+  const shared = (await all('SELECT doc, rev, updated FROM shared_docs WHERE user_id = ?'))[0];
+  return {
+    exportedAt: now,
+    profile: { id: u.id, name: u.display_name, created: u.created, public: !!u.public, hidden: !!u.hidden, banned: !!u.banned, dev: !!u.dev, resetAt: u.reset_at },
+    identities: await all('SELECT provider, subject, created FROM identities WHERE user_id = ?'),
+    shared: shared && { rev: shared.rev, updated: shared.updated, doc: parse(shared.doc) },
+    devices: (await all('SELECT device_id, doc, updated FROM device_slots WHERE user_id = ?')).map(d => ({ deviceId: d.device_id, updated: d.updated, doc: parse(d.doc) })),
+    runs: (await all(`SELECT client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at,
+      received_at, verified, hidden, flags, rules, loadout, rtttl, replay FROM runs WHERE user_id = ? ORDER BY played_at`)).map(r => ({
+      clientRunId: r.client_run_id, songId: r.song_id, diff: r.diff, score: r.score, grade: r.grade, accuracy: r.accuracy, maxCombo: r.max_combo,
+      fc: !!r.fc, ap: !!r.ap, mods: r.mods, mult: r.mult, gameVersion: r.game_version, playedAt: r.played_at, receivedAt: r.received_at,
+      verified: r.verified, hidden: !!r.hidden, flags: r.flags, rules: r.rules, loadout: r.loadout, rtttl: r.rtttl, replay: r.replay,
+    })),
+  };
 }
 
 function randomToken() {

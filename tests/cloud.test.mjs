@@ -158,7 +158,25 @@ test('worker: sign-in stores only the GitHub id; codes are single use; names are
   const again = await (await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code: code2 }) })).json();
   assert.equal(again.profile.id, profile.id);
 
+  // GDPR export: the caller's own data only, no credentials; banned players get it too.
+  const other = (await (await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code: (await githubSignIn(srv, 8)).slice('#login='.length) }) })).json());
+  assert.equal((await srv.call('/me/export')).status, 401, 'signed out');
+  const exp = await srv.call('/me/export', { headers: auth });
+  assert.equal(exp.status, 200);
+  assert.match(exp.headers.get('Content-Disposition'), /attachment/);
+  const data = await exp.json();
+  assert.equal(data.profile.id, profile.id);
+  assert.equal(data.profile.name, 'Ring Master');
+  assert.deepEqual(data.identities.map(i => i.subject), ['7']);
+  assert.ok(!JSON.stringify(data).includes(other.profile.id), 'only the caller');
+  assert.ok(!JSON.stringify(data).toLowerCase().includes('token'), 'no credentials');
+  db.exec(`UPDATE users SET banned = 1 WHERE id = '${profile.id}'`);
+  assert.equal((await srv.call('/me/export', { headers: auth })).status, 200, 'banned players can still export');
+  assert.equal((await srv.call('/sync', { method: 'POST', headers: auth, body: '{}' })).status, 403);
+  db.exec(`UPDATE users SET banned = 0 WHERE id = '${profile.id}'`);
+
   assert.equal((await srv.call('/me', { method: 'DELETE', headers: auth })).status, 204);
+  assert.equal((await srv.call('/me', { method: 'DELETE', headers: { Authorization: 'Bearer ' + other.token } })).status, 204);
   for (const t of ['users', 'identities', 'sessions', 'shared_docs', 'device_slots', 'runs']) {
     assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n, 0, t);
   }

@@ -576,6 +576,11 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       forget();
       emit('signedout');
     },
+    // Everything the server stores about the player (GDPR export); what still waits goes up first so the file is current.
+    async exportData() {
+      if (dirty()) await enqueue({ pull: false, why: 'export' });
+      return request('GET', '/me/export', undefined, { why: 'export' });
+    },
     // Deletes the online profile and everything stored with it. This device keeps its own data.
     async deleteAccount() {
       await request('DELETE', '/me');

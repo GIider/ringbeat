@@ -85,6 +85,8 @@ export const de = {
   'Sync again in {n} s': 'Wieder in {n} s',
   'Save name': 'Name speichern',
   'Sign out': 'Abmelden',
+  'Export my data': 'Meine Daten exportieren',
+  'Data exported': 'Daten exportiert',
   'Delete online profile': 'Online-Profil löschen',
   'Online profiles are not available yet.': 'Online-Profile gibt es noch nicht.',
   'Sign in to keep settings, scores and songs in sync on all your devices.':
