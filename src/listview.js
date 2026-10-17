@@ -1,7 +1,7 @@
 // Song-list sorting and category filtering (pure; `scores` is the object from createScores()).
 
 export const SORTS = [
-  { id: 'diff-asc', label: 'Difficulty' },
+  { id: 'diff-asc', label: 'Rating' },
   { id: 'title', label: 'Title' },
   { id: 'bpm', label: 'BPM' },
   { id: 'length', label: 'Duration' },
@@ -9,27 +9,24 @@ export const SORTS = [
 ];
 
 // Bot-measured rating (1..10, internal; players see it as rating/2 stars) when available, else the star heuristic scaled to the same range.
-export const ratingOf = (e, d) => (e.rating && e.rating[d] != null ? e.rating[d] : (e.stars[d] || 0) * 1.4);
-
-// Not offered on the difficulty the song is not available on.
-const playable = (e, diff) => !(e.only && e.only !== diff);
+export const ratingOf = e => (e.rating && e.rating[e.chart] != null ? e.rating[e.chart] : (e.stars[e.chart] || 0) * 1.4);
 
 // `search` filters by title / tag substring; `recent` is the played-song ids, newest first (the Recent view keeps that order); `keep` are ids the Unplayed view still lists after being played.
-export function applyView(entries, { sort = 'diff-asc', category = 'all' }, diff, scores, favorites = [], recent = [], search = '', keep = []) {
+export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scores, favorites = [], recent = [], search = '', keep = []) {
   let list = entries.map((e, i) => ({ e, i }));
   if (category === 'favorites') list = list.filter(x => favorites.includes(x.e.id));
   else if (category === 'recent') {
     list = list.filter(x => recent.includes(x.e.id));
     return list.sort((a, b) => recent.indexOf(a.e.id) - recent.indexOf(b.e.id)).map(x => x.e).filter(matches(search));
-  } else if (category === 'unplayed') list = list.filter(x => (playable(x.e, diff) && !scores.get(x.e.id, diff)) || keep.includes(x.e.id));
+  } else if (category === 'unplayed') list = list.filter(x => !scores.get(x.e.id, x.e.chart) || keep.includes(x.e.id));
   else if (category !== 'all') list = list.filter(x => x.e.category === category);
   const isFav = x => favorites.includes(x.e.id);
   const cmp = {
-    'diff-asc': (a, b) => ratingOf(a.e, diff) - ratingOf(b.e, diff),
+    'diff-asc': (a, b) => ratingOf(a.e) - ratingOf(b.e),
     title: (a, b) => a.e.title.localeCompare(b.e.title),
     bpm: (a, b) => a.e.bpm - b.e.bpm,
     length: (a, b) => a.e.length - b.e.length,
-    fav: (a, b) => (isFav(b) - isFav(a)) || ratingOf(a.e, diff) - ratingOf(b.e, diff),
+    fav: (a, b) => (isFav(b) - isFav(a)) || ratingOf(a.e) - ratingOf(b.e),
   }[sort] || (() => 0);
   // Custom songs always stay at the end of the list.
   const isCustom = x => String(x.e.id).startsWith('custom:');
@@ -49,10 +46,10 @@ export function randomOf(list, currentId, rnd = Math.random) {
 }
 
 // Section a row belongs to under the current sort (first letter, star band, BPM / length band); '' when the sort has none.
-export function sectionOf(e, sort, diff) {
+export function sectionOf(e, sort) {
   if (String(e.id).startsWith('custom:')) return '*';
   if (sort === 'title') { const c = e.title.trim()[0] || '#'; return /[a-z]/i.test(c) ? c.toUpperCase() : '#'; }
-  if (sort === 'diff-asc') return String(Math.min(10, Math.max(1, Math.ceil(ratingOf(e, diff)))) / 2); // half-star steps
+  if (sort === 'diff-asc') return String(Math.min(10, Math.max(1, Math.ceil(ratingOf(e)))) / 2); // half-star steps
   if (sort === 'bpm') return String(Math.floor(e.bpm / 20) * 20);
   if (sort === 'length') { const s = Math.floor(e.length / 10) * 10; return s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}+` : '<0:10'; }
   return '';
@@ -71,9 +68,9 @@ export function sectionRange(sec, sort, fmtStars = String) {
 }
 
 // Index to jump to for the previous (-1) / next (+1) section; the previous step first returns to the start of the current section.
-export function jumpSection(list, idx, step, sort, diff) {
+export function jumpSection(list, idx, step, sort) {
   if (!list.length) return -1;
-  const sec = i => sectionOf(list[i], sort, diff);
+  const sec = i => sectionOf(list[i], sort);
   if (step > 0) {
     for (let i = idx + 1; i < list.length; i++) if (sec(i) !== sec(idx)) return i;
     return list.length - 1;

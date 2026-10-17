@@ -88,7 +88,6 @@ profiler. It reports:
 | Flag | Default | Effect |
 |---|---|---|
 | `--songs <i,j,…>` | `0,6,12` | Song indexes in `SONGS` |
-| `--diff <normal\|hard>` | `hard` | Difficulty |
 | `--seconds <n>` | 30 | Seconds played per song |
 | `--max-long <pct>` | 2 | Fail if more than this share of frames exceed 1.5× the frame budget |
 | `--max-p99 <ms>` | 25 | Fail if frame p99 exceeds this |

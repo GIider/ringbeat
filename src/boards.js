@@ -25,16 +25,16 @@ let open = false;                // narrow screens: the board is open instead of
 const deep = new Map();          // 'id|diff' -> rows | 'loading' | 'failed'
 let timer = 0;
 const wide = () => matchMedia('(min-width: 720px)').matches;
-const key = (id = cur) => id + '|' + view.diff;
-const rows = () => songRows(snap, entries, view.diff, view);
-const starsOf = e => { const r = ratingOf(e, view.diff); return starsBar(r, tr('{v} of 5 stars', { v: fmt(r / 2, 1) })); };
+const chartOf = id => (entries.find(e => e.id === id) || {}).chart;
+const key = (id = cur) => id + '|' + chartOf(id);
+const rows = () => songRows(snap, entries, view);
+const starsOf = e => { const r = ratingOf(e); return starsBar(r, tr('{v} of 5 stars', { v: fmt(r / 2, 1) })); };
 const date = ms => ms ? new Date(ms).toLocaleDateString(getLang()) : '';
 const pct = a => (typeof a === 'number' ? fmt(Math.round(a * 1000) / 10, 1) + '%' : '');
 
 function paintBar() {
   const sel = (id, label, on) => `<button type="button" role="tab" data-id="${id}" aria-selected="${on}">${esc(tr(label))}</button>`;
   $('bd-cats').innerHTML = [{ id: 'all', label: 'All' }, ...CATEGORIES].map(c => sel(c.id, c.label, c.id === view.category)).join('');
-  $('bd-diff').innerHTML = ['normal', 'hard'].map(d => sel(d, d === 'normal' ? 'Normal' : 'Hard', d === view.diff)).join('');
   $('bd-sort').innerHTML = BOARD_SORTS.map(s => `<option value="${s.id}">${esc(tr(s.label))}</option>`).join('');
   $('bd-sort').value = view.sort;
   $('bd-lang').textContent = getLang().toUpperCase();
@@ -68,7 +68,7 @@ function paintDetail() {
   const state = deep.get(key());
   const runs = Array.isArray(state) ? state : (snap.boards[key()] || []);
   const note = state === 'loading' ? `<span class="bd-dots"></span>` : state === 'failed' ? esc(tr('Showing the top 10 only.')) : '';
-  el.innerHTML = `<h2>${esc(e.title)}</h2><div class="hint">${esc(e.tag)} · ${esc(tr(view.diff === 'hard' ? 'Hard' : 'Normal'))} · ${starsOf(e)} ${note}</div>` +
+  el.innerHTML = `<h2>${esc(e.title)}</h2><div class="hint">${esc(e.tag)} · ${starsOf(e)} ${note}</div>` +
     (runs.length ? `<table class="bd-table"><thead><tr><th class="n">#</th><th>${esc(tr('Player'))}</th><th class="n">${esc(tr('Score'))}</th><th>${esc(tr('Grade'))}</th>` +
       `<th class="n opt">${esc(tr('Acc'))}</th><th class="n opt">${esc(tr('Combo'))}</th><th class="opt">${esc(tr('Date'))}</th></tr></thead><tbody>` +
       runs.map((r, i) => `<tr><td class="n">${r.rank || i + 1}</td><td class="nm-c">${nameHTML(r)}${badgeHTML(r, true)}</td><td class="n">${fmt(r.score)}</td><td>${esc(r.grade)}</td>` +
@@ -87,7 +87,7 @@ const paint = () => { paintBar(); paintList(); paintDetail(); paintSoft(); };
 function wantDeep() {
   clearTimeout(timer);
   if (!cur || !snap) return;
-  const k = key(), id = cur, diff = view.diff;
+  const k = key(), id = cur, diff = chartOf(id);
   if (Array.isArray(deep.get(k)) || deep.get(k) === 'loading') return;
   if (!open && !wide()) return;
   timer = setTimeout(() => {
@@ -123,7 +123,6 @@ async function refresh() {
 }
 
 $('bd-cats').onclick = e => { const b = e.target.closest('button'); if (b) setView({ category: b.dataset.id }); };
-$('bd-diff').onclick = e => { const b = e.target.closest('button'); if (b) setView({ diff: b.dataset.id }); };
 $('bd-sort').onchange = e => setView({ sort: e.target.value });
 $('bd-q').oninput = e => { view.query = e.target.value; paintList(); paintDetail(); wantDeep(); };
 $('bd-list').onclick = e => { const b = e.target.closest('.bd-row'); if (!b) return; select(b.dataset.id, false); if (!wide()) openBoard(); };
@@ -152,7 +151,6 @@ addEventListener('keydown', e => {
   else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace') { if (open) closeBoard(); else return; }
   else if (k === '/') $('bd-q').focus();
   else if (k === '[' || k === ']') setView({ category: cycle(CATS, view.category, k === ']' ? 1 : -1) });
-  else if (k === 'd' || k === 'D') setView({ diff: view.diff === 'normal' ? 'hard' : 'normal' });
   else return;
   e.preventDefault();
 });

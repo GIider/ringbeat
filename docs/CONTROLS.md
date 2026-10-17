@@ -19,7 +19,6 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 | Sliders | `←` `→` |
 | Song select: category | `←` `→`, or `[` `]` |
 | Song select: sort (previous / next) | `D` / `F` |
-| Song select: list difficulty (toggle) | `.` |
 | Song select: toggle favorite | `V` |
 | Results pages | `←` `→`, or `[` `]` |
 | Stats pages | `←` `→`; `↑` `↓` scroll the Top page |
@@ -103,4 +102,4 @@ star band, BPM band or duration band. A scroll thumb on the right edge shows whe
 | Random song in the current view | `R` | X | |
 
 Besides the seven categories the hub offers **Recent** (the last 20 songs played on this device, newest first),
-**Unplayed** (no score yet on the current difficulty), **Custom** and **Favorites**.
+**Unplayed** (no score yet), **Custom** and **Favorites**.

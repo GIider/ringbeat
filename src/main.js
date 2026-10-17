@@ -1,7 +1,7 @@
 // Bootstrap, screen state machine, wiring.
 // States: title -> menu -> (select | mysongs -> songmenu / composer / custom | stats | inbox -> message | profile
 //   | settings <-> calibration); first visit to Tones: tutprompt -> tutorial
-//   select <-> (diffpick <-> mods) -> countin -> playing <-> paused (-> resuming) -> results -> select
+//   select <-> (songscreen <-> mods) -> countin -> playing <-> paused (-> resuming) -> results -> select
 // Every screen is a <section> inside the phone's LCD; during play the #nowplaying screen holds the highway canvas.
 
 import { generateChart } from './chart.js';
@@ -112,7 +112,7 @@ let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lan
 const screens = {
   title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
-  hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
+  hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), songscreen: $('songscreen'),
   settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
@@ -125,7 +125,7 @@ function show(name) {
   titleFx(name === 'title');
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
-  if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'diffpick'].includes(name)) stopPreview();
+  if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'songscreen'].includes(name)) stopPreview();
   const el = screens[name];
   if (el) {
     refreshChrome(el);
@@ -434,7 +434,7 @@ cloud.onChange(e => {
     else if (state === 'menu') renderMenu();
   }
   if (e.ranks && state === 'stats') renderStats();
-  if ((e === 'signedin' || e === 'signedout' || e.ranks) && state === 'diffpick') { if (e === 'signedin') dpTab = 'world'; renderDpPanel(); }
+  if ((e === 'signedin' || e === 'signedout' || e.ranks) && state === 'songscreen') { if (e === 'signedin') dpTab = 'world'; renderDpPanel(); }
   if (e === 'profile' || e === 'signedin') $('pf-name-input').value = (cloud.profile() || {}).name || '';
   if (state === 'profile') renderProfile();
 });
@@ -453,11 +453,11 @@ function refreshCustoms() {
 const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
-// Entries after the song-select sort/filter (for the current difficulty).
-const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery, unplayedKeep ? [unplayedKeep] : []);
+// Entries after the song-select sort/filter.
+const visible = () => applyView(entries(), settings.view, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery, unplayedKeep ? [unplayedKeep] : []);
 let searchQuery = '', selMoveAt = 0; // title/tag filter typed in the picker (not persisted); when the cursor last moved
-// New players start on the top of the default view (easiest first, Normal), computed from the current ratings.
-const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, 'normal', scores)[0] || builtins[0]).id;
+// New players start on the top of the default view (easiest first), computed from the current ratings.
+const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, scores)[0] || builtins[0]).id;
 
 // ---- preview (plays the song straight through, optionally cut at maxSec) ----
 let previewTimer = null, autoPreviewTimer = null;
@@ -496,11 +496,10 @@ const starsText = rating => starsBar(rating, tr('{v} of 5 stars', { v: starsValu
 // Category chips: All + each category (+ Custom when a custom song exists, + Favorites when there are any), with song counts.
 function categoryTabs() {
   const all = entries();
-  const d = settings.difficulty;
   const count = t => t.id === 'all' ? all.length
     : t.id === 'favorites' ? all.filter(e => isFavorite(e.id) || favKeep.has(e.id)).length
     : t.id === 'recent' ? all.filter(e => settings.recent.includes(e.id)).length
-    : t.id === 'unplayed' ? all.filter(e => e.id === unplayedKeep || (!(e.only && e.only !== d) && !scores.get(e.id, d))).length
+    : t.id === 'unplayed' ? all.filter(e => e.id === unplayedKeep || !scores.get(e.id, e.chart)).length
     : all.filter(e => e.category === t.id).length;
   // Smart views (Recent, Unplayed) come right after All and only show up while they have songs.
   const tabs = [{ id: 'all', label: 'All' }, { id: 'recent', label: 'Recent' }, { id: 'unplayed', label: 'Unplayed' }, ...CATEGORIES];
@@ -512,7 +511,6 @@ function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
   viewTab = tabs.find(x => x.id === settings.view.category);
-  $('sel-diff').textContent = cap(settings.difficulty);
   renderPosition();
 }
 // Header: the category goes in the status title ("Tones · Video Games"); the row shows the cursor position and section ("3/61 · T").
@@ -521,7 +519,7 @@ let viewList = [], viewTab = null;
 function renderPosition() {
   const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
   if (!t) return;
-  let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
+  let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort);
   sec = sectionRange(sec, settings.view.sort, r => fmt(r, 1)); // the band as a range, stars in the same format as the stars value
     const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
   cat.textContent = pos;
@@ -676,7 +674,7 @@ for (const id of ['sel-cat', 'st-title']) $(id).addEventListener('click', () => 
 
 function jumpSectionStep(step) {
   const list = visible();
-  jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort, settings.difficulty));
+  jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort));
 }
 function setCategory(id) {
   favKeep.clear(); unplayedKeep = null;
@@ -724,12 +722,10 @@ function renderList() {
   }
   for (const e of list) {
     const b = document.createElement('button');
-    const away = e.only && e.only !== settings.difficulty; // single-difficulty song, played on the other one
-    b.className = away ? 'song-row unavail' : 'song-row';
+    b.className = 'song-row';
     b.dataset.id = e.id;
     b.setAttribute('role', 'option');
-    if (away) b.title = tr('Only on {diff}', { diff: cap(e.only) });
-    const rec = away ? null : scores.get(e.id, settings.difficulty);
+    const rec = scores.get(e.id, e.chart);
     const best = rec && rec.best;
     const fav = isFavorite(e.id);
     if (fav) b.classList.add('fav');
@@ -786,11 +782,11 @@ function renderDetail() {
   selectHints();
   const e = selectedEntry();
   if (!e) return;
-  const d = settings.difficulty, away = e.only && e.only !== d, rec = away ? null : scores.get(e.id, d);
+  const rec = scores.get(e.id, e.chart);
   $('sel-info').innerHTML =
-    `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
-    (away ? ` · <span class="hint">${esc(tr('Only on {diff}', { diff: cap(e.only) }))}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
-    `<div title="${esc(tn(e.notes[d], '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
+    `<div>${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>` +
+    (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
+    `<div title="${esc(tn(e.notes[e.chart], '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   if (e.tag) marquee($('sel-info').children[1]); // a long author / source scrolls like a long title
 }
 
@@ -820,18 +816,6 @@ function scheduleAutoPreview() {
 function setView(key, list, step = 1) { setViewTo(key, (step < 0 ? prevOf : nextOf)(list, settings.view[key])); }
 function setViewTo(key, id) {
   settings.view[key] = id;
-  save();
-  const keep = selectedEntry();
-  if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
-  renderList();
-  renderDetail();
-  if (state === 'select') focusCurrentRow();
-}
-const DIFFS = ['normal', 'hard'];
-// Switch the difficulty the list shows (scores / FC badges / sort / filter are all per difficulty).
-function cycleDifficulty(step) {
-  const i = DIFFS.indexOf(settings.difficulty);
-  settings.difficulty = DIFFS[(i + step + DIFFS.length) % DIFFS.length];
   save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
@@ -943,14 +927,13 @@ function menuAnim(now) {
 
 // ---- stats: lifetime numbers on six pages (◄►) ----
 const STAT_PAGES = ['Time', 'Score', 'Top', 'Grades', 'Notes', 'Online'];
-const STAT_DIFFS = ['all', 'normal', 'hard'];
-let statPage = 0, statDiff = 'all', statTimer = 0;
+let statPage = 0, statTimer = 0;
 const fmtNum = n => fmt(Math.round(n));
 const statRow = (label, value) => `<tr><td>${label}</td><td>${value}</td></tr>`;
 // Highscore entries for songs that still exist (a deleted custom song no longer counts).
 function knownScores() {
-  const ids = new Set(entries().map(e => e.id));
-  return scores.all().filter(e => ids.has(e.id) && DIFFS.includes(e.diff)); // drops scores from removed difficulties
+  const chart = new Map(entries().map(e => [e.id, e.chart]));
+  return scores.all().filter(e => chart.get(e.id) === e.diff); // drops scores on a chart the song no longer plays
 }
 function openStats() {
   statPage = 0;
@@ -962,11 +945,6 @@ function setStatPage(n) {
   if (p === statPage) return;
   statPage = p;
   synth.keyClick();
-  renderStats();
-}
-function cycleStatDiff() {
-  if (STAT_PAGES[statPage] !== 'Grades') return;
-  statDiff = STAT_DIFFS[(STAT_DIFFS.indexOf(statDiff) + 1) % STAT_DIFFS.length];
   renderStats();
 }
 function statsCountStop() { clearInterval(statTimer); statTimer = 0; }
@@ -992,21 +970,21 @@ function scrollStats(dir) {
 function onlineStatsHTML() {
   if (!cloud.available()) return `<p class="hint center">${tr('Online features are unavailable.')}</p>`;
   if (!cloud.signedIn()) return `<p class="hint center">${tr('Sign in on the profile screen for world ranks.')}</p>`;
-  const mr = cloud.myRanks(), known = new Set(entries().map(e => e.id));
-  const rows = mr.rows.filter(r => known.has(r.songId) && DIFFS.includes(r.diff));
+  const mr = cloud.myRanks(), chart = new Map(entries().map(e => [e.id, e.chart]));
+  const rows = mr.rows.filter(r => chart.get(r.songId) === r.diff);
   if (!rows.length) return `<p class="hint center">${tr(mr.loading || !mr.at ? 'Loading…' : 'No world ranks yet.')}</p>`;
   const sum = rankSummary(rows);
   return `<div class="st-big">${tr('Top {n}%', { n: Math.max(1, sum.avgPct) })}</div><div class="hint center">${tr('average world rank')}</div>` +
     `<table>${statRow(tr('Boards'), fmtNum(sum.boards))}${statRow(tr('World #1'), fmtNum(sum.first))}${statRow(tr('Top 10'), fmtNum(sum.top10))}</table>` +
     `<div class="st-top">${rows.slice(0, 5).map(r => `<div class="st-row"><b class="st-name">${esc(entryById(r.songId).title)}</b>` +
-      `<span class="n">${cap(r.diff)[0]} #${r.rank}/${r.total}</span></div>`).join('')}</div>`;
+      `<span class="n">#${r.rank}/${r.total}</span></div>`).join('')}</div>`;
 }
 function renderStats() {
   statsCountStop();
   const s = stats.get(), list = knownScores(), page = STAT_PAGES[statPage], box = $('stat-page');
   box.scrollTop = 0;
   $('stat-tab').textContent = `${tr(page)} ${statPage + 1}/${STAT_PAGES.length}`;
-  screens.stats.dataset.softLeft = page === 'Grades' ? 'Diff' : '';
+  screens.stats.dataset.softLeft = '';
   if (state === 'stats') refreshChrome(screens.stats);
   const empty = s.runs === 0 ? `<p class="hint center">${tr('Play a song to start counting.')}</p>` : '';
   if (page === 'Time') {
@@ -1032,10 +1010,9 @@ function renderStats() {
       : empty || `<p class="hint center">${tr('No songs played yet.')}</p>`;
     marqueeAll(box.querySelectorAll('.st-name'));
   } else if (page === 'Grades') {
-    const t = gradeTally(list, statDiff), max = Math.max(1, ...GRADES.map(g => t[g]));
-    const total = statDiff === 'all' ? entries().length : entries().filter(e => e.only ? e.only === statDiff : e.notes[statDiff] > 0).length;
+    const t = gradeTally(list), max = Math.max(1, ...GRADES.map(g => t[g]));
     box.innerHTML =
-      `<div class="center"><b>${statDiff === 'all' ? tr('All') : cap(statDiff)}</b> · ${tr('{n}/{total} played', { n: t.played, total })}</div>` +
+      `<div class="center">${tr('{n}/{total} played', { n: t.played, total: entries().length })}</div>` +
       `<div class="gbars">${GRADES.map(g =>
         `<div class="gbar"><span>${t[g]}</span><i style="--h:${(t[g] / max).toFixed(3)}"></i><b>${g}</b></div>`).join('')}</div>` +
       `<div class="center"><span class="badge">FC</span> ${t.fc} &nbsp; <span class="badge ap">AP</span> ${t.ap}</div>`;
@@ -1333,7 +1310,7 @@ function openMySongs(msg = '') {
   for (const e of customs) {
     const b = document.createElement('button');
     b.dataset.uid = e.uid;
-    b.textContent = `${e.title} · ${tn(e.notes.normal, '{n} note', '{n} notes')} · ${formatLength(e.length)}`;
+    b.textContent = `${e.title} · ${tn(e.notes[e.chart], '{n} note', '{n} notes')} · ${formatLength(e.length)}`;
     list.append(b);
   }
   $('ms-msg').textContent = tm(msg) || (customs.length ? '' : tr('No songs yet. Make one with New song.'));
@@ -1344,13 +1321,12 @@ function openMySongs(msg = '') {
   const b = cur && list.querySelector(`[data-uid="${cur.uid}"]`);
   if (b) { b.focus({ preventScroll: true }); light(b); }
 }
-// Song menu header: tempo / length plus the difficulty (stars per level; `~` = not measured on this device).
+// Song menu header: tempo / notes / length plus the rating (`~` = not measured on this device).
 function renderSongMeta(e) {
-  const stars = d => `${cap(d)} ${estMark(e)}${starsValue(ratingOf(e, d))}`;
-  $('sm-meta').textContent = `${e.bpm} BPM · ${tn(e.notes.normal, '{n} note', '{n} notes')} · ${formatLength(e.length)} · ${stars('normal')} / ${stars('hard')} ★`;
+  $('sm-meta').textContent = `${e.bpm} BPM · ${tn(e.notes[e.chart], '{n} note', '{n} notes')} · ${formatLength(e.length)} · ${estMark(e)}${starsValue(ratingOf(e))} ★`;
   $('sm-calc').textContent = curSong() && curSong().rating && !curSong().rating.imported ? tr('Recalculate difficulty') : tr('Calculate difficulty');
 }
-// Measures the open song with the bot ladder (bot.js) on both difficulties, showing a progress bar; stores the result.
+// Measures the open song with the bot ladder (bot.js) on its chart, showing a progress bar; stores the result.
 let calcToken = 0, calcRunning = false;
 async function calcDifficulty() {
   const song = curSong(), e = curEntry();
@@ -1364,19 +1340,14 @@ async function calcDifficulty() {
   const my = ++calcToken, uid = curUid;
   const cancelled = () => my !== calcToken || state !== 'songmenu' || curUid !== uid;
   bar.hidden = false; setBar(0); msg.textContent = tr('Calculating difficulty… (press again to stop)'); calcRunning = true;
-  const measured = {};
+  let m = null;
   try {
-    for (let i = 0; i < DIFFS.length; i++) {
-      const d = DIFFS[i];
-      const chart = generateChart(e.song, { difficulty: d });
-      measured[d] = await measureChartAsync(chart, {}, p => setBar((i + p) / DIFFS.length), cancelled);
-      if (!measured[d]) break;
-    }
-  } catch { measured.normal = null; }
+    m = await measureChartAsync(generateChart(e.song, { difficulty: e.chart }), {}, setBar, cancelled);
+  } catch { m = null; }
   if (my === calcToken) calcRunning = false;
-  if (cancelled() || !measured.normal || !measured.hard) return; // whoever cancelled has already updated the screen
+  if (cancelled() || !m) return; // whoever cancelled has already updated the screen
   setBar(1);
-  const rec = ratingFromMeasured(measured);
+  const rec = ratingFromMeasured({ normal: m, hard: m }); // the stored record keeps both slots; only the song's chart is shown
   if (!rec || !mysongs.setRating(uid, rec)) { bar.hidden = true; msg.textContent = tr("Couldn't store the rating"); return; }
   refreshCustoms();
   const fresh = curEntry();
@@ -1404,9 +1375,9 @@ function importSharedText(text) {
   return r;
 }
 
-// -- difficulty picker: also the song's detail screen (rating per difficulty, top runs for the focused one) --
+// -- song screen: the song's details, its top runs and the Play button --
 function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
-let dpBack = null, dpEntry = null, dpDiff = 'normal', dpTab = 'local';
+let dpBack = null, dpEntry = null, dpTab = 'local';
 // Signed-in players get World (first) and Local tabs; everyone else just sees their local runs.
 const dpTabs = () => cloud.available() && cloud.signedIn();
 function setDpTab(tab) {
@@ -1414,7 +1385,7 @@ function setDpTab(tab) {
   renderDpPanel();
 }
 function renderDpPanel() {
-  const e = dpEntry, d = dpDiff;
+  const e = dpEntry;
   if (!e) return;
   const box = $('dp-panel'), bar = $('dp-tabs');
   const tabs = dpTabs();
@@ -1422,8 +1393,7 @@ function renderDpPanel() {
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
   box.textContent = '';
-  if (!d) return; // Mods focused: no scores
-  if (dpTab === 'world') paintDpWorld(e, e.only || d, box); else paintDpLocal(e, e.only || d, box);
+  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else paintDpLocal(e, e.chart, box);
 }
 function paintDpLocal(e, d, box) {
   const rec = scores.get(e.id, d);
@@ -1442,7 +1412,7 @@ async function paintDpWorld(e, d, box) {
   const near = cloud.rankNear(e.id, d) || [];
   if (!near.length) msg(tr('Loading…'));
   const show = b => {
-    if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || dpTab !== 'world') return;
+    if (dpEntry !== e || dpTab !== 'world') return;
     paintDpWorldLines(b, near, box, msg);
   };
   show(await cloud.board(e.id, d, show));
@@ -1462,39 +1432,24 @@ function paintDpWorldLines(b, near, box, msg) {
   box.textContent = '';
   box.appendChild(ol);
 }
-function askDifficulty(entry, ret, retLabel, goBack, uid) {
+function openSongScreen(entry, ret, retLabel, goBack, uid) {
   dpBack = goBack;
   dpEntry = entry;
   dpTab = dpTabs() ? 'world' : 'local';
   setSprite($('dp-cover'), coverRows(entry.id, entry.category), 2);
   $('dp-title').textContent = entry.title;
   $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
-  for (const b of $('diffpick').querySelectorAll('[data-diff]')) {
-    const d = b.dataset.diff, same = entry.only && entry.only !== d; // folded into the other difficulty
-    const n = same ? 0 : entry.notes[d] || 0;
-    b.innerHTML = '<span class="dp-line">' + cap(d) + (same ? '' : n ? ` · ${starsText(ratingOf(entry, d))} ${estMark(entry)}${starsValue(ratingOf(entry, d))} · ${tn(n, '{n} note', '{n} notes')}` : ' · ' + esc(tr('no notes'))) + '</span>';
-    b.disabled = !n;
-    b.toggleAttribute('data-default', d === settings.difficulty && !!n);
-    b.onfocus = () => { dpDiff = d; renderDpPanel(); };
-    // Touch: the first tap only selects the difficulty (showing its runs), a second tap on it starts the song.
-    b.onpointerdown = ev => { b.dataset.arm = ev.pointerType === 'touch' && document.activeElement !== b ? '1' : ''; };
-    b.onclick = () => {
-      if (b.dataset.arm) { b.dataset.arm = ''; b.focus(); return; }
-      settings.difficulty = d;
-      if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
-      save();
-      startRun({ entry, diff: d, ret, retLabel });
-    };
-  }
-  if (!$('diffpick').querySelector('[data-default]')) {
-    const f = $('diffpick').querySelector('[data-diff]:not([disabled])');
-    if (f) f.setAttribute('data-default', '');
-  }
-  const def = $('diffpick').querySelector('[data-default]');
-  dpDiff = def ? def.dataset.diff : 'normal';
+  const play = $('dp-play'), n = entry.notes[entry.chart] || 0;
+  play.innerHTML = '<span class="dp-line">' + esc(tr('Play')) + ` · ${starsText(ratingOf(entry))} ${estMark(entry)}${starsValue(ratingOf(entry))} · ${tn(n, '{n} note', '{n} notes')}` + '</span>';
+  play.disabled = !n;
+  play.onclick = () => {
+    if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
+    save();
+    startRun({ entry, ret, retLabel });
+  };
   renderDpPanel();
   refreshModsButton();
-  setState('diffpick', 'diffpick');
+  setState('songscreen', 'songscreen');
 }
 
 // -- composer --
@@ -1609,7 +1564,7 @@ function updateCustomStatus() {
   } else {
     st.className = 'status ok';
     const w = e.song.warnings;
-    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${tn(e.notes.normal, '{n} note', '{n} notes')}` +
+    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${tn(e.notes[e.chart], '{n} note', '{n} notes')}` +
       (w.length ? ` · ⚠ ${w.slice(0, 3).map(tm).join('; ')}${w.length > 3 ? ' ' + tr('(+{n} more)', { n: w.length - 3 }) : ''}` : '');
   }
   for (const id of ['btn-custom-save', 'btn-custom-play', 'btn-custom-preview', 'btn-custom-compose']) $(id).disabled = !e;
@@ -1663,9 +1618,9 @@ function openMods() {
 function closeMods() {
   refreshModsButton();
   renderDpPanel();
-  setState('diffpick', 'diffpick');
+  setState('songscreen', 'songscreen');
   // show() focuses the default difficulty on the next frame; land back on the Mods button instead.
-  requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'diffpick') { $('btn-mods').focus({ preventScroll: true }); light($('btn-mods')); } }));
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'songscreen') { $('btn-mods').focus({ preventScroll: true }); light($('btn-mods')); } }));
 }
 // Settings › Developer › Glyphs & icons: every font glyph and sprite, built once on first open.
 let glyphsBuilt = false, glyphsLast = 0; // the focused cell is kept for the session
@@ -1735,13 +1690,7 @@ function laneLabels(lanes) {
 }
 
 function startRun(r) {
-  // A melody can have no playable notes at the chosen difficulty (e.g. only very short notes on Normal):
-  // charts exist for every difficulty it can be played at, so use the nearest one that has notes.
-  if (r.entry && r.entry.only) r.diff = r.entry.only; // Normal and Hard barely differ: one difficulty
-  if (r.entry && r.entry.notes && !r.entry.notes[r.diff]) {
-    const alt = ['normal', 'hard'].find(d => r.entry.notes[d] > 0);
-    if (alt) { toast(tr('No notes on {from}: playing {to}', { from: cap(r.diff), to: cap(alt) })); r.diff = alt; }
-  }
+  if (r.entry) r.diff = r.entry.chart; // a song plays one chart
   run = r;
   if (!r.tutorial && r.entry) {
     if (r.entry.id !== unplayedKeep) unplayedKeep = settings.view.category === 'unplayed' && !scores.get(r.entry.id, r.diff) ? r.entry.id : null; settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
@@ -1785,7 +1734,7 @@ function restartRun() { abortRun('restart'); resumeEnd = 0; setResumeCount(0); i
 
 function playSelected() {
   const e = selectedEntry();
-  if (e) askDifficulty(e, null, null, openSelect);
+  if (e) openSongScreen(e, null, null, openSelect);
 }
 
 function leaveToSelect() {
@@ -2064,7 +2013,7 @@ function nextSong() {
   const e = list[(i + 1) % list.length];
   selectedId = e.id;
   settings.lastSongId = e.id; save();
-  startRun({ entry: e, diff: run ? run.diff : settings.difficulty, ret: run && run.ret, retLabel: run && run.retLabel });
+  startRun({ entry: e, ret: run && run.ret, retLabel: run && run.retLabel });
 }
 
 // ---- tutorial ----
@@ -2306,7 +2255,7 @@ function selectHints() {
   const rows = pad
     ? [[[bn(BTN.LB), bn(BTN.RB)], tr('Category')], [[bn(BTN.LT)], tr('Sort')], [[bn(BTN.Y)], tr('All categories')],
       [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X)], tr('Random')]]
-    : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Group')], [['.'], tr('Difficulty')], [['V'], tr('Favorite')],
+    : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Group')], [['V'], tr('Favorite')],
       [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [['/'], tr('Find')]];
   const side = $('sel-keys');
   side.replaceChildren();
@@ -2385,7 +2334,7 @@ function back() {
     case 'mods': closeMods(); break;
     case 'glyphs': openSettings(settingsFrom); break;
     case 'mysongs': openMenu('mysongs'); break;
-    case 'diffpick': if (dpBack) dpBack(); else openSelect(); break;
+    case 'songscreen': if (dpBack) dpBack(); else openSelect(); break;
     case 'songmenu': openMySongs(); break;
     case 'custom': if (txtUid) openSongMenu(txtUid); else openMySongs(); break;
     case 'composer':
@@ -2411,7 +2360,7 @@ function menuButton(index) {
       break;
     case BTN.B: back(); break;
     case BTN.X:
-      if (state === 'diffpick') openMods();
+      if (state === 'songscreen') openMods();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
       else if (state === 'select') randomSong();
       break;
@@ -2449,7 +2398,7 @@ function navigate(dir) {
   if (state === 'results' && (dir === 'up' || dir === 'down') && scrollResults(dir)) return;
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
-  if (state === 'diffpick' && (dir === 'left' || dir === 'right') && dpTabs()) {
+  if (state === 'songscreen' && (dir === 'left' || dir === 'right') && dpTabs()) {
     const tab = dir === 'left' ? 'world' : 'local';
     if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); }
     return;
@@ -2727,8 +2676,7 @@ function wire() {
       wheelAt = now; synth.keyClick(); menuStep(e.deltaY > 0 ? 1 : -1);
     }, { passive: false });
   }
-  // stats: Diff (left soft key / Enter on the Grades page), swipe or tap the arrows for pages
-  $('stat-go').onclick = cycleStatDiff;
+  // stats: swipe or tap the arrows for pages
   {
     const st = $('stats');
     onSwipe(st, dir => navigate(dir === 'left' ? 'right' : 'left'));
@@ -2759,7 +2707,6 @@ function wire() {
   // title / select
   $('btn-start').onclick = startFromTitle;
   $('btn-mods').onclick = openMods;
-  $('btn-mods').onfocus = () => { dpDiff = null; renderDpPanel(); };
 
   // mods
   $('m-speed').oninput = e => setMod({ speed: mods.SPEEDS[+e.target.value] });
@@ -2834,7 +2781,7 @@ function wire() {
   $('pf-privacy').onclick = () => window.open('https://github.com/GIider/ringbeat/blob/main/docs/PRIVACY.md', '_blank', 'noopener,noreferrer');
 
   // one song
-  $('sm-play').onclick = () => { const e = curEntry(); if (e) askDifficulty(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
+  $('sm-play').onclick = () => { const e = curEntry(); if (e) openSongScreen(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
   $('sm-preview').onclick = () => { const e = curEntry(); if (e) togglePreview(e); };
   $('sm-edit').onclick = () => { const s = curSong(); if (s) openComposer(s.rtttl, s.uid); };
   $('sm-dup').onclick = () => {
@@ -2872,7 +2819,7 @@ function wire() {
     if (!e) return;
     stopPreview();
     const toComposer = () => { setState('composer', 'composer'); setCompMenu(false); };
-    askDifficulty(e, toComposer, 'Composer', () => { setState('composer', 'composer'); setCompMenu(true); });
+    openSongScreen(e, toComposer, 'Composer', () => { setState('composer', 'composer'); setCompMenu(true); });
   };
   $('comp-preview').onclick = () => { const e = compEntry(); if (e) togglePreview(e); };
   $('comp-save').onclick = saveComposer;
@@ -2905,18 +2852,17 @@ function wire() {
     const e = customEntry(area.value);
     if (!e) return;
     const toText = () => { setState('custom', 'custom'); updateCustomStatus(); };
-    askDifficulty(e, toText, 'RTTTL text', toText);
+    openSongScreen(e, toText, 'RTTTL text', toText);
   };
   $('btn-custom-preview').onclick = () => { const e = customEntry(area.value); if (e) togglePreview(e); };
   $('btn-custom-compose').onclick = () => { if (customEntry(area.value)) openComposer(area.value.trim(), txtUid); };
   $('btn-custom-back').onclick = back;
 
   // play / pause / results
-  for (const id of ['sel-arrow-l', 'sel-arrow-r', 'sel-sort', 'sel-diff']) $(id).addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the song row
+  for (const id of ['sel-arrow-l', 'sel-arrow-r', 'sel-sort']) $(id).addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the song row
   $('sel-arrow-l').onclick = () => { synth.keyClick(); cycleCategory(-1); };
   $('sel-arrow-r').onclick = () => { synth.keyClick(); cycleCategory(1); };
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
-  $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('welcome').addEventListener('click', skipWelcome);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
@@ -3121,13 +3067,6 @@ function onKey(e) {
     toggleFavorite();
     return;
   }
-  if (state === 'select' && !typing && tag !== 'SELECT' && e.code === 'Period' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    e.preventDefault();
-    if (e.repeat) return;
-    synth.keyClick();
-    cycleDifficulty(1);
-    return;
-  }
   if (state === 'menu' && !typing && !e.repeat && /^[1-9]$/.test(e.key) && +e.key <= MENU.length) {
     e.preventDefault(); synth.keyClick(); menuJump(+e.key - 1); return;
   }
@@ -3233,7 +3172,7 @@ const DEMO_RUNS = [
 function seedDemoScores() {
   const list = visible(), from = Math.max(0, list.findIndex(e => e.id === selectedId) - 5); // the rows around the cursor
   list.slice(from, from + DEMO_RUNS.length).forEach((e, i) => {
-    if (DEMO_RUNS[i]) scores.record(e.id, settings.difficulty, { ...DEMO_RUNS[i], date: Date.UTC(2026, 9, 10) + i * 36e5 });
+    if (DEMO_RUNS[i]) scores.record(e.id, e.chart, { ...DEMO_RUNS[i], date: Date.UTC(2026, 9, 10) + i * 36e5 });
   });
 }
 function demo(kind) {
@@ -3247,21 +3186,21 @@ function demo(kind) {
   else if (kind === 'inbox') openInbox();
   else if (kind === 'profile') openProfile();
   else if (kind === 'message') showMessage(0);
-  else if (kind === 'info') askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
+  else if (kind === 'info') openSongScreen(selectedEntry(), openSelect, 'Select', openSelect);
   else if (kind === 'mods') {
     settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); // in memory only, never saved
-    askDifficulty(selectedEntry(), openSelect, 'Select', openSelect);
+    openSongScreen(selectedEntry(), openSelect, 'Select', openSelect);
     openMods();
     requestAnimationFrame(() => requestAnimationFrame(() => $('m-mirror').focus())); // show() focuses the first row on a rAF
   } else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
-    run = { entry: selectedEntry(), diff: settings.difficulty };
+    run = { entry: selectedEntry(), diff: selectedEntry().chart };
     game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A', ghosts: demoFc ? 0 : 3,
       fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
   } else if (kind === 'play' || kind === 'pause') {
     const e = selectedEntry();
-    const chart = generateChart(e.song, { difficulty: settings.difficulty });
+    const chart = generateChart(e.song, { difficulty: e.chart });
     const ctx = { currentTime: 0, suspend() {}, resume() {} };
     const g = new Game({ ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} });
     g.fx = game.fx;
@@ -3282,7 +3221,7 @@ function demo(kind) {
     const recent = new Map(); // newest judgement per lane that is still on screen
     for (const x of judged) if (T - x.t < 0.45) recent.set(x.lane, { ...x, age: T - x.t });
     demoLabels = [...recent.values()];
-    run = { entry: e, diff: settings.difficulty };
+    run = { entry: e, diff: e.chart };
     renderer.title = e.title;
     renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
     screens.nowplaying.dataset.title = e.title;
@@ -3393,4 +3332,4 @@ try { // the overlay used to be remembered outside the settings: adopt that once
 } catch { /* storage blocked */ }
 if (settings.perfOverlay) setPerf(true, false);
 requestAnimationFrame(frame);
-window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, admin, get state() { return state; } }; // debug/test hook (tests/smoke.html)
+window.__ringbeat = { game, scores, stats, settings, perf, mysongs, cloud, admin, entries, get state() { return state; } }; // debug/test hook (tests/smoke.html)

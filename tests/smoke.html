@@ -75,18 +75,13 @@ f.addEventListener('load', async () => {
     log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
     log(catOf() === cat0, 'left arrow switches back');
-    const diff0 = hookOf().settings.difficulty;
-    key('Period'); await sleep(50);
-    const diff1 = hookOf().settings.difficulty;
-    key('Period'); await sleep(50);
-    log(diff1 !== diff0 && hookOf().settings.difficulty === diff0, 'period toggles the difficulty', diff0 + ' ' + diff1);
     const sec0 = $('sel-cat').textContent;
     key('KeyJ'); await sleep(80); key('KeyK'); await sleep(80);
-    log(hookOf().settings.difficulty === diff0 && vis('select') && $('sel-cat').textContent.length > 0, 'J/K jump groups without touching the difficulty', sec0);
+    log(vis('select') && $('sel-cat').textContent.length > 0, 'J/K jump groups', sec0);
     log($('soft-left').textContent === 'Select' && /^Tones · ./.test($('st-title').textContent), 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
-    log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');
-    log($('dp-tabs').hidden, 'difficulty screen: no World/Local tabs when signed out');
+    log(vis('songscreen') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'song screen with details');
+    log($('dp-tabs').hidden, 'song screen: no World/Local tabs when signed out');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
     $('st-title').click(); await sleep(50);
@@ -213,10 +208,10 @@ f.addEventListener('load', async () => {
     $('btn-custom-save').click(); await sleep(50);
     log(w.__ringbeat.mysongs.count() === 1 && vis('songmenu'), 'pasted song saved, song menu shown');
     $('sm-play').click(); await sleep(50);
-    log(vis('diffpick'), 'play asks for difficulty');
+    log(vis('songscreen'), 'play opens the song screen');
     key('Escape'); await sleep(50);
     log(vis('songmenu'), 'difficulty back to song menu');
-    log(/Normal ~\d\.\d \/ Hard ~\d\.\d/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Calculate difficulty', 'custom song shows an estimated (~) rating', $('sm-meta').textContent);
+    log(/~\d\.\d ★/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Calculate difficulty', 'custom song shows an estimated (~) rating', $('sm-meta').textContent);
     $('sm-calc').click(); await sleep(20);
     log(!$('sm-bar').hidden && /Calculating/.test($('sm-msg').textContent), 'calculate shows a progress bar');
     for (let i = 0; i < 100 && !w.__ringbeat.mysongs.list()[0].rating; i++) await sleep(50);
@@ -239,23 +234,23 @@ f.addEventListener('load', async () => {
     key('1'); await sleep(30); $('mm-go').click(); await sleep(100);
 
     d.querySelector('.song-row.cur').click(); await sleep(50);
-    log(vis('diffpick'), 'difficulty screen');
+    log(vis('songscreen'), 'song screen');
     // mods: own screen, sticky loadout, summary on the picker button
     log($('btn-mods').textContent === 'Mods: Off', 'mods button starts Off');
     $('btn-mods').click(); await sleep(50);
-    log(vis('mods') && !vis('diffpick') && $('m-mult').textContent === '×1.00', 'mods screen opens');
+    log(vis('mods') && !vis('songscreen') && $('m-mult').textContent === '×1.00', 'mods screen opens');
     $('m-hidden').checked = true; $('m-hidden').dispatchEvent(new w.Event('change'));
     $('m-speed').value = 7; $('m-speed').dispatchEvent(new w.Event('input'));
     log($('m-mult').textContent === '×1.32', 'mods multiplier updates live', $('m-mult').textContent);
     key('Escape'); await sleep(80);
-    log(vis('diffpick') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to difficulty with a mods summary', $('btn-mods').textContent);
+    log(vis('songscreen') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to the song screen with a mods summary', $('btn-mods').textContent);
     log(JSON.parse(w.localStorage.getItem('ringbeat.v1')).mods.speed === 1.2, 'mods persist in settings');
     $('btn-mods').click(); await sleep(50);
     $('btn-mods-reset').click(); await sleep(30);
     $('btn-mods-back').click(); await sleep(80);
-    log(vis('diffpick') && $('btn-mods').textContent === 'Mods: Off', 'reset all clears the loadout');
-    d.querySelector('#diffpick [data-default]').click(); await sleep(150);
-    log(!vis('select') && !vis('diffpick') && !vis('results'), 'normal play starts');
+    log(vis('songscreen') && $('btn-mods').textContent === 'Mods: Off', 'reset all clears the loadout');
+    d.querySelector('#songscreen [data-default]').click(); await sleep(150);
+    log(!vis('select') && !vis('songscreen') && !vis('results'), 'normal play starts');
     key('KeyR'); await sleep(150);
     log(!vis('select'), 'R restarts');
     // fake a finished run to exercise results / highscores / FC banner
@@ -279,9 +274,9 @@ f.addEventListener('load', async () => {
     $('btn-menu').click(); await sleep(100);
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
     d.querySelector('.song-row.cur').click(); await sleep(100);
-    log(vis('diffpick') && !!d.querySelector('#diffpick [data-default]'), 'play opens difficulty screen');
+    log(vis('songscreen') && !!d.querySelector('#songscreen [data-default]'), 'play opens the song screen');
     log($('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
-    d.querySelector('#diffpick [data-default]').click(); await sleep(100);
+    d.querySelector('#songscreen [data-default]').click(); await sleep(100);
     rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
     $('r-tabs').querySelector('[data-page="3"]').click();
@@ -339,8 +334,7 @@ f.addEventListener('load', async () => {
     log(inside(tnr, trr) && tnr.right <= cnt.left + 0.5 && tn.scrollWidth > tn.clientWidth, 'long Top title is ellipsised before the count');
     // many played songs: the Top page lists them all, starts at #1, and scrolls with Up/Down
     {
-      const { SONGS } = await import(new URL('../src/songs.js', f.src));
-      SONGS.slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, 'normal', { score: 100, grade: 'C' }); });
+      hookOf().entries().slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, s.chart, { score: 100, grade: 'C' }); });
       key('ArrowLeft'); await sleep(40); key('ArrowRight'); await sleep(60);
       const pg = $('stat-page'), rows = () => [...pg.querySelectorAll('.st-row')];
       const seen = r => { const b = pg.getBoundingClientRect(), x = r.getBoundingClientRect(); return x.top >= b.top - 1 && x.bottom <= b.bottom + 1; };
@@ -359,10 +353,8 @@ f.addEventListener('load', async () => {
       log(pg.scrollTop === 0 && seen(rows()[0]), 'revisiting Top starts at #1 again');
     }
     key('ArrowRight'); await sleep(60);
-    log(/Grades/.test($('stat-tab').textContent) && $('soft-left').textContent === 'Diff', 'Grades page with a Diff soft key');
+    log(/Grades/.test($('stat-tab').textContent) && 'Grades page');
     log(+d.querySelector('#stat-page .gbar span').textContent >= 1, 'S bar counts the S run');
-    phoneKey('softL'); await sleep(50);
-    log($('stat-page').textContent.includes('Normal'), 'Diff cycles the difficulty');
     key('ArrowRight'); await sleep(50);
     log(/Notes/.test($('stat-tab').textContent) && $('stat-page').textContent.includes('Accuracy'), 'Notes page');
     key('Escape'); await sleep(80);

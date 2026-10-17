@@ -1,5 +1,5 @@
 // Plays real songs in headless Chromium with a keyboard bot and reports frame pacing from the in-page profiler.
-// Usage: npm run perf:play [-- --songs 0,6,12 --diff hard --seconds 30 --max-long 2 --max-p99 25]
+// Usage: npm run perf:play [-- --songs 0,6,12 --seconds 30 --max-long 2 --max-p99 25]
 // Needs the Playwright browser (`npx playwright install chromium`). Headless software rendering is slower than a real
 // GPU, so use it for before/after comparisons on one machine, not as an absolute fps number.
 import { chromium } from 'playwright';
@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };
 const songs = arg('songs', '0,6,12').split(',').map(Number);
-const diff = arg('diff', 'hard');
 const seconds = +arg('seconds', 30);
 const maxLongPct = +arg('max-long', 2);   // % of frames over 1.5x budget
 const maxP99 = +arg('max-p99', 25);       // ms
@@ -28,19 +27,18 @@ try {
     await page.addInitScript(() => localStorage.setItem('ringbeat.perf', '1')); // the profiler on, as F3 leaves it
     await page.goto(`http://127.0.0.1:${port}/`);
     await page.waitForFunction(() => window.__ringbeat, null, { timeout: 15000 });
-    const info = await page.evaluate(async ([idx, diff, seconds]) => {
+    const info = await page.evaluate(async ([idx, seconds]) => {
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       const rb = window.__ringbeat, $ = id => document.getElementById(id);
       rb.settings.tutorialDone = true;
-      rb.settings.difficulty = diff;
       await sleep(200);
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
       await sleep(200);
       const row = document.querySelectorAll('.song-row')[idx];
       row.click(); await sleep(150);
-      row.click(); await sleep(250);          // second click = play -> difficulty screen
-      const go = document.querySelector('#diffpick [data-default]');
-      if (!go) return { error: 'no difficulty screen, state=' + rb.state };
+      row.click(); await sleep(250);          // second click = play -> song screen
+      const go = document.querySelector('#songscreen [data-default]');
+      if (!go) return { error: 'no song screen, state=' + rb.state };
       go.click();
       for (let i = 0; i < 100 && !rb.game.active; i++) await sleep(50);
       if (!rb.game.active) return { error: 'song did not start, state=' + rb.state };
@@ -69,7 +67,7 @@ try {
       return { title: $('st-title').textContent, notes: notes.length, fps: r.fps, frames: r.frames, long: r.longFrames,
         p50: f.p50, p95: f.p95, p99: f.p99, max: f.max, draw: r.sections.draw && r.sections.draw.p99, update: r.sections.update && r.sections.update.p99,
         score: g.score, combo: g.maxCombo };
-    }, [idx, diff, seconds]);
+    }, [idx, seconds]);
     if (info.error) { console.error(`song ${idx}: ${info.error}`); bad = true; await page.close(); continue; }
     const longPct = 100 * info.long / Math.max(1, info.frames);
     rows.push({ song: idx, notes: info.notes, fps: +info.fps.toFixed(1), frames: info.frames, 'long %': +longPct.toFixed(2),

@@ -7,7 +7,7 @@ export const VIEW_KEY = 'ringbeat.boards.view';
 export const DEEP_LIMIT = 100;   // the API's largest board
 export const BOARD_SORTS = [
   { id: 'title', label: 'Title' },
-  { id: 'diff-asc', label: 'Difficulty' },
+  { id: 'diff-asc', label: 'Rating' },
   { id: 'score', label: 'Top score' },
   { id: 'recent', label: 'Latest' },
 ];
@@ -42,28 +42,27 @@ export async function loadBoard(fetchFn, base, songId, diff, limit = DEEP_LIMIT)
 const topOf = (snap, id, diff) => (snap && snap.boards[id + '|' + diff]) || [];
 const latest = rows => rows.reduce((m, r) => Math.max(m, Number(r.playedAt) || 0), 0);
 
-// The song list for one difficulty: [{ entry, top: [rows], leader: row|null }]. Custom songs are ignored, and a song
-// that is playable at one difficulty only has no board at the other. `sort`: title, diff-asc (difficulty), score, recent.
-export function songRows(snap, entries, diff, { category = 'all', query = '', sort = 'title' } = {}) {
+// The song list: [{ entry, top: [rows], leader: row|null }] from each song's board (its one chart). Custom songs are
+// ignored. `sort`: title, diff-asc (rating), score, recent.
+export function songRows(snap, entries, { category = 'all', query = '', sort = 'title' } = {}) {
   const q = String(query).trim().toLowerCase();
-  const base = entries.filter(e => !String(e.id).startsWith('custom:') && (!e.only || e.only === diff) &&
+  const base = entries.filter(e => !String(e.id).startsWith('custom:') &&
     (!q || e.title.toLowerCase().includes(q) || (e.tag || '').toLowerCase().includes(q)));
-  const list = applyView(base, { sort: sort === 'diff-asc' ? 'diff-asc' : 'title', category }, diff, null)
-    .map(entry => { const top = topOf(snap, entry.id, diff); return { entry, top, leader: top[0] || null }; });
+  const list = applyView(base, { sort: sort === 'diff-asc' ? 'diff-asc' : 'title', category }, null)
+    .map(entry => { const top = topOf(snap, entry.id, entry.chart); return { entry, top, leader: top[0] || null }; });
   const key = { score: x => x.leader ? x.leader.score : -1, recent: x => latest(x.top) }[sort];
   return key ? list.map((x, i) => ({ x, i })).sort((a, b) => (key(b.x) - key(a.x)) || a.i - b.i).map(o => o.x) : list;
 }
 
-// Remembered choices (category, difficulty, sort), sanitized; storage may be blocked or hold junk.
+// Remembered choices (category, sort), sanitized; storage may be blocked or hold junk.
 export function loadView(storage) {
   let raw = {};
   try { raw = JSON.parse(storage.getItem(VIEW_KEY)) || {}; } catch { /* defaults */ }
   return {
     category: CATEGORY_IDS.includes(raw.category) ? raw.category : 'all',
-    diff: DIFFS.includes(raw.diff) ? raw.diff : 'normal',
     sort: BOARD_SORTS.some(s => s.id === raw.sort) ? raw.sort : 'title',
   };
 }
 export function saveView(storage, view) {
-  try { storage.setItem(VIEW_KEY, JSON.stringify({ category: view.category, diff: view.diff, sort: view.sort })); } catch { /* ignore */ }
+  try { storage.setItem(VIEW_KEY, JSON.stringify({ category: view.category, sort: view.sort })); } catch { /* ignore */ }
 }

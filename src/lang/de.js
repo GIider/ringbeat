@@ -14,7 +14,6 @@ export const de = {
   'Song': 'Song',
   'Composer': 'Komponist',
   'RTTTL text': 'RTTTL-Text',
-  'Difficulty': 'Stufe',
   'Mods': 'Mods',
   'Latency': 'Latenz',
   'Tutorial': 'Tutorial',
@@ -31,7 +30,6 @@ export const de = {
   'Menu': 'Menü',
   'Clear': 'Löschen',
   'Del': 'Entf',
-  'Diff': 'Stufe',
   'Loading': 'Lädt',
   'My song': 'Mein Song',
 
@@ -53,7 +51,6 @@ export const de = {
   'Top': 'Top',
   'Grades': 'Noten',
   'Notes': 'Noten',
-  'Change difficulty': 'Stufe wechseln',
   'Play a song to start counting.': 'Spiel einen Song, um zu zählen.',
   'total playtime': 'Spielzeit gesamt',
   'Runs': 'Durchgänge',
@@ -158,14 +155,12 @@ export const de = {
   'Favorite added': 'Favorit hinzugefügt',
   'Favorite removed': 'Favorit entfernt',
   'No songs match this filter.': 'Keine Songs für diesen Filter.',
-  'Only on {diff}': 'Nur auf {diff}',
   'New': 'Neu',
   '{n} notes': ['{n} Note', '{n} Noten'],
   '{v} of 5 stars': '{v} von 5 Sternen',
   'Normal': 'Normal',
   'Hard': 'Schwer',
   'No plays yet': 'Noch nicht gespielt',
-  'no notes': 'keine Noten',
   'Playfield': 'Spielfeld',
 
   // ---- my songs, song menu, composer, text ----
@@ -277,7 +272,6 @@ export const de = {
   'The first miss or stray tap ends the run.': 'Der erste Fehler oder Fehltipp beendet den Durchgang.',
   'Plays the song perfectly. Score ×0, nothing is saved.': 'Spielt den Song perfekt. Punkte ×0, nichts wird gespeichert.',
   'Lenient widens the timing windows, Strict narrows them.': 'Großzügig weitet die Zeitfenster, Streng verengt sie.',
-  'No notes on {from}: playing {to}': 'Keine Noten auf {from}: spiele {to}',
 
   // ---- playing, pause, results ----
   'GET READY': 'BEREIT',
@@ -583,6 +577,7 @@ export const de = {
   'Category': 'Kategorie',
   'Language': 'Sprache',
   'Sort': 'Sortieren',
+  'Rating': 'Wertung',
   'Find': 'Suchen',
   'Song list': 'Songliste',
   'Favorite': 'Favorit',

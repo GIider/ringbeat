@@ -157,9 +157,6 @@ async function boardsSmoke(context, name) {
     if ((await cat()) === 'All') return fail('] did not change the category');
     await page.keyboard.press('[');
     if ((await cat()) !== 'All') return fail('[ did not wrap back');
-    await page.keyboard.press('d');
-    if ((await page.locator('#bd-diff [aria-selected=true]').innerText()) !== 'Hard') return fail('d did not switch to Hard');
-    await page.keyboard.press('d');
     await page.setViewportSize({ width: 390, height: 800 });
     await page.locator('.bd-row').first().click();
     await page.waitForSelector('.bd.open .bd-detail');

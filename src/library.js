@@ -78,10 +78,12 @@ export function makeEntry({ id, title, tag, category, rtttl, own }) {
     if (rating[only] != null) rating[other] = rating[only]; else delete rating[other];
     tags[other] = tags[only];
   }
+  // The one chart a song plays: its collapsed variant, else Hard (Normal only when Hard cannot be charted).
+  const chart = only || (notes.hard ? 'hard' : 'normal');
   return {
     id, rtttl, tag: tag || '', category: category || '', song,
     title: title || song.name || 'Untitled',
-    bpm: song.bpm, length, stars, notes, rating, tags, estimated, only,
+    bpm: song.bpm, length, stars, notes, rating, tags, estimated, only, chart,
   };
 }
 

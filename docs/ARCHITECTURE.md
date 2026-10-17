@@ -24,7 +24,7 @@ src/
   songs.js        built-in catalogue: CATEGORIES, SONGS, FULL_SONGS (see SONGS.md)
   chart.js        song -> chart: difficulty filter, lane assignment (quantile / contour), holds, short holds, rolls,
                   slides, doubles; filtered-out notes become auto-played `backing`
-  library.js      library entries: BPM, length, stars, note counts, measured ratings, the Normal/Hard collapse
+  library.js      library entries: BPM, length, stars, note counts, measured ratings, the single chart per song (`chart`; the Normal/Hard collapse)
                   (COLLAPSE_MAX, `only`), custom entries, hashString
   difficulty.json bot-measured ratings per song and difficulty, written by `npm run bench`; fetched after first paint,
                   missing entries fall back to density stars
@@ -35,7 +35,7 @@ src/
   boards.js       the World boards page (boards.html): list, detail pane, keyboard; the only DOM module besides main.js
   boardsview.js   pure data and list logic of that page: GET /boards (ETag) and /board/:song/:diff, filter / sort, view memory
   rowfmt.js       leaderboard row fragments shared by the game and the boards page (esc, name, FC/AP badges, star bar)
-  listview.js     pure song-list sorts (difficulty, title, BPM, duration) and category filter
+  listview.js     pure song-list sorts (rating, title, BPM, duration) and category filter
   tutorial.js     the tutorial's hand-made lesson charts (STAGES at 100 BPM), lesson diagrams
 
   -- gameplay --
@@ -72,7 +72,7 @@ src/
   -- data and persistence --
   settings.js     persisted settings (ringbeat.v1): audio, display, controller bindings, mods, language, tutorial
                   progress, read messages, list view; change stamps for cloud sync (sharedSettings / applyShared)
-  scores.js       highscores store, top 5 per song and difficulty (injectable storage); combineScores shows other
+  scores.js       highscores store, top 5 per song and chart (injectable storage); combineScores shows other
                   devices' synced scores alongside
   stats.js        lifetime stats store (playtime, runs, notes, score, day streak, play-day list), derived grade
                   tally / top songs, one-time backfill from scores; combineStats pools synced devices
@@ -184,13 +184,13 @@ defaults.
 
 | Key | Module | Holds |
 |---|---|---|
-| `ringbeat.v1` | `settings.js` | Settings: voice, language, volume, scroll time, toggles, calibration, difficulty, list view, last song, tutorial progress, pad bindings, mods, read messages |
-| `ringbeat.scores.v1` | `scores.js` | Highscores: top 5 runs and play count per song id × difficulty |
+| `ringbeat.v1` | `settings.js` | Settings: voice, language, volume, scroll time, toggles, calibration, list view, last song, tutorial progress, pad bindings, mods, read messages |
+| `ringbeat.scores.v1` | `scores.js` | Highscores: top 5 runs and play count per song id × chart |
 | `ringbeat.stats.v1` | `stats.js` | Lifetime stats |
 | `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
 | `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |
 | `ringbeat.cloud.v1` | `cloud.js` | Online profile: token, profile, last sync, other devices' scores and stats, run outbox, reset marks, sync fingerprints, last world ranks |
-| `ringbeat.boards.view` | `boardsview.js` | The World boards page's last category, difficulty and sort |
+| `ringbeat.boards.view` | `boardsview.js` | The World boards page's last category and sort |
 | `ringbeat.boards.v1` | `cloud.js` | The leaderboard snapshot (`GET /boards`) and when it came, kept 30 seconds |
 | `ringbeat.device.v1` | `cloud.js` | This device's random id |
 | `ringbeat.api` | `main.js` | Developer override of the API address (see [CLOUD.md](CLOUD.md#local-development)) |

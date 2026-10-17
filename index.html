@@ -91,7 +91,6 @@
             <span class="arrow">◄</span><span id="stat-tab" class="sel"></span><span class="arrow">►</span>
           </div>
           <div id="stat-page" class="stat-page" aria-live="polite"></div>
-          <button id="stat-go" class="sr" data-default data-i18n>Change difficulty</button>
         </section>
 
         <!-- Messages: the changelog as an SMS inbox -->
@@ -136,7 +135,7 @@
           <div class="sel-head">
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
           </div>
-          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-find" class="chip" aria-label="Find a song" tabindex="-1" data-i18n-attr="aria-label" data-i18n>Find</button></div>
+          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-find" class="chip" aria-label="Find a song" tabindex="-1" data-i18n-attr="aria-label" data-i18n>Find</button></div>
           <label id="sel-search" class="sel-search" hidden><span>/</span> <input id="sel-q" type="text" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Find a song" data-i18n-attr="aria-label"></label>
           <div class="song-wrap" id="song-wrap">
             <div id="song-list" class="song-list" role="listbox" aria-label="Songs" data-i18n-attr="aria-label"></div>
@@ -269,14 +268,13 @@
           <div id="share-msg" class="hint"></div>
         </section>
 
-        <!-- Difficulty picker for custom songs -->
-        <section id="diffpick" class="screen" hidden data-title="Difficulty" data-soft-left="Select" data-soft-right="Back">
+        <!-- Song screen: details, top runs, Play and Mods -->
+        <section id="songscreen" class="screen" hidden data-title="Song" data-soft-left="Select" data-soft-right="Back">
           <i id="dp-cover" class="spr cover"></i>
           <h2 id="dp-title"></h2>
           <div id="dp-meta" class="hint"></div>
           <div class="menu">
-            <button id="dp-normal" data-diff="normal">Normal</button>
-            <button id="dp-hard" data-diff="hard">Hard</button>
+            <button id="dp-play" data-default>Play</button>
             <button id="btn-mods">Mods: Off</button>
           </div>
           <div id="dp-tabs" class="seg dp-seg" role="tablist" hidden>

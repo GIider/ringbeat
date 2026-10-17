@@ -255,25 +255,25 @@ test('bot: runBot always returns a result and leaves the input chart untouched',
 });
 
 // ---- listview / library ----
-const E = (id, title, bpm, length, n, category = 'pop') => ({ id, title, bpm, length, category, stars: { normal: n, hard: n } });
+const E = (id, title, bpm, length, n, category = 'pop') => ({ id, title, bpm, length, category, chart: 'normal', stars: { normal: n, hard: n } });
 test('listview: bpm and length sorts, stable ties, custom last', () => {
   const es = [E('a', 'A', 150, 30, 2), E('custom:x', 'Z', 60, 5, 1), E('b', 'B', 90, 60, 3), E('c', 'C', 90, 20, 3)];
-  assert.deepEqual(applyView(es, { sort: 'bpm' }, 'normal', null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
-  assert.deepEqual(applyView(es, { sort: 'length' }, 'normal', null).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
-  assert.deepEqual(applyView(es, { sort: 'nonsense' }, 'normal', null).map(e => e.id), ['a', 'b', 'c', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'bpm' }, null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'length' }, null).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'nonsense' }, null).map(e => e.id), ['a', 'b', 'c', 'custom:x']);
   assert.equal(SORTS.length, 5);
 });
 
 test('listview: favorites sort puts favorites first by difficulty, custom still last', () => {
   const es = [E('a', 'A', 1, 1, 3), E('b', 'B', 1, 1, 1), E('c', 'C', 1, 1, 2), E('custom:x', 'Z', 1, 1, 1)];
-  assert.deepEqual(applyView(es, { sort: 'fav' }, 'normal', null, ['a', 'c', 'custom:x']).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
-  assert.deepEqual(applyView(es, { sort: 'fav' }, 'normal', null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'fav' }, null, ['a', 'c', 'custom:x']).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'fav' }, null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
 });
 
 test('listview: the favorites category lists only favorites', () => {
   const es = [E('a', 'A', 1, 1, 3), E('b', 'B', 1, 1, 1), E('c', 'C', 1, 1, 2)];
-  assert.deepEqual(applyView(es, { category: 'favorites' }, 'normal', null, ['c', 'a']).map(e => e.id), ['c', 'a']);
-  assert.deepEqual(applyView(es, { category: 'favorites' }, 'normal', null).map(e => e.id), []);
+  assert.deepEqual(applyView(es, { category: 'favorites' }, null, ['c', 'a']).map(e => e.id), ['c', 'a']);
+  assert.deepEqual(applyView(es, { category: 'favorites' }, null).map(e => e.id), []);
 });
 
 test('listview: nextOf / prevOf wrap, ratingOf prefers the measured rating', () => {
@@ -282,9 +282,9 @@ test('listview: nextOf / prevOf wrap, ratingOf prefers the measured rating', () 
   assert.equal(prevOf(l, 'a'), 'c');
   assert.equal(nextOf(l, 'a'), 'b');
   assert.equal(prevOf(l, 'c'), 'b');
-  assert.equal(ratingOf({ rating: { normal: 4.5 }, stars: { normal: 1 } }, 'normal'), 4.5);
-  assert.equal(ratingOf({ rating: { normal: 4.5 }, stars: { hard: 2 } }, 'hard'), 2.8);
-  assert.equal(ratingOf({ stars: {} }, 'hard'), 0);
+  assert.equal(ratingOf({ chart: 'normal', rating: { normal: 4.5 }, stars: { normal: 1 } }), 4.5);
+  assert.equal(ratingOf({ chart: 'hard', rating: { normal: 4.5 }, stars: { hard: 2 } }), 2.8);
+  assert.equal(ratingOf({ chart: 'hard', stars: {} }), 0);
 });
 
 test('library: formatLength, starsFor and hashString', () => {

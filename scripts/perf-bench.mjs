@@ -197,7 +197,7 @@ const cases = [
   ['library.build x2 (boot + rebuild)', () => { buildLibrary(); buildLibrary(); }],
   ['mods.scale (all)', () => { for (const c of charts) scaleChart(c, 0.75); }],
   ['game.simulate (longest, 1 bot run)', () => { runBot(longest, LADDER[2], 1); }],
-  ['listview.applyView (all sorts)', () => { for (const s of SORTS) applyView(lib, { sort: s.id }, 'normal', scores); }],
+  ['listview.applyView (all sorts)', () => { for (const s of SORTS) applyView(lib, { sort: s.id }, scores); }],
   ['share.encode+decode', () => { decodeSong(encodeSong(memStore)); }],
   ['render.draw (1 frame)', () => { rf.r.draw(rf.g, rf.t); }],
   ['render.drawIdle (settled)', () => { rf.r.drawIdle(); }],
@@ -281,7 +281,7 @@ const cases = [
     const st = createStats({ getItem: () => null, setItem() {}, removeItem() {} });
     for (let i = 0; i < 5; i++) st.recordRun({ diff: 'normal', result: { score: 1000, maxCombo: 60, counts: { perfect: 90, great: 5, good: 3, miss: 2 }, fc: false, ap: false } });
   }],
-  ['listview.applyView (500-song library, all sorts + cats)', () => { for (const s of SORTS) for (const c of ['all', 'pop', 'folk']) applyView(bigLib, { sort: s.id, category: c }, 'hard', scores); }],
+  ['listview.applyView (500-song library, all sorts + cats)', () => { for (const s of SORTS) for (const c of ['all', 'pop', 'folk']) applyView(bigLib, { sort: s.id, category: c }, scores); }],
   ['scores.record x5 (persist to storage)', () => {
     const sc = createScores({ getItem: () => null, setItem() {}, removeItem() {} });
     for (let i = 0; i < 5; i++) sc.record('s', 'normal', { score: 1000 * i, maxCombo: 50, accuracy: 90, grade: 'A', counts: { perfect: 1, great: 1, good: 1, miss: 0 }, deltas: [] });

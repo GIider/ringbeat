@@ -24,7 +24,6 @@ test('settings: empty or corrupt storage gives defaults', async () => {
     assert.equal(s.scrollTime, 1.6);
     assert.equal(s.backing, false);
     assert.equal(s.calibration, 0);
-    assert.equal(s.difficulty, 'normal');
     assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
     assert.equal(s.tutorialDone, false);
     assert.equal(s.tutorialLessons, 0);
@@ -68,12 +67,11 @@ test('settings: boolean flags default on except backing', async () => {
   assert.equal(s.backing, false);
 });
 
-test('settings: difficulty, sort and category only accept known values', async () => {
+test('settings: sort and category only accept known values', async () => {
   let { settings: s } = await load({ difficulty: 'hard', view: { sort: 'bpm', category: 'ndw' } });
-  assert.equal(s.difficulty, 'hard');
+  assert.equal(s.difficulty, undefined); // the difficulty setting is gone
   assert.deepEqual(s.view, { sort: 'bpm', category: 'ndw' });
   ({ settings: s } = await load({ difficulty: 'insane', view: { sort: 'random', category: 'metal' } }));
-  assert.equal(s.difficulty, 'normal');
   assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
   ({ settings: s } = await load({ view: { sort: 'diff-desc' } })); // the old Hardest first option is gone
   assert.equal(s.view.sort, 'diff-asc');
@@ -161,13 +159,11 @@ test('settings: pad bindings and mods are sanitized', async () => {
 test('settings: saveSettings persists and a reload reads it back', async () => {
   const { settings, saveSettings, store } = await load({});
   settings.volume = 0.3;
-  settings.difficulty = 'hard';
   globalThis.localStorage = { setItem: (k, v) => store.set(k, v) };
   saveSettings();
   delete globalThis.localStorage;
   const again = await load(store.get('ringbeat.v1'));
   assert.equal(again.settings.volume, 0.3);
-  assert.equal(again.settings.difficulty, 'hard');
 });
 
 test('settings: num helper', async () => {

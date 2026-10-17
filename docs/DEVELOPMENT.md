@@ -66,7 +66,7 @@ audio/canvas:
 |---|---|
 | `assets.test.mjs` | Glyph table and bold cut, glyphs for every song title, committed TTFs match the glyph table, sprites, cover art |
 | `audiostate.test.mjs` | AudioContext resume / interruption handling, Game pause and resume |
-| `boardsview.test.mjs` | The World boards page: song list filter / sort, custom and single-difficulty songs, ETag revalidation, bad answers, remembered view |
+| `boardsview.test.mjs` | The World boards page: song list filter / sort, custom songs, ETag revalidation, bad answers, remembered view |
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
 | `cloud.test.mjs` | Cloud save end to end: the Worker in `server/` over an in-memory SQLite D1 stand-in (sign-in, CORS, revisions, runs, account deletion), leaderboards (re-played scores, bad runs, RULES, best per player, opt-out, moderation, flags, the cron) and two simulated devices syncing |
 | `cloudmerge.test.mjs` | Cloud merges: shared document (settings, favourites, songs, deletes), combined scores and stats, the stores' sync hooks |

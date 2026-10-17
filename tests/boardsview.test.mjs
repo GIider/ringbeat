@@ -2,22 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSnapshot, loadBoard, songRows, loadView, saveView, VIEW_KEY } from '../src/boardsview.js';
 
-const entry = (id, title, category, extra = {}) => ({ id, title, tag: '', category, stars: { normal: 2, hard: 3 }, rating: { normal: 3, hard: 6 }, ...extra });
+const entry = (id, title, category, extra = {}) => ({ id, title, tag: '', category, chart: 'normal', stars: { normal: 2, hard: 3 }, rating: { normal: 3, hard: 6 }, ...extra });
 const entries = [
   entry('a', 'Alpha', 'pop'), entry('b', 'Bravo', 'classical', { rating: { normal: 8, hard: 9 } }),
-  entry('c', 'Charlie', 'pop', { only: 'normal' }), entry('custom:x', 'Mine', 'custom'),
+  entry('c', 'Charlie', 'pop', { chart: 'hard' }), entry('custom:x', 'Mine', 'custom'),
 ];
 const row = (name, score, playedAt = 0) => ({ rank: 1, name, score, grade: 'A', playedAt });
-const snap = { rules: 1, built: 1, boards: { 'a|normal': [row('Ann', 500, 10)], 'b|normal': [row('Bo', 900, 5)], 'c|normal': [row('Cy', 100, 99)] } };
+const snap = { rules: 1, built: 1, boards: { 'a|normal': [row('Ann', 500, 10)], 'b|normal': [row('Bo', 900, 5)], 'c|hard': [row('Cy', 100, 99)] } };
 const resp = (body, { status = 200, etag = '' } = {}) => ({ ok: status < 400, status, headers: { get: h => (h === 'ETag' ? etag : null) }, json: async () => body });
 
-test('custom songs and songs without a board at this difficulty are left out', () => {
-  assert.deepEqual(songRows(snap, entries, 'normal').map(r => r.entry.id), ['a', 'b', 'c']);
-  assert.deepEqual(songRows(snap, entries, 'hard').map(r => r.entry.id), ['a', 'b']);
+test('custom songs are left out and each song shows the board of its own chart', () => {
+  const rows = songRows(snap, entries);
+  assert.deepEqual(rows.map(r => r.entry.id), ['a', 'b', 'c']);
+  assert.equal(rows[2].leader.name, 'Cy'); // c plays Hard: its board is c|hard
 });
 
-test('filters by category and by title, sorts by title, difficulty, score and recency', () => {
-  const ids = (o, d = 'normal') => songRows(snap, entries, d, o).map(r => r.entry.id);
+test('filters by category and by title, sorts by title, rating, score and recency', () => {
+  const ids = o => songRows(snap, entries, o).map(r => r.entry.id);
   assert.deepEqual(ids({ category: 'pop' }), ['a', 'c']);
   assert.deepEqual(ids({ query: ' BRA ' }), ['b']);
   assert.deepEqual(ids({ sort: 'diff-asc' }), ['a', 'c', 'b']);
@@ -27,7 +28,7 @@ test('filters by category and by title, sorts by title, difficulty, score and re
 
 test('a song without runs has no leader and sorts last by score', () => {
   const empty = { boards: { 'b|normal': [row('Bo', 900)] } };
-  const rows = songRows(empty, entries, 'normal', { sort: 'score' });
+  const rows = songRows(empty, entries, { sort: 'score' });
   assert.deepEqual(rows.map(r => r.entry.id), ['b', 'a', 'c']);
   assert.equal(rows[1].leader, null);
 });
@@ -60,12 +61,12 @@ test('a deep board asks for the song id encoded', async () => {
 test('the remembered view survives junk and blocked storage', () => {
   const mem = {};
   const st = { getItem: k => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; } };
-  assert.deepEqual(loadView(st), { category: 'all', diff: 'normal', sort: 'title' });
-  saveView(st, { category: 'pop', diff: 'hard', sort: 'score' });
-  assert.deepEqual(loadView(st), { category: 'pop', diff: 'hard', sort: 'score' });
+  assert.deepEqual(loadView(st), { category: 'all', sort: 'title' });
+  saveView(st, { category: 'pop', sort: 'score' });
+  assert.deepEqual(loadView(st), { category: 'pop', sort: 'score' });
   mem[VIEW_KEY] = '{"category":"x","diff":"y","sort":"z"}';
-  assert.deepEqual(loadView(st), { category: 'all', diff: 'normal', sort: 'title' });
+  assert.deepEqual(loadView(st), { category: 'all', sort: 'title' });
   const blocked = { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); } };
-  assert.equal(loadView(blocked).diff, 'normal');
-  saveView(blocked, { category: 'all', diff: 'normal', sort: 'title' });
+  assert.equal(loadView(blocked).sort, 'title');
+  saveView(blocked, { category: 'all', sort: 'title' });
 });

@@ -34,7 +34,6 @@ function fromRaw(raw) {
   netTracker: raw.netTracker === true,   // developer: the cloud request log
   comboPopup: raw.comboPopup !== false, // 50-combo milestones: "N COMBO" banner, frame flash and shake (the chirp always plays)
   calibration: num(raw.calibration, -0.5, 0.5, 0),
-  difficulty: ['normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
     sort: ['diff-asc', 'title', 'bpm', 'length', 'fav'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
     category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom', 'favorites', 'recent', 'unplayed'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',

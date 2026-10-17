@@ -56,9 +56,9 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - **Songs:**
   - 249 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
-  - 2 difficulties (Normal, Hard) with bot-measured ratings.
+  - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
 - **Scoring:**
-  - Local highscores (top 5 per song and difficulty).
+  - Local highscores (top 5 per song).
   - Optional online profile with world leaderboards (see [Online](#online-optional)).
   - Full combo / all perfect indicators.
   - Timing histogram.
@@ -83,7 +83,7 @@ the game never needs the network and `localStorage` stays the source of truth.
 
 - **Sign in with GitHub** (Menu → Profile). Settings, favorites, my songs, scores and stats then follow you to every
   device. Scores and stats from all your devices count together, and *Reset scores & stats* resets them all.
-- **World leaderboards** rank each player's best run per song and difficulty. The score on a board is always the
+- **World leaderboards** rank each player's best run per song. The score on a board is always the
   server's: the game uploads your key presses and the API re-plays them through the same game code, so a claimed score
   can't be faked. Runs under older scoring rules don't rank ("Not ranked: update the game").
 - **Where you see it:** *World #n of total* on the results screen, the world top 10 under your own runs on each song,
@@ -97,7 +97,7 @@ the game never needs the network and `localStorage` stays the source of truth.
 
 `D F J K` play the 4 lanes; on touch, tap the lanes; on a gamepad, use the d-pad / face buttons / shoulders. `Esc` pauses and `R` restarts.
 In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or click the phone's Menu, C and ▲▼ keys and keypad.
-On song select, `D`/`F` changes the sort, `.` toggles the difficulty, `J`/`K` jump between groups and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
+On song select, `D`/`F` changes the sort, `J`/`K` jump between groups and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
 
 ## Documentation
 

@@ -10,11 +10,11 @@ assets are made in the repo, with no runtime dependencies and no build step.
 ## Screens & flow
 
 ```
-title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶ select ─▶ difficulty ─▶ play ─▶ results ─▶ select
+title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶ select ─▶ song ─▶ play ─▶ results ─▶ select
                │                                                          │          ▲ │
                │                                                          │          │ └─ pause ─▶ resume (3-2-1) | restart
                │                                                          │          │           | settings | back to select
-               │                                                          └─ Mods ─▶ mods screen ─▶ back to difficulty
+               │                                                          └─ Mods ─▶ mods screen ─▶ back to the song screen
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
                ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
                ├─ 4 Messages ─▶ inbox ─▶ message
@@ -30,7 +30,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Login prompt | Shown once per device after the tutorial (played or skipped, or *No thanks* on the tutorial prompt) to a player who isn't signed in: *Sign in with GitHub* / *Not now*. |
 | Tutorial prompt | Shown the first time Tones is opened, unless the player has already picked a song: *Play tutorial* / *No thanks*. See [Tutorial](#tutorial). |
 | Song select | Covered in the [Song select](#song-select) section below. |
-| Difficulty | Song art, BPM and length; one row each for Normal and Hard (stars + rating, note count; the last-played difficulty is preselected); the focused difficulty's top runs below ("No plays yet" until played). A *Mods* button (gamepad X) shows the active loadout, e.g. `Mods: 1.2x HD ▸`, and opens the Mods screen. |
+| Song | Song art, BPM and length; a *Play* row (stars + rating, note count); the song's top runs below ("No plays yet" until played). A *Mods* button (gamepad X) shows the active loadout, e.g. `Mods: 1.2x HD ▸`, and opens the Mods screen. |
 | Mods | Speed, Mirror, Hidden, Sudden death, Demo (autoplay), Judging; a live score multiplier; *Reset all*. See [Modifiers](#modifiers). |
 | Play | Covered in the [Play screen](#play-screen) section below. |
 | Pause | *Resume* (with a 3-2-1 "GET READY" countdown; audio stays frozen meanwhile), *Restart*, *Settings*, and *Tones* (or the screen the run came from). Back resumes. During the tutorial, *Back to lesson* replaces the last button. Play also pauses when the tab is hidden or a gamepad disconnects. |
@@ -50,17 +50,16 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   songs; it appears only when there are some, and they always sort last.
 - **Changing the view:**
   - Category: ←→, `[` `]`, LB/RB, a swipe, or the ◄► arrows in the header.
-  - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Difficulty* (easiest first, the default),
+  - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Rating* (easiest first, the default),
     *Title*, *BPM*, *Duration* (grouped in 10 s steps) and *Favorites* (favorites first).
-  - List difficulty: `.` (toggles), or tapping the difficulty chip.
 - **Favorites:** a *Favorites* category chip (after the others) appears once a song is favorited. `V`, or clicking / tapping the icon of the selected row (or the space beside it, so a fingertip does not start the song), toggles a song's favorite (saved in the settings; custom
   songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
-- **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved on the shown difficulty (not
+- **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved (not
   necessarily in the best run).
 - **Footer:** stars + rating, note count, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide
   screens (no hint line on the LCD).
 - **Selecting and playing:** focusing or tapping a row selects it, and an optional 10 s preview plays. Confirming,
-  double-clicking or re-tapping the selected row opens the difficulty screen.
+  double-clicking or re-tapping the selected row opens the song screen.
 - **Rating:** `1 + 16.2 ×` the position on an eight-level simulated skill ladder where bots start full-combo-ing the
   chart at least half the time, capped at 10. Stars = rating ÷ 1.4. Unmeasured songs show an estimate. See
   [SONGS.md › Difficulty ratings](SONGS.md#difficulty-ratings).
@@ -107,7 +106,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   difficulty, Copy share link, Delete (two-step).
   The list menu exports or imports everything (`.json`, or RTTTL lines).
 - **Difficulty:** custom songs show the density estimate with a `~` (e.g. `~2.5`). *Calculate difficulty* runs the bot
-  ladder on both difficulties (with a progress bar; press again to stop) and stores the result with the song. Editing
+  ladder on the song's chart (with a progress bar; press again to stop) and stores the result with the song. Editing
   the melody clears it.
 - **Share links** carry the rating; an imported rating stays unverified (`~`) until *Recalculate*. Formats and versioning:
   [SONGS.md › Custom songs](SONGS.md#custom-songs-my-songs).
@@ -134,12 +133,12 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## Gameplay
 
-- **Difficulty:** Normal and Hard, both with 4 lanes.
+- **Charts:** every song has one chart with 4 lanes, generated at Hard or Normal settings (the `difficulty` option of `generateChart`). There is no difficulty choice.
   - Hard keeps every note except ones closer than 90 ms to the previous one; those go to the auto-played backing.
-  - A song whose Normal and Hard charts differ by at most 2 notes (`COLLAPSE_MAX`, `src/library.js`) has a single
-    difficulty (`entry.only`): Hard if its Hard rating is at least 5.0 (2.5 stars), else Normal. It stays in both lists.
-    On the other difficulty its row is dimmed with "Only on X" in the footer, the difficulty screen disables that row,
-    and starting it plays `only`. This applies to custom songs too; their rating, calculated or estimated, decides.
+  - A song whose Normal and Hard charts differ by at most 2 notes (`COLLAPSE_MAX`, `src/library.js`) plays
+    one chart (`entry.only`): Hard if its Hard rating is at least 5.0 (2.5 stars), else Normal. Every other song plays
+    Hard. The result is `entry.chart`, which scores, runs and boards are keyed by. This applies to custom songs too;
+    their rating, calculated or estimated, decides.
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
   The following are also derived from the RTTTL text, with no authoring needed:
   - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
@@ -192,12 +191,12 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   Highscores and stats from every signed-in device are shown combined: pooled top 5, summed plays and counters, play
   days counted once. Resetting scores & stats while signed in resets every device. Details:
   [CLOUD.md](CLOUD.md).
-- Every finished run that makes the local top 5 is also uploaded (song, difficulty, score, grade, accuracy, combo,
+- Every finished run that makes the local top 5 is also uploaded (song, chart, score, grade, accuracy, combo,
   FC/AP, mods, time, and the run's inputs as a replay) for the [world leaderboards](#world-leaderboards).
 
 ## Highscores
 
-- Stored locally (`ringbeat.scores.v1`) per song id and difficulty: the top 5 runs and a play count.
+- Stored locally (`ringbeat.scores.v1`) per song id and chart: the top 5 runs and a play count.
 - A run stores score, grade, accuracy, max combo, fc, ap and date, plus the `mods` tags and `mult` for modded runs.
   Runs are ranked by score; on a tie, the newer run ranks below the older one.
 - Custom songs are keyed by a hash of their RTTTL text, so scores follow the melody.
@@ -206,7 +205,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## World leaderboards
 
-- One board per song id and difficulty: each player's best run, ranked by score (on a tie, the earlier run first).
+- One board per song id and chart (the one the song plays): each player's best run, ranked by score (on a tie, the earlier run first).
   Built-in and custom songs both have boards.
 - The score on a board is the server's: it re-plays the run's inputs. Runs without a replay (from before 2.1) and
   runs played under older scoring rules (`RULES`) don't rank. Details: [CLOUD.md › Leaderboards](CLOUD.md#leaderboards).
@@ -214,7 +213,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Any
   other run shows the world rank last seen for that board, or nothing when there is none yet. Signed out: *Sign in
   for world ranks*.
-- **Song detail** (the difficulty picker): the world top 10 for the focused difficulty, under the local top runs.
+- **Song detail** (the song screen): the world top 10, under the local top runs.
   Boards are readable signed out; they are cached for a minute.
 
 ## Stats
@@ -225,7 +224,6 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - lifetime score (after mods) and best combo;
   - judgement totals, ghost taps and FC/AP runs;
   - modded and My-songs runs;
-  - runs and playtime per difficulty;
   - first/last play, days played, and the current and best play-day streak (consecutive local days).
 
   Neither the tutorial nor Demo runs are counted.
@@ -236,8 +234,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Time:** total playtime, runs, finished, days played, play-day streak.
   - **Score:** lifetime score count-up, best combo, average per run, favourite song, modded and My-songs runs.
   - **Top:** every played song by play count, scrollable with ▲▼.
-  - **Grades:** songs per best grade S–D as bars, FC/AP counts, played/total. The left soft key *Diff* cycles
-    All / Normal / Hard.
+  - **Grades:** songs per best grade S–D as bars, FC/AP counts, played/total.
   - **Notes:** lifetime judgement mix, accuracy, ghost taps, FC/AP runs.
   - **Online:** signed in: average world rank, boards, world #1s, top 10s and the best boards. Signed out: a sign-in hint.
 
@@ -258,7 +255,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 - The multiplier is the product of the active mods, capped at 2.0 (no floor) (except Demo, which forces 0), and is folded
   into the stored score. Grade and accuracy stay raw.
 - Mod tags (e.g. `1.2x HD`) are stored with the run and shown in the HUD, in top runs and on results.
-- Difficulty stars are rated on the unmodded chart. The difficulty screen's Mods button shows the active loadout, and
+- Stars are rated on the unmodded chart. The song screen's Mods button shows the active loadout, and
   the multiplier is shown on the Mods screen and on results.
 
 ## Tutorial

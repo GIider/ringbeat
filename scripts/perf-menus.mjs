@@ -74,7 +74,7 @@ async function scenarios({ customs }) {
   await run('select: cycle category ([ ] x8)', Array.from({ length: 8 }, () => ['BracketRight']));
   // Pin the view: the category cycle above ends wherever the number of category tabs happens to leave it.
   const onAll = () => { rb.settings.view.category = 'all'; };
-  await run('select: cycle difficulty (K x6)', Array.from({ length: 6 }, () => ['KeyK']), { setup: onAll });
+  await run('select: jump groups (K x6)', Array.from({ length: 6 }, () => ['KeyK']), { setup: onAll });
   await run('select: cycle sort (F x6)', Array.from({ length: 6 }, () => ['KeyF']));
   await idle('select: idle 2 s (preview + cameo)', 2000);
   await run('stats: open + flip pages', [['Enter'], ['ArrowRight'], ['ArrowRight'], ['ArrowRight'], ['ArrowRight'], ['ArrowLeft'], ['ArrowLeft'], ['ArrowLeft'], ['ArrowLeft'], ['Escape']],
