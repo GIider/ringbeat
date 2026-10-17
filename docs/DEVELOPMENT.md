@@ -24,9 +24,9 @@ Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html`
 | `npm run dev:cloud` | Live-reload game server **plus** the local Worker/D1 with bot-filled boards and a GitHub-free sign-in ([CLOUD.md](CLOUD.md#local-development)). `npm run dev:cloud:fresh` first wipes the local D1 |
 | `npm run songs:fetch` | Downloads and unpacks the credited song libraries into the gitignored `song-libs/` once (`-- --force` refreshes) |
 | `npm run seed` | Re-fills the local D1 with bot players and their server-verified runs (`--bots=`, `--songs=`, `--seed=`); `npm run seed:reset` removes only the bots |
-| `npm test` | Node unit tests (`tests/*.test.mjs`), then the headless Chromium smoke test, then the cut-off text audit |
+| `npm test` | Node unit tests (`tests/*.test.mjs`), the headless Chromium smoke test and the cut-off text audit, run side by side (`scripts/test-all.mjs`) |
 | `npm run smoke` | Only the smoke test (`scripts/smoke.mjs` → `tests/smoke.html`) |
-| `npm run audit:overflow` | Only the cut-off text audit (`scripts/overflow-audit.mjs`): English and German at 320-900px, fails on text that is clipped without the marquee |
+| `npm run audit:overflow` | Only the cut-off text audit (`scripts/overflow-audit.mjs`): English and German at 320-900px, fails on text that is clipped without the marquee  (`AUDIT_JOBS=n` sets how many language/viewport runs go in parallel, default 4) |
 | `npm run coverage` | Node unit tests with `--experimental-test-coverage` |
 | `npm run build` | Stage the runtime files into `dist/`, version-stamped (see [RELEASING.md](RELEASING.md#the-dist-build)) |
 | `npm run bench` | Re-measure every built-in song with the bot ladder → `src/difficulty.json` (`-- --runs N`, default 30; see [SONGS.md](SONGS.md#difficulty-ratings)) |

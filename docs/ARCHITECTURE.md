@@ -103,6 +103,7 @@ scripts/
   lib/botrun.mjs      a bot plays a song headlessly and the run is encoded as the game uploads it (seed-local, cloud.test)
   smoke.mjs           runs tests/smoke.html in headless Playwright browsers
   overflow-audit.mjs  visits the screens in en/de at 320-900px and fails on cut-off text without the marquee
+  test-all.mjs        `npm test`: runs the unit tests, smoke and overflow-audit side by side and prints each stage
   build-dist.mjs      stages dist/ and stamps its version.js
   version-lib.mjs     derives the version from the changelog + git
   build-font.mjs      compiles src/pixelfont.js to assets/fonts/*.ttf

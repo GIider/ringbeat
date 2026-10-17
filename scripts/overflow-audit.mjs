@@ -14,8 +14,10 @@ const LOCALES = { en: 'en-US', de: 'de-DE' };
 // compact phones below 470px LCD use the 20px font, 480+ the 30px one; 900x1100 is the desktop phone frame
 const VIEWPORTS = [[320, 640], [360, 740], [480, 800], [900, 1100]];
 const DEMOS = ['menu', 'select', 'info', 'pause', 'results', 'fc', 'settings', 'stats', 'message'];
+const JOBS = Number(process.env.AUDIT_JOBS) || 4;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const click = async (page, sel) => { await page.evaluate(sel => document.querySelector(sel)?.click(), sel); await sleep(60); };
+// two animation frames: the click handler's DOM changes have been laid out and painted
+const click = async (page, sel) => { await page.evaluate(async sel => { document.querySelector(sel)?.click(); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); }, sel); };
 // one saved song with a long name, so My songs, the song menu and the Custom category are exercised
 const SEED_SONG = [{ uid: 'audit1', name: 'My Extremely Long Custom Song', rtttl: 'My Extremely Long Custom Song:d=4,o=5,b=140:c,d,e,f,g,a,b,c6,c6,b,a,g,f,e,d,c' }];
 
@@ -54,90 +56,96 @@ function scan(BY_DESIGN) {
 const report = [];
 const reached = new Map(); // what each visit actually showed (AUDIT_VERBOSE=1 prints it), so a broken click path doesn't pass silently
 async function visit(page, ctx, screen) {
-  await sleep(120);
+  await page.evaluate(async () => { await document.fonts.ready; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); });
   reached.set(screen.replace(/\/.*|\d+\/\d+.*/, '') + '→' + await page.evaluate(() => [...document.querySelectorAll('.screen:not([hidden])')].map(e => e.id).join('+')), 1);
   for (const b of await page.evaluate(scan, BY_DESIGN)) report.push({ ...ctx, screen, ...b });
+}
+
+// One language at one viewport, in its own browser context.
+async function auditCombo(browser, lang, w, h) {
+  const context = await browser.newContext({ locale: LOCALES[lang] || lang, viewport: { width: w, height: h } });
+  await context.route(url => url.href.startsWith(API_BASE + '/'), route => route.fulfill({ status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: '{"error":"sign in"}' }));
+  const ctx = { lang, vp: `${w}x${h}` };
+  await context.addInitScript(songs => { try { if (!localStorage.getItem('ringbeat.songs.v1')) localStorage.setItem('ringbeat.songs.v1', JSON.stringify(songs)); } catch { /* storage blocked */ } }, SEED_SONG);
+  const open = async q => {
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${port}/${q}`);
+    await page.waitForSelector('.statusbar');
+    await page.evaluate(() => document.fonts.ready);
+    return page;
+  };
+  for (const kind of DEMOS) {
+    const page = await open(`index.html?demo=${kind}`);
+    await visit(page, ctx, kind);
+    if (kind === 'settings') {
+      for (const tab of await page.$$eval('#set-tabs [data-tab]', b => b.map(x => x.dataset.tab))) {
+        await click(page, `#set-tabs [data-tab=${tab}]`);
+        await visit(page, ctx, 'settings/' + tab);
+      }
+      await click(page, '#btn-glyphs');
+      await visit(page, ctx, 'glyphs');
+    }
+    if (kind === 'info') {
+      await click(page, '#btn-mods');
+      await visit(page, ctx, 'mods');
+    }
+    if (kind === 'stats') {
+      for (let i = 1; i < 6; i++) { await page.keyboard.press('ArrowRight'); await visit(page, ctx, 'stats/page ' + (i + 1)); }
+    }
+    if (kind === 'select') {
+      // every category tab, then the two hubs
+      const first = await page.$eval('#sel-cat', e => e.textContent);
+      for (let i = 0; i < 12; i++) {
+        await click(page, '#sel-arrow-r');
+        await visit(page, ctx, 'select/' + (await page.$eval('#sel-cat', e => e.textContent)));
+        if ((await page.$eval('#sel-cat', e => e.textContent)) === first) break;
+      }
+      await click(page, '#sel-cat');
+      await visit(page, ctx, 'hub/categories');
+      await page.keyboard.press('Escape');
+      await click(page, '#sel-sort');
+      await visit(page, ctx, 'hub/sort');
+      await page.keyboard.press('Escape');
+      await click(page, '#sel-find');
+      await visit(page, ctx, 'select/find');
+    }
+    await page.close();
+  }
+  // every main menu item (the title is big type), the screen behind it, and the sub-screens that need a click or a saved song
+  for (let i = 0; i < 6; i++) {
+    const page = await open('index.html?demo=menu');
+    for (let k = 0; k < i; k++) await click(page, '#mm-next');
+    const title = await page.$eval('#mm-title', e => e.textContent);
+    await visit(page, ctx, 'menu/' + title);
+    await click(page, '#mm-go');
+    await visit(page, ctx, 'open/' + title);
+    if (i === 1) {
+      await click(page, '#ms-new'); await visit(page, ctx, 'composer');
+      await page.keyboard.press('Escape'); await click(page, '#ms-paste'); await visit(page, ctx, 'rtttl text');
+      await page.keyboard.press('Escape');
+      await click(page, '#ms-list button'); await visit(page, ctx, 'song menu');
+    }
+    if (i === 3) { await click(page, '#inbox-list button'); await visit(page, ctx, 'message'); }
+    await page.close();
+  }
+  // screens that only show in a run or a first visit: the markup and its translations, unhidden by hand
+  for (const id of ['title', 'tutprompt', 'loginprompt', 'tutorial', 'calib', 'msgload', 'profile', 'results', 'pause', 'admin', 'nowplaying']) {
+    const page = await open('index.html?demo=menu');
+    await page.evaluate(id => { for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id; }, id);
+    await visit(page, ctx, 'markup/' + id);
+    await page.close();
+  }
+  await context.close();
 }
 
 async function run() {
   for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${port}/`); break; } catch { await sleep(100); } }
   const browser = await engines[process.env.AUDIT_BROWSER || 'chromium'].launch();
   try {
-    for (const lang of LANGS) for (const [w, h] of VIEWPORTS) {
-      const context = await browser.newContext({ locale: LOCALES[lang] || lang, viewport: { width: w, height: h } });
-      await context.route(url => url.href.startsWith(API_BASE + '/'), route => route.fulfill({ status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: '{"error":"sign in"}' }));
-      const ctx = { lang, vp: `${w}x${h}` };
-      await context.addInitScript(songs => { try { if (!localStorage.getItem('ringbeat.songs.v1')) localStorage.setItem('ringbeat.songs.v1', JSON.stringify(songs)); } catch { /* storage blocked */ } }, SEED_SONG);
-      const open = async q => {
-        const page = await context.newPage();
-        await page.goto(`http://127.0.0.1:${port}/${q}`);
-        await page.waitForSelector('.statusbar');
-        await page.evaluate(() => document.fonts.ready);
-        return page;
-      };
-      for (const kind of DEMOS) {
-        const page = await open(`index.html?demo=${kind}`);
-        await visit(page, ctx, kind);
-        if (kind === 'settings') {
-          for (const tab of await page.$$eval('#set-tabs [data-tab]', b => b.map(x => x.dataset.tab))) {
-            await click(page, `#set-tabs [data-tab=${tab}]`);
-            await visit(page, ctx, 'settings/' + tab);
-          }
-          await click(page, '#btn-glyphs');
-          await visit(page, ctx, 'glyphs');
-        }
-        if (kind === 'info') {
-          await click(page, '#btn-mods');
-          await visit(page, ctx, 'mods');
-        }
-        if (kind === 'stats') {
-          for (let i = 1; i < 6; i++) { await page.keyboard.press('ArrowRight'); await visit(page, ctx, 'stats/page ' + (i + 1)); }
-        }
-        if (kind === 'select') {
-          // every category tab, then the two hubs
-          const first = await page.$eval('#sel-cat', e => e.textContent);
-          for (let i = 0; i < 12; i++) {
-            await click(page, '#sel-arrow-r');
-            await visit(page, ctx, 'select/' + (await page.$eval('#sel-cat', e => e.textContent)));
-            if ((await page.$eval('#sel-cat', e => e.textContent)) === first) break;
-          }
-          await click(page, '#sel-cat');
-          await visit(page, ctx, 'hub/categories');
-          await page.keyboard.press('Escape');
-          await click(page, '#sel-sort');
-          await visit(page, ctx, 'hub/sort');
-          await page.keyboard.press('Escape');
-          await click(page, '#sel-find');
-          await visit(page, ctx, 'select/find');
-        }
-        await page.close();
-      }
-      // every main menu item (the title is big type), the screen behind it, and the sub-screens that need a click or a saved song
-      for (let i = 0; i < 6; i++) {
-        const page = await open('index.html?demo=menu');
-        for (let k = 0; k < i; k++) await click(page, '#mm-next');
-        const title = await page.$eval('#mm-title', e => e.textContent);
-        await visit(page, ctx, 'menu/' + title);
-        await click(page, '#mm-go');
-        await visit(page, ctx, 'open/' + title);
-        if (i === 1) {
-          await click(page, '#ms-new'); await visit(page, ctx, 'composer');
-          await page.keyboard.press('Escape'); await click(page, '#ms-paste'); await visit(page, ctx, 'rtttl text');
-          await page.keyboard.press('Escape');
-          await click(page, '#ms-list button'); await visit(page, ctx, 'song menu');
-        }
-        if (i === 3) { await click(page, '#inbox-list button'); await visit(page, ctx, 'message'); }
-        await page.close();
-      }
-      // screens that only show in a run or a first visit: the markup and its translations, unhidden by hand
-      for (const id of ['title', 'tutprompt', 'loginprompt', 'tutorial', 'calib', 'msgload', 'profile', 'results', 'pause', 'admin', 'nowplaying']) {
-        const page = await open('index.html?demo=menu');
-        await page.evaluate(id => { for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id; }, id);
-        await visit(page, ctx, 'markup/' + id);
-        await page.close();
-      }
-      await context.close();
-    }
+    const combos = LANGS.flatMap(lang => VIEWPORTS.map(([w, h]) => [lang, w, h]));
+    await Promise.all(Array.from({ length: Math.min(JOBS, combos.length) }, async () => {
+      for (let c; (c = combos.shift());) await auditCombo(browser, ...c);
+    }));
   } finally {
     await browser.close();
   }

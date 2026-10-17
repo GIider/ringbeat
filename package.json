@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "start": "node scripts/serve.mjs",
-    "test": "node --test --test-reporter=./scripts/lib/quiet-reporter.mjs tests/*.test.mjs && node scripts/smoke.mjs && node scripts/overflow-audit.mjs",
+    "test": "node scripts/test-all.mjs",
     "dev": "node scripts/serve.mjs --dev",
     "dev:cloud": "node scripts/dev-cloud.mjs",
     "dev:cloud:fresh": "node scripts/dev-cloud.mjs --fresh",
