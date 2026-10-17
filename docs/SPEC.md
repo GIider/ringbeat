@@ -255,7 +255,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 | Judging | Lenient / Normal / Strict | hit windows ×1.4 / ×1 / ×0.7 (slide windows and roll reach too) | ×0.80 / ×1 / ×1.15 |
 | Demo (autoplay) | on/off | a bot plays the run perfectly; your input is ignored; nothing is saved or counted in stats | ×0 |
 
-- The multiplier is the product of the active mods, clamped to 0.5–2.0 (except Demo, which forces 0), and is folded
+- The multiplier is the product of the active mods, capped at 2.0 (no floor) (except Demo, which forces 0), and is folded
   into the stored score. Grade and accuracy stay raw.
 - Mod tags (e.g. `1.2x HD`) are stored with the run and shown in the HUD, in top runs and on results.
 - Difficulty stars are rated on the unmodded chart. The difficulty screen's Mods button shows the active loadout, and

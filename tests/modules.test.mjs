@@ -340,8 +340,8 @@ test('mods: multiplier combines hidden and sudden, is clamped and zero for demo'
   assert.equal(k, Math.round(M.HIDDEN_MULT * M.SUDDEN_MULT * 100) / 100);
   assert.equal(M.multiplier({ demo: true, hidden: true }), 0);
   const all = M.multiplier({ speed: 1.3, judge: 'strict', hidden: true, sudden: true });
-  assert.ok(all <= M.MULT_MAX && all >= M.MULT_MIN);
-  assert.ok(M.multiplier({ speed: 0.8, judge: 'lenient' }) >= M.MULT_MIN);
+  assert.ok(all <= M.MULT_MAX);
+  assert.equal(M.multiplier({ speed: 0.5, judge: 'lenient' }), 0.4);
 });
 
 // ---- input clock ----

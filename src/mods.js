@@ -7,7 +7,7 @@ const JUDGE_SCALE = { lenient: 1.4, off: 1, strict: 0.7 };
 const JUDGE_MULT = { lenient: 0.8, off: 1, strict: 1.15 };
 export const HIDDEN_MULT = 1.1;
 export const SUDDEN_MULT = 1.2;
-export const MULT_MIN = 0.5, MULT_MAX = 2;
+export const MULT_MAX = 2;
 
 export const DEFAULT_MODS = Object.freeze({ speed: 1, mirror: false, hidden: false, sudden: false, judge: 'off', demo: false });
 
@@ -29,12 +29,12 @@ export function isActive(mods) {
   return m.speed !== 1 || m.mirror || m.hidden || m.sudden || m.judge !== 'off' || m.demo;
 }
 
-// Combined score multiplier (product of the active mods, clamped).
+// Combined score multiplier (product of the active mods, capped at ×2).
 export function multiplier(mods) {
   const m = normalize(mods);
   if (m.demo) return 0; // autoplay: never scores
   const k = SPEED_MULT[m.speed] * JUDGE_MULT[m.judge] * (m.hidden ? HIDDEN_MULT : 1) * (m.sudden ? SUDDEN_MULT : 1);
-  return Math.max(MULT_MIN, Math.min(MULT_MAX, Math.round(k * 100) / 100));
+  return Math.min(MULT_MAX, Math.round(k * 100) / 100);
 }
 
 // Short tags in a stable order, e.g. ['1.2x', 'HD', 'SD'] (stored on score records and shown as chips).
