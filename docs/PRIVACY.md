@@ -69,6 +69,8 @@ Under the GDPR (and similar laws) you can:
 - **Correct it.** Change your player name on the Profile screen.
 - **Delete it.** **Delete online profile** (Profile screen, press twice) removes the profile and everything stored with
   it from the server at once. Your devices keep their own local data.
+  **Reset scores & stats** (Settings) while signed in deletes your stored runs and replays too, so they leave the
+  leaderboards, and clears your other devices.
 - **Object or limit it.** Switch **On leaderboards** to Off to stop being shown publicly. To object to anything else,
   use the contact above.
 - **Withdraw.** **Sign out** (Profile screen) ends sign-in on that device. The device keeps its own data; the online

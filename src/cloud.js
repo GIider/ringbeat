@@ -211,6 +211,14 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     return st.outbox.slice(0, n);
   }
 
+  // A reset deletes the player's runs on the server: what still waits to go up, and the ranks seen so far, go too.
+  // The first `sending` outbox entries are in a request right now and stay (the server drops them if they are old).
+  function dropOnlineRuns() {
+    st.outbox.splice(sending);
+    st.ranks = {};
+    st.myRanks = { at: 0, rows: [] };
+  }
+
   // Takes the answer's shared document (the server's merge of what this device sent with what it had). -> changed parts.
   function applySharedDoc(remote, changed) {
     const merged = mergeShared(localShared(), remote); // this device may have changed things while the request ran
@@ -219,7 +227,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     st.resetAt = merged.resetAt;
     if (st.resetAt > st.resetSeen) {
       // Scores and stats were reset on another device: this device's own numbers go too.
-      scores.clear(); stats.clear();
+      scores.clear(); stats.clear(); dropOnlineRuns();
       st.resetSeen = st.resetAt;
       changed.add('progress');
     }
@@ -548,6 +556,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     markReset() {
       if (!st.token) return; // a reset while signed out stays on this device
       st.resetAt = st.resetSeen = now();
+      dropOnlineRuns();
       persist();
       showRemote();
       kick(500);

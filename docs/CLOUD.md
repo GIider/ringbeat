@@ -33,7 +33,10 @@ The data falls into two kinds, which avoids nearly all conflicts.
 - **Reset scores & stats** while signed in resets every device:
   - the shared document's `resetAt` moves forward;
   - on its next sync, every device clears its own data;
-  - slots older than `resetAt` are ignored until their device uploads again.
+  - slots older than `resetAt` are ignored until their device uploads again;
+  - the Worker deletes the player's stored runs played up to `resetAt` (so they leave the leaderboards), remembers it in
+    `users.reset_at`, and refuses to store runs played before it (a device that was offline). Later runs stay;
+  - a device also drops its waiting runs and the ranks it has seen.
 
   A reset while signed out stays on that device.
 

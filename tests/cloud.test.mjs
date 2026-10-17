@@ -549,6 +549,40 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
   assert.ok(Object.values(v).every(x => x.verified !== 1), 'junk replays never rank');
 });
 
+test('leaderboards: a reset deletes the player\'s runs up to then; newer and other players\' runs stay; old runs are not stored again', async () => {
+  const srv = server();
+  const a = device(srv), b = device(srv), bob = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await b.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await bob.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
+  const { run, result } = played('ode', 'normal', LADDER[4]);
+  const opts = { replay: run.replay, rules: RULES, loadout: null };
+  a.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], opts);
+  bob.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], opts);
+  await a.cloud.submit(); await bob.cloud.submit();
+  const names = async () => (await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name).sort();
+  assert.deepEqual(await names(), ['Alice', 'Bob']);
+
+  // A queues a run, then resets before it goes up: the queue is emptied too.
+  a.cloud.queueRun('ode', 'hard', { ...result, date: 55 }, [], opts);
+  a.t.now = 60;
+  a.scores.clear(); a.stats.clear(); a.cloud.markReset();
+  assert.equal(a.cloud.pendingRuns(), 0);
+  await rebuildBoards(srv.env, 1_500_000);
+  await a.cloud.sync();
+  assert.equal(srv.env.DB.db.prepare('SELECT dirty FROM board_tops').get().dirty, 1, 'the snapshot is marked for a rebuild');
+  assert.deepEqual(await names(), ['Bob'], 'only the resetting player\'s runs go');
+  assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) n FROM runs').get().n, 1);
+
+  // B was offline with a run from before the reset: the server refuses it. A newer run is stored.
+  b.cloud.queueRun('ode', 'normal', { ...result, date: 40 }, [], opts);
+  b.cloud.queueRun('ode', 'hard', { ...result, date: 70 }, [], opts);
+  await b.cloud.submit();
+  const rows = srv.env.DB.db.prepare('SELECT song_id, diff, played_at FROM runs ORDER BY played_at').all();
+  assert.ok(!rows.some(r => r.played_at === 40), 'a run played before the reset is not stored');
+  assert.ok(rows.some(r => r.played_at === 70));
+});
+
 // ---- request budget: few requests, none during play, never in the way (docs/CLOUD.md › Requests) ----
 
 // Timers the test fires by hand.
