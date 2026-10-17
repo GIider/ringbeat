@@ -414,6 +414,9 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .legend kbd { display: inline-block; min-width: 22px; text-align: center; border: var(--u) solid #6f8060; border-bottom-width: 4px;
   border-radius: 4px; padding: 0 4px; margin-right: 4px; font: inherit; color: #c4d6a8; }
 
+body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
+body.selkeys-on.in-select .sel-hint { display: none; }
+
 /* ---------- marquee for overlong titles ---------- */
 .scrolls { text-overflow: clip; }
 .mq { display: inline-block; vertical-align: top; }

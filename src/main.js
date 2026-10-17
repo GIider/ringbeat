@@ -117,6 +117,7 @@ const inPlay = () => state === 'countin' || state === 'playing' || state === 're
 function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  document.body.classList.toggle('in-select', name === 'select');
   if (name !== 'select') dismissBubble();
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
@@ -2265,6 +2266,23 @@ function selectHints() {
   const bn = buttonName;
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
+  // Wide screens list every key beside the phone; the LCD line is the fallback and flips between pages.
+  const rows = pad
+    ? [[[bn(BTN.LB), bn(BTN.RB)], tr('Category')], [[bn(BTN.LT)], tr('Sort')], [[bn(BTN.Y)], tr('All categories')],
+      [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X)], tr('Random')]]
+    : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Difficulty')], [['V'], tr('Favorite')],
+      [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [[',', '.'], tr('Group')], [['/'], tr('Find')]];
+  const side = $('sel-keys');
+  side.replaceChildren();
+  const head = document.createElement('b');
+  head.textContent = tr('Song list');
+  side.append(head);
+  for (const [keys, label] of rows) {
+    const div = document.createElement('div');
+    for (const k of keys) { const kbd = document.createElement('kbd'); kbd.textContent = k; div.append(kbd); }
+    div.append(' ' + label);
+    side.append(div);
+  }
   // Two pages of hints, flipped every few seconds (the line is only one or two LCD rows tall).
   const pages = pad
     ? [tr('{lb}/{rb} Cat · {lt} Sort · {y} Cats', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT), y: bn(BTN.Y) }),
@@ -2273,7 +2291,7 @@ function selectHints() {
   $('sel-hint').textContent = pages[hintPage % pages.length];
 }
 let hintPage = 0;
-setInterval(() => { if (state === 'select') { hintPage++; selectHints(); } }, 4500);
+setInterval(() => { if (state === 'select' && !document.body.classList.contains('selkeys-on')) { hintPage++; selectHints(); } }, 4500);
 
 pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); syncSettingsTabs(); };
 pad.onDisconnect = () => {
@@ -3053,6 +3071,8 @@ function layout(animate = false) {
   const lg = $('legend');
   body.classList.toggle('legend-on', !compact && x >= 286);
   lg.style.left = Math.max(16, x - 270) + 'px';
+  body.classList.toggle('selkeys-on', !compact && vw - (x + w) >= 286);
+  $('sel-keys').style.left = x + w + 16 + 'px';
   if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
 }

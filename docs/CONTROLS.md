@@ -120,7 +120,8 @@ A disconnect during play pauses the game. Controllers appear to the browser only
 
 ## On-screen hints
 
-- **Song select:** the hint line under the list flips between short pages of the navigation keys (`◄► Cat · D/F Sort · J/K Diff`,
+- **Song select:** on wide screens every navigation key is listed in a panel to the right of the phone and the list keeps
+  the rows. On narrow or compact screens the hint line under the list flips between short pages of the navigation keys (`◄► Cat · D/F Sort · J/K Diff`,
   `V Fav · R Random · G Cats`, `PgUp/PgDn Page · ,/. Group · / Find` on keyboard; `LB/RB Cat · LT Sort · Y Cats`,
   `RT/Back Group · X Random` once a controller is used). With a controller, the category arrows in the header also become
   LB / RB.
