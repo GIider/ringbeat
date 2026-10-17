@@ -86,8 +86,9 @@ export const de = {
   'Sign out': 'Abmelden',
   'Delete online profile': 'Online-Profil löschen',
   'Online profiles are not available yet.': 'Online-Profile gibt es noch nicht.',
-  'Sign in to keep settings, scores and songs in sync on all your devices. Stored online: your GitHub user number, a player name and your game data.':
-    'Melde dich an, um Einstellungen, Punkte und Songs auf all deinen Geräten gleich zu halten. Online gespeichert: deine GitHub-Nutzernummer, ein Spielername und deine Spieldaten.',
+  'Sign in to keep settings, scores and songs in sync on all your devices.':
+    'Melde dich an, um Einstellungen, Punkte und Songs auf all deinen Geräten gleich zu halten.',
+  'Privacy policy': 'Datenschutzerklärung',
   'Synced {time}': 'Synchronisiert {time}',
   'Not synced yet': 'Noch nicht synchronisiert',
   'Working…': 'Moment…',

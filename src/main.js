@@ -986,7 +986,7 @@ function renderProfile() {
   const at = cloud.lastSync();
   $('pf-msg').textContent = pfMsg ||
     (!cloud.available() ? tr('Online profiles are not available yet.')
-    : !on ? tr('Sign in to keep settings, scores and songs in sync on all your devices. Stored online: your GitHub user number, a player name and your game data.')
+    : !on ? tr('Sign in to keep settings, scores and songs in sync on all your devices.')
     : at ? tr('Synced {time}', { time: new Date(at).toLocaleString(getLang(), { dateStyle: 'short', timeStyle: 'short' }) })
     : tr('Not synced yet'));
 }
@@ -2289,6 +2289,7 @@ function wire() {
     pfDeleteArmed = 0;
     profileAction(() => cloud.deleteAccount(), tr('Online profile deleted'));
   };
+  $('pf-privacy').onclick = () => window.open('https://github.com/GIider/ringbeat/blob/main/docs/PRIVACY.md', '_blank', 'noopener,noreferrer');
 
   // one song
   $('sm-play').onclick = () => { const e = curEntry(); if (e) askDifficulty(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };

@@ -18,7 +18,7 @@ a quick start; come here for the details.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Module map of `src/`, `scripts/` and `tests/`, key design decisions, storage keys |
 | [CLOUD.md](CLOUD.md) | Online profiles, cloud save and leaderboards: sync model, sign-in flow, replay verification, the API in `server/`, setup and deploy |
-| [PRIVACY.md](PRIVACY.md) | What an online profile stores and how to delete it |
+| [PRIVACY.md](PRIVACY.md) | What an online profile stores and why, who receives it, your rights, and how to delete it |
 
 ## Contributing
 

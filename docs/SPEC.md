@@ -170,8 +170,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## Profile
 
-- **Signed out** (the default): the card reads *Player 1*. *Sign in with GitHub* is offered, with a short note on what
-  is stored online. The button is disabled, with "Online profiles are not available yet.", until the game is built
+- **Signed out** (the default): the card reads *Player 1*. *Sign in with GitHub* is offered. The button is disabled, with "Online profiles are not available yet.", until the game is built
   with an API address.
 - **Signed in:** the card shows the online player name (at first the GitHub display name or username, else `Player-XXXX`). The screen offers:
   - *Sync now*;
@@ -179,6 +178,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - *On leaderboards: On/Off* (Off: the player's runs leave the public boards; they still see their own rank);
   - *Sign out*;
   - *Delete online profile* (press twice; this device keeps its own data).
+
+  *Privacy policy* is always shown (signed in or out). It opens [PRIVACY.md](PRIVACY.md) on GitHub in a new tab.
 
   The line below shows when the last sync was.
 - **What syncs:**
