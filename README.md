@@ -31,7 +31,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 ## Features
 
 - **Songs:**
-  - 153 built-in songs (10 of them full-length) in 7 categories.
+  - 183 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - 2 difficulties (Normal, Hard) with bot-measured ratings.
 - **Scoring:**
@@ -91,7 +91,7 @@ holders. The RTTTL strings come from:
   [rtttl3](http://picaxe.com/downloads/rtttl3.zip), [rtttl_tv](http://picaxe.com/downloads/rtttl_tv.zip),
   [rtttl_xmas](http://picaxe.com/downloads/rtttl_xmas.zip)). Used for German/European songs, pop, Eurodance, and TV & Film.
 - **FlipperMusicRTTTL**: <https://github.com/neverfa11ing/FlipperMusicRTTTL> (including ArcadeTones and the 10k song
-  archive). Used for the NDW & Synth and Video Games additions.
+  archive). Used for the NDW & Synth and Video Games additions (NES, SNES and Arcade folders).
 - **Traditional / public-domain tunes** (classical, folk, nursery, and the "Full" arrangements) were written by hand.
 
 Credit is per collection, not per song. The RTTTL format itself is described in [docs/SONGS.md](docs/SONGS.md#rtttl-format).
