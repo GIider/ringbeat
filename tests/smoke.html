@@ -111,11 +111,15 @@ f.addEventListener('load', async () => {
       nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0, vibrationActuator: { type: 'dual-rumble', playEffect: () => Promise.resolve() } }];
       await sleep(700);
       log(where() === 'pad-extras', 'vibration under Controller with a rumble pad (' + where() + ')');
+      // A phone has touch and navigator.vibrate; desktop Firefox and WebKit have no vibrate at all, so fake it
       Object.defineProperty(nav, 'maxTouchPoints', { value: 5, configurable: true });
+      const hadVibrate = 'vibrate' in nav;
+      if (!hadVibrate) Object.defineProperty(nav, 'vibrate', { value: () => true, configurable: true });
       d.querySelector('#set-tabs [data-tab=sound]').click(); await sleep(700);
       d.querySelector('#set-tabs [data-tab=effects]').click();
       log(where() === 'effects', 'vibration under Effects on a phone (' + where() + ')');
       delete nav.maxTouchPoints;
+      if (!hadVibrate) delete nav.vibrate;
       d.querySelector('#set-tabs [data-tab=effects]').click();
       log(where() === 'pad-extras', 'vibration back under Controller on desktop (' + where() + ')');
     }
