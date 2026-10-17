@@ -541,7 +541,7 @@ test('leaderboards: runs over a request\'s budget are verified later; automated-
   assert.deepEqual(flagged.runs.map(x => x.flags).sort(), ['flat', 'flat,bot']);
 });
 
-test('leaderboards: the client uploads replays, gets the verdict and reads boards signed out', async () => {
+test('leaderboards: the client uploads replays, gets the verdict and reads boards once signed in', async () => {
   const srv = server();
   const a = device(srv);
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
@@ -554,7 +554,11 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
 
   const anon = device(srv);
   assert.equal(anon.cloud.queueRun('ode', 'normal', result), null, 'signed out: nothing queued');
-  const b = await anon.cloud.board('ode', 'normal');
+  assert.equal(await anon.cloud.board('ode', 'normal'), null, 'signed out: no board, no request');
+  assert.equal(anon.calls.length, 0);
+  const viewer = device(srv);
+  await viewer.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
+  const b = await viewer.cloud.board('ode', 'normal');
   assert.deepEqual(b.runs.map(x => [x.name, x.score]), [['Alice', result.score]]);
 
   // A big outbox goes up in several requests below the API's body limit; old replays give way first.
@@ -722,11 +726,15 @@ test('requests: a hung request times out and does not block the next; keepalive 
   assert.equal(cloud.pendingRuns(), 0);
 });
 
-test('requests: signed out, only the leaderboard snapshot, without credentials, once for every song', async () => {
+test('requests: signed out sends nothing; signed in, the leaderboard snapshot goes without credentials, once for every song', async () => {
   const srv = server();
   const anon = device(srv);
   anon.cloud.schedule(); anon.cloud.flush(); anon.cloud.wake();
   await anon.cloud.sync();
+  assert.equal(await anon.cloud.board('ode', 'normal'), null);
+  assert.deepEqual(anon.calls, []);
+  await anon.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  anon.calls.length = 0;
   assert.equal(await anon.cloud.board('ode', 'normal').then(b => b.runs.length), 0);
   await anon.cloud.board('ode', 'hard');
   await anon.cloud.board('jingle', 'normal');

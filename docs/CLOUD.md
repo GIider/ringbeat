@@ -7,8 +7,8 @@ favourites, my songs, scores and stats the same on every device. A new best on a
 the server, and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
-- Signed out, nothing changes: `localStorage` is the only store. The only request is the leaderboard snapshot for
-  the difficulty picker (one every 30 seconds at most, never waited for).
+- Signed out, nothing changes: `localStorage` is the only store and the game sends no request at all. The leaderboard
+  snapshot is first requested once the player is signed in.
 - Signed in, `localStorage` is still the source of truth, and the network is never in the way: no sync starts
   while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
   [Requests](#requests).
@@ -194,7 +194,7 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (a ranked run patches a cached overview from the answer); it goes with whatever else is waiting |
 | The results screen's World page | Nothing: the top 10 come from `GET /boards`, the players around the player from the push that ranked the run |
 | After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
-| The difficulty picker, app start | `GET /boards`, at most once per 30 seconds for every song (the screen repaints when a newer one arrives) (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
+| The difficulty picker, app start | Signed in only (signed out sends no request): `GET /boards`, at most once per 30 seconds for every song (the screen repaints when a newer one arrives) (kept in `ringbeat.boards.v1`); the menu warms it at start and right after signing in. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
 
 How it stays small:
 - **Dirty checks.** The client keeps fingerprints of the shared document and of its own slot as last synced. A

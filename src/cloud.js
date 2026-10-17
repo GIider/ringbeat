@@ -521,10 +521,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     serverRules: () => st.rules,
 
     // The world top runs of one song and difficulty, from the leaderboard snapshot (one request for every song, kept
-    // for BOARDS_TTL; `onFresh(view)` is called again if a newer snapshot arrives). Works signed out. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
+    // for BOARDS_TTL; `onFresh(view)` is called again if a newer snapshot arrives). Needs a sign-in: signed out sends no request. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
     // ap, mods, playedAt }] } or null.
     async board(songId, diff, onFresh) {
-      if (!apiBase) return null;
+      if (!apiBase || !st.token) return null;
       const t = now();
       if (t - boards.at >= BOARDS_TTL && t - boards.failedAt >= 60e3 && !boards.loading) {
         boards.loading = request('GET', '/boards', undefined, { auth: false, why: 'boards' }).then(v => {

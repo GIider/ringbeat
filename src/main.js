@@ -2550,9 +2550,9 @@ function wire() {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync('signed in'); } }, () => toast('Sign-in failed'));
+    else cloud.takeLoginHash(hash).then(ok => { if (ok) { toast('Signed in'); cloud.sync('signed in'); cloud.board('', 'normal'); } }, () => toast('Sign-in failed'));
   } else cloud.sync('start');
-  cloud.board('', 'normal'); // warms the world snapshot if it is stale, so the first picker and results are instant
+  cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
