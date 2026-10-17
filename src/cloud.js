@@ -21,7 +21,7 @@ const KEEPALIVE_MAX = 60_000;      // browsers drop keepalive bodies over 64 KB
 export const PULL_EVERY = 10 * 60e3;   // the tab coming back pulls only when the last sync is older than this
 export const PUSH_EVERY = 10 * 60e3;   // new scores, stats and runs wait at most this long (or until the tab is hidden)
 export const SHARED_DELAY = 30e3;      // settings, favourites and my songs: changes come in bursts
-export const BOARDS_TTL = 15 * 60e3;   // the leaderboard snapshot (the server rebuilds it every 15 minutes)
+export const BOARDS_TTL = 30e3;   // the leaderboard snapshot (the server patches it as runs rank; fetched when a screen asks)
 export const RANKS_TTL = 10 * 60e3;    // the stats screen's overview of the player's ranks
 export const SYNC_COOLDOWN = 30e3;     // the Sync button: once per this, counted from the last sync or press
 const BUSY_RETRY = 5e3;
@@ -481,9 +481,9 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     serverRules: () => st.rules,
 
     // The world top runs of one song and difficulty, from the leaderboard snapshot (one request for every song, kept
-    // for BOARDS_TTL). Works signed out. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
+    // for BOARDS_TTL; `onFresh(view)` is called again if a newer snapshot arrives). Works signed out. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
     // ap, mods, playedAt }] } or null.
-    async board(songId, diff) {
+    async board(songId, diff, onFresh) {
       if (!apiBase) return null;
       const t = now();
       if (t - boards.at >= BOARDS_TTL && t - boards.failedAt >= 60e3 && !boards.loading) {
@@ -494,8 +494,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         }).catch(() => { boards.failedAt = now(); }).finally(() => { boards.loading = null; });
       }
       if (boards.loading && !boards.value) await boards.loading; // an old snapshot shows while a new one loads
-      const v = boards.value;
-      return v ? { rules: v.rules, runs: v.boards[songId + '|' + diff] || [] } : null;
+      const view = () => boards.value ? { rules: boards.value.rules, runs: boards.value.boards[songId + '|' + diff] || [] } : null;
+      // An old snapshot is answered at once; `onFresh` gets the view again when the load in flight lands.
+      if (onFresh && boards.loading && boards.value) boards.loading.then(() => { if (boards.value) onFresh(view()); });
+      return view();
     },
     // Where a score would land, from the snapshot alone (no request): { rank, total } for the top 3, else null. A guess:
     // the snapshot is up to 25 minutes old, so the answer to submit() has the last word.

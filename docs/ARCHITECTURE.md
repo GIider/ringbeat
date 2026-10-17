@@ -172,7 +172,7 @@ defaults.
 | `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
 | `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |
 | `ringbeat.cloud.v1` | `cloud.js` | Online profile: token, profile, last sync, other devices' scores and stats, run outbox, reset marks, sync fingerprints, last world ranks |
-| `ringbeat.boards.v1` | `cloud.js` | The leaderboard snapshot (`GET /boards`) and when it came, kept 15 minutes |
+| `ringbeat.boards.v1` | `cloud.js` | The leaderboard snapshot (`GET /boards`) and when it came, kept 30 seconds |
 | `ringbeat.device.v1` | `cloud.js` | This device's random id |
 | `ringbeat.api` | `main.js` | Developer override of the API address (see [CLOUD.md](CLOUD.md#local-development)) |
 | `ringbeat.perf` | `main.js` | Profiler left on with F3 |

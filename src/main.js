@@ -1174,13 +1174,18 @@ function paintDpLocal(e, d, box) {
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
 }
-// The world top runs from the leaderboard snapshot (cached 15 minutes) and the players around the player's rank.
+// The world top runs from the leaderboard snapshot (refreshed after 30 seconds) and the players around the player's rank.
 async function paintDpWorld(e, d, box) {
   const msg = text => { box.innerHTML = `<div class="hint">${esc(text)}</div>`; };
   const near = cloud.rankNear(e.id, d) || [];
   if (!near.length) msg(tr('Loading…'));
-  const b = await cloud.board(e.id, d);
-  if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || dpTab !== 'world') return;
+  const show = b => {
+    if (dpEntry !== e || (dpEntry.only || dpDiff) !== d || dpTab !== 'world') return;
+    paintDpWorldLines(b, near, box, msg);
+  };
+  show(await cloud.board(e.id, d, show));
+}
+function paintDpWorldLines(b, near, box, msg) {
   const lines = b && b.rules === RULES ? worldLines(b.runs, near) : [];
   if (!lines.length) return msg(tr('No world ranks yet.'));
   const ol = document.createElement('ol');
@@ -1674,7 +1679,7 @@ function paintWorld(songId, diff, token = worldToken) {
     say(ol.children.length ? '' : tr('No world ranks yet.'));
   };
   if (near.length) paint([]); else say(tr('Loading…'));
-  cloud.board(songId, diff).then(b => paint((b && b.runs) || []));
+  cloud.board(songId, diff, b => paint((b && b.runs) || [])).then(b => paint((b && b.runs) || []));
 }
 async function showWorldRank(songId, diff, runId, isNewBest, score) {
   const el = $('r-world'), token = worldToken;

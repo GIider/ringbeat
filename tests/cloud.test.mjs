@@ -664,7 +664,7 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   const boards = async () => (await srv.call('/boards')).json();
   const first = await boards();
   assert.deepEqual(first.boards['ode|normal'].map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]]);
-  assert.equal((await srv.call('/boards')).headers.get('Cache-Control'), 'public, max-age=600');
+  assert.equal((await srv.call('/boards')).headers.get('Cache-Control'), 'public, max-age=10, stale-while-revalidate=30');
   srv.tick(1000);
   await rebuildBoards(srv.env, 2_000_000);
   assert.equal((await boards()).built, first.built, 'nothing changed: no rebuild');
@@ -674,6 +674,23 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   const later = await boards();
   assert.equal(later.built, 3_000_000);
   assert.equal(later.boards['ode|normal'], undefined, 'opted out');
+});
+
+test('POST /sync: a run in the top 3 is in the GET /boards snapshot at once, without the cron', async () => {
+  const srv = server();
+  const a = device(srv), b = device(srv);
+  await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
+  await b.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
+  const boards = async () => (await srv.call('/boards')).json();
+  assert.deepEqual((await boards()).boards, {}, 'the snapshot exists and is empty');
+  for (const [d, skill] of [[a, LADDER[2]], [b, LADDER[4]]]) {
+    const { run, result: res } = played('ode', 'normal', skill);
+    d.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    await d.cloud.submit();
+    srv.tick(1000);
+  }
+  const top = (await boards()).boards['ode|normal'];
+  assert.deepEqual(top.map(r => [r.rank, r.name]), [[1, 'Bob'], [2, 'Alice']]);
 });
 
 test('POST /sync: the players around a new rank come back; the ranks overview is one request, then cached', async () => {

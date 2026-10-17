@@ -28,6 +28,6 @@ simple = { limit = 60, period = 60 }
 
 # Re-plays runs that waited (more than a request's budget at once, or posted while the Worker had other RULES).
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/5 * * * *"]
 
 # Moderation routes (/admin/*, docs/CLOUD.md) answer only with this secret: `npx wrangler secret put ADMIN_TOKEN`.

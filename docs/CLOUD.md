@@ -8,7 +8,7 @@ the server, and runs the server could re-play itself rank on public **leaderboar
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
 - Signed out, nothing changes: `localStorage` is the only store. The only request is the leaderboard snapshot for
-  the difficulty picker (one every 15 minutes at most, never waited for).
+  the difficulty picker (one every 30 seconds at most, never waited for).
 - Signed in, `localStorage` is still the source of truth, and the network is never in the way: no sync starts
   while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
   [Requests](#requests).
@@ -119,7 +119,7 @@ Runs without a replay, such as older clients and the backfill, are kept with `ve
 
 **CPU.** Chart plus replay of the longest song takes about 1.5 ms. The free plan allows 10 ms of CPU per request,
 so each request re-plays at most 4 runs (3 when it also merges the shared document). The others wait with
-`verified = 0`. A cron trigger (every 15 minutes) re-plays waiting runs 20 at a time, then rebuilds the
+`verified = 0`. A cron trigger (every 5 minutes) re-plays waiting runs 20 at a time, then rebuilds the
 [board snapshot](#requests) if anything changed.
 
 **What it does not stop.** Replay verification proves that a score is what its inputs earn. It doesn't prove that a
@@ -183,7 +183,7 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | The stats screen's Online page | One `POST /sync` with `wantRanks`, only when the overview is over 10 minutes old (a ranked run patches a cached overview from the answer); it goes with whatever else is waiting |
 | The results screen's World page | Nothing: the top 3 come from `GET /boards`, the players around the player from the push that ranked the run |
 | After the tutorial | Nothing until the player agrees to sign in (asked once per device, `loginAsked`) |
-| The difficulty picker, app start | `GET /boards`, once per 15 minutes for every song (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
+| The difficulty picker, app start | `GET /boards`, at most once per 30 seconds for every song (the screen repaints when a newer one arrives) (kept in `ringbeat.boards.v1`); the menu warms it at start. A ranked run patches its board in the snapshot. Signed-in players see a World tab (first) and a Local tab; signed-out players see only their local runs |
 
 How it stays small:
 - **Dirty checks.** The client keeps fingerprints of the shared document and of its own slot as last synced. A
@@ -196,7 +196,7 @@ How it stays small:
   5 after a 429). The Sync button ignores the backoff.
 - **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 3 of every song
   and difficulty. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
-  changed. A new best shows up there within 15 minutes; the player's own rank is fresh on the results screen.
+  changed. A run that ranks in the top 3 is written into the snapshot by the sync that ranked it, so other players see it within about 30 seconds (names, opt-outs and hides wait for the cron's rebuild, every 5 minutes); the player's own rank is fresh on the results screen.
 - **No preflights for public reads.** `GET /boards` sends no credentials, so the browser needs no CORS preflight.
   Signed-in requests go to one URL, so one preflight is cached for all of them.
 
@@ -214,7 +214,7 @@ the device keeps its own data.
 | `GET /me` | → `{profile: {id, name, created, public, logins}}` |
 | `DELETE /me` | Deletes the profile and everything stored with it |
 | `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?, wantRanks?}` | The game's one sync request; every part optional (see below) |
-| `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 min |
+| `GET /boards` | **No sign-in needed.** The top 3 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |
 | `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
 | `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
 | `/admin/*` (`flagged`, `hide`, `verify`, `players`, `runs`, `ban`, `run/delete`, `player/delete`, `unflag`, `stats`, `purge`, `rebuild`, `log`) | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
