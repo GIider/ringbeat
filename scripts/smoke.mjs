@@ -8,10 +8,17 @@ import { API_BASE } from '../src/cloud.js';
 import { SONGS } from '../src/songs.js';
 
 const port = 20000 + Math.floor(Math.random() * 10000);
-const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: 'ignore' });
+const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
 const engines = { chromium, firefox, webkit };
 const names = (process.env.SMOKE_BROWSERS || 'chromium').split(',');
 let code = 0;
+async function openMenu(page, query = '') {
+  await page.goto(`http://127.0.0.1:${port}/${query}`);
+  await page.waitForFunction(() => window.__ringbeat?.state === 'title');
+  await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__ringbeat.state === 'menu' && document.activeElement === document.getElementById('mm-go'));
+}
 async function run(name) {
   let browser, ok = false;
   try {
@@ -33,7 +40,6 @@ async function run(name) {
     await page.waitForFunction(() => /\d+ passed, \d+ failed/.test(document.getElementById('out').textContent), null, { timeout: 90000 });
     const out = await page.evaluate(() => document.getElementById('out').textContent);
     console.log(`[${name}${dev ? ' / ' + dev : ''}]`, out.split('\n').filter(l => !l.startsWith('PASS')).join('\n').trim());
-    for (const l of out.split('\n').filter(l => l.startsWith('WARN'))) console.log(`::warning title=Smoke test (${name})::${l.slice(5)}`);
     if (errors.length) console.log('page errors:', [...new Set(errors)].join(' | '));
     ok = /, 0 failed/.test(out) && !errors.length;
     if (ok) ok = await adminSmoke(context, name);
@@ -69,10 +75,7 @@ async function adminSmoke(context, name) {
       const p2 = await context.newPage();
       await p2.route(url => url.href.startsWith(API_BASE) && !url.pathname.startsWith('/admin/'), r => r.abort());
       await p2.addInitScript(d => localStorage.setItem('ringbeat.cloud.v1', JSON.stringify({ token: 'x', profile: { id: 'u', name: 'Me', logins: ['github'], ...(d && { dev: true }) } })), dev);
-      await p2.goto(`http://127.0.0.1:${port}/`);
-      await p2.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
-      await p2.keyboard.press('Space');
-      await p2.waitForSelector('#mm-title');
+      await openMenu(p2);
       await p2.keyboard.press('7');
       const title = await p2.locator('#mm-title').innerText();
       const who = await p2.locator('#st-title').innerText();
@@ -93,7 +96,7 @@ async function adminSmoke(context, name) {
       if (good) {
         await p3.waitForSelector('#welcome:not([hidden])');
         await p3.waitForFunction(() => { const c = document.getElementById('welcome-fx'); return c.width > 40 && c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v); }, null, { timeout: 4000 }); // the scene paints the LCD
-        await p3.waitForSelector('#mm-title', { timeout: 9000 });
+        await p3.waitForFunction(() => window.__ringbeat?.state === 'menu');
         if (await p3.evaluate(() => !document.getElementById('welcome-fx').hidden)) { await p3.close(); return fail('intro left its canvas behind'); }
         const who = await p3.locator('#st-title').innerText();
         if (who !== 'Neo') { await p3.close(); return fail(`sign-in intro ended with "${who}" in the title bar`); }
@@ -102,15 +105,12 @@ async function adminSmoke(context, name) {
         // the title's ringing phone paints its canvas, and the canvas goes away with the title
         await p3.waitForFunction(() => { const c = document.getElementById('title-fx'); return !c.hidden && c.width > 40 && c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v); }, null, { timeout: 4000 });
         await p3.keyboard.press('Space');
-        await p3.waitForSelector('#mm-title');
+        await p3.waitForFunction(() => window.__ringbeat?.state === 'menu' && document.activeElement === document.getElementById('mm-go'));
         if (await p3.evaluate(() => !document.getElementById('title-fx').hidden)) { await p3.close(); return fail('title canvas left behind after leaving the title'); }
       }
       await p3.close();
     }
-    await page.goto(`http://127.0.0.1:${port}/?dev`);
-    await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
-    await page.keyboard.press('Space');
-    await page.waitForSelector('#mm-title');
+    await openMenu(page, '?dev');
     await page.keyboard.press('7');
     if ((await text('#mm-title')) !== 'Admin') return fail('no Admin menu item');
     if ((await text('#st-title')) !== '') return fail('signed-out menu has a title bar label');
@@ -120,6 +120,7 @@ async function adminSmoke(context, name) {
     await page.waitForFunction(() => document.getElementById('ad-msg').textContent === 'Wrong token');
     await page.fill('#ad-token', 'tok');
     await page.click('[data-act=unlock]');
+    await page.waitForSelector('[data-act=players]');
     await page.click('[data-act=players]');
     await page.waitForSelector('[data-act=player]');
     if (!(await text('[data-act=player]')).includes('Ann')) return fail('player row missing');
@@ -144,18 +145,21 @@ async function boardsSmoke(context, name) {
   const fail = why => { console.log(`[${name}] boards smoke failed: ${why}`, errors.join(' | ')); return false; };
   try {
     await page.goto(`http://127.0.0.1:${port}/boards.html`);
-    await page.waitForSelector('.bd-row');
+    await page.waitForFunction(() => window.__boards && document.querySelectorAll('.bd-row').length >= 100);
     const rows = await page.locator('.bd-row').count();
     if (rows < 100) return fail('song list too short: ' + rows);
     if (!(await page.locator('.bd-row .lead').filter({ hasText: 'Ann' }).count())) return fail('leader missing from the list');
     await page.locator('.bd-row .lead', { hasText: 'Ann' }).first().click();
     await page.waitForFunction(() => document.querySelectorAll('.bd-table tbody tr').length === 2);
     await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(first => window.__boards.cur !== first, first);
     if ((await page.evaluate(() => window.__boards.cur)) === first) return fail('ArrowDown kept the cursor');
     const cat = () => page.locator('#bd-cats [aria-selected=true]').innerText();
     await page.keyboard.press(']');
+    await page.waitForFunction(() => document.querySelector('#bd-cats [aria-selected=true]').textContent !== 'All');
     if ((await cat()) === 'All') return fail('] did not change the category');
     await page.keyboard.press('[');
+    await page.waitForFunction(() => document.querySelector('#bd-cats [aria-selected=true]').textContent === 'All');
     if ((await cat()) !== 'All') return fail('[ did not wrap back');
     await page.setViewportSize({ width: 390, height: 800 });
     await page.locator('.bd-row').first().click();
@@ -177,9 +181,11 @@ async function resultsEnterSmoke(context, name) {
   try {
     await page.goto(`http://127.0.0.1:${port}/?demo=results`);
     await page.waitForFunction(() => window.__ringbeat && window.__ringbeat.state === 'results', null, { timeout: 15000 });
+    await page.waitForFunction(() => document.activeElement === document.querySelector('#results [data-default]'));
     await page.evaluate(() => { window.__retries = 0; document.getElementById('btn-retry').addEventListener('click', e => { window.__retries++; e.stopImmediatePropagation(); }, true); });
     for (const tab of ['0', '1', '2']) {
       if (tab !== '0') await page.keyboard.press('ArrowRight'); // only the current tab is drawn, so click that one
+      await page.waitForFunction(tab => document.querySelector('#r-tabs .sel')?.dataset.page === tab, tab);
       await page.click('#r-tabs .sel');
       if (await page.evaluate(() => !!document.activeElement.closest('#r-tabs'))) return fail(`tab ${tab} kept focus`);
       const before = await page.evaluate(() => window.__retries);
@@ -200,26 +206,32 @@ async function listWrapSmoke(context, name) {
   const fail = why => { console.log(`[${name}] list-wrap smoke failed: ${why}`, errors.join(' | ')); return false; };
   const cur = () => page.evaluate(() => ({ state: window.__ringbeat.state, id: (document.querySelector('#song-list .cur') || {}).dataset?.id, ids: Array.from(document.querySelectorAll('#song-list > *')).map(b => b.dataset.id).filter(Boolean) }));
   try {
-    await page.addInitScript(() => localStorage.setItem('ringbeat.settings.v1', JSON.stringify({ tutorialDone: true })));
-    await page.goto(`http://127.0.0.1:${port}/`);
-    await page.waitForFunction(() => window.__ringbeat && window.__ringbeat.state === 'title', null, { timeout: 15000 });
-    await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
-    await page.keyboard.press('Space');
-    await page.waitForFunction(() => window.__ringbeat.state === 'menu', null, { timeout: 5000 });
+    await openMenu(page);
     await page.keyboard.press('Digit1');
     await page.evaluate(() => document.getElementById('mm-go').click());
     await page.waitForFunction(() => window.__ringbeat.state === 'select', null, { timeout: 5000 });
-    // jump to the first song, then let the 400 ms "fresh press" guard pass
-    for (let i = 0; i < 100 && (await cur()).id !== (await cur()).ids[0]; i++) { await page.keyboard.press('PageUp'); await page.waitForTimeout(30); }
-    await page.waitForTimeout(500);
+    // Jump to the first song, observing each move before sending the next key.
+    for (let i = 0; i < 100; i++) {
+      const before = await cur();
+      if (before.id === before.ids[0]) break;
+      await page.keyboard.press('PageUp');
+      await page.waitForFunction(id => document.querySelector('#song-list .cur')?.dataset.id !== id, before.id);
+    }
+    // This is the UI's deliberate 400 ms fresh-press guard, not a rendering delay.
+    const now = await page.evaluate(() => performance.now());
+    await page.waitForFunction(start => performance.now() - start > 400, now);
     let c = await cur();
     if (c.id !== c.ids[0]) return fail('could not reach the first song ' + JSON.stringify({ ...c, ids: c.ids.slice(0, 3), n: c.ids.length }));
     await page.keyboard.press('ArrowUp');
+    await page.waitForFunction(() => {
+      const rows = document.querySelectorAll('#song-list [data-id]');
+      return rows.length && rows[rows.length - 1].classList.contains('cur');
+    });
     c = await cur();
     if (c.state !== 'select') return fail(`Up from the first song left the list (${c.state})`);
     if (c.id !== c.ids[c.ids.length - 1]) return fail('Up from the first song did not land on the last song');
     await page.keyboard.press('KeyG');
-    await page.waitForFunction(() => document.getElementById('hub-grid').children.length > 0, null, { timeout: 3000 }).catch(() => {});
+    await page.waitForFunction(() => window.__ringbeat.state === 'hub' && document.getElementById('hub-grid').children.length > 0);
     if (!(await page.evaluate(() => document.getElementById('hub-grid').children.length))) return fail('G no longer opens the category hub');
     if (errors.length) return fail('page errors');
     console.log(`[${name}] list-wrap smoke ok`);
@@ -227,7 +239,25 @@ async function listWrapSmoke(context, name) {
   } catch (e) { return fail(e.message); } finally { await page.close(); }
 }
 try {
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((resolve, reject) => {
+    let output = '';
+    const timer = setTimeout(() => done(new Error('Smoke server did not become ready')), 10000);
+    const done = error => {
+      clearTimeout(timer);
+      server.stdout.off('data', onData);
+      server.off('error', done);
+      server.off('exit', onExit);
+      if (error) reject(error); else resolve();
+    };
+    const onData = data => {
+      output += data;
+      if (output.includes(`http://localhost:${port}`)) done();
+    };
+    const onExit = code => done(new Error(`Smoke server exited before listening (${code})`));
+    server.stdout.on('data', onData);
+    server.once('error', done);
+    server.once('exit', onExit);
+  });
   for (const n of names) if (!(await run(n))) code = 1;
 } finally {
   server.kill();

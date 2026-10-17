@@ -7,14 +7,20 @@
 <pre id="out"></pre>
 <script>
 const out = document.getElementById('out'), f = document.getElementById('f');
-let pass = 0, fail = 0, warn = 0;
-// soft: a failure is reported as WARN and does not fail the run (for timing-sensitive checks)
-const log = (ok, name, extra = '', soft = false) => {
-  if (ok) pass++; else if (soft) warn++; else fail++;
-  const tag = ok ? 'PASS' : soft ? 'WARN' : 'FAIL';
+let pass = 0, fail = 0;
+const log = (ok, name, extra = '') => {
+  if (ok) pass++; else fail++;
+  const tag = ok ? 'PASS' : 'FAIL';
   out.insertAdjacentHTML('beforeend', `<span class="${ok ? 'ok' : 'bad'}">${tag}</span> ${name} ${ok ? '' : extra}\n`);
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function waitFor(test, name, timeout = 10000) {
+  const end = performance.now() + timeout;
+  while (!test()) {
+    if (performance.now() >= end) throw new Error('Timed out waiting for ' + name);
+    await sleep(25);
+  }
+}
 f.addEventListener('load', async () => {
   const w = f.contentWindow, d = w.document, $ = id => d.getElementById(id);
   const errors = [];
@@ -23,93 +29,102 @@ f.addEventListener('load', async () => {
   const vis = id => !$(id).hidden;
   const hookOf = () => w.__ringbeat;
   const key = (code, type = 'keydown') => w.dispatchEvent(new w.KeyboardEvent(type, { code, key: code, bubbles: true }));
+  // Screen changes queue focus work, sometimes in nested animation frames.
+  const settle = async () => {
+    let painted = false;
+    w.requestAnimationFrame(() => w.requestAnimationFrame(() => { painted = true; }));
+    await waitFor(() => painted, 'deferred UI updates');
+  };
   try {
-    for (let i = 0; i < 100 && !w.__ringbeat; i++) await sleep(50); // module + difficulty.json loaded
-    await sleep(100);
+    await waitFor(() => w.__ringbeat && vis('title'), 'game initialization');
+    await d.fonts.ready;
+    await settle();
     w.__ringbeat.settings.tutorialDone = true;
     log(vis('title') && !vis('select'), 'title screen visible');
-    key('Space'); await sleep(100);
+    key('Space'); await settle();
     log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
     log($('soft-left').textContent === 'Select' && $('soft-left').parentElement.classList.contains('solo'), 'menu: single centred Select');
-    for (let i = 0; i < 100 && d.activeElement !== $('mm-go'); i++) await sleep(50); // focus lands in a rAF, which headless WebKit can delay
-    log(d.activeElement === $('mm-go'), 'menu item focused', '', true);
-    key('ArrowDown'); await sleep(50);
+    await waitFor(() => d.activeElement === $('mm-go'), 'menu focus');
+    log(d.activeElement === $('mm-go'), 'menu item focused');
+    key('ArrowDown'); await settle();
     log($('mm-title').textContent === 'My songs' && $('mm-num').textContent === '2', 'down -> next menu item');
-    key('ArrowUp'); key('ArrowUp'); await sleep(50);
+    key('ArrowUp'); key('ArrowUp'); await settle();
     log($('mm-title').textContent === 'Settings' && $('mm-num').textContent === '6', 'menu wraps around');
-    key('4'); await sleep(50);
+    key('4'); await settle();
     log($('mm-title').textContent === 'Messages' && $('mm-hint').textContent.includes('new message'), 'digit jumps to an item; unread hint');
-    key('1'); await sleep(50);
-    $('mm-go').click(); await sleep(100);
+    key('1'); await settle();
+    $('mm-go').click(); await settle();
     log(vis('select') && !vis('menu'), 'Select on Tones -> song select');
     const rows = d.querySelectorAll('.song-row');
     log(rows.length >= 15, `song list has ${rows.length} rows`);
     log($('sel-cat').textContent.length > 0, 'category header: ' + $('sel-cat').textContent);
     const rows2 = d.querySelectorAll('.song-row');
-    rows2[3].click(); rows2[3].focus(); await sleep(50);
+    rows2[3].click(); rows2[3].focus(); await settle();
     log(rows2[3].classList.contains('cur'), 'click selects song');
-    key('ArrowDown'); await sleep(50);
+    key('ArrowDown'); await settle();
     const desc = el => el ? (el.id || el.className) + ':' + (el.textContent || '').slice(0, 20) : 'none';
     log(d.activeElement === rows2[4], 'arrow down moves focus', desc(d.activeElement) + ' vs ' + desc(rows2[4]) + ' idx=' + [...rows2].indexOf(d.activeElement));
     const phoneKey = k => d.querySelector(`#phone .k[data-key="${k}"]`).dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-    phoneKey('8'); await sleep(50);
+    phoneKey('8'); await settle();
     log(d.activeElement === rows2[5], 'keypad 8 moves down');
-    phoneKey('up'); await sleep(50);
+    phoneKey('up'); await settle();
     log(d.activeElement === rows2[4], 'rocker up moves up');
-    phoneKey('down'); await sleep(50);
+    phoneKey('down'); await settle();
     log(d.activeElement === rows2[5], 'rocker down moves down');
     const pointerUp = () => w.dispatchEvent(new w.PointerEvent('pointerup'));
-    phoneKey('softR'); await sleep(1350); pointerUp(); await sleep(250);
+    phoneKey('softR');
+    await waitFor(() => vis('gag') && /Clearing/.test($('gag-text').textContent), 'hold gesture');
+    pointerUp(); await settle();
     log(vis('gag') && /Clearing/.test($('gag-text').textContent) && vis('select'), 'holding C starts the wipe; it runs on after letting go');
     log(!vis('gag-art'), 'wipe shows no avatar');
-    phoneKey('softR'); pointerUp(); await sleep(150);
+    phoneKey('softR'); pointerUp(); await settle();
     log(!vis('gag') && vis('select'), 'tapping C again stops the wipe (no Back)');
     for (const k of ['*', '#', '0', '6', '#']) phoneKey(k);
-    await sleep(50);
+    await settle();
     log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), '*#06# shows the IMEI panel with the avatar');
-    key('KeyX'); await sleep(50);
+    key('KeyX'); await settle();
     log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
     const catOf = () => $('st-title').textContent + ' ' + $('sel-cat').textContent.replace(/^\d+\//, ''); // heading (with category) + total, without the cursor position
     const cat0 = catOf();
-    key('ArrowRight'); await sleep(80);
+    key('ArrowRight'); await settle();
     log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
-    key('ArrowLeft'); await sleep(80);
+    key('ArrowLeft'); await settle();
     log(catOf() === cat0, 'left arrow switches back');
     const sec0 = $('sel-cat').textContent;
-    key('KeyJ'); await sleep(80); key('KeyK'); await sleep(80);
+    key('KeyJ'); await settle(); key('KeyK'); await settle();
     log(vis('select') && $('sel-cat').textContent.length > 0, 'J/K jump groups', sec0);
     log($('soft-left').textContent === 'Select' && /^Tones · ./.test($('st-title').textContent), 'soft keys + status title');
-    d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
+    d.activeElement.click(); await settle(); // Enter on a focused button is a native click
     log(vis('songscreen') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'song screen with details');
     log($('dp-tabs').hidden, 'song screen: no World/Local tabs when signed out');
-    key('Backspace'); await sleep(80);
+    key('Backspace'); await settle();
     log(vis('select'), 'Backspace -> back to select');
-    $('st-title').click(); await sleep(50);
+    $('st-title').click(); await settle();
     log(vis('hub') && $('hub').dataset.title === 'Categories', 'tapping the title bar opens the category screen');
-    key('Backspace'); await sleep(80);
+    key('Backspace'); await settle();
     {
       // Favorite toggle: the icon of the selected row plus the space beside it, so a fingertip doesn't start the song instead.
       const row = d.querySelector('.song-row.cur'), id = row.dataset.id, fav = () => hookOf().settings.favorites.includes(id), was = fav();
       const ir = row.querySelector('.spr.cat').getBoundingClientRect(), rr = row.getBoundingClientRect();
       const tap = x => { const o = { bubbles: true, clientX: x, clientY: ir.top + ir.height / 2, pointerType: 'touch' }, t = d.querySelector('.song-row.cur .t'); // rows are rebuilt on every toggle
         t.dispatchEvent(new w.PointerEvent('pointerdown', o)); t.dispatchEvent(new w.MouseEvent('click', { ...o, detail: 1 })); };
-      tap(ir.right + 8); await sleep(60);
+      tap(ir.right + 8); await settle();
       log(fav() !== was && vis('select'), 'tapping beside the selected row\'s icon toggles the favorite', `fav=${fav()}`);
-      tap(ir.right + 8); await sleep(60);
+      tap(ir.right + 8); await settle();
       log(fav() === was && vis('select'), 'a second tap beside the icon toggles it back');
-      tap(rr.right - 4); await sleep(60);
+      tap(rr.right - 4); await settle();
       log(fav() === was, 'a tap far from the icon does not toggle the favorite');
     }
-    $('sel-sort').click(); await sleep(50);
-    d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await sleep(80);
+    $('sel-sort').click(); await settle();
+    d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await settle();
     log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);
     for (const [sort, re] of [['bpm', /\d+ - \d+$/], ['length', /\d+:\d\d - \d+:\d\d$/]]) {
-      $('sel-sort').click(); await sleep(50);
-      d.querySelector(`#hub-grid [data-sort="${sort}"]`).click(); await sleep(80);
+      $('sel-sort').click(); await settle();
+      d.querySelector(`#hub-grid [data-sort="${sort}"]`).click(); await settle();
       log(re.test($('sel-cat').textContent), `sort by ${sort}: header shows the range`, $('sel-cat').textContent);
     }
-    $('sel-sort').click(); await sleep(50);
-    d.querySelector('#hub-grid [data-sort="title"]').click(); await sleep(80);
+    $('sel-sort').click(); await settle();
+    d.querySelector('#hub-grid [data-sort="title"]').click(); await settle();
     log(!/ - /.test($('sel-cat').textContent), 'sort by title: header shows a letter, no range', $('sel-cat').textContent);
     const v0 = $('set-voice').textContent, voice0 = hookOf().settings.voice, seen = new Set([voice0]);
     $('set-voice').click();
@@ -119,20 +134,20 @@ f.addEventListener('load', async () => {
     log(seen.size === 10 && $('set-voice').textContent === v0, 'tone cycle visits 10 voices and wraps (' + seen.size + ')');
     log(d.body.dataset.mode === 'menu', 'menu mode');
 
-    key('Escape'); await sleep(80);
+    key('Escape'); await settle();
     log(vis('menu') && $('mm-title').textContent === 'Tones', 'back from Tones -> menu');
-    key('6'); await sleep(30); $('mm-go').click(); await sleep(80);
+    key('6'); await settle(); $('mm-go').click(); await settle();
     log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'menu -> settings + 4 bindings');
     // no controller: no Controller tab (Effects -> General), and clicking it goes nowhere
-    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await sleep(30);
+    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await settle();
     log(!d.querySelector('[data-panel=general]').hidden, 'no controller: Effects -> General, Controller tab skipped');
     d.querySelector('#set-tabs [data-tab=controller]').click();
     log(d.querySelector('[data-panel=controller]').hidden, 'no controller: Controller tab unavailable');
     // plug one in while Settings is open
     const nav = d.defaultView.navigator, getPads = nav.getGamepads;
     nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0 }];
-    await sleep(700);
-    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await sleep(30);
+    await waitFor(() => $('pad-status').textContent.includes('Test Pad'), 'controller detection');
+    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await settle();
     log(!d.querySelector('[data-panel=controller]').hidden, 'controller connected: Effects -> Controller tab');
     {
       // Vibration: nowhere on a desktop without rumble; under Controller with a rumble pad; under Effects on a phone
@@ -140,13 +155,13 @@ f.addEventListener('load', async () => {
       d.querySelector('#set-tabs [data-tab=effects]').click();
       log(where() === 'hidden', 'vibration hidden without phone or rumble pad (' + where() + ')');
       nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0, vibrationActuator: { type: 'dual-rumble', playEffect: () => Promise.resolve() } }];
-      await sleep(700);
+      await waitFor(() => where() === 'pad-extras', 'controller rumble settings');
       log(where() === 'pad-extras', 'vibration under Controller with a rumble pad (' + where() + ')');
       // A phone has touch and navigator.vibrate; desktop Firefox and WebKit have no vibrate at all, so fake it
       Object.defineProperty(nav, 'maxTouchPoints', { value: 5, configurable: true });
       const hadVibrate = 'vibrate' in nav;
       if (!hadVibrate) Object.defineProperty(nav, 'vibrate', { value: () => true, configurable: true });
-      d.querySelector('#set-tabs [data-tab=sound]').click(); await sleep(700);
+      d.querySelector('#set-tabs [data-tab=sound]').click(); await settle();
       d.querySelector('#set-tabs [data-tab=effects]').click();
       log(where() === 'effects', 'vibration under Effects on a phone (' + where() + ')');
       delete nav.maxTouchPoints;
@@ -158,10 +173,10 @@ f.addEventListener('load', async () => {
     log(!d.querySelector('[data-panel=controller]').hidden && d.querySelector('[data-panel=sound]').hidden, 'settings tabs: Controller shown, Sound hidden');
     d.querySelector('#bind-grid button').click();
     log(d.querySelector('#bind-grid button').classList.contains('capture'), 'rebind capture mode');
-    key('Escape'); await sleep(50);
+    key('Escape'); await settle();
     log(vis('settings'), 'Esc cancels capture only');
     nav.getGamepads = getPads; // unplug while on the Controller tab -> falls back
-    await sleep(700);
+    await waitFor(() => d.querySelector('[data-panel=controller]').hidden, 'controller disconnection');
     log(d.querySelector('[data-panel=controller]').hidden && !!d.querySelector('#settings .set-panel:not([hidden])'), 'controller removed: leaves the Controller tab');
     {
       // every tab, in every language, stays inside the LCD: tab bar, arrows and panel controls
@@ -175,83 +190,85 @@ f.addEventListener('load', async () => {
       };
       for (const lang of ['English', 'German']) {
         for (const tab of ['sound', 'gameplay', 'effects', 'general', 'developer']) {
-          d.querySelector('#set-tabs [data-tab=' + tab + ']').click(); await sleep(20);
+          d.querySelector('#set-tabs [data-tab=' + tab + ']').click(); await settle();
           const bad = fits();
           log(!bad.length && d.getElementById('settings').scrollWidth <= d.getElementById('settings').clientWidth, 'settings ' + tab + ' fits the LCD (' + lang + ')' + (bad.length ? ': ' + bad.join(',') : ''));
         }
-        if (lang === 'English') { $('set-lang').click(); await sleep(30); }
+        if (lang === 'English') { $('set-lang').click(); await settle(); }
         if (lang === 'German') log(['btn-reset-scores', 'btn-tutorial', 'btn-bind-reset'].every(id => !/^(Reset|Replay)/.test($(id).textContent)), 'settings buttons are translated (German)');
       }
-      $('set-lang').click(); await sleep(30); // back to English
-      d.querySelector('#set-tabs [data-tab=developer]').click(); await sleep(20);
-      $('pref-net').click(); $('pref-perf').click(); await sleep(60);
+      $('set-lang').click(); await settle(); // back to English
+      d.querySelector('#set-tabs [data-tab=developer]').click(); await settle();
+      $('pref-net').click(); $('pref-perf').click(); await settle();
       log(hookOf().settings.netTracker && hookOf().settings.perfOverlay && hookOf().perf.enabled, 'developer tab: both toggles turn on and are saved in the settings');
-      $('pref-perf').click(); $('pref-net').click(); await sleep(60);
+      $('pref-perf').click(); $('pref-net').click(); await settle();
       log(!hookOf().settings.netTracker && !hookOf().settings.perfOverlay && !hookOf().perf.enabled && !d.querySelector('.net-debug'), 'developer tab: both toggles turn off again');
       log(d.querySelectorAll('#set-tabs button:not(.sel)').length === 5 && [...d.querySelectorAll('#set-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'only the current tab is shown');
     }
-    d.querySelector('#set-tabs [data-tab=gameplay]').click(); d.querySelector('#scroll').focus(); await sleep(20);
+    d.querySelector('#set-tabs [data-tab=gameplay]').click(); d.querySelector('#scroll').focus(); await settle();
     log(d.querySelector('#scroll').closest('.menu > *').classList.contains('hl'), 'focused control is highlighted');
-    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs button.sel').focus(); await sleep(20);
+    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs button.sel').focus(); await settle();
     log(!d.querySelector('#settings .hl'), 'tab pager focused: no list item stays highlighted');
-    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs [data-tab=sound]').focus(); key('ArrowRight'); await sleep(50);
+    d.querySelector('#set-tabs [data-tab=sound]').click(); d.querySelector('#set-tabs [data-tab=sound]').focus(); key('ArrowRight'); await settle();
     log(!d.querySelector('[data-panel=gameplay]').hidden, 'ArrowRight on a tab -> next tab');
-    key('Escape'); await sleep(100);
+    key('Escape'); await settle();
     log(vis('menu') && $('mm-title').textContent === 'Settings', 'Esc -> back to the menu on Settings');
 
-    key('2'); await sleep(30); $('mm-go').click(); await sleep(80);
+    key('2'); await settle(); $('mm-go').click(); await settle();
     log(vis('mysongs'), 'menu -> my songs');
-    $('ms-paste').click(); await sleep(50);
+    $('ms-paste').click(); await settle();
     log(vis('custom'), 'paste screen opens');
     $('rtttl').value = 'Zed:d=4,o=5,b=120:c,d,e,f,g'; $('rtttl').dispatchEvent(new w.Event('input'));
     log($('status').className.includes('ok') && !$('btn-custom-play').disabled, 'custom RTTTL accepted');
-    $('btn-custom-save').click(); await sleep(50);
+    $('btn-custom-save').click(); await settle();
     log(w.__ringbeat.mysongs.count() === 1 && vis('songmenu'), 'pasted song saved, song menu shown');
-    $('sm-play').click(); await sleep(50);
+    $('sm-play').click(); await settle();
     log(vis('songscreen'), 'play opens the song screen');
-    key('Escape'); await sleep(50);
+    key('Escape'); await settle();
     log(vis('songmenu'), 'difficulty back to song menu');
     log(/~\d\.\d ★/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Calculate difficulty', 'custom song shows an estimated (~) rating', $('sm-meta').textContent);
-    $('sm-calc').click(); await sleep(20);
+    // Check the transient state before yielding: a short calculation may finish before a timer fires.
+    $('sm-calc').click();
     log(!$('sm-bar').hidden && /Calculating/.test($('sm-msg').textContent), 'calculate shows a progress bar');
-    for (let i = 0; i < 100 && !w.__ringbeat.mysongs.list()[0].rating; i++) await sleep(50);
+    await waitFor(() => w.__ringbeat.mysongs.list()[0].rating && $('sm-bar').hidden, 'difficulty calculation');
     log(!!w.__ringbeat.mysongs.list()[0].rating && $('sm-bar').hidden && $('sm-msg').textContent === 'Difficulty calculated', 'calculation stores the rating and hides the bar');
     log(!/~/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Recalculate difficulty', 'measured rating drops the ~', $('sm-meta').textContent);
-    $('sm-calc').click(); await sleep(5); $('sm-calc').click(); await sleep(150);
+    $('sm-calc').click(); $('sm-calc').click(); await settle();
     log($('sm-bar').hidden && $('sm-msg').textContent === 'Calculation stopped', 'pressing again cancels a running calculation');
-    $('sm-edit').click(); await sleep(50);
+    $('sm-edit').click(); await settle();
     log(vis('composer'), 'composer opens');
-    key('1'); key('3'); key('5'); await sleep(50);
+    key('1'); key('3'); key('5'); await settle();
     log(/^8 notes/.test($('comp-status').textContent), 'keypad adds notes');
-    key('Escape'); await sleep(50);
+    key('Escape'); await settle();
     log(vis('composer') && !$('comp-menu').hidden, 'dirty composer opens menu on back');
-    $('comp-save').click(); await sleep(50);
-    $('comp-exit').click(); await sleep(50);
+    $('comp-save').click(); await settle();
+    $('comp-exit').click(); await settle();
     log(vis('songmenu'), 'composer exit');
-    $('sm-back').click(); await sleep(50);
-    $('ms-back').click(); await sleep(50);
+    $('sm-back').click(); await settle();
+    $('ms-back').click(); await settle();
     log(vis('menu') && $('mm-title').textContent === 'My songs', 'my songs back -> menu');
-    key('1'); await sleep(30); $('mm-go').click(); await sleep(100);
+    key('1'); await settle(); $('mm-go').click(); await settle();
 
-    d.querySelector('.song-row.cur').click(); await sleep(50);
+    d.querySelector('.song-row.cur').click(); await settle();
     log(vis('songscreen'), 'song screen');
     // mods: own screen, sticky loadout, summary on the picker button
     log($('btn-mods').textContent === 'Mods: Off', 'mods button starts Off');
-    $('btn-mods').click(); await sleep(50);
+    $('btn-mods').click(); await settle();
     log(vis('mods') && !vis('songscreen') && $('m-mult').textContent === '×1.00', 'mods screen opens');
     $('m-hidden').checked = true; $('m-hidden').dispatchEvent(new w.Event('change'));
     $('m-speed').value = 7; $('m-speed').dispatchEvent(new w.Event('input'));
     log($('m-mult').textContent === '×1.32', 'mods multiplier updates live', $('m-mult').textContent);
-    key('Escape'); await sleep(80);
+    key('Escape'); await settle();
     log(vis('songscreen') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to the song screen with a mods summary', $('btn-mods').textContent);
     log(JSON.parse(w.localStorage.getItem('ringbeat.v1')).mods.speed === 1.2, 'mods persist in settings');
-    $('btn-mods').click(); await sleep(50);
-    $('btn-mods-reset').click(); await sleep(30);
-    $('btn-mods-back').click(); await sleep(80);
+    $('btn-mods').click(); await settle();
+    $('btn-mods-reset').click(); await settle();
+    $('btn-mods-back').click(); await settle();
     log(vis('songscreen') && $('btn-mods').textContent === 'Mods: Off', 'reset all clears the loadout');
-    d.querySelector('#songscreen [data-default]').click(); await sleep(150);
+    d.querySelector('#songscreen [data-default]').click();
+    await waitFor(() => hookOf().state === 'countin' || hookOf().state === 'playing', 'game start');
     log(!vis('select') && !vis('songscreen') && !vis('results'), 'normal play starts');
-    key('KeyR'); await sleep(150);
+    key('KeyR'); await waitFor(() => hookOf().state === 'countin' || hookOf().state === 'playing', 'game restart');
     log(!vis('select'), 'R restarts');
     // fake a finished run to exercise results / highscores / FC banner
     const rb = w.__ringbeat;
@@ -259,54 +276,55 @@ f.addEventListener('load', async () => {
     const fake = (score, extra = {}) => ({ score, maxCombo: 8, counts: { perfect: 8, great: 0, good: 0, miss: 0 }, accuracy: 100, grade: 'S',
       fc: true, ap: true, deltas: [-0.02, 0.01, 0.03, 0, 0.01, -0.01, 0.02, 0, 0.005, 0.01], ...extra });
     rb.scores.clear();
-    rb.game.onFinish(fake(1234)); await sleep(100);
+    rb.game.onFinish(fake(1234)); await settle();
     log(vis('results'), 'results shown', 'state=' + rb.state + ' visible=' + [...d.querySelectorAll('.screen')].filter(x => !x.hidden).map(x => x.id));
     log($('r-banner').textContent === 'ALL PERFECT' && !$('r-banner').hidden, 'ALL PERFECT banner');
     log($('r-best').textContent.includes('NEW BEST'), 'new best flagged: ' + $('r-best').textContent);
     log($('r-hist').children.length === 9, 'timing histogram');
-    await sleep(900);
+    await waitFor(() => $('r-score').textContent === '1234' && $('r-grade').style.visibility === '', 'results count-up');
     log($('r-score').textContent === '1234' && $('r-grade').style.visibility === '', 'juice: score count-up settles on the real value');
     rb.settings.juice = false;
-    rb.game.onFinish(fake(777)); await sleep(50);
+    rb.game.onFinish(fake(777)); await settle();
     log($('r-score').textContent === '777' && $('r-grade').style.visibility === '', 'juice off: results show immediately');
     rb.settings.juice = true;
-    rb.scores.clear(); rb.game.onFinish(fake(1234)); await sleep(100);
-    $('btn-menu').click(); await sleep(100);
+    rb.scores.clear(); rb.game.onFinish(fake(1234)); await settle();
+    $('btn-menu').click(); await settle();
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
-    d.querySelector('.song-row.cur').click(); await sleep(100);
+    d.querySelector('.song-row.cur').click(); await settle();
     log(vis('songscreen') && !!d.querySelector('#songscreen [data-default]'), 'play opens the song screen');
     log($('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
-    d.querySelector('#songscreen [data-default]').click(); await sleep(100);
-    rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await sleep(100);
+    d.querySelector('#songscreen [data-default]').click();
+    await waitFor(() => rb.state === 'countin' || rb.state === 'playing', 'second game start');
+    rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await settle();
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
     $('r-tabs').querySelector('[data-page="3"]').click();
     log($('r-top').children.length === 2 && $('r-top').children[1].classList.contains('cur'), 'results Top tab highlights run #2');
-    key('ArrowRight'); await sleep(40);
+    key('ArrowRight'); await settle();
     log($('r-tabs').querySelector('button.sel').dataset.page === '0', 'results: signed out, Top wraps to Score (no World tab)');
-    $('btn-menu').click(); await sleep(100);
+    $('btn-menu').click(); await settle();
     log(vis('results') === false, 'left results');
-    d.querySelector('.song-row.cur').click(); await sleep(100);
-    key('ArrowRight'); await sleep(50);
+    d.querySelector('.song-row.cur').click(); await settle();
+    key('ArrowRight'); await settle();
     log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
-    key('Backspace'); await sleep(80);
+    key('Backspace'); await settle();
     log(vis('select'), 'back to select again');
 
     // stats: the fake runs above were counted
-    key('Escape'); await sleep(80);
-    key('3'); await sleep(30); $('mm-go').click(); await sleep(100);
+    key('Escape'); await settle();
+    key('3'); await settle(); $('mm-go').click(); await settle();
     log(vis('stats') && /Time/.test($('stat-tab').textContent), 'menu -> stats on the Time page');
     log(rb.stats.get().runs >= 3 && rb.stats.get().score >= 1234, 'finished runs counted: ' + rb.stats.get().runs);
     log(!/Since|counted from/.test($('stat-page').textContent), 'Time page has no "Since"/"counted from" hints');
-    for (let i = 0; i < 5; i++) { key('ArrowRight'); await sleep(40); }
+    for (let i = 0; i < 5; i++) { key('ArrowRight'); await settle(); }
     log(/Online/.test($('stat-tab').textContent) && /Sign in|unavailable/.test($('stat-page').textContent), 'stats: Online page asks a signed-out player to sign in');
     log(d.querySelectorAll('#r-tabs button').length === 5, 'results: Score / Stats / Timing / Top / World tabs');
     log([...d.querySelectorAll('#r-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'results: only the current tab is shown');
-    key('ArrowRight'); await sleep(40);
+    key('ArrowRight'); await settle();
     log(/Time/.test($('stat-tab').textContent), 'stats: right on the last page wraps to the first');
-    key('ArrowLeft'); await sleep(40);
+    key('ArrowLeft'); await settle();
     log(/Online/.test($('stat-tab').textContent), 'stats: left on the first page wraps to the last');
-    for (let i = 0; i < 5; i++) { key('ArrowLeft'); await sleep(40); }
-    key('ArrowRight'); await sleep(60);
+    for (let i = 0; i < 5; i++) { key('ArrowLeft'); await settle(); }
+    key('ArrowRight'); await settle();
     log(/Score 2\/6/.test($('stat-tab').textContent), 'Score page');
     // the most-played song must stay inside its row, clear of the note icon, even with a huge title
     const { marquee } = await import(new URL('../src/marquee.js', f.src));
@@ -316,15 +334,18 @@ f.addEventListener('load', async () => {
     nm.textContent = 'An absurdly long song title that cannot possibly fit on the little phone LCD screen at all';
     marquee(nm);
     log(nm.classList.contains('scrolls'), 'long favourite title scrolls', `sw=${nm.scrollWidth} cw=${nm.clientWidth} cls=${nm.className} kids=${nm.children.length} mqsw=${nm.firstElementChild && nm.firstElementChild.scrollWidth} dist=${nm.style.getPropertyValue('--mq-dist')}`);
-    for (const wait of [0, 700, 1500]) {
-      await sleep(wait);
+    await settle();
+    const animations = nm.getAnimations({ subtree: true });
+    for (const animation of animations) animation.pause();
+    for (const time of [0, 700, 2200]) {
+      for (const animation of animations) animation.currentTime = time;
       const row = d.querySelector('#stat-page .st-fav').getBoundingClientRect(), ic = d.querySelector('.st-fav .ic').getBoundingClientRect(),
         box = nm.getBoundingClientRect(), mq = nm.querySelector('.mq').getBoundingClientRect();
-      log(inside(box, row) && box.left >= ic.right - 0.5, `favourite title box stays right of the icon and inside the row (+${wait}ms)`);
+      log(inside(box, row) && box.left >= ic.right - 0.5, `favourite title box stays right of the icon and inside the row (${time}ms)`);
       log(mq.left >= box.left - 0.5 - parseFloat(nm.style.getPropertyValue('--mq-dist')) && ic.right <= box.left + 0.5, 'scrolling text never passes the icon');
       log(nm.scrollWidth >= nm.clientWidth && Math.round(box.width) < Math.round(mq.width), 'title is clipped by its own box');
     }
-    key('ArrowRight'); await sleep(60);
+    key('ArrowRight'); await settle();
     log(/Top 3\/6/.test($('stat-tab').textContent), 'Top page');
     const trows = [...d.querySelectorAll('#stat-page .st-row')];
     log(trows.length >= 1 && /^1\./.test(trows[0].textContent) && /\d+×$/.test(trows[0].textContent), 'Top lists numbered songs with play counts');
@@ -335,57 +356,56 @@ f.addEventListener('load', async () => {
     // many played songs: the Top page lists them all, starts at #1, and scrolls with Up/Down
     {
       hookOf().entries().slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, s.chart, { score: 100, grade: 'C' }); });
-      key('ArrowLeft'); await sleep(40); key('ArrowRight'); await sleep(60);
+      key('ArrowLeft'); await settle(); key('ArrowRight'); await settle();
       const pg = $('stat-page'), rows = () => [...pg.querySelectorAll('.st-row')];
       const seen = r => { const b = pg.getBoundingClientRect(), x = r.getBoundingClientRect(); return x.top >= b.top - 1 && x.bottom <= b.bottom + 1; };
       log(rows().length >= 40, 'Top lists every played song: ' + rows().length);
       log(pg.scrollHeight > pg.clientHeight, 'Top page overflows and can scroll');
       log(pg.scrollTop === 0 && seen(rows()[0]) && /^1\./.test(rows()[0].textContent), 'Top starts at #1', `scrollTop=${pg.scrollTop} pg=${JSON.stringify(pg.getBoundingClientRect())} row0=${JSON.stringify(rows()[0].getBoundingClientRect())} first=${pg.firstElementChild.className}`);
-      key('ArrowDown'); await sleep(40);
+      key('ArrowDown'); await settle();
       log(pg.scrollTop > 0, 'Down scrolls the Top page');
       for (let i = 0; i < 40; i++) key('ArrowDown');
-      await sleep(60);
+      await settle();
       log(seen(rows()[rows().length - 1]), 'last song reachable');
       for (let i = 0; i < 40; i++) key('ArrowUp');
-      await sleep(60);
+      await settle();
       log(pg.scrollTop === 0 && seen(rows()[0]), 'Up scrolls back to #1');
-      key('ArrowLeft'); await sleep(40); key('ArrowRight'); await sleep(60);
+      key('ArrowLeft'); await settle(); key('ArrowRight'); await settle();
       log(pg.scrollTop === 0 && seen(rows()[0]), 'revisiting Top starts at #1 again');
     }
-    key('ArrowRight'); await sleep(60);
+    key('ArrowRight'); await settle();
     log(/Grades/.test($('stat-tab').textContent) && 'Grades page');
     log(+d.querySelector('#stat-page .gbar span').textContent >= 1, 'S bar counts the S run');
-    key('ArrowRight'); await sleep(50);
+    key('ArrowRight'); await settle();
     log(/Notes/.test($('stat-tab').textContent) && $('stat-page').textContent.includes('Accuracy'), 'Notes page');
-    key('Escape'); await sleep(80);
+    key('Escape'); await settle();
 
     // messages: inbox -> SMS -> read
     rb.settings.msgSeen = [];
-    key('4'); await sleep(30); $('mm-go').click(); await sleep(80);
+    key('4'); await settle(); $('mm-go').click(); await settle();
     const rowsMsg = d.querySelectorAll('#inbox-list button');
     log(vis('inbox') && rowsMsg.length >= 2 && rowsMsg[0].classList.contains('new'), 'inbox lists unread messages');
-    rowsMsg[0].click(); await sleep(60);
-    await sleep(60);
+    rowsMsg[0].click(); await settle();
     log(vis('message') && $('sms-body').textContent.length > 20 && $('sms-from').textContent === 'Ringbeat', 'message shown');
-    phoneKey('softL'); await sleep(100);
+    phoneKey('softL'); await settle();
     log(vis('message') && $('sms-date').textContent.includes(rb.settings.msgSeen[1] || '?'), 'Next opens the following message');
-    key('Escape'); await sleep(80);
+    key('Escape'); await settle();
     log(vis('inbox') && !d.querySelectorAll('#inbox-list button')[0].classList.contains('new'), 'back to inbox, message read');
-    key('Escape'); await sleep(80);
-    key('5'); await sleep(30); $('mm-go').click(); await sleep(80);
+    key('Escape'); await settle();
+    key('5'); await settle(); $('mm-go').click(); await settle();
     log(vis('profile') && $('pf-name').textContent === 'Player 1', 'profile card');
     $('st-signal').dispatchEvent(new PointerEvent('pointerenter'));
     log($('st-signal').title.length > 5, 'signal icon: hover tooltip explains the state', $('st-signal').title);
     log(rb.cloud.available() || (vis('pf-signin') && $('pf-signin').disabled && !vis('pf-rename') && !vis('pf-signout')),
       'profile: no API configured -> sign-in offered but disabled', $('pf-msg').textContent);
     log(!rb.cloud.signedIn() && !vis('pf-delete'), 'profile: signed out, no online-profile actions');
-    key('Escape'); await sleep(80);
-    key('Escape'); await sleep(80);
+    key('Escape'); await settle();
+    key('Escape'); await settle();
     log(vis('title'), 'back from the menu -> title');
     rb.scores.clear(); rb.stats.clear();
   } catch (e) { log(false, 'exception', e && e.stack || e); }
   log(errors.length === 0, 'no runtime errors', errors.join(' | '));
-  out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed${warn ? `, ${warn} warned` : ''}\n`);
+  out.insertAdjacentHTML('beforeend', `\n${pass} passed, ${fail} failed\n`);
   document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
 });
 </script>
