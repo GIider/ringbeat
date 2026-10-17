@@ -83,6 +83,9 @@ const mem = () => {
 };
 
 // A device: real stores on its own storage, a minimal settings stand-in, the cloud client talking to the Worker.
+const inflight = new Set();
+function track(p) { inflight.add(p); const done = () => inflight.delete(p); p.then(done, done); return p; }
+
 function device(srv, t = { now: 1000 }, opts = {}) {
   const storage = mem();
   const scores = createScores(storage), stats = createStats(storage, () => t.now), mysongs = createMySongs(storage);
@@ -98,7 +101,7 @@ function device(srv, t = { now: 1000 }, opts = {}) {
     },
   };
   const calls = [];
-  const fetch = (url, init) => { calls.push({ path: url.slice(API.length), init }); return srv.call(url.slice(API.length), init); };
+  const fetch = (url, init) => { calls.push({ path: url.slice(API.length), init }); return track(srv.call(url.slice(API.length), init)); };
   const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => t.now, gameVersion: '1.6.0', ...opts });
   return { storage, scores, stats, mysongs, prefs, cloud, t, calls };
 }
@@ -625,7 +628,13 @@ function fakeTimers() {
     fireAll() { const now = [...list.values()]; list.clear(); for (const t of now) t.f(); },
   };
 }
-const settle = () => new Promise(r => setTimeout(r, 0));
+// Lets the cloud's background work finish: a timer turn, every request still in flight, then two more turns for what the answers kick off.
+const turn = () => new Promise(r => setTimeout(r, 0));
+async function settle() {
+  await turn();
+  while (inflight.size) await Promise.allSettled([...inflight]);
+  await turn(); await turn();
+}
 
 test('requests: a 20-song session with 5 new bests costs one request per best, plus start and hide', async () => {
   const srv = server();
@@ -704,7 +713,7 @@ test('requests: a hung request times out and does not block the next; keepalive 
   const fetch = (url, init) => {
     calls.push(init);
     if (hang) return new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason)));
-    return srv.call(url.slice(API.length), init);
+    return track(srv.call(url.slice(API.length), init));
   };
   const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch, now: () => clock, timeoutMs: 30, ...fakeTimers() });
   const alive = setInterval(() => {}, 1000); // Node's AbortSignal.timeout doesn't hold the event loop open
