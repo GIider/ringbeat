@@ -5,6 +5,7 @@ name: Screenshots
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md', LICENSE] # documentation-only pushes change no screenshot
   workflow_dispatch:
 
 permissions:

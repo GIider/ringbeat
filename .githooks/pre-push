@@ -1,5 +1,19 @@
 #!/bin/sh
 # Block the push if the test suite fails. Bypass in an emergency with: git push --no-verify
+# A push that only adds documentation commits (see .githooks/docs-only) runs just the docs tests.
 cd "$(git rev-parse --show-toplevel)" || exit 1
-echo "pre-push: running npm test..."
-npm test || { echo "pre-push: tests failed, push aborted." >&2; exit 1; }
+zero=0000000000000000000000000000000000000000
+docs=1 seen=0
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a branch
+  seen=1
+  if [ "$remote_sha" = "$zero" ] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then docs=0; break; fi
+  git diff --name-only "$remote_sha" "$local_sha" | .githooks/docs-only || { docs=0; break; }
+done
+if [ "$seen" = 1 ] && [ "$docs" = 1 ]; then
+  echo "pre-push: documentation only, running the docs tests..."
+  node --test tests/docs.test.mjs >/dev/null 2>&1 || { echo "pre-push: docs tests failed (run: node --test tests/docs.test.mjs), push aborted." >&2; exit 1; }
+else
+  echo "pre-push: running npm test..."
+  npm test || { echo "pre-push: tests failed, push aborted." >&2; exit 1; }
+fi

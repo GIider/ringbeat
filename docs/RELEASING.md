@@ -60,7 +60,12 @@ panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
 
 **`.github/workflows/deploy.yml` (Test & Deploy)** runs on pushes to `main`, pull requests and manual dispatch.
 
-1. **test** (Node 22):
+0. **changes**: decides whether the push touches anything but documentation. It diffs the pushed range (or the PR against
+   its base) and counts only `docs/**`, `*.md` in the repository root and `LICENSE` as documentation. A
+   documentation-only change runs just `node --test tests/docs.test.mjs` in **test** (links, anchors and the file lists
+   in the docs) and skips **build**, **deploy** and **deploy-api**; the site, the `latest` release and the Worker stay as
+   they were. Manual dispatch, a force-push (the old commit is gone) and any other changed file run everything.
+1. **test** (Node 22), for a code change:
    - `npm ci`, then installs Playwright Chromium, Firefox and WebKit.
    - `npm test` (node tests + Chromium smoke).
    - The smoke test again in Firefox and WebKit, then in WebKit with `SMOKE_DEVICE='iPhone 13'`.
@@ -76,7 +81,7 @@ panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
 
 ### Screenshots
 
-**`.github/workflows/screenshots.yml`** runs on pushes to `main` and on manual dispatch. It keeps the README images current
+**`.github/workflows/screenshots.yml`** runs on pushes to `main` (except documentation-only ones, by `paths-ignore`) and on manual dispatch. It keeps the README images current
 without adding them to `main`'s history:
 
 1. Checks out the existing `screenshots` branch as a worktree, with git hooks disabled.

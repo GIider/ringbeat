@@ -1,0 +1,5 @@
+#!/bin/sh
+# Reads file names on stdin. Exits 0 when there is at least one and every one is documentation (docs/, *.md in the
+# root, LICENSE), the same rule as the `changes` job in .github/workflows/deploy.yml.
+files=$(cat)
+[ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '^(docs/.*|[^/]*\.md|LICENSE)$'

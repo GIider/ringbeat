@@ -7,6 +7,9 @@ favourites, my songs, scores and stats the same on every device. A new best on a
 the server, and runs the server could re-play itself rank on public **leaderboards** ([below](#leaderboards)). The game is a static site, so the online part is a separate
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
+- **Pushing to `main` deploys the Worker.** The `deploy-api` job in `.github/workflows/deploy.yml` runs after the tests,
+  applies the D1 migrations and deploys the Worker, together with the Pages build. This repository has the
+  `CLOUDFLARE_API_TOKEN` secret set, so there is no manual deploy step ([Setup and deploy](#setup-and-deploy) step 9).
 - Signed out, nothing changes: `localStorage` is the only store and the game sends no request at all. The leaderboard
   snapshot is first requested once the player is signed in. The stand-alone World boards page (`boards.html`) is the
   exception: it is public, needs no sign-in, and reads `GET /boards` and `GET /board/:song/:diff` when opened.
@@ -310,7 +313,8 @@ You need a Cloudflare account (the free plan is enough) and a GitHub account.
    ```
 9. To deploy the API from CI with every push to `main`, add a repository secret `CLOUDFLARE_API_TOKEN`. It needs a
    Cloudflare API token with the "Edit Cloudflare Workers" template plus D1 edit permission. The `deploy-api` job
-   then applies migrations and deploys. Without the secret, the job is skipped.
+   then applies migrations and deploys. Without the secret, the job is skipped. (The main repository has it set, so
+   every push to `main` that passes the tests deploys the API.)
    - Deploying the API together with the pages matters because both must agree on `RULES`.
    - An API left behind on older rules marks new runs "Not ranked" until it is deployed.
 

@@ -1,6 +1,8 @@
 name: Test & Deploy
 
-# Runs on push to main, pull requests and manual dispatch.
+# Runs on push to main, pull requests and manual dispatch. A change that only touches documentation (docs/, *.md at the
+# root, LICENSE) runs just the docs tests (tests/docs.test.mjs): no dependencies, browsers, build or deploys. Manual
+# dispatch, a force-push and any change that touches other files run everything.
 on:
   push:
     branches: [main]
@@ -13,7 +15,29 @@ permissions:
   id-token: write
 
 jobs:
+  # code=1 unless every file changed since the last push (or since the PR's base) is documentation.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          code=1
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ] && [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+            if [ -n "$files" ] && ! echo "$files" | grep -qvE '^(docs/.*|[^/]*\.md|LICENSE)$'; then code=0; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then echo "::notice::Documentation-only change: running the docs tests, skipping build and deploys"; fi
+
   test:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,15 +45,23 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm test
-      - run: SMOKE_BROWSERS=firefox,webkit node scripts/smoke.mjs
-      - run: SMOKE_BROWSERS=webkit SMOKE_DEVICE='iPhone 13' node scripts/smoke.mjs
+      - name: Docs tests only
+        if: needs.changes.outputs.code != '1'
+        run: node --test tests/docs.test.mjs
+      - if: needs.changes.outputs.code == '1'
+        run: npm ci
+      - if: needs.changes.outputs.code == '1'
+        run: npx playwright install --with-deps chromium firefox webkit
+      - if: needs.changes.outputs.code == '1'
+        run: npm test
+      - if: needs.changes.outputs.code == '1'
+        run: SMOKE_BROWSERS=firefox,webkit node scripts/smoke.mjs
+      - if: needs.changes.outputs.code == '1'
+        run: SMOKE_BROWSERS=webkit SMOKE_DEVICE='iPhone 13' node scripts/smoke.mjs
 
   build:
-    needs: test
-    if: github.event_name != 'pull_request'
+    needs: [changes, test]
+    if: github.event_name != 'pull_request' && needs.changes.outputs.code == '1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,8 +94,8 @@ jobs:
   # The API re-plays runs with the game's own modules, so it ships from the same commit as the pages (docs/CLOUD.md).
   # Skipped until the repository has a CLOUDFLARE_API_TOKEN secret (Workers Scripts + D1 edit permissions).
   deploy-api:
-    needs: test
-    if: github.event_name != 'pull_request'
+    needs: [changes, test]
+    if: github.event_name != 'pull_request' && needs.changes.outputs.code == '1'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

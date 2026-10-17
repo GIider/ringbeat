@@ -100,12 +100,12 @@ audio/canvas:
 
 | Hook | Runs |
 |---|---|
-| `pre-commit` | The node unit tests (quietly). If `src/pixelfont.js` or `scripts/build-font.mjs` is staged, also rebuilds the fonts and aborts if `assets/fonts` changed |
-| `pre-push` | `npm test` (including the Chromium smoke test) |
+| `pre-commit` | The node unit tests (quietly; only `tests/docs.test.mjs` when every staged file is documentation). If `src/pixelfont.js` or `scripts/build-font.mjs` is staged, also rebuilds the fonts and aborts if `assets/fonts` changed |
+| `pre-push` | `npm test` (including the Chromium smoke test); only the docs tests when the pushed commits change nothing but documentation |
 | `post-merge` | `sync-deps`: `npm install` if `package-lock.json` changed |
 | `post-checkout` | `sync-deps`, on branch checkouts only |
 
-Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
+Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as CI ([RELEASING.md › CI](RELEASING.md#ci)); `.githooks/docs-only` holds it. Skip `pre-commit` / `pre-push` in an emergency with `--no-verify`.
 
 ## Debug URLs and hooks
 
