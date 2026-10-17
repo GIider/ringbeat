@@ -1,5 +1,5 @@
 // Fills the LOCAL D1 with bot players whose runs were played by the game's own bot and then re-played by the Worker's
-// verifyRun, so the boards look like a live one. Usage: node scripts/seed-local.mjs [--bots=40] [--songs=60] [--seed=1] [--reset]
+// verifyRun, so the boards look like a live one. Usage: node scripts/seed-local.mjs [--bots=40] [--songs=<all>] [--seed=1] [--reset]
 //   --reset   only delete the bots (ids "bot-*"); your own local account is never touched.
 // Writes server/.wrangler/seed.sql and applies it with `wrangler d1 execute ringbeat --local` (never --remote).
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { verifyRun } from '../server/src/index.js';
 import { played } from './lib/botrun.mjs';
 
 const arg = (name, dflt) => { const a = process.argv.find(x => x.startsWith('--' + name + '=')); return a ? Number(a.split('=')[1]) : dflt; };
-const BOTS = arg('bots', 40), SONG_COUNT = arg('songs', 60), SEED = arg('seed', 1);
+const BOTS = arg('bots', 40), SONG_COUNT = arg('songs', SONGS.length), SEED = arg('seed', 1);
 const RESET = process.argv.includes('--reset');
 const SERVER = fileURLToPath(new URL('../server/', import.meta.url));
 const WEEK = 7 * 24 * 3600e3;
@@ -45,8 +45,8 @@ if (!RESET) {
   const songs = SONGS.filter((_, i) => i % step === 0).slice(0, SONG_COUNT);
   let n = 0, invalid = 0;
   for (const song of songs) for (const diff of ['normal', 'hard']) {
-    // The easiest songs are crowded, the rest less so; at least a handful of players on every board.
-    const crowd = Math.max(5, Math.round(BOTS * (0.25 + 0.5 * rnd())));
+    // The easiest songs are crowded, the rest less so; at least 5 players on every board (fewer only with fewer bots).
+    const crowd = Math.min(BOTS, Math.max(5, Math.round(BOTS * (0.25 + 0.5 * rnd()))));
     for (const b of bots.slice().sort(() => rnd() - 0.5).slice(0, crowd)) {
       const seed = Math.floor(rnd() * 1e9) + 1, at = now - Math.floor(rnd() * 3 * WEEK);
       const { run } = played(song.id, diff, b.skill, null, seed, undefined, at);

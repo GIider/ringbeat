@@ -334,9 +334,9 @@ no GitHub involved (`&name=` picks the display name). The route answers only whe
 deployed API has no such door.
 
 **Bot-filled boards.** `npm run seed` (`scripts/seed-local.mjs`) creates 40 bot players (`bot-*`, a few with the
-developer flag) whose skills come from the bot ladder in `src/bot.js`. Each plays a spread of the built-in songs on both
-difficulties with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers
-are the server's, exactly as for a real run. Options: `--bots=N`, `--songs=N`, `--seed=N`. Seeding is repeatable
+developer flag) whose skills come from the bot ladder in `src/bot.js`. Together they play every built-in song on both
+difficulties, with at least 5 players per board with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers
+are the server's, exactly as for a real run. Options: `--bots=N`, `--songs=N` (default: all), `--seed=N`. Seeding is repeatable
 (it replaces only `bot-*` rows, never your own account); `npm run seed:reset` removes them, `npm run dev:cloud:fresh`
 wipes the whole local D1 first.
 
