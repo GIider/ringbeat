@@ -5,6 +5,7 @@ import { chromium, firefox, webkit, devices } from 'playwright';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { API_BASE } from '../src/cloud.js';
+import { SONGS } from '../src/songs.js';
 
 const port = 20000 + Math.floor(Math.random() * 10000);
 const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: 'ignore' });
@@ -36,6 +37,7 @@ async function run(name) {
     if (errors.length) console.log('page errors:', [...new Set(errors)].join(' | '));
     ok = /, 0 failed/.test(out) && !errors.length;
     if (ok) ok = await adminSmoke(context, name);
+    if (ok) ok = await boardsSmoke(context, name);
   } catch (e) {
     console.error(`smoke test could not run (${name}):`, e.message);
   } finally {
@@ -91,6 +93,49 @@ async function adminSmoke(context, name) {
     if (!(await text('[data-act=player]')).includes('Ann')) return fail('player row missing');
     if (errors.length) return fail('page errors');
     console.log(`[${name}] admin smoke ok`);
+    return true;
+  } catch (e) { return fail(e.message); } finally { await page.close(); }
+}
+// The stand-alone World boards page: list, board detail, keyboard, tabs and the one-pane phone layout (the API is faked).
+async function boardsSmoke(context, name) {
+  const run = (rank, name, score, extra = {}) => ({ rank, total: 2, name, score, grade: 'A', accuracy: 0.9, maxCombo: 40, fc: false, ap: false, mods: [], playedAt: 1700000000000, ...extra });
+  const first = SONGS[0].id;
+  const json = (route, body) => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  await context.route(url => url.href.startsWith(API_BASE + '/board'), route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/boards') return json(route, { rules: 1, built: Date.now() - 5000, boards: { [first + '|normal']: [run(1, 'Ann', 900, { fc: true })] } });
+    return json(route, { rules: 1, runs: [run(1, 'Ann', 900, { fc: true }), run(2, 'Bo', 800)] });
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const fail = why => { console.log(`[${name}] boards smoke failed: ${why}`, errors.join(' | ')); return false; };
+  try {
+    await page.goto(`http://127.0.0.1:${port}/boards.html`);
+    await page.waitForSelector('.bd-row');
+    const rows = await page.locator('.bd-row').count();
+    if (rows < 100) return fail('song list too short: ' + rows);
+    if (!(await page.locator('.bd-row .lead').filter({ hasText: 'Ann' }).count())) return fail('leader missing from the list');
+    await page.locator('.bd-row .lead', { hasText: 'Ann' }).first().click();
+    await page.waitForFunction(() => document.querySelectorAll('.bd-table tbody tr').length === 2);
+    await page.keyboard.press('ArrowDown');
+    if ((await page.evaluate(() => window.__boards.cur)) === first) return fail('ArrowDown kept the cursor');
+    const cat = () => page.locator('#bd-cats [aria-selected=true]').innerText();
+    await page.keyboard.press(']');
+    if ((await cat()) === 'All') return fail('] did not change the category');
+    await page.keyboard.press('[');
+    if ((await cat()) !== 'All') return fail('[ did not wrap back');
+    await page.keyboard.press('d');
+    if ((await page.locator('#bd-diff [aria-selected=true]').innerText()) !== 'Hard') return fail('d did not switch to Hard');
+    await page.keyboard.press('d');
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.locator('.bd-row').first().click();
+    await page.waitForSelector('.bd.open .bd-detail');
+    if (await page.locator('.bd-list').isVisible()) return fail('list stayed visible next to an open board');
+    await page.click('#bd-soft-r');
+    await page.waitForSelector('.bd:not(.open) .bd-list');
+    if (errors.length) return fail('page errors');
+    console.log(`[${name}] boards smoke ok`);
     return true;
   } catch (e) { return fail(e.message); } finally { await page.close(); }
 }

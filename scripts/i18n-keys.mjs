@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CATEGORIES } from '../src/songs.js';
 import { SORTS } from '../src/listview.js';
+import { BOARD_SORTS } from '../src/boardsview.js';
 import { STAGES } from '../src/tutorial.js';
 import { MESSAGES } from '../src/changelog.js';
 
@@ -32,7 +33,7 @@ export function collectKeys({ singulars = false } = {}) {
       if (singulars) keys.add(unesc(m[2]));
     }
   }
-  const html = read('index.html');
+  const html = read('index.html') + read('boards.html');
   for (const m of html.matchAll(/<(\w+)([^>]*)>/g)) {
     const attrs = m[2];
     const dt = /data-title="([^"]*)"/.exec(attrs), sl = /data-soft-left="([^"]*)"/.exec(attrs), sr = /data-soft-right="([^"]*)"/.exec(attrs);
@@ -45,7 +46,7 @@ export function collectKeys({ singulars = false } = {}) {
     if (inner) keys.add(inner);
   }
   for (const c of CATEGORIES) keys.add(c.label);
-  for (const s of SORTS) keys.add(s.label);
+  for (const s of [...SORTS, ...BOARD_SORTS]) keys.add(s.label);
   for (const st of STAGES) { keys.add(st.title); keys.add(st.text); }
   for (const m of MESSAGES) { keys.add(m.title); keys.add(m.body); }
   // Words the code capitalises or looks up by name (cap(), table rows, enums).

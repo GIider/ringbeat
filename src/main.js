@@ -18,6 +18,7 @@ import { ratingFromMeasured } from './customrating.js';
 import { Calibration } from './calibration.js';
 import { settings, saveSettings as save, num, effectiveLang, onSave, sharedSettings, applyShared } from './settings.js';
 import { t as tr, tn, tm, fmt, setLang, applyStatic, LANGS, getLang } from './i18n.js';
+import { esc, badgeHTML, nameHTML, starsBar } from './rowfmt.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
 import { onSwipe } from './swipe.js';
@@ -414,23 +415,11 @@ function togglePreview(entry) {
 }
 
 // ---- song select screen ----
-function badgeHTML(run, withMods = false) {
-  return (run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '') +
-    (withMods && run && run.mods && run.mods.length ? `<span class="badge mod">${esc(run.mods.join(' '))}</span>` : '');
-}
-// A world row's player name; the developer's gets the rainbow wave.
-const nameHTML = r => `<span class="nm${r && r.dev ? ' dev' : ''}">${esc(r.name || '')}</span>`;
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
 const starsValue = rating => fmt(rating / 2, 1);
 // `~` in front of a rating that is only a guess (density heuristic, or a rating imported from someone else).
 const estMark = e => (e && e.estimated ? '~' : '');
-// Five stars filled proportionally to a 1..10 rating (half-star precision), e.g. 6.0 -> 3 stars.
-function starsText(rating) {
-  const pct = Math.max(0, Math.min(100, Math.round(rating * 5) * 2));
-  return `<span class="stars-bar" role="img" aria-label="${esc(tr('{v} of 5 stars', { v: starsValue(rating) }))}">` +
-    `<span class="off">★★★★★</span><span class="on" style="width:${pct}%">★★★★★</span></span>`;
-}
+const starsText = rating => starsBar(rating, tr('{v} of 5 stars', { v: starsValue(rating) }));
 
 // Category chips: All + each category (+ Custom when a custom song exists, + Favorites when there are any), with song counts.
 function categoryTabs() {
@@ -2405,6 +2394,7 @@ function wire() {
     pfDeleteArmed = 0;
     profileAction(() => cloud.deleteAccount(), tr('Online profile deleted'));
   };
+  $('pf-boards').onclick = () => { location.href = 'boards.html'; };
   $('pf-privacy').onclick = () => window.open('https://github.com/GIider/ringbeat/blob/main/docs/PRIVACY.md', '_blank', 'noopener,noreferrer');
 
   // one song

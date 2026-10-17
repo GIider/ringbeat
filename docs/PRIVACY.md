@@ -16,8 +16,10 @@ details in one; say what you need and a way to continue privately will be arrang
 ## Without an account
 
 - Settings, scores, stats and your songs stay in `localStorage` on your device. Nothing is sent anywhere.
-- Nothing is requested while you are signed out. The public leaderboard snapshot (for the difficulty picker) is only
-  fetched once you have signed in.
+- The game requests nothing while you are signed out. The public leaderboard snapshot (for the difficulty picker) is only
+  fetched once you have signed in. The separate **World boards** page (`boards.html`, linked from Profile) is public
+  and needs no account: opening it fetches that snapshot, and the full list of a board you open, from the Ringbeat API.
+  Like any web request, this shows your IP address to the API host (Cloudflare) and the page host (GitHub Pages).
 - The site is served by GitHub Pages and the API by Cloudflare. Like any web server, they see your IP address and
   browser details when you load the site or make a request. Ringbeat itself does not store or use them.
 - No cookies, no analytics, no advertising, no tracking.

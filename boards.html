@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e0c">
+  <title>Ringbeat World Boards</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="boards.css">
+  <link rel="preload" href="assets/fonts/rb-pixel.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/fonts/rb-pixel-bold.ttf" as="font" type="font/ttf" crossorigin>
+</head>
+<body class="boards">
+  <main class="bd">
+    <header class="bd-bar">
+      <b class="bd-title" data-i18n>RINGBEAT / WORLD BOARDS</b>
+      <span id="bd-age" class="bd-age"></span>
+      <button id="bd-lang" type="button" data-i18n-attr="title,aria-label" title="Language" aria-label="Language"></button>
+      <a id="bd-back" href="./" data-i18n>Play</a>
+    </header>
+    <div class="bd-ctl">
+      <div id="bd-cats" class="bd-tabs" role="tablist" data-i18n-attr="aria-label" aria-label="Category"></div>
+      <div class="bd-opts">
+        <div id="bd-diff" class="bd-tabs" role="tablist" data-i18n-attr="aria-label" aria-label="Difficulty"></div>
+        <label class="bd-field"><span data-i18n>Sort</span>
+          <select id="bd-sort"></select></label>
+        <label class="bd-field bd-search"><span data-i18n>Find</span>
+          <input id="bd-q" type="text" maxlength="40" spellcheck="false" autocomplete="off" data-i18n-attr="placeholder" placeholder="Song title"></label>
+      </div>
+    </div>
+    <div class="bd-main">
+      <ol id="bd-list" class="bd-list" tabindex="0" data-i18n-attr="aria-label" aria-label="Songs"></ol>
+      <section id="bd-detail" class="bd-detail" aria-live="polite"></section>
+    </div>
+    <footer class="softbar">
+      <button id="bd-soft-l" type="button"></button>
+      <button id="bd-soft-r" type="button"></button>
+    </footer>
+  </main>
+  <script type="module" src="src/boards.js"></script>
+</body>
+</html>

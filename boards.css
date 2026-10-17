@@ -1,0 +1,69 @@
+/* Stand-alone leaderboard page: the phone LCD blown up into a wide, scrolling desk-sized panel. Tokens come from style.css. */
+body.boards { overflow: auto; height: auto; min-height: 100%; touch-action: auto; }
+.bd { display: flex; flex-direction: column; width: min(960px, 100% - 24px); height: calc(100dvh - 24px); margin: 12px auto;
+  position: relative; border-radius: 14px; overflow: hidden; color: var(--ink); border: 6px solid #1b2316; box-shadow: 0 0 0 2px #000, 0 20px 60px #000a;
+  background: radial-gradient(ellipse at 40% 25%, var(--lcd-hi), var(--lcd) 55%, var(--lcd-lo)); }
+.bd::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background: linear-gradient(#0000 50%, #1d2b1210 50%) 0 0 / 100% 4px; }
+.bd button, .bd select, .bd input, .bd a { font: inherit; color: inherit; }
+
+.bd-bar { display: flex; align-items: center; gap: 12px; padding: 4px 10px; background: var(--ink); color: var(--lcd); }
+.bd-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-age { color: var(--lcd-lo); white-space: nowrap; }
+.bd-bar button, .bd-bar a { background: none; border: var(--u) solid var(--lcd); padding: 0 8px; cursor: pointer; text-decoration: none; line-height: 1.3; }
+.bd-bar button:hover, .bd-bar a:hover { background: var(--lcd); color: var(--ink); }
+
+.bd-ctl { padding: 6px 10px; border-bottom: var(--u) solid var(--ink); display: grid; gap: 6px; }
+.bd-opts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.bd-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.bd-tabs button { background: none; border: var(--u) solid var(--ink); padding: 0 8px; cursor: pointer; line-height: 1.3; }
+.bd-tabs button[aria-selected=true] { background: var(--ink); color: var(--lcd); }
+.bd-field { display: flex; align-items: center; gap: 6px; }
+.bd-search { flex: 1; min-width: 160px; }
+.bd-field select, .bd-field input { background: var(--lcd-hi); border: var(--u) solid var(--ink); padding: 0 6px; min-width: 0; line-height: 1.3; border-radius: 0; }
+.bd-search input { flex: 1; -webkit-user-select: text; user-select: text; }
+.bd button:focus-visible, .bd select:focus-visible, .bd input:focus-visible, .bd a:focus-visible, .bd-list:focus-visible { outline: var(--u) dashed var(--ink); outline-offset: 2px; }
+.bd-bar :focus-visible { outline-color: var(--lcd); }
+
+.bd-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+.bd-list, .bd-detail { margin: 0; padding: 0; overflow-y: auto; min-height: 0; list-style: none; }
+.bd-list { border-right: var(--u) solid var(--ink); }
+.bd-row { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; width: 100%; text-align: left; background: none; border: 0; padding: 3px 10px; cursor: pointer; }
+.bd-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-row .s { color: var(--ink-dim); white-space: nowrap; }
+.bd-row .lead { grid-column: 1 / -1; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-row.cur { background: var(--ink); color: var(--lcd); }
+.bd-row.cur .s, .bd-row.cur .lead { color: var(--lcd-lo); }
+.bd-row.cur .nm.dev { color: var(--lcd); background: none; -webkit-text-fill-color: currentColor; animation: none; }
+.bd-row.cur .badge.ap { background: var(--lcd); color: var(--ink); border-color: var(--lcd); }
+
+.bd-detail { padding: 8px 12px; }
+.bd-detail h2 { margin: 0 0 2px; font-size: var(--fs); font-weight: 700; }
+.bd-detail .hint { margin: 2px 0 8px; }
+.bd-table { width: 100%; max-width: none; margin: 0; border-collapse: collapse; }
+.bd-table th { text-align: left; font-weight: 700; border-bottom: var(--u) solid var(--ink); padding: 0 6px 2px 0; white-space: nowrap; }
+.bd-table td { padding: 1px 6px 1px 0; white-space: nowrap; text-align: left; font-weight: 400; }
+.bd-table td.n, .bd-table th.n { text-align: right; }
+.bd-table td .badge { margin-left: 6px; }
+.bd-table td.nm-c { white-space: normal; overflow-wrap: anywhere; }
+.bd-table tr:nth-child(even) td { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.bd-msg { padding: 12px; color: var(--ink-dim); }
+.bd-dots::after { content: "..."; animation: blink 1s steps(1) infinite; }
+.bd-msg button { background: none; border: var(--u) solid var(--ink); padding: 0 8px; cursor: pointer; margin-top: 6px; }
+
+.bd .softbar { margin: 0; padding: 0 10px 4px; flex: none; }
+
+/* one pane below 720px: the list, or the open board with a Back soft key */
+@media (max-width: 719px) {
+  .bd { width: 100%; height: 100dvh; margin: 0; border-radius: 0; border-width: 0; }
+  .bd-main { grid-template-columns: minmax(0, 1fr); }
+  .bd-list { border-right: 0; }
+  .bd:not(.open) .bd-detail, .bd.open .bd-list { display: none; }
+  .bd-bar { flex-wrap: wrap; gap: 2px 8px; }
+  .bd-title { flex: 1 0 100%; }
+  .bd-age { flex: 1; }
+  .bd-ctl { max-height: 42vh; overflow-y: auto; }
+  .bd.open .bd-ctl { display: none; }
+  .bd-table .opt { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .bd-dots::after { animation: none; } }

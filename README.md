@@ -66,7 +66,7 @@ the game never needs the network and `localStorage` stays the source of truth.
   server's: the game uploads your key presses and the API re-plays them through the same game code, so a claimed score
   can't be faked. Runs under older scoring rules don't rank ("Not ranked: update the game").
 - **Where you see it:** *World #n of total* on the results screen, the world top 10 under your own runs on each song,
-  and an Online page in Stats. Prefer to stay off the boards? Profile → *On leaderboards: Off*.
+  and an Online page in Stats. The **World boards** page (`boards.html`, linked from Profile) lets anyone browse every song's board, signed in or not. Prefer to stay off the boards? Profile → *On leaderboards: Off*.
 - **Your data:** you can sign out or delete the online profile and everything stored with it at any time; see
   [PRIVACY.md](docs/PRIVACY.md).
 - **Self-hosting:** the API is a Cloudflare Worker + D1 in `server/`; setup, local development (a local API needs its

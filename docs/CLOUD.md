@@ -8,7 +8,8 @@ the server, and runs the server could re-play itself rank on public **leaderboar
 **Cloudflare Worker + D1** API in `server/`. Sign-in is with GitHub.
 
 - Signed out, nothing changes: `localStorage` is the only store and the game sends no request at all. The leaderboard
-  snapshot is first requested once the player is signed in.
+  snapshot is first requested once the player is signed in. The stand-alone World boards page (`boards.html`) is the
+  exception: it is public, needs no sign-in, and reads `GET /boards` and `GET /board/:song/:diff` when opened.
 - Signed in, `localStorage` is still the source of truth, and the network is never in the way: no sync starts
   while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
   [Requests](#requests).
