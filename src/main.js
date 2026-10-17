@@ -411,6 +411,8 @@ function badgeHTML(run, withMods = false) {
 }
 // The developer's leaderboard mark (server-set `dev` flag on the row).
 const devHTML = r => (r && r.dev ? '<span class="badge dev">DEV</span>' : '');
+// A world row's player name; the developer's gets the rainbow wave.
+const nameHTML = r => `<span class="nm${r && r.dev ? ' dev' : ''}">${esc(r.name || '')}</span>`;
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // Rating (internal 1..10) on the player-facing 5-star scale, e.g. 7 -> "3.5".
 const starsValue = rating => fmt(rating / 2, 1);
@@ -1205,8 +1207,8 @@ function paintDpWorldLines(b, near, box, msg) {
   for (const r of lines) {
     const li = document.createElement('li');
     li.value = r.rank;
-    li.className = r.gap ? 'gap' : [r.me && 'cur', r.dev && 'dev'].filter(Boolean).join(' ');
-    li.innerHTML = `${esc(r.name || '')} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
+    li.className = r.gap ? 'gap' : r.me ? 'cur' : '';
+    li.innerHTML = `${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
     ol.appendChild(li);
   }
   box.textContent = '';
@@ -1671,8 +1673,7 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${esc(r.name || '')}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
-    if (r.dev) li.classList.add('dev');
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
     if (cls) li.className = cls;
     ol.appendChild(li);
   };
