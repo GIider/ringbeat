@@ -38,6 +38,7 @@ async function run(name) {
     ok = /, 0 failed/.test(out) && !errors.length;
     if (ok) ok = await adminSmoke(context, name);
     if (ok) ok = await boardsSmoke(context, name);
+    if (ok) ok = await resultsEnterSmoke(context, name);
   } catch (e) {
     console.error(`smoke test could not run (${name}):`, e.message);
   } finally {
@@ -136,6 +137,30 @@ async function boardsSmoke(context, name) {
     await page.waitForSelector('.bd:not(.open) .bd-list');
     if (errors.length) return fail('page errors');
     console.log(`[${name}] boards smoke ok`);
+    return true;
+  } catch (e) { return fail(e.message); } finally { await page.close(); }
+}
+// Regression: clicking a results tab used to leave focus on it, so Enter re-clicked the tab instead of the lit footer button.
+async function resultsEnterSmoke(context, name) {
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const fail = why => { console.log(`[${name}] results-enter smoke failed: ${why}`, errors.join(' | ')); return false; };
+  try {
+    await page.goto(`http://127.0.0.1:${port}/?demo=results`);
+    await page.waitForFunction(() => window.__ringbeat && window.__ringbeat.state === 'results', null, { timeout: 15000 });
+    await page.evaluate(() => { window.__retries = 0; document.getElementById('btn-retry').addEventListener('click', e => { window.__retries++; e.stopImmediatePropagation(); }, true); });
+    for (const tab of ['0', '1', '2']) {
+      if (tab !== '0') await page.keyboard.press('ArrowRight'); // only the current tab is drawn, so click that one
+      await page.click('#r-tabs .sel');
+      if (await page.evaluate(() => !!document.activeElement.closest('#r-tabs'))) return fail(`tab ${tab} kept focus`);
+      const before = await page.evaluate(() => window.__retries);
+      await page.keyboard.press('Enter');
+      if ((await page.evaluate(() => window.__retries)) !== before + 1) return fail(`Enter after clicking tab ${tab} did not hit the highlighted button`);
+      if ((await page.evaluate(() => document.querySelector('#r-tabs .sel').dataset.page)) !== tab) return fail('Enter changed the tab');
+    }
+    if (errors.length) return fail('page errors');
+    console.log(`[${name}] results-enter smoke ok`);
     return true;
   } catch (e) { return fail(e.message); } finally { await page.close(); }
 }

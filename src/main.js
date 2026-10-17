@@ -2492,7 +2492,14 @@ function wire() {
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;
-  for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
+  // The tabs never hold focus: a focused tab would swallow Enter/A (re-clicking itself) while the footer button stays lit.
+  for (const t of document.querySelectorAll('#r-tabs button')) {
+    t.addEventListener('mousedown', e => e.preventDefault());
+    t.onclick = () => {
+      setResultsPage(+t.dataset.page);
+      if (document.activeElement && document.activeElement.closest('#r-tabs')) focusDefault(screens.results);
+    };
+  }
   $('r-prev').onclick = () => stepResultsPage(-1);
   $('r-next').onclick = () => stepResultsPage(1);
   for (const t of document.querySelectorAll('#dp-tabs button')) t.onclick = () => setDpTab(t.dataset.tab);
