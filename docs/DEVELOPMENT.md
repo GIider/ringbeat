@@ -22,6 +22,7 @@ Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html`
 | `npm start` | Dev server on port 8000 (see [Dev server](#dev-server)) |
 | `npm run dev` | Same server with live reload |
 | `npm run dev:cloud` | Live-reload game server **plus** the local Worker/D1 with bot-filled boards and a GitHub-free sign-in ([CLOUD.md](CLOUD.md#local-development)). `npm run dev:cloud:fresh` first wipes the local D1 |
+| `npm run songs:fetch` | Downloads and unpacks the credited song libraries into the gitignored `song-libs/` once (`-- --force` refreshes) |
 | `npm run seed` | Re-fills the local D1 with bot players and their server-verified runs (`--bots=`, `--songs=`, `--seed=`); `npm run seed:reset` removes only the bots |
 | `npm test` | Node unit tests (`tests/*.test.mjs`), then the headless Chromium smoke test |
 | `npm run smoke` | Only the smoke test (`scripts/smoke.mjs` → `tests/smoke.html`) |

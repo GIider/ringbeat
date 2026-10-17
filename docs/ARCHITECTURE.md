@@ -96,6 +96,7 @@ src/
 scripts/
   serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload, --cloud points the game at the local API)
   dev-cloud.mjs       npm run dev:cloud: .dev.vars, local D1 migrations and seed, Worker + game server side by side
+  fetch-song-libs.mjs downloads and unpacks the credited song libraries into the gitignored song-libs/ (npm run songs:fetch)
   seed-local.mjs      fills the local D1 with bot players and their Worker-verified runs (npm run seed)
   lib/seedplan.mjs    who plays what in the seeded boards: skill pyramid, per-board tiers, random modifiers
   lib/botrun.mjs      a bot plays a song headlessly and the run is encoded as the game uploads it (seed-local, cloud.test)

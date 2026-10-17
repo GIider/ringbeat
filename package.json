@@ -12,6 +12,7 @@
     "dev": "node scripts/serve.mjs --dev",
     "dev:cloud": "node scripts/dev-cloud.mjs",
     "dev:cloud:fresh": "node scripts/dev-cloud.mjs --fresh",
+    "songs:fetch": "node scripts/fetch-song-libs.mjs",
     "seed": "node scripts/seed-local.mjs",
     "seed:reset": "node scripts/seed-local.mjs --reset",
     "coverage": "node --test --experimental-test-coverage tests/*.test.mjs",
