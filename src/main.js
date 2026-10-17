@@ -2368,7 +2368,7 @@ function releasePad(index, ts) {
 function back() {
   switch (state) {
     case 'title': break;
-    case 'welcome': break; // the intro always plays through
+    case 'welcome': skipWelcome(); break;
     case 'menu': setState('title', 'title'); break;
     case 'select': stopPreview(); openMenu('tones'); break;
     case 'hub': leaveHub(); break;
@@ -2398,7 +2398,7 @@ function back() {
 }
 
 function menuButton(index) {
-  if (state === 'welcome') return;
+  if (state === 'welcome') { skipWelcome(); return; }
   const root = activeScreen();
   switch (index) {
     case BTN.A: case BTN.START:
@@ -2523,7 +2523,7 @@ function phoneKey(key) {
   }
   if (!inPlay()) synth.keyClick();
   if (state === 'title') { startFromTitle(); return; }
-  if (state === 'welcome') return;
+  if (state === 'welcome') { skipWelcome(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
   if (state === 'select' && selectKey(key)) return;
   switch (key) {
@@ -2539,11 +2539,11 @@ function phoneKey(key) {
 
 // ---- wiring ----
 // Back from signing in: the full-LCD intro (welcome.js) replaces the title screen while the one-time code is exchanged, then the menu.
-// Silent (no gesture yet); input is ignored until it ends. A failed exchange falls back to the title.
-let welcomeStop = null;
+// Silent (no gesture yet); it can only be skipped once it has played to the end on this device. A failed exchange falls back to the title.
+let welcomeStop = null, welcomeAnswered = false;
 // Signal and battery icons are hidden (not removed, so the title bar keeps its layout) while the intro runs.
 const statusIcons = on => { for (const id of ['st-signal', 'st-battery']) $(id).style.visibility = on ? '' : 'hidden'; };
-function welcomeEnd(to) {
+function welcomeEnd(to, gesture) {
   if (welcomeStop) welcomeStop();
   welcomeStop = null;
   $('welcome-fx').hidden = true;
@@ -2551,10 +2551,13 @@ function welcomeEnd(to) {
   statusIcons(true);
   if (to === 'title') setState('title', 'title');
   else if (to === 'none') return; // somebody else already navigated away
-  else openMenu('tones');
+  else if (gesture) startFromTitle(); else openMenu('tones');
 }
+// Skipping needs a finished sign-in and an earlier full viewing on this device.
+const skipWelcome = () => { if (state === 'welcome' && settings.welcomeSeen && welcomeAnswered) welcomeEnd('menu', true); };
 function welcomeStart(exchange) {
   let ok = null, cancelled = false;
+  welcomeAnswered = false;
   setState('welcome', 'welcome');
   cameoSignal = true; // the intro owns the status bar
   statusIcons(false);
@@ -2566,7 +2569,7 @@ function welcomeStart(exchange) {
     if (cancelled) return;
     const { w, h } = measureGrid(fx), sim = createWelcome(w, h);
     const name = () => (cloud.profile() || {}).name || 'Player';
-    exchange.then(r => { ok = r; if (r) sim.release(name()); });
+    exchange.then(r => { ok = r; if (r) { welcomeAnswered = true; sim.release(name()); } });
     welcomeStop = runWelcome(fx, sim, {
       onTick: () => {
         if (state !== 'welcome') { welcomeEnd('none'); return; }
@@ -2579,7 +2582,7 @@ function welcomeStart(exchange) {
           void bar.offsetWidth; bar.classList.add('hello');
         }
       },
-      onDone: () => welcomeEnd('menu'),
+      onDone: () => { settings.welcomeSeen = true; save(); welcomeEnd('menu'); },
     });
   });
 }
@@ -2811,7 +2814,8 @@ function wire() {
     const off = (cloud.profile() || {}).public === false;
     profileAction(() => cloud.setPublic(off), tr(off ? 'Your name shows on leaderboards' : 'Your runs are hidden from leaderboards'));
   };
-  $('pf-signout').onclick = () => profileAction(() => cloud.signOut(), tr('Signed out'));
+  // Signed out, the Sign-in button takes over; the hint under the list says what signing in does.
+  $('pf-signout').onclick = async () => { await profileAction(() => cloud.signOut(), ''); focusDefault(screens.profile); };
   $('pf-export').onclick = () => profileAction(async () => {
     download('ringbeat-export.json', JSON.stringify(await cloud.exportData(), null, 2), 'application/json');
   }, tr('Data exported'));
@@ -2911,6 +2915,7 @@ function wire() {
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
+  $('welcome').addEventListener('click', skipWelcome);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
@@ -3023,7 +3028,7 @@ function onKey(e) {
     return;
   }
   if (state === 'welcome') {
-    if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); }
+    if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); skipWelcome(); }
     return;
   }
   if (state === 'title') {

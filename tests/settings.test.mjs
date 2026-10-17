@@ -204,3 +204,10 @@ test('developer toggles default off, sanitise to booleans, and sync with the acc
   const { SYNCED_SETTINGS } = await import('../src/cloudmerge.js');
   assert.ok(SYNCED_SETTINGS.includes('perfOverlay') && SYNCED_SETTINGS.includes('netTracker'));
 });
+
+test('settings: welcomeSeen is kept on this device and never synced', async () => {
+  assert.equal((await load({ welcomeSeen: true })).settings.welcomeSeen, true);
+  assert.equal((await load({ welcomeSeen: 'yes' })).settings.welcomeSeen, false);
+  const { sharedSettings } = await load({ welcomeSeen: true });
+  assert.ok(!('welcomeSeen' in sharedSettings().settings));
+});

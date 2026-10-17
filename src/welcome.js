@@ -1,4 +1,4 @@
-// Sign-in intro: a 5.8 s scene over the whole LCD (power-on, ripples, two rings that interlock, a burst, the player's name).
+// Sign-in intro: a 5.8 s scene over the whole LCD (power-on, ripples, four rings that interlock like the four lanes, a burst, the player's name).
 // Pure simulation like the cameos in cameo.js: a sim is { step(), draw(put), done, tick, ... }; it advances one tick per step()
 // (20 Hz). runWelcome() is the only DOM piece: a canvas painted one cell per sim pixel.
 import { GLYPHS } from './pixelfont.js';
@@ -65,7 +65,9 @@ export function layoutName(name, w, cy) {
 export function createWelcome(w, h) {
   const cx = w >> 1, cy = Math.round(h * 0.46);
   const R = Math.max(5, Math.min(13, Math.floor(Math.min(w, h) / 7))); // ring radius
-  const sep = Math.round(R * 0.55);                                   // ring centres sit this far from the middle
+  const sep = Math.round(R * 0.55);                                   // neighbouring ring centres are 2 * sep apart
+  const RINGS = 4, spot = i => cx + Math.round((i - (RINGS - 1) / 2) * 2 * sep); // where ring i comes to rest
+  const halfW = Math.round((RINGS - 1) * sep) + R + 2;                 // half the width of the linked row
   const maxR = Math.ceil(Math.hypot(w, h) / 2) + 2;
   const s = { tick: 0, hold: 0, done: false, ready: false, name: '', chars: [] };
 
@@ -97,13 +99,16 @@ export function createWelcome(w, h) {
     };
     for (const b of births) { const r = (a - b) * 1.6; if (r > 0 && r < maxR) circle(ripple, cx, cy, Math.round(r)); }
 
-    // the two rings slide in from the edges and interlock; blink as they lock; shrink away at the end
+    // the four rings slide in from the edges (two from each side) and interlock; blink as they lock; shrink away at the end
     const p = Math.min(1, Math.max(0, (t - T.SLIDE) / (T.LOCK - T.SLIDE))), e = 1 - (1 - p) * (1 - p);
     const lockBlink = t === T.LOCK + 3 || t === T.LOCK + 5;
     const shrink = t >= T.FADE ? 1 - (t - T.FADE) / 8 : 1;
     if (t >= T.SLIDE && !lockBlink && shrink > 0) {
-      const left = -R + (cx - sep + R) * e, right = w - 1 + R + (cx + sep - (w - 1 + R)) * e, r = Math.round(R * shrink);
-      for (const x of [cx - (cx - left) * shrink, cx + (right - cx) * shrink]) { circle(put, Math.round(x), cy, r); circle(put, Math.round(x), cy, Math.max(0, r - 1)); }
+      const r = Math.round(R * shrink);
+      for (let i = 0; i < RINGS; i++) {
+        const from = i < RINGS / 2 ? -R : w - 1 + R, rest = spot(i), x = cx + (from + (rest - from) * e - cx) * shrink;
+        circle(put, Math.round(x), cy, r); circle(put, Math.round(x), cy, Math.max(0, r - 1));
+      }
     }
 
     if (t === T.FLASH || t === T.FLASH + 1) fill(put, t === T.FLASH ? 17 : 9); // the flash: the whole LCD goes dark, then half
@@ -118,9 +123,10 @@ export function createWelcome(w, h) {
   };
 
   function burst(put, a) {
-    const k = a - T.FLASH, r0 = R + 3, len = Math.min(maxR - r0, k * 3);
+    const k = a - T.FLASH;
     for (let i = 0; i < 12; i++) {
       const ang = i * Math.PI / 6 + a * 0.02, c = Math.cos(ang), n = Math.sin(ang);
+      const r0 = 1 / Math.hypot(c / halfW, n / (R + 3)), len = Math.max(0, Math.min(maxR - r0, k * 3)); // rays start outside the linked row
       line(put, cx + c * r0, cy + n * r0, cx + c * (r0 + len), cy + n * (r0 + len), 2, a);
       if (i % 2 === 0 && k > 1) { // a note rides out along every other ray
         const r = r0 + 1 + ((a * 2 + i * 9) % Math.max(1, maxR - r0 - 1));
