@@ -411,8 +411,6 @@ function badgeHTML(run, withMods = false) {
   return (run && run.ap ? '<span class="badge ap">AP</span>' : run && run.fc ? '<span class="badge">FC</span>' : '') +
     (withMods && run && run.mods && run.mods.length ? `<span class="badge mod">${esc(run.mods.join(' '))}</span>` : '');
 }
-// The developer's leaderboard mark (server-set `dev` flag on the row).
-const devHTML = r => (r && r.dev ? '<span class="badge dev">DEV</span>' : '');
 // A world row's player name; the developer's gets the rainbow wave.
 const nameHTML = r => `<span class="nm${r && r.dev ? ' dev' : ''}">${esc(r.name || '')}</span>`;
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -1004,7 +1002,7 @@ function openProfile() {
 function renderProfile() {
   const s = stats.get(), on = cloud.signedIn(), p = cloud.profile();
   const pname = on && p ? p.name : tr('Player 1');
-  $('pf-name').innerHTML = DEV || cloud.isDev() ? nameHTML({ name: pname, dev: true }) + devHTML({ dev: true }) : esc(pname);
+  $('pf-name').innerHTML = DEV || cloud.isDev() ? nameHTML({ name: pname, dev: true }) : esc(pname);
   $('pf-meta').replaceChildren(...(s.firstPlayed
     ? [tr('Since {date}', { date: dayKey(s.firstPlayed) }), tr('{time} played', { time: formatDuration(s.playtime) })]
     : [tr('New player')]).flatMap((t, i) => i ? [document.createElement('br'), t] : [t]));
@@ -1226,7 +1224,7 @@ function paintDpWorldLines(b, near, box, msg) {
     const li = document.createElement('li');
     li.value = r.rank;
     li.className = r.gap ? 'gap' : r.me ? 'cur' : '';
-    li.innerHTML = `${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
+    li.innerHTML = `${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}`;
     ol.appendChild(li);
   }
   box.textContent = '';
@@ -1691,7 +1689,7 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}${devHTML(r)}`;
+    li.innerHTML = `${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`;
     if (cls) li.className = cls;
     ol.appendChild(li);
   };

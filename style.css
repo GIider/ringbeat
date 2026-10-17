@@ -412,7 +412,6 @@ body:is([data-mode="play"], [data-mode="pause"]) .legend .lg-play { display: blo
 .top li.gap { list-style: none; }
 .top li.cur { background: color-mix(in srgb, var(--ink) 16%, transparent); box-shadow: inset 3px 0 0 var(--ink); font-weight: 700; }
 .top .badge { margin-top: 1px; }
-.badge.dev { background: var(--ink); color: var(--lcd); border-color: var(--ink); }
 .nm.dev { color: var(--ink); background: linear-gradient(90deg, var(--ink), var(--ink-dim), #5f7f2f, var(--ink-dim), var(--ink)) 0 0 / 200% 100%;
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: dev-wave 3s steps(8) infinite; }
 @keyframes dev-wave { to { background-position: -200% 0; } }

@@ -109,7 +109,7 @@ Some runs get `verified = -1` instead and never rank:
 
 Runs without a replay, such as older clients and the backfill, are kept with `verified = 0` as plain history.
 
-**Developer mark.** A board row of a user with `users.dev = 1` carries `dev: true`; the game shows a DEV badge. The flag is set by hand in D1 (`UPDATE users SET dev = 1 WHERE id = ?`), never through the API.
+**Developer mark.** A board row of a user with `users.dev = 1` carries `dev: true`; the game shows the name with an animated dev effect. The flag is set by hand in D1 (`UPDATE users SET dev = 1 WHERE id = ?`), never through the API.
 
 **RULES.** `RULES` in `replay.js` is a number that changes whenever a code change would score a replay differently.
 - Each run carries the client's `RULES`, and boards only rank runs with the Worker's.
