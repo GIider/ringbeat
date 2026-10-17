@@ -33,7 +33,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 ## Features
 
 - **Songs:**
-  - 209 built-in songs (10 of them full-length) in 7 categories.
+  - 249 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - 2 difficulties (Normal, Hard) with bot-measured ratings.
 - **Scoring:**
