@@ -383,7 +383,9 @@ f.addEventListener('load', async () => {
     key('Escape'); await sleep(80);
     key('5'); await sleep(30); $('mm-go').click(); await sleep(80);
     log(vis('profile') && $('pf-name').textContent === 'Player 1', 'profile card');
-    log(rb.cloud.available() || (vis('pf-signin') && $('pf-signin').disabled && !vis('pf-sync') && !vis('pf-signout')),
+    $('st-signal').dispatchEvent(new PointerEvent('pointerenter'));
+    log($('st-signal').title.length > 5, 'signal icon: hover tooltip explains the state', $('st-signal').title);
+    log(rb.cloud.available() || (vis('pf-signin') && $('pf-signin').disabled && !vis('pf-rename') && !vis('pf-signout')),
       'profile: no API configured -> sign-in offered but disabled', $('pf-msg').textContent);
     log(!rb.cloud.signedIn() && !vis('pf-delete'), 'profile: signed out, no online-profile actions');
     key('Escape'); await sleep(80);

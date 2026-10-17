@@ -80,6 +80,28 @@ async function adminSmoke(context, name) {
       if (who !== 'Me') return fail(`signed-in menu shows "${who}" in the title bar instead of the player name`);
       if ((title === 'Admin') !== dev) return fail(`Admin item ${dev ? 'missing for' : 'shown to'} a ${dev ? 'dev' : 'non-dev'} profile`);
     }
+    // Back from signing in: the rings intro (not the title) while the code is exchanged, then the menu with the name, no key needed.
+    for (const good of [true, false]) {
+      const p3 = await context.newPage();
+      await p3.route(url => url.href.startsWith(API_BASE), r => r.abort()); // other calls fail offline: signed in stays signed in
+      await p3.route(url => url.href.startsWith(API_BASE + '/auth/exchange'), r => (r.request().method() === 'OPTIONS'
+        ? r.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' } })
+        : good
+        ? json(r, 200, { token: 'tok', profile: { id: 'u', name: 'Neo', logins: ['github'] } })
+        : json(r, 401, { error: 'bad code' })));
+      await p3.goto(`http://127.0.0.1:${port}/#login=${'a'.repeat(24)}`);
+      if (good) {
+        await p3.waitForSelector('#welcome:not([hidden])');
+        await p3.waitForFunction(() => { const c = document.getElementById('welcome-fx'); return c.width > 40 && c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v); }, null, { timeout: 4000 }); // the scene paints the LCD
+        await p3.waitForSelector('#mm-title', { timeout: 9000 });
+        if (await p3.evaluate(() => !document.getElementById('welcome-fx').hidden)) { await p3.close(); return fail('intro left its canvas behind'); }
+        const who = await p3.locator('#st-title').innerText();
+        if (who !== 'Neo') { await p3.close(); return fail(`sign-in intro ended with "${who}" in the title bar`); }
+      } else {
+        await p3.waitForSelector('#title:not([hidden])', { timeout: 6000 });
+      }
+      await p3.close();
+    }
     await page.goto(`http://127.0.0.1:${port}/?dev`);
     await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
     await page.keyboard.press('Space');

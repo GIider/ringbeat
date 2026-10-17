@@ -70,7 +70,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **The LCD:** the highway fills the LCD canvas, below the status bar.
 - **Status bar:**
   - the song title, scrolling if it is too long;
-  - signal bars, which show recent hit quality;
+  - signal bars: recent hit quality during a song, otherwise the connection light for signed-in players (full: synced, climbing: sending, dropping: receiving, 1 bar: last sync failed, none: offline). Hovering shows what the bars mean right now;
   - a battery, which shows the time left.
 - **HUD:** two rows at the top of the canvas.
   1. Score, then live grade + accuracy.
@@ -174,8 +174,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Signed out** (the default): the card reads *Player 1*. *Sign in with GitHub* is offered. The button is disabled, with "Online profiles are not available yet.", until the game is built
   with an API address.
 - **Signed in:** the card shows the online player name (at first the GitHub display name or username, else `Player-XXXX`). The screen offers:
-  - *Sync now*;
-  - a *Name* field and *Save name* (3–16 letters, digits, space, `.` `_` `-`; shown at once, sent with the next sync);
+  - a *Name* field and *Save* beside it (3–16 letters, digits, space, `.` `_` `-`; shown at once, sent with the next sync);
   - *On leaderboards: On/Off* (Off: the player's runs leave the public boards; they still see their own rank);
   - *Sign out*;
   - *Export my data* (downloads everything the server stores about the player as JSON);

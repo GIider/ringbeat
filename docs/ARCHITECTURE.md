@@ -64,6 +64,8 @@ src/
   cameo.js        pure simulations of the idle cameos (snake, Space Impact, SMS, signal wobble, low battery,
                   parade) and their weighted scheduler
   cameolayer.js   DOM/canvas glue for the cameos: a pointer-events:none canvas ticking at 10 Hz
+  welcome.js      the 5 s full-LCD intro after returning from sign-in: pure scene sim (power-on, ripples, linked rings,
+                  burst, the name in the LCD font) plus the 20 Hz canvas runner; shown instead of the title screen
   secrets.js      easter-egg helpers: sequence matcher (Konami), *#06# fake IMEI, the "Clearing memory" wipe gag
 
   -- data and persistence --

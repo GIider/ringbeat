@@ -13,6 +13,7 @@ import { Pad, BTN, buttonName, cloneBindings, DEFAULT_BINDINGS } from '../src/ga
 import { createSms, createSignalWobble, createLowBattery, createScheduler, CAMEOS } from '../src/cameo.js';
 import { formatImei, fakeImei } from '../src/secrets.js';
 import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES, SPRITES_FAV, categorySprite } from '../src/pixelart.js';
+import { createWelcome, layoutName, T as WT, TICK_MS } from '../src/welcome.js';
 import { CATEGORIES } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
@@ -456,6 +457,54 @@ test('gamepad: a throwing getGamepads means no pads', () => {
     Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {} });
     assert.deepEqual(p.list(), []);
   });
+});
+
+test('welcome intro: 5 s script, parks for the sign-in answer, stays inside the grid', () => {
+  assert.equal(WT.END * TICK_MS, 5000);
+  for (const [w, h] of [[85, 103], [100, 200], [40, 40]]) {
+    const run = (release, ticks) => {
+      const s = createWelcome(w, h);
+      const seen = [];
+      if (release) s.release('Neo');
+      for (let i = 0; i < ticks && !s.done; i++) {
+        let n = 0;
+        s.draw((x, y) => { assert.ok(Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < w && y < h); n++; });
+        seen.push(n);
+        s.step();
+      }
+      return { s, seen };
+    };
+    const quick = run(true, 500);
+    assert.ok(quick.s.done && quick.seen.length === WT.END, 'finishes after exactly END ticks');
+    assert.ok(quick.seen.slice(0, 12).every(n => n > 0), 'power-on paints');
+    assert.ok(quick.seen[WT.LOCK - 1] > 20 && quick.seen[WT.FLASH + 6] > 100, 'rings and burst paint');
+    assert.ok(quick.seen[WT.TITLE] > 20, 'name paints');
+    assert.equal(quick.seen[WT.END - 1], 0, 'dissolved before the menu opens');
+    const parked = run(false, 300);
+    assert.ok(!parked.s.done && parked.s.tick === WT.HOLD && parked.s.hold > 200, 'waits at HOLD without the answer');
+    parked.s.release('Neo');
+    for (let i = 0; i < 500 && !parked.s.done; i++) parked.s.step();
+    assert.ok(parked.s.done, 'finishes once released');
+  }
+});
+
+test('welcome intro: reduced motion jumps but never past the wait', () => {
+  const r = createWelcome(85, 103);
+  r.jump(WT.FADE);
+  assert.equal(r.tick, WT.HOLD, 'no answer yet: stops at the wait');
+  r.release('Neo'); r.jump(WT.FADE);
+  assert.equal(r.tick, WT.FADE);
+});
+
+test('welcome intro: the name is laid out inside the grid, wrapping long ones', () => {
+  const one = layoutName('Neo', 85, 47);
+  assert.equal(one.length, 3);
+  assert.ok(new Set(one.map(c => c.y)).size === 1 && one[0].x > 0);
+  const long = layoutName('Marcel the Great!!', 85, 47);
+  const rows = new Set(long.map(c => c.y));
+  assert.equal(rows.size, 2, 'wraps onto two lines');
+  assert.ok(long.every(c => c.x >= 0 && c.x + c.g.w <= 85 && c.y >= 0));
+  assert.equal(layoutName('', 85, 47).length, 0);
 });
 
 // ---- cameo status sims & scheduler ----

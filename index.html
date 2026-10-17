@@ -38,6 +38,7 @@
 
   <div id="phone" class="no-anim">
     <div id="lcd" class="lcd">
+      <canvas id="welcome-fx" class="welcome-fx" aria-hidden="true" hidden></canvas>
       <div class="statusbar" aria-hidden="true">
         <i id="st-signal" class="spr"></i>
         <button class="arrow" id="sel-arrow-l" aria-label="Previous category" tabindex="-1" data-i18n-attr="aria-label" hidden>◄</button>
@@ -61,6 +62,11 @@
           <p class="boot-version"><a id="boot-version" href="https://github.com/GIider/ringbeat" target="_blank" rel="noopener" title="Ringbeat on GitHub" data-i18n-attr="title"></a></p>
           <p id="boot-build" class="boot-version boot-build"></p>
           <button id="btn-start" class="sr" data-default data-i18n>Start</button>
+        </section>
+
+        <!-- Sign-in return: linked rings instead of the title screen -->
+        <section id="welcome" class="screen boot" hidden data-title="" data-soft-left="" data-soft-right="">
+          <p id="welcome-msg" class="blink" data-i18n>Connecting…</p>
         </section>
 
         <!-- Main menu: one item per screen with a big animated icon, like the 3310 -->
@@ -112,9 +118,7 @@
           </div>
           <div class="menu">
             <button id="pf-signin" data-i18n>Sign in with GitHub</button>
-            <button id="pf-sync" data-i18n>Sync now</button>
-            <label class="item" id="pf-name-row"><span data-i18n>Name</span> <input id="pf-name-input" type="text" maxlength="16" spellcheck="false" autocomplete="off"></label>
-            <button id="pf-rename" data-i18n>Save name</button>
+            <div class="item" id="pf-name-row"><span data-i18n>Name</span> <input id="pf-name-input" type="text" maxlength="16" spellcheck="false" autocomplete="off" aria-label="Name"> <button id="pf-rename" data-i18n>Save</button></div>
             <button id="pf-public"></button>
             <button id="pf-signout" data-i18n>Sign out</button>
             <button id="pf-export" data-i18n>Export my data</button>

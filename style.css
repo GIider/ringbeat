@@ -50,7 +50,7 @@ body.compact .keys { display: none; }
 
 /* ---------- LCD ---------- */
 .lcd { position: absolute; left: 12.727%; top: 11.136%; width: 74.545%; height: 44.091%; border-radius: 3.2% / 2.6%;
-  display: flex; flex-direction: column; overflow: hidden; color: var(--ink); line-height: 1.2;
+  display: flex; flex-direction: column; overflow: hidden; color: var(--ink); line-height: 1.2; isolation: isolate;
   background: radial-gradient(ellipse at 40% 25%, var(--lcd-hi), var(--lcd) 55%, var(--lcd-lo));
   box-shadow: inset 0 0 0 2px #0004, inset 0 6px 16px #0005; }
 .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
@@ -108,6 +108,10 @@ b { font-weight: 700; }
 .menu > button:disabled:focus, .menu > button[aria-disabled]:focus { opacity: .7; }
 .item input[type=range] { flex-basis: 100%; }
 .item b, .item span { margin-left: auto; }
+#pf-name-row { flex-wrap: nowrap; }
+#pf-name-row span { margin-left: 0; }
+#pf-name-row input { flex: 1; min-width: 0; box-sizing: border-box; background: none; border: var(--u) solid currentColor; color: inherit; font: inherit; padding: 2px 4px; }
+#pf-name-row button { flex: none; background: none; border: var(--u) solid currentColor; color: inherit; font: inherit; padding: 1px 8px; cursor: pointer; }
 
 input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; margin: 2px 0 4px; background: transparent;
   color: inherit; cursor: pointer; --seg: repeating-linear-gradient(90deg, #000 0 6px, #0000 6px 8px); }
@@ -153,7 +157,10 @@ textarea::placeholder { color: var(--ink-dim); }
 .blink { font-weight: 700; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { visibility: hidden; } }
 @keyframes hello-in { from { clip-path: inset(0 100% 0 0); } }
-.st-title.hello { animation: hello-in .8s steps(10) both; }
+.st-title.hello { animation: hello-in .5s steps(var(--chars, 10)) both; }
+#welcome { justify-content: flex-end; padding-bottom: 14%; }
+#welcome-msg { margin: 0; padding: 0 6px; background: var(--lcd); }
+#welcome-msg.ok { animation: none; }
 @keyframes boot-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* ---------- main menu: one item per screen (3310) ---------- */
@@ -482,6 +489,8 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 /* ---------- easter eggs: idle cameos + overlay (decorative, never interactive) ---------- */
 .cameo { position: absolute; left: 0; top: 0; color: var(--ink); opacity: .5; pointer-events: none; image-rendering: pixelated; }
 .lcd.flash { filter: invert(1); }
+/* the sign-in intro paints the whole LCD, behind the status bar and the screens */
+.welcome-fx { position: absolute; left: 0; top: 0; z-index: -1; color: var(--ink); pointer-events: none; image-rendering: pixelated; }
 .gag { position: absolute; inset: 0; z-index: 4; background: var(--lcd); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; text-align: center; pointer-events: none; padding: 8px; }
 .gag-title { font-weight: 700; }

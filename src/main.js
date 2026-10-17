@@ -38,6 +38,7 @@ import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
 import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
+import { createWelcome, measureGrid, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -108,7 +109,7 @@ const pad = new Pad();
 let state = 'title';
 let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lanes show
 const screens = {
-  title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
+  title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
   hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
@@ -138,15 +139,11 @@ function show(name) {
 const phoneMode = () => !document.body.classList.contains('compact');
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
 // Status bar title + soft-key labels come from the visible screen's data attributes.
-let welcomeName = false;
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
   if (!el) return;
   // The menu has no title of its own; while signed in, the player's name takes its place as the login indicator.
   const who = el === screens.menu && cloud.signedIn() ? (cloud.profile() || {}).name || '' : '';
-  const hello = !!who && welcomeName && state === 'menu';
-  if (hello) welcomeName = false; // the name animates in once, the first time the menu shows it after signing in
   $('st-title').classList.remove('hello');
-  if (hello) { void $('st-title').offsetWidth; $('st-title').classList.add('hello'); }
   $('st-title').textContent = who || tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
   for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar; show them before measuring
   $('st-title').classList.toggle('tap', el === screens.select);
@@ -224,6 +221,7 @@ if (DEV) {
     panel.appendChild(b);
   };
   for (const id of ['snake', 'space-impact', 'sms', 'signal-wobble', 'low-battery', 'parade']) add(id, () => cameo.play(id));
+  add('welcome', () => { cameo.stop(); hideGag(); welcomeStart(Promise.resolve(true)); });
   add('stop', () => { cameo.stop(); hideGag(); });
   add('imei', showImei);
   add('wipe', startWipe);
@@ -410,6 +408,12 @@ const netSignal = createNetSignal({
 });
 const netView = () => { const n = cloud.netState(); return n !== 'off' && navigator.onLine === false ? 'offline' : n; };
 const showNet = () => netSignal.setState(netView());
+// Hover hint for the signal icon, worded for whatever it shows right now.
+const signalTip = () => inPlay() ? tr('Signal: how well you are hitting the notes') : cameoSignal ? '' : ({
+  off: tr('Not signed in, playing offline'), send: tr('Sending your progress…'), recv: tr('Receiving your progress…'),
+  error: tr('Last sync failed, will retry'), offline: tr('No connection'),
+}[netView()] || tr('Connected, everything is synced'));
+$('st-signal').addEventListener('pointerenter', () => { $('st-signal').title = signalTip(); });
 addEventListener('online', showNet);
 addEventListener('offline', showNet);
 cloud.onChange(e => {
@@ -1262,26 +1266,16 @@ function renderProfile() {
     : [tr('New player')]).flatMap((t, i) => i ? [document.createElement('br'), t] : [t]));
   $('pf-signin').hidden = on;
   $('pf-signin').disabled = !cloud.available();
-  for (const id of ['pf-sync', 'pf-name-row', 'pf-rename', 'pf-public', 'pf-signout', 'pf-export', 'pf-delete']) $(id).hidden = !on;
+  for (const id of ['pf-name-row', 'pf-public', 'pf-signout', 'pf-export', 'pf-delete']) $(id).hidden = !on;
   $('pf-public').textContent = tr(p && p.public === false ? 'On leaderboards: Off' : 'On leaderboards: On');
   $('pf-signin').toggleAttribute('data-default', !on);
-  $('pf-sync').toggleAttribute('data-default', on);
-  syncButton();
+  $('pf-public').toggleAttribute('data-default', on);
   const at = cloud.lastSync();
   $('pf-msg').textContent = pfMsg ||
     (!cloud.available() ? tr('Online profiles are not available yet.')
     : !on ? tr('Sign in to keep settings, scores and songs in sync on all your devices.')
     : at ? tr('Synced {time}', { time: new Date(at).toLocaleString(getLang(), { dateStyle: 'short', timeStyle: 'short' }) })
     : tr('Not synced yet'));
-}
-// The Sync button counts down its cooldown (aria-disabled, not disabled: the focus stays on it).
-let syncTimer = 0;
-function syncButton() {
-  clearTimeout(syncTimer);
-  const b = $('pf-sync'), left = cloud.syncCooldown();
-  b.textContent = left ? tr('Sync again in {n} s', { n: Math.ceil(left / 1000) }) : tr('Sync now');
-  b.toggleAttribute('aria-disabled', left > 0);
-  if (left && state === 'profile') syncTimer = setTimeout(syncButton, Math.min(1000, left % 1000 || 1000));
 }
 async function profileAction(fn, okMsg) {
   pfMsg = tr('Working…'); renderProfile();
@@ -2392,6 +2386,7 @@ function releasePad(index, ts) {
 function back() {
   switch (state) {
     case 'title': break;
+    case 'welcome': skipWelcome(); break;
     case 'menu': setState('title', 'title'); break;
     case 'select': stopPreview(); openMenu('tones'); break;
     case 'hub': leaveHub(); break;
@@ -2422,6 +2417,7 @@ function back() {
 }
 
 function menuButton(index) {
+  if (state === 'welcome') { skipWelcome(); return; }
   if (state === 'msgload' && index !== BTN.B) { skipMessageLoad(); return; }
   const root = activeScreen();
   switch (index) {
@@ -2462,7 +2458,7 @@ let padStreakDir = '';
 // Shared by arrow keys, d-pad and the phone keypad (2/4/6/8).
 function navigate(dir) {
   const root = activeScreen();
-  if (!root || state === 'title') return;
+  if (!root || state === 'title' || state === 'welcome') return;
   if (state === 'composer' && !csMenu) { compInput(dir); return; }
   if (state === 'menu') { menuStep(dir === 'up' || dir === 'left' ? -1 : 1); return; }
   if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
@@ -2545,6 +2541,7 @@ function phoneKey(key) {
   if (!inPlay()) synth.keyClick();
   if (state === 'msgload' && key !== 'softR') { skipMessageLoad(); return; }
   if (state === 'title') { startFromTitle(); return; }
+  if (state === 'welcome') { skipWelcome(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
   if (state === 'select' && selectKey(key)) return;
   switch (key) {
@@ -2559,6 +2556,51 @@ function phoneKey(key) {
 }
 
 // ---- wiring ----
+// Back from signing in: the full-LCD intro (welcome.js) replaces the title screen while the one-time code is exchanged, then the menu.
+// Silent (no gesture yet); any key or tap skips. A failed exchange falls back to the title.
+let welcomeStop = null;
+function welcomeEnd(to, gesture) {
+  if (welcomeStop) welcomeStop();
+  welcomeStop = null;
+  $('welcome-fx').hidden = true;
+  cameoSignal = false; phoneIdle();
+  if (to === 'title') setState('title', 'title');
+  else if (to === 'none') return; // somebody else already navigated away
+  else if (gesture) startFromTitle(); else openMenu('tones');
+}
+function welcomeStart(exchange) {
+  let ok = null, cancelled = false;
+  setState('welcome', 'welcome');
+  cameoSignal = true; // the intro owns the signal icon
+  const fx = $('welcome-fx'), msg = $('welcome-msg'), bar = $('st-title');
+  fx.hidden = false;
+  msg.hidden = false; msg.classList.remove('ok'); msg.textContent = tr('Connecting…');
+  setSprite($('st-signal'), signal(0), 2);
+  welcomeStop = () => { cancelled = true; };
+  requestAnimationFrame(() => { // measured once the phone is laid out
+    if (cancelled) return;
+    const { w, h } = measureGrid(fx), sim = createWelcome(w, h);
+    const name = () => (cloud.profile() || {}).name || 'Player';
+    exchange.then(r => { ok = r; if (r) sim.release(name()); });
+    welcomeStop = runWelcome(fx, sim, {
+      onTick: () => {
+        if (state !== 'welcome') { welcomeEnd('none'); return; }
+        if (ok === false || sim.hold > HOLD_LIMIT) { if (sim.hold > HOLD_LIMIT) toast('Sign-in failed'); welcomeEnd('title'); return; }
+        if (still.matches) sim.jump(WT.FADE);
+        setSprite($('st-signal'), signal(sim.hold ? (sim.hold >> 1) % 6 : sim.signal()), 2); // bars cycle while it waits for the answer
+        if (sim.tick === WT.FLASH) { msg.textContent = tr('Connected'); msg.classList.add('ok'); }
+        if (sim.tick === WT.FADE) msg.hidden = true;
+        if (sim.tick === WT.TITLE) { // the same name types into the title bar as the big one finishes
+          bar.textContent = sim.name; bar.style.setProperty('--chars', [...sim.name].length || 1);
+          void bar.offsetWidth; bar.classList.add('hello');
+        }
+      },
+      onDone: () => welcomeEnd('menu'),
+    });
+  });
+}
+const skipWelcome = () => { if (state === 'welcome') welcomeEnd('menu', true); };
+
 let booted = false;
 function startFromTitle() {
   synth.ensure();
@@ -2758,10 +2800,6 @@ function wire() {
 
   // profile
   $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
-  $('pf-sync').onclick = () => {
-    if (cloud.syncCooldown() > 0) return;
-    profileAction(async () => { if (!(await cloud.syncNow()).ok) throw new Error('sync'); }, '');
-  };
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
   $('pf-public').onclick = () => {
     const off = (cloud.profile() || {}).public === false;
@@ -2868,6 +2906,7 @@ function wire() {
   $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('msgload').addEventListener('click', skipMessageLoad);
+  $('welcome').addEventListener('click', skipWelcome);
   $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
@@ -2912,7 +2951,7 @@ function wire() {
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
   $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
+  window.addEventListener('resize', () => { if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
@@ -2928,11 +2967,12 @@ function wire() {
   window.addEventListener('pagehide', commitTime);
 
   // Back from signing in: the API hands over a one-time code (or the reason it failed) in the hash.
+  let loginExchange = null;
   if (/^#login(-error)?=/.test(location.hash)) {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else cloud.takeLoginHash(hash).then(ok => { if (ok) { welcomeName = true; refreshChrome(); cloud.sync('signed in'); cloud.board('', 'normal'); } }, () => toast('Sign-in failed'));
+    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
   } else cloud.sync('start');
   cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 
@@ -2960,7 +3000,7 @@ function wire() {
     if (t && takeShared(t)) { toast('Shared song saved to My songs'); if (state === 'select') openSelect(); }
   });
   showOffset();
-  show('title');
+  if (loginExchange) welcomeStart(loginExchange); else show('title');
 }
 
 function onKey(e) {
@@ -2977,6 +3017,10 @@ function onKey(e) {
   if (dialing()) {
     e.preventDefault();
     if (e.code === 'Escape' || e.code === 'Backspace') hideGag();
+    return;
+  }
+  if (state === 'welcome') {
+    if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); skipWelcome(); }
     return;
   }
   if (state === 'title') {

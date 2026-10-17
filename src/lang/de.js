@@ -37,6 +37,8 @@ export const de = {
 
   // ---- title & main menu ----
   'Press any key or tap': 'Taste drücken oder tippen',
+  'Connecting…': 'Verbinde…',
+  'Connected': 'Verbunden',
   'Ringbeat on GitHub': 'Ringbeat auf GitHub',
   'Made by Blackjack': 'Von Blackjack',
   'Enter number': 'Nummer eingeben',
@@ -81,9 +83,6 @@ export const de = {
 
   // ---- online profile ----
   'Sign in with GitHub': 'Mit GitHub anmelden',
-  'Sync now': 'Jetzt synchronisieren',
-  'Sync again in {n} s': 'Wieder in {n} s',
-  'Save name': 'Name speichern',
   'Sign out': 'Abmelden',
   'Export my data': 'Meine Daten exportieren',
   'Data exported': 'Daten exportiert',
@@ -597,5 +596,12 @@ export const de = {
   'Updated {n} sec ago': 'Stand: vor {n} s',
   'Updated {n} min ago': 'Stand: vor {n} min',
   'Updated {n} h ago': 'Stand: vor {n} h',
+  'Signal: how well you are hitting the notes': 'Signal: wie gut du die Noten triffst',
+  'Not signed in, playing offline': 'Nicht angemeldet, Offline-Spiel',
+  'Connected, everything is synced': 'Verbunden, alles synchronisiert',
+  'Sending your progress…': 'Fortschritt wird gesendet…',
+  'Receiving your progress…': 'Fortschritt wird empfangen…',
+  'Last sync failed, will retry': 'Letzte Synchronisierung fehlgeschlagen, neuer Versuch folgt',
+  'No connection': 'Keine Verbindung',
   'World boards': 'Welt-Bestenlisten',
 };

@@ -188,7 +188,6 @@ The free plan allows 100 000 Worker requests and 100 000 D1 rows written a day, 
 | When | Request |
 |---|---|
 | Game start, after signing in | One `POST /sync`: push what changed, pull the rest |
-| The Sync button | Same, at most once per 30 s (counted from the last sync too); the button counts down meanwhile |
 | The tab comes back | Same, but only when the last sync is over 10 minutes old |
 | A synced setting, favourite or song changed | A push within 30 s, only if the shared document differs from the last synced one |
 | A new player name, "On leaderboards" | Shown at once, sent with that same push within 30 s (and before signing out) |
@@ -208,7 +207,7 @@ How it stays small:
   come down only when they changed since the last pull (`devicesSince`).
 - **Never in the way.** A sync that comes due during a song (or a pause) waits until the song is over. Requests
   time out after 8 s, are skipped when the browser is offline, and back off after a failure (1, 2, 4 … 30 minutes;
-  5 after a 429). The Sync button ignores the backoff.
+  5 after a 429).
 - **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 10 of every song
   and difficulty. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
   changed. A run that ranks in the top 10 is written into the snapshot by the sync that ranked it, so other players see it within about 30 seconds (names, opt-outs and hides wait for the cron's rebuild, every 5 minutes); the player's own rank is fresh on the results screen.
