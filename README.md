@@ -1,5 +1,8 @@
 # Ringbeat
 
+[![Test & Deploy](https://github.com/GIider/ringbeat/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/GIider/ringbeat/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/github/license/GIider/ringbeat)](LICENSE)
+
 **Play now:** <https://giider.github.io/ringbeat/>
 
 Ringbeat is a browser rhythm game whose charts are generated automatically from RTTTL (Nokia ringtone) text. It is
