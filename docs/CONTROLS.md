@@ -53,6 +53,8 @@ The drawn phone's keys work, laid out like a 3310:
 - **C** (left): Back (Del in the composer). During play it pauses. Holding it for 1.2 s on the title, menu or song select
   runs a gag (see [SPEC.md › Extras](SPEC.md#extras)).
 - **▲▼ rocker** (right): up / down.
+- **Song list keypad:** `1` / `3` page up / down, `7` / `9` previous / next group, `0` random song. (`*` and `#` stay free for
+  the secret dial codes; Up from the first song opens the categories.)
 - **Keypad:** `5` = select (pauses during play), `2` `8` `4` `6` = up / down / left / right. In the composer the keypad
   is the note entry, as on the keyboard.
 
@@ -118,8 +120,9 @@ A disconnect during play pauses the game. Controllers appear to the browser only
 
 ## On-screen hints
 
-- **Song select:** the hint line under the list shows the navigation keys: `◄► Cat · D/F Sort · J/K Diff · V Fav` on keyboard,
-  or `LB/RB Cat · LT Sort` once a controller is used. With a controller, the category arrows in the header also become
+- **Song select:** the hint line under the list flips between short pages of the navigation keys (`◄► Cat · D/F Sort · J/K Diff`,
+  `V Fav · R Random · G Cats`, `PgUp/PgDn Page · ,/. Group · / Find` on keyboard; `LB/RB Cat · LT Sort · Y Cats`,
+  `RT/Back Group · X Random` once a controller is used). With a controller, the category arrows in the header also become
   LB / RB.
 - **Tutorial cards:** show the lane inputs for the device in use (keys, pad buttons or touch).
 - **Legend:** on wide screens, a legend beside the phone lists the menu and play keys.
@@ -127,3 +130,21 @@ A disconnect during play pauses the game. Controllers appear to the browser only
 Keyboard or mouse input switches all of these back.
 
 See also: [SPEC.md](SPEC.md) · [ARCHITECTURE.md](ARCHITECTURE.md#key-decisions)
+
+## Song picker navigation
+
+The list shows `Category pos/total · group` in the header, where the group depends on the sort: first letter (Title),
+star band, BPM band or duration band. A scroll thumb on the right edge shows where you are.
+
+| Action | Keyboard | Controller | Touch |
+|---|---|---|---|
+| Next / previous category | `◄ ►`, `[` `]` | LB / RB | swipe the list, header arrows |
+| Category hub (all groups + counts) | `G`, or Up from the first song | Y | tap the header |
+| Page up / down | PageUp / PageDown | hold the d-pad (speeds up) | scroll |
+| First / last song | Home / End | | |
+| Previous / next group | `,` `.` | Back / RT | A–Z strip (Title sort) |
+| Find (live title / tag filter) | `/` (Esc clears) | | **Find** chip |
+| Random song in the current view | `R` | X | |
+
+Besides the seven categories the hub offers **Recent** (the last 20 songs played on this device, newest first),
+**Unplayed** (no score yet on the current difficulty), **Custom** and **Favorites**.

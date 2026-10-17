@@ -69,11 +69,12 @@ f.addEventListener('load', async () => {
     log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), '*#06# shows the IMEI panel with the avatar');
     key('KeyX'); await sleep(50);
     log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
-    const cat0 = $('sel-cat').textContent;
+    const catOf = () => $('sel-cat').textContent.replace(/ \d+\//, ' '); // label + total, without the cursor position
+    const cat0 = catOf();
     key('ArrowRight'); await sleep(80);
-    log($('sel-cat').textContent !== cat0 && vis('select'), 'right arrow switches category');
+    log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
     key('ArrowLeft'); await sleep(80);
-    log($('sel-cat').textContent === cat0, 'left arrow switches back');
+    log(catOf() === cat0, 'left arrow switches back');
     log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones', 'soft keys + status title');
     d.activeElement.click(); await sleep(80); // Enter on a focused button is a native click
     log(vis('diffpick') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'difficulty screen with details');

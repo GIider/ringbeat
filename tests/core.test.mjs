@@ -237,7 +237,7 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
 
 // ---- bots + list view ----
 import { runBot, LADDER, measureChart } from '../src/bot.js';
-import { applyView } from '../src/listview.js';
+import { applyView, sectionOf, jumpSection, randomOf } from '../src/listview.js';
 
 const botChart = d => generateChart(parseRTTTL(SONGS.find(s => s.id === 'twinkle').rtttl), { difficulty: d });
 
@@ -332,7 +332,6 @@ test('listview: sort', () => {
   const sc = { get: (id) => id === 'a' ? { top: [{ fc: true }] } : id === 'b' ? { top: [{ fc: false }] } : null };
   const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
   assert.deepEqual(ids({}), ['b', 'a', 'c', 'custom:x']);
-  assert.deepEqual(ids({ sort: 'diff-desc' }), ['c', 'a', 'b', 'custom:x']);
   assert.deepEqual(ids({ sort: 'title' }), ['a', 'b', 'c', 'custom:x']);
 });
 
@@ -342,6 +341,40 @@ test('listview: category filter', () => {
   const ids = v => applyView(es, v, 'normal', sc).map(e => e.id);
   assert.deepEqual(ids({ category: 'pop' }), ['a']);
   assert.deepEqual(ids({ category: 'all' }), ['a', 'b', 'custom:x']);
+});
+
+test('listview: sections and section jumps', () => {
+  const es = ['Apple', 'Axe', 'Beta', '99 Balloons', 'Cat', 'Cow', 'Cub'].map(t => ({ id: t, title: t, bpm: 100, length: 40, stars: {}, rating: { normal: 4 } }));
+  assert.equal(sectionOf(es[0], 'title', 'normal'), 'A');
+  assert.equal(sectionOf(es[3], 'title', 'normal'), '#');
+  assert.equal(sectionOf({ ...es[0], rating: { normal: 7 } }, 'diff-asc', 'normal'), '4');
+  assert.equal(sectionOf(es[0], 'length', 'normal'), '0:40+');
+  assert.equal(sectionOf({ ...es[0], length: 9 }, 'length', 'normal'), '<0:10');
+  assert.equal(sectionOf(es[0], 'fav', 'normal'), '');
+  assert.equal(sectionOf({ ...es[0], id: 'custom:1' }, 'title', 'normal'), '*');
+  const j = (i, step) => jumpSection(es, i, step, 'title', 'normal');
+  assert.equal(j(0, 1), 2);
+  assert.equal(j(2, 1), 3);
+  assert.equal(j(4, 1), 6); // last section: stays at the end
+  assert.equal(j(1, -1), 0);   // back to the start of the current section
+  assert.equal(j(0, -1), 0);
+  assert.equal(j(5, -1), 4);
+  assert.equal(j(4, -1), 3);   // start of the previous section
+  assert.equal(jumpSection([], 0, 1, 'title', 'normal'), -1);
+});
+
+test('listview: recent, unplayed, search and random', () => {
+  const es = [{ id: 'a', title: 'Alpha', tag: 'Game' }, { id: 'b', title: 'Beta' }, { id: 'c', title: 'Gamma', only: 'hard' }, { id: 'd', title: 'Delta', tag: 'Alpha cousin' }]
+    .map(e => ({ category: 'pop', stars: {}, ...e }));
+  const sc = { get: id => (id === 'a' ? { best: {} } : null) };
+  const ids = (v, ...rest) => applyView(es, v, 'normal', sc, [], ...rest).map(e => e.id);
+  assert.deepEqual(ids({ category: 'recent' }, ['d', 'a', 'zzz']), ['d', 'a']); // newest first, regardless of sort
+  assert.deepEqual(ids({ category: 'unplayed', sort: 'title' }), ['b', 'd']);   // not played, and not hard-only
+  assert.deepEqual(ids({ sort: 'title' }, [], 'alpha'), ['a', 'd']);            // title or tag, case-insensitive
+  assert.deepEqual(ids({ sort: 'title' }, [], '  '), ['a', 'b', 'd', 'c']);
+  assert.equal(randomOf(es, 'a', () => 0).id, 'b');                             // never the current song
+  assert.equal(randomOf([es[0]], 'a').id, 'a');
+  assert.equal(randomOf([], 'a'), null);
 });
 
 test('songs: every song has a known category and every category is used', async () => {

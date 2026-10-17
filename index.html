@@ -134,10 +134,20 @@
             <div class="sel-cat" id="sel-cat" aria-live="polite"></div>
             <button class="arrow" id="sel-arrow-r" aria-label="Next category" tabindex="-1" data-i18n-attr="aria-label">►</button>
           </div>
-          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1" data-i18n-attr="aria-label"></button></div>
-          <div id="song-list" class="song-list" role="listbox" aria-label="Songs" data-i18n-attr="aria-label"></div>
+          <div id="sel-sub" class="sel-sub"><button id="sel-sort" class="chip" aria-label="Sort order" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-diff" class="chip" aria-label="Difficulty" tabindex="-1" data-i18n-attr="aria-label"></button> · <button id="sel-find" class="chip" aria-label="Find a song" tabindex="-1" data-i18n-attr="aria-label" data-i18n>Find</button></div>
+          <label id="sel-search" class="sel-search" hidden><span>/</span> <input id="sel-q" type="text" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Find a song" data-i18n-attr="aria-label"></label>
+          <div class="song-wrap" id="song-wrap">
+            <div id="song-list" class="song-list" role="listbox" aria-label="Songs" data-i18n-attr="aria-label"></div>
+            <div id="sel-thumb" class="sel-thumb" hidden aria-hidden="true"></div>
+            <div id="sel-az" class="sel-az" aria-hidden="true"></div>
+          </div>
           <div id="sel-info" class="sel-info" aria-live="polite"></div>
           <div id="sel-hint" class="sel-hint" aria-hidden="true"></div>
+        </section>
+
+        <!-- Category hub: all song groups at a glance -->
+        <section id="hub" class="screen" hidden data-title="Categories" data-soft-left="Select" data-soft-right="Back">
+          <div id="hub-grid" class="hub-grid" data-rows></div>
         </section>
 
         <!-- First visit to Tones: offer the tutorial -->
@@ -476,6 +486,7 @@
   </div>
 
   <div id="toast" class="toast" hidden role="status"></div>
+  <div id="fav-bubble" class="bubble" hidden role="status"></div>
 
   <script type="module" src="src/main.js"></script>
 </body>

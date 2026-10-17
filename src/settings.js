@@ -7,6 +7,7 @@ import { SYNCED_SETTINGS } from './cloudmerge.js';
 import { VOICES } from './synth.js';
 
 const STORE_KEY = 'ringbeat.v1';
+export const RECENT_MAX = 20;
 
 const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : d;
 
@@ -34,10 +35,12 @@ function fromRaw(raw) {
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   difficulty: ['normal', 'hard'].includes(raw.difficulty) ? raw.difficulty : 'normal',
   view: {
-    sort: ['diff-asc', 'diff-desc', 'title', 'bpm', 'length', 'fav'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
-    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom', 'favorites'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
+    sort: ['diff-asc', 'title', 'bpm', 'length', 'fav'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
+    category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom', 'favorites', 'recent', 'unplayed'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
   },
   favorites: Array.isArray(raw.favorites) ? [...new Set(raw.favorites.filter(v => typeof v === 'string' && v && v.length <= 200))].slice(0, 500) : [],
+  // Songs played on this device, newest first (the Recent view); per device like lastSongId.
+  recent: Array.isArray(raw.recent) ? [...new Set(raw.recent.filter(v => typeof v === 'string' && v && v.length <= 200))].slice(0, RECENT_MAX) : [],
   lastSongId: typeof raw.lastSongId === 'string' ? raw.lastSongId : '',
   // Existing players (who already picked a song) are not shown the tutorial.
   tutorialDone: raw.tutorialDone === true || (typeof raw.lastSongId === 'string' && raw.lastSongId !== ''),

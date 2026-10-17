@@ -33,7 +33,7 @@ Notes that don't make the chart are played automatically as `backing`. The exact
 
 ## Built-in songs
 
-`src/songs.js` holds the catalogue (249 songs; check with `node -e "import('./src/songs.js').then(m=>console.log(m.SONGS.length))"`).
+`src/songs.js` holds the catalogue (259 songs; check with `node -e "import('./src/songs.js').then(m=>console.log(m.SONGS.length))"`).
 
 - `SONGS` entries are `{ id, category, title, tag, rtttl }`:
   - `id`: unique and stable. Highscores, stats and `difficulty.json` are keyed by it, so never rename a shipped id.

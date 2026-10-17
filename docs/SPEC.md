@@ -50,8 +50,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   songs; it appears only when there are some, and they always sort last.
 - **Changing the view:**
   - Category: ←→, `[` `]`, LB/RB, a swipe, or the ◄► arrows in the header.
-  - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Easiest first* (the default), *Hardest
-    first*, *Title*, *BPM*, *Duration* and *Favorites first*.
+  - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Difficulty* (easiest first, the default),
+    *Title*, *BPM*, *Duration* (grouped in 10 s steps) and *Favorites* (favorites first).
   - List difficulty: `J` / `K`, or tapping the difficulty chip.
 - **Favorites:** a *Favorites* category chip (after the others) appears once a song is favorited. `V`, or clicking / tapping the icon of the selected row, toggles a song's favorite (saved in the settings; custom
   songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
@@ -129,7 +129,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Controller (status, lane-binding buttons, *Reset buttons*; see [CONTROLS.md › Gamepad](CONTROLS.md#gamepad-standard-gamepad-api))
   - Replay tutorial
   - Reset scores & stats (two-step confirm)
-  - Developer tab: Performance overlay (also F3), Request tracker and a Glyphs & icons gallery; both sync to the player account, `?dev` does not affect them
+  - Developer tab: Performance overlay (also F3), Request tracker and a Glyphs & icons gallery (every new symbol, animation, glyph or icon must be viewable there, see [DEVELOPMENT.md](DEVELOPMENT.md)); both sync to the player account, `?dev` does not affect them
 - **From pause:** Latency, Replay tutorial and Reset are hidden.
 
 ## Gameplay

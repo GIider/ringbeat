@@ -249,9 +249,36 @@ textarea::placeholder { color: var(--ink-dim); }
 #diffpick .menu > button { flex-wrap: nowrap; }
 .dp-panel { min-height: 3.2em; }
 .dp-seg { justify-content: center; margin: 2px 0; }
-.sel-sub { text-align: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.song-list { flex: 1; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);
-  scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+.sel-sub { display: flex; justify-content: center; align-items: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; }
+.sel-sub .chip { flex: none; }
+.sel-sub #sel-sort { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.song-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
+.song-list { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);
+  scrollbar-width: none; }
+.song-list::-webkit-scrollbar { display: none; }
+/* Own scroll thumb: the native bar is too faint on the LCD. */
+.sel-thumb { position: absolute; right: 0; width: calc(var(--u) * 2); background: var(--ink); pointer-events: none; margin-top: var(--u); }
+.song-wrap.thumb .song-row { padding-right: calc(var(--u) * 5); }
+/* A-Z strip: touch only, while the list is sorted by title. */
+.sel-az { display: none; position: absolute; right: 0; top: var(--u); bottom: var(--u); width: calc(var(--fs) * 0.9); flex-direction: column; justify-content: space-between;
+  align-items: center; touch-action: none; background: var(--lcd); border-left: var(--u) solid var(--ink); font-size: calc(var(--fs) * 0.8); line-height: 1; user-select: none; }
+.sel-az span { pointer-events: none; }
+@media (pointer: coarse) { .song-wrap.az .sel-az { display: flex; } .song-wrap.az .sel-thumb { display: none; } .song-wrap.az .song-row { padding-right: calc(var(--fs) * 1.1); } }
+.sel-search { display: flex; align-items: center; gap: 4px; border-top: var(--u) solid var(--ink); padding: 2px 4px; }
+.sel-search[hidden] { display: none; }
+.sel-search input { flex: 1; min-width: 0; font: inherit; background: #0000; color: var(--ink); border: var(--u) solid var(--ink); border-radius: 0; padding: 2px 4px; }
+.sel-search input:focus { outline: none; box-shadow: inset 0 0 0 var(--u) var(--ink); }
+.sel-cat { cursor: pointer; }
+/* Category hub */
+#hub { display: flex; flex-direction: column; overflow: hidden; }
+.hub-grid { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: none; }
+.hub-card { display: flex; align-items: center; gap: 6px; min-height: 28px; flex: none; padding: 2px 6px; text-align: left; background: none; color: var(--ink);
+  border: var(--u) solid var(--ink); cursor: pointer; min-width: 0; }
+.hub-card .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-card .n { flex: none; color: var(--ink-dim); }
+.hub-card.cur, .hub-card:focus { background: var(--ink); color: var(--lcd); outline: none; }
+.hub-card.cur .n, .hub-card:focus .n { color: inherit; }
+@media (pointer: coarse) { .hub-card { min-height: 48px; } }
 .song-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 2px 6px;
   min-height: 28px; cursor: pointer; color: var(--ink); contain: layout style; }
 .song-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -263,7 +290,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .song-row:focus { outline: none; }
 .song-row:hover:not(.cur) { box-shadow: inset 0 0 0 var(--u) var(--ink); }
 .song-list .empty { margin: 12px; text-align: center; }
-.sel-info { padding: 3px 2px 4px; min-height: 3.6em; }
+.sel-info { padding: 3px 2px 4px; min-height: 2.4em; }
 .sel-info > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sel-info .stars-bar { margin-right: 6px; }
 .badge { display: inline-block; padding: 0 3px; margin-left: 4px; border: var(--u) solid currentColor; font-size: var(--fs); line-height: 1; }
@@ -359,6 +386,22 @@ td + td { text-align: right; font-weight: 700; }
   background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
   padding: 8px 12px; text-align: center; font-weight: 700; pointer-events: none; }
 .toast.on-lcd { bottom: auto; transform: translate(-50%, -50%); }
+/* Favorite bubble: a pixel thought bubble beside the selected row's genre icon; the two small squares are its tail. */
+.bubble { position: fixed; z-index: 20; padding: 6px 8px; line-height: 0; background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink); pointer-events: none; transform-origin: 0 100%; }
+.bubble[hidden] { display: none; }
+.bubble::before, .bubble::after { content: ""; position: absolute; background: var(--lcd); border: var(--u) solid var(--ink); }
+.bubble::before { width: 8px; height: 8px; left: -6px; bottom: -9px; }
+.bubble::after { width: 4px; height: 4px; left: -13px; bottom: -16px; }
+.bubble.below { transform-origin: 0 0; }
+.bubble.below::before { bottom: auto; top: -9px; }
+.bubble.below::after { bottom: auto; top: -16px; }
+.bubble.add, .gl-pop.add { animation: heart-pop .25s ease-out; }
+.bubble.break, .gl-pop.break { animation: heart-break .45s ease-out; }
+.gl-pop { display: inline-block; line-height: 0; }
+@keyframes heart-pop { 0% { scale: .4; } 60% { scale: 1.15; } 100% { scale: 1; } }
+@keyframes heart-break { 0% { scale: 1.1; } 25% { translate: -3px 0; } 50% { translate: 3px 0; } 75% { translate: -2px 2px; } 100% { translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .bubble.add, .bubble.break, .gl-pop.add, .gl-pop.break { animation: none; } }
 
 /* ---------- keys legend (menus, wide screens) ---------- */
 .legend { position: fixed; z-index: 2; top: 50%; transform: translateY(-50%); width: 260px; color: #9fb08c; font-size: var(--fs);

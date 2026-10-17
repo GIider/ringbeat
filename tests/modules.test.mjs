@@ -259,7 +259,7 @@ test('listview: bpm and length sorts, stable ties, custom last', () => {
   assert.deepEqual(applyView(es, { sort: 'bpm' }, 'normal', null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'length' }, 'normal', null).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'nonsense' }, 'normal', null).map(e => e.id), ['a', 'b', 'c', 'custom:x']);
-  assert.equal(SORTS.length, 6);
+  assert.equal(SORTS.length, 5);
 });
 
 test('listview: favorites sort puts favorites first by difficulty, custom still last', () => {

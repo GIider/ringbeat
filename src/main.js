@@ -16,13 +16,13 @@ import { encodeSong, decodeShare } from './share.js';
 import { measureChartAsync } from './bot.js';
 import { ratingFromMeasured } from './customrating.js';
 import { Calibration } from './calibration.js';
-import { settings, saveSettings as save, num, effectiveLang, onSave, sharedSettings, applyShared } from './settings.js';
+import { settings, saveSettings as save, num, effectiveLang, onSave, sharedSettings, applyShared, RECENT_MAX } from './settings.js';
 import { t as tr, tn, tm, fmt, setLang, applyStatic, LANGS, getLang } from './i18n.js';
 import { esc, badgeHTML, nameHTML, starsBar } from './rowfmt.js';
 import { buildLibrary, customEntry, formatLength, setMeasured } from './library.js';
 import { CATEGORIES } from './songs.js';
 import { onSwipe } from './swipe.js';
-import { SORTS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
+import { SORTS, applyView, nextOf, prevOf, ratingOf, sectionOf, jumpSection, randomOf } from './listview.js';
 import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
@@ -37,7 +37,7 @@ import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, SPRITES_FAV, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
+import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_BROKEN, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -109,7 +109,7 @@ let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lan
 const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
-  mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
+  hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
   settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
@@ -308,9 +308,10 @@ function eggToken(code, key) {
 }
 
 let toastTimer = 0;
-function toast(msg, ms = 2200) {
+function toast(msg, ms = 2200) { showToast(t => { t.textContent = tm(msg); t.classList.remove('icon', 'break'); }, ms); }
+function showToast(fill, ms) {
   const t = $('toast');
-  t.textContent = tm(msg); t.hidden = false;
+  fill(t); t.hidden = false;
   // Pop up in the middle of the phone's LCD when it is on screen, else at the bottom of the viewport.
   const r = $('lcd').getBoundingClientRect();
   const onLcd = !!(r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1);
@@ -319,6 +320,23 @@ function toast(msg, ms = 2200) {
   t.style.top = onLcd ? r.top + r.height / 2 + 'px' : '';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+// Thought bubble with a pixel icon beside the selected row's genre icon (the label is for screen readers only).
+let bubbleTimer = 0;
+function favBubble(rows, label, kind, ms = 1100) {
+  const b = $('fav-bubble'), icon = document.querySelector('#song-list .song-row.cur .spr.cat');
+  if (!icon) return;
+  b.innerHTML = spriteHTML(rows, 4) + `<span class="sr">${esc(label)}</span>`;
+  b.hidden = false; // measured below
+  const ir = icon.getBoundingClientRect(), lr = $('lcd').getBoundingClientRect(), br = b.getBoundingClientRect();
+  const above = ir.top - br.height - 12 >= lr.top + 2; // otherwise below the icon, tail pointing up
+  b.classList.toggle('below', !above);
+  b.style.left = Math.max(lr.left + 14, Math.min(lr.right - br.width - 4, ir.right + 12)) + 'px';
+  b.style.top = (above ? ir.top - br.height - 12 : ir.bottom + 12) + 'px';
+  b.classList.remove('add', 'break'); void b.offsetWidth; b.classList.add(kind);
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => { b.hidden = true; }, ms);
 }
 
 // ---- library & selection ----
@@ -390,7 +408,8 @@ const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter (for the current difficulty).
-const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, settings.favorites);
+const visible = () => applyView(entries(), settings.view, settings.difficulty, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery);
+let searchQuery = '', selMoveAt = 0; // title/tag filter typed in the picker (not persisted); when the cursor last moved
 // New players start on the top of the default view (easiest first, Normal), computed from the current ratings.
 const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, 'normal', scores)[0] || builtins[0]).id;
 
@@ -431,23 +450,184 @@ const starsText = rating => starsBar(rating, tr('{v} of 5 stars', { v: starsValu
 // Category chips: All + each category (+ Custom when a custom song exists, + Favorites when there are any), with song counts.
 function categoryTabs() {
   const all = entries();
-  const tabs = [{ id: 'all', label: 'All' }, ...CATEGORIES];
-  if (customs.length) tabs.push({ id: 'custom', label: 'Custom' });
-  if (all.some(e => isFavorite(e.id))) tabs.push({ id: 'favorites', label: 'Favorites' });
+  const d = settings.difficulty;
   const count = t => t.id === 'all' ? all.length
-    : t.id === 'favorites' ? all.filter(e => isFavorite(e.id)).length : all.filter(e => e.category === t.id).length;
-  return tabs.map(t => ({ ...t, count: count(t) }));
+    : t.id === 'favorites' ? all.filter(e => isFavorite(e.id) || favKeep.has(e.id)).length
+    : t.id === 'recent' ? all.filter(e => settings.recent.includes(e.id)).length
+    : t.id === 'unplayed' ? all.filter(e => !(e.only && e.only !== d) && !scores.get(e.id, d)).length
+    : all.filter(e => e.category === t.id).length;
+  // Smart views (Recent, Unplayed) come right after All and only show up while they have songs.
+  const tabs = [{ id: 'all', label: 'All' }, { id: 'recent', label: 'Recent' }, { id: 'unplayed', label: 'Unplayed' }, ...CATEGORIES];
+  if (customs.length) tabs.push({ id: 'custom', label: 'Custom' });
+  tabs.push({ id: 'favorites', label: 'Favorites' });
+  return tabs.map(t => ({ ...t, count: count(t) })).filter(t => t.count > 0 || t.id === 'all');
 }
 function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
-  const t = tabs.find(x => x.id === settings.view.category);
-  $('sel-cat').textContent = `${tr(t.label)} (${t.count})`;
-  const sort = SORTS.find(x => x.id === settings.view.sort);
-  $('sel-sort').textContent = tr(sort.label);
+  viewTab = tabs.find(x => x.id === settings.view.category);
   $('sel-diff').textContent = cap(settings.difficulty);
+  renderPosition();
+}
+// Header: category, cursor position and the section under the cursor ("Video Games 3/61 · T").
+// Uses the list and tab renderList() just built: this runs on every cursor move, which must stay cheap.
+let viewList = [], viewTab = null;
+function renderPosition() {
+  const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
+  if (!t) return;
+  const sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, settings.difficulty);
+  $('sel-cat').textContent = `${tr(t.label)} ${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
+  $('sel-sort').textContent = tr(SORTS.find(x => x.id === settings.view.sort).label);
+}
+// Move the cursor to list index `i` (clamped) and keep it in view.
+function jumpTo(i) {
+  const list = visible();
+  if (!list.length) return;
+  const e = list[Math.max(0, Math.min(list.length - 1, i))];
+  if (e.id === selectedId) return;
+  selectSong(e.id);
+  focusCurrentRow();
+}
+const PAGE_ROWS = () => Math.max(3, Math.floor($('song-list').clientHeight / (($('song-list').firstElementChild || {}).offsetHeight || 28)) - 1);
+function jumpPage(step) { jumpTo(visible().findIndex(e => e.id === selectedId) + step * PAGE_ROWS()); }
+function randomSong() {
+  const e = randomOf(visible(), selectedId);
+  if (!e) return;
+  selectSong(e.id);
+  focusCurrentRow();
+}
+let thumbQueued = false;
+const queueThumb = () => { // after the frame's layout, not forced from inside a render
+  if (thumbQueued) return;
+  thumbQueued = true;
+  requestAnimationFrame(() => { thumbQueued = false; updateThumb(); });
+};
+function updateThumb() {
+  const l = $('song-list'), t = $('sel-thumb'), over = l.scrollHeight > l.clientHeight + 1;
+  t.hidden = !over;
+  $('song-wrap').classList.toggle('thumb', over);
+  if (!over) return;
+  const h = Math.max(12, Math.round(l.clientHeight * l.clientHeight / l.scrollHeight));
+  t.style.height = h + 'px';
+  t.style.top = Math.round(l.scrollTop / (l.scrollHeight - l.clientHeight) * (l.clientHeight - h)) + 'px';
+}
+{
+  const l = $('song-list');
+  l.addEventListener('scroll', queueThumb, { passive: true });
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateThumb).observe(l);
+}
+// A-Z strip (touch, sorted by title): the letters present, drag along it to jump.
+function renderAz() {
+  const list = viewList, az = $('sel-az'), on = settings.view.sort === 'title' && list.length > 12;
+  $('song-wrap').classList.toggle('az', on);
+  az.textContent = '';
+  if (!on) return;
+  for (const c of new Set(list.map(e => sectionOf(e, 'title')))) {
+    const sp = document.createElement('span');
+    sp.textContent = c; sp.dataset.letter = c;
+    az.appendChild(sp);
+  }
+}
+{
+  const az = $('sel-az');
+  const pick = ev => {
+    const r = az.getBoundingClientRect(), n = az.children.length;
+    if (!n) return;
+    const c = az.children[Math.max(0, Math.min(n - 1, Math.floor((ev.clientY - r.top) / r.height * n)))].dataset.letter;
+    const i = visible().findIndex(e => sectionOf(e, 'title') === c);
+    if (i >= 0) jumpTo(i);
+  };
+  az.addEventListener('pointerdown', ev => { az.setPointerCapture(ev.pointerId); pick(ev); });
+  az.addEventListener('pointermove', ev => { if (az.hasPointerCapture(ev.pointerId)) pick(ev); });
+}
+
+// ---- search (the "/" bar): live title / tag filter over the current category ----
+const searchOpen = () => !$('sel-search').hidden;
+function applySearch() {
+  const keep = selectedEntry();
+  renderList();
+  if (!visible().includes(keep) && visible()[0]) selectSong(visible()[0].id, false);
+  renderDetail();
+  const row = Array.from($('song-list').children).find(b => b.dataset.id === selectedId);
+  if (row) revealRow(row); // the list was rebuilt: bring the cursor row back into view (focus stays in the search box)
+}
+function openSearch() {
+  $('sel-search').hidden = false;
+  const q = $('sel-q');
+  q.value = searchQuery;
+  q.focus();
+  q.select();
+}
+function closeSearch() {
+  const had = searchQuery !== '';
+  $('sel-search').hidden = true;
+  searchQuery = '';
+  $('sel-q').value = '';
+  if (had) applySearch();
+  if (state === 'select') focusCurrentRow();
+}
+{
+  const q = $('sel-q');
+  q.addEventListener('input', () => { searchQuery = q.value; applySearch(); });
+  q.addEventListener('keydown', ev => {
+    if (ev.code === 'Enter' || ev.code === 'ArrowDown') { ev.preventDefault(); ev.stopPropagation(); focusCurrentRow(); }
+  });
+  $('sel-find').addEventListener('pointerdown', ev => ev.preventDefault());
+  $('sel-find').addEventListener('click', () => (searchOpen() ? closeSearch() : openSearch()));
+}
+
+// ---- category hub: every group at a glance ----
+// kind 'cat': pick a category (with counts); 'sort': pick the sort order.
+function openHub(kind = 'cat') {
+  stopPreview();
+  const grid = $('hub-grid');
+  grid.textContent = '';
+  screens.hub.dataset.title = kind === 'sort' ? 'Sort order' : 'Categories';
+  if (kind === 'sort') {
+    for (const s of SORTS) {
+      const b = document.createElement('button'), cur = s.id === settings.view.sort;
+      b.className = cur ? 'hub-card cur' : 'hub-card';
+      b.dataset.sort = s.id;
+      if (cur) b.dataset.default = '';
+      b.innerHTML = `<span class="t">${esc(tr(s.label))}</span>`;
+      grid.appendChild(b);
+    }
+    setState('hub', 'hub');
+    return;
+  }
+  for (const t of categoryTabs()) {
+    const b = document.createElement('button');
+    const cur = t.id === settings.view.category;
+    b.className = cur ? 'hub-card cur' : 'hub-card';
+    b.dataset.cat = t.id;
+    if (cur) b.dataset.default = '';
+    const icon = t.id === 'favorites' ? spriteHTML(categorySprite('custom', true), 2, 'cat')
+      : CATEGORIES.some(c => c.id === t.id) || t.id === 'custom' ? spriteHTML(categorySprite(t.id, false), 2, 'cat') : '';
+    b.innerHTML = `${icon}<span class="t">${esc(tr(t.label))}</span><span class="n">${t.count}</span>`;
+    grid.appendChild(b);
+  }
+  setState('hub', 'hub');
+}
+function leaveHub() {
+  setState('select', 'select');
+  focusCurrentRow();
+  scheduleAutoPreview();
+}
+$('hub-grid').addEventListener('click', ev => {
+  const b = ev.target.closest('.hub-card');
+  if (!b) return;
+  if (b.dataset.sort) { if (b.dataset.sort !== settings.view.sort) setViewTo('sort', b.dataset.sort); }
+  else if (b.dataset.cat !== settings.view.category || favKeep.size) setCategory(b.dataset.cat); // picking Favorites again reopens it
+  leaveHub();
+});
+$('sel-cat').addEventListener('click', () => { if (state === 'select') openHub(); });
+
+function jumpSectionStep(step) {
+  const list = visible();
+  jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort, settings.difficulty));
 }
 function setCategory(id) {
+  favKeep.clear();
   settings.view.category = id; save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
@@ -462,27 +642,26 @@ function cycleCategory(step) {
 }
 
 const isFavorite = id => settings.favorites.includes(id);
+// Songs unfavorited while the Favorites view is open stay listed there (so an accidental tap can be undone) until the
+// view is left: changing category, or opening Tones again.
+const favKeep = new Set();
 function toggleFavorite(id = selectedId) {
   if (!entryById(id)) return;
   const on = !isFavorite(id);
   settings.favorites = on ? [...settings.favorites, id] : settings.favorites.filter(x => x !== id);
+  if (!on && settings.view.category === 'favorites') favKeep.add(id); else favKeep.delete(id);
   save();
-  toast(on ? tr('Favorite added') : tr('Favorite removed'));
-  if (!on && settings.view.category === 'favorites') { // the song leaves this view
-    const keep = selectedEntry();
-    if (!visible().length) settings.view.category = 'all';
-    if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
-    renderDetail();
-  }
   renderList();
   if (state === 'select') focusCurrentRow(); // the list may have re-sorted around the cursor
+  // After focusCurrentRow's frame has put the row back in view, so the bubble finds the icon where it ended up.
+  requestAnimationFrame(() => requestAnimationFrame(() => (on ? favBubble(HEART, tr('Favorite added'), 'add') : favBubble(HEART_BROKEN, tr('Favorite removed'), 'break'))));
 }
 
 function renderList() {
+  const list = viewList = visible();
   renderCategories();
   const box = $('song-list');
   box.textContent = '';
-  const list = visible();
   if (!list.length) {
     const p = document.createElement('p');
     p.className = 'hint empty';
@@ -506,7 +685,9 @@ function renderList() {
       `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span>`;
     box.appendChild(b);
   }
+  renderAz();
   markSelected();
+  queueThumb();
 }
 // One delegated set of row handlers instead of three listeners per row (the list is rebuilt on every view change).
 {
@@ -536,6 +717,7 @@ function markSelected() {
     const t = b.querySelector('.t');
     if (t) { if (on) marquee(t); else if (t.classList.contains('scrolls')) t.classList.remove('scrolls'); }
   }
+  renderPosition();
 }
 
 function renderDetail() {
@@ -546,14 +728,15 @@ function renderDetail() {
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e, d))}<b>${estMark(e)}${starsValue(ratingOf(e, d))}</b><span class="hint"> / 5</span>` +
     (away ? ` · <span class="hint">${esc(tr('Only on {diff}', { diff: cap(e.only) }))}</span>` : rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
-    `<div>${e.bpm} BPM · ${formatLength(e.length)} · ${tn(e.notes[d], '{n} note', '{n} notes')}</div>` +
-    (e.tag ? `<div>${esc(e.tag)}</div>` : '');
+    `<div title="${esc(tn(e.notes[d], '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
+  if (e.tag) marquee($('sel-info').children[1]); // a long author / source scrolls like a long title
 }
 
 function selectSong(id, scroll = true) {
   if (!entryById(id)) return;
   const changed = id !== selectedId;
   selectedId = id;
+  if (changed) selMoveAt = performance.now();
   settings.lastSongId = id; save();
   markSelected();
   renderDetail();
@@ -572,8 +755,9 @@ function scheduleAutoPreview() {
   }
 }
 
-function setView(key, list, step = 1) {
-  settings.view[key] = (step < 0 ? prevOf : nextOf)(list, settings.view[key]);
+function setView(key, list, step = 1) { setViewTo(key, (step < 0 ? prevOf : nextOf)(list, settings.view[key])); }
+function setViewTo(key, id) {
+  settings.view[key] = id;
   save();
   const keep = selectedEntry();
   if (keep && !visible().includes(keep)) selectSong((visible()[0] || keep).id, false);
@@ -615,7 +799,7 @@ function openSelect() {
 
 // ---- main menu: one item per screen, big animated icon, numbered scrollbar (3310 style) ----
 const MENU = [
-  { id: 'tones', title: 'Tones', open: () => (settings.tutorialDone ? openSelect() : openTutPrompt()) },
+  { id: 'tones', title: 'Tones', open: () => { favKeep.clear(); if (settings.tutorialDone) openSelect(); else openTutPrompt(); } },
   { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
   { id: 'stats', title: 'Stats', open: () => openStats() },
   { id: 'messages', title: 'Messages', open: () => openInbox() },
@@ -1452,15 +1636,22 @@ function buildGlyphs() {
     const text = `<span class="gl-ch" style="font-family:'${FAMILY}'">${esc(ch)}<b>${esc(ch)}</b></span>`;
     return cell(`${ch} ${cp} ${g.w}×${g.rows.length}`, text + spriteHTML(g.rows, 3), g.w * 3);
   });
+  // Pop-ups: focusing one replays its animation (heart pops, broken heart shakes), as the favorite bubble does.
+  const pops = Object.entries(POPUPS).map(([k, r]) => cell(`popup ${k} ${r[0].length}×${r.length}`, `<span class="gl-pop">${spriteHTML(r, 3)}</span>`, r[0].length * 3, ` data-pop="${k === 'heart' ? 'add' : 'break'}"`));
   const menu = MENU_IDS.map(id => cell(`menu ${id} ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame(id, 0), 2), ICON_W * 2, `data-menu="${id}"`));
   const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
-  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), [...sprites(SPRITES, 'icon'), ...sprites(SPRITES_FAV, 'favorite')]) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Menu icons'), menu);
+  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), [...sprites(SPRITES, 'icon'), ...sprites(SPRITES_FAV, 'favorite')]) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
   glyphsBuilt = true;
 }
 // A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
 let glyphAnim = null;
 function glyphAnimate(cell) {
   if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0), 2); glyphAnim = null; }
+  if (cell && cell.dataset.pop && !still.matches) {
+    const el = cell.querySelector('.gl-pop');
+    el.classList.remove('add', 'break'); void el.offsetWidth; el.classList.add(cell.dataset.pop);
+    return;
+  }
   const id = cell && cell.dataset.menu;
   if (!id || still.matches) return;
   const el = cell.querySelector('.spr');
@@ -1502,6 +1693,7 @@ function startRun(r) {
     if (alt) { toast(tr('No notes on {from}: playing {to}', { from: cap(r.diff), to: cap(alt) })); r.diff = alt; }
   }
   run = r;
+  if (!r.tutorial && r.entry) { settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
   runTime = 0; lastSongT = null;
   for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr(r.retLabel || 'Tones');
   stopPreview();
@@ -2055,10 +2247,15 @@ function selectHints() {
   const bn = buttonName;
   $('sel-arrow-l').textContent = pad ? bn(BTN.LB) : '◄';
   $('sel-arrow-r').textContent = pad ? bn(BTN.RB) : '►';
-  $('sel-hint').textContent = pad
-    ? tr('{lb}/{rb} Cat · {lt} Sort', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT) })
-    : tr('◄► Cat · D/F Sort · J/K Diff · V Fav');
+  // Two pages of hints, flipped every few seconds (the line is only one or two LCD rows tall).
+  const pages = pad
+    ? [tr('{lb}/{rb} Cat · {lt} Sort · {y} Cats', { lb: bn(BTN.LB), rb: bn(BTN.RB), lt: bn(BTN.LT), y: bn(BTN.Y) }),
+      tr('{rt}/{back} Group · {x} Random', { rt: bn(BTN.RT), back: bn(BTN.BACK), x: bn(BTN.X) })]
+    : [tr('◄► Cat · D/F Sort · J/K Diff'), tr('V Fav · R Random · G Cats'), tr('PgUp/PgDn Page · ,/. Group · / Find')];
+  $('sel-hint').textContent = pages[hintPage % pages.length];
 }
+let hintPage = 0;
+setInterval(() => { if (state === 'select') { hintPage++; selectHints(); } }, 4500);
 
 pad.onConnect = id => { toast(tr('Controller connected: {id}', { id: id.replace(/\(.*\)/, '').trim().slice(0, 40) })); syncSettingsTabs(); };
 pad.onDisconnect = () => {
@@ -2112,6 +2309,7 @@ function back() {
     case 'title': break;
     case 'menu': setState('title', 'title'); break;
     case 'select': stopPreview(); openMenu('tones'); break;
+    case 'hub': leaveHub(); break;
     case 'stats': case 'inbox': case 'profile': openMenu(); break;
     case 'admin': adminBack(); break;
     case 'msgload': openInbox(MESSAGES[msgIdx].version); break;
@@ -2151,18 +2349,31 @@ function menuButton(index) {
     case BTN.X:
       if (state === 'diffpick') openMods();
       else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
+      else if (state === 'select') randomSong();
       break;
     case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('left'); break;
     case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('right'); break;
-    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); break;
+    case BTN.Y: if (state === 'composer' && !csMenu) compInput('rest'); else if (state === 'select') openHub(); break;
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
+    case BTN.RT: if (state === 'select') jumpSectionStep(1); break;
+    case BTN.BACK: if (state === 'select') jumpSectionStep(-1); break;
   }
 }
+let padStreak = 0, padStreakAt = 0;
 pad.onNav = dir => {
   usePad();
   if (capturingSlot >= 0) return;
+  // Holding up/down in the song list speeds up: after a few repeats it moves several rows per tick.
+  const now = performance.now();
+  padStreak = dir === padStreakDir && now - padStreakAt < 300 ? padStreak + 1 : 0;
+  padStreakDir = dir; padStreakAt = now;
+  if (state === 'select' && (dir === 'up' || dir === 'down') && padStreak >= 6) {
+    jumpTo(visible().findIndex(e => e.id === selectedId) + (dir === 'down' ? 3 : -3));
+    return;
+  }
   navigate(dir);
 };
+let padStreakDir = '';
 // Shared by arrow keys, d-pad and the phone keypad (2/4/6/8).
 function navigate(dir) {
   const root = activeScreen();
@@ -2187,7 +2398,10 @@ function navigate(dir) {
     stepVoice(dir === 'left' ? -1 : 1);
     return;
   }
-  if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
+  if (state === 'select' && (dir === 'left' || dir === 'right') && document.activeElement.id !== 'sel-q') { cycleCategory(dir === 'left' ? -1 : 1); return; }
+  // Up from the first song (a fresh press, not a held key running into the top) opens the category hub.
+  if (state === 'select' && dir === 'up' && !searchOpen() && performance.now() - selMoveAt > 400
+    && visible()[0] && visible()[0].id === selectedId) { openHub(); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
     stepResultsPage(dir === 'left' ? -1 : 1);
     return;
@@ -2219,6 +2433,19 @@ function softRightDown() {
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', up);
 }
+// Phone keypad shortcuts in the song list: 1/3 page, 7/9 group, 0 random (* and # stay free for the secret dial codes;
+// Up from the first song opens the categories).
+function selectKey(key) {
+  switch (key) {
+    case '1': jumpPage(-1); break;
+    case '3': jumpPage(1); break;
+    case '7': jumpSectionStep(-1); break;
+    case '9': jumpSectionStep(1); break;
+    case '0': randomSong(); break;
+    default: return false;
+  }
+  return true;
+}
 function phoneKey(key) {
   if (!$('gag').hidden && gagTimer) hideGag();
   if (key.length === 1) eggToken('', key);
@@ -2234,6 +2461,7 @@ function phoneKey(key) {
   if (state === 'msgload' && key !== 'softR') { skipMessageLoad(); return; }
   if (state === 'title') { startFromTitle(); return; }
   if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
+  if (state === 'select' && selectKey(key)) return;
   switch (key) {
     case 'softL': softLeft(); break;
     case 'softR': back(); break;
@@ -2547,7 +2775,7 @@ function wire() {
   for (const id of ['sel-arrow-l', 'sel-arrow-r', 'sel-sort', 'sel-diff']) $(id).addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the song row
   $('sel-arrow-l').onclick = () => { synth.keyClick(); cycleCategory(-1); };
   $('sel-arrow-r').onclick = () => { synth.keyClick(); cycleCategory(1); };
-  $('sel-sort').onclick = () => { synth.keyClick(); setView('sort', SORTS, 1); };
+  $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   $('sel-diff').onclick = () => { synth.keyClick(); cycleDifficulty(1); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('msgload').addEventListener('click', skipMessageLoad);
@@ -2697,6 +2925,7 @@ function onKey(e) {
       return;
     }
   }
+  if (e.code === 'Escape' && state === 'select' && (searchOpen() || searchQuery)) { e.preventDefault(); closeSearch(); return; }
   if (e.code === 'Escape' || (e.code === 'Backspace' && !typing)) {
     e.preventDefault();
     if (menu) synth.keyClick();
@@ -2709,6 +2938,22 @@ function onKey(e) {
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
+  }
+  if (state === 'select' && !typing && tag !== 'SELECT' && !e.ctrlKey && !e.metaKey && !e.altKey
+    && ['PageUp', 'PageDown', 'Home', 'End', 'Comma', 'Period'].includes(e.code)) {
+    e.preventDefault();
+    setDevice('kbd');
+    synth.keyClick();
+    if (e.code === 'PageUp' || e.code === 'PageDown') jumpPage(e.code === 'PageDown' ? 1 : -1);
+    else if (e.code === 'Home' || e.code === 'End') jumpTo(e.code === 'Home' ? 0 : Infinity);
+    else jumpSectionStep(e.code === 'Period' ? 1 : -1);
+    return;
+  }
+  if (state === 'select' && !typing && !e.repeat && ['Slash', 'KeyR', 'KeyG'].includes(e.code) && !e.shiftKey) {
+    e.preventDefault();
+    synth.keyClick();
+    if (e.code === 'Slash') openSearch(); else if (e.code === 'KeyR') randomSong(); else openHub();
+    return;
   }
   if (state === 'select' && !typing && tag !== 'SELECT' && ['KeyD', 'KeyF'].includes(e.code)) {
     e.preventDefault();

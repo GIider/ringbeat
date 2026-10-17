@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { GLYPHS, boldGlyph, CAP } from '../src/pixelfont.js';
 import { buildTTF, glyphRects } from '../scripts/build-font.mjs';
-import { SPRITES, signal, battery, ringing, spriteSVG } from '../src/pixelart.js';
+import { SPRITES, POPUPS, signal, battery, ringing, spriteSVG } from '../src/pixelart.js';
 import { coverRows, COVER_W, COVER_H } from '../src/cover.js';
 import { SONGS } from '../src/songs.js';
 
@@ -120,6 +120,7 @@ test('committed font files match the glyph table (run `npm run font` after editi
 
 test('sprites are rectangular 1-bit art', () => {
   for (const [name, rows] of Object.entries(SPRITES)) assert.ok(rectangular(rows), name);
+  for (const [name, rows] of Object.entries(POPUPS)) assert.ok(rectangular(rows), name);
   for (let i = 0; i <= 5; i++) assert.ok(rectangular(signal(i)));
   for (let i = 0; i <= 4; i++) assert.ok(rectangular(battery(i)));
   assert.ok(rectangular(ringing(0)) && rectangular(ringing(1)));

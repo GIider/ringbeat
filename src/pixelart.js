@@ -236,6 +236,34 @@ export const SPRITES_FAV = {
   ],
 };
 
+// Pop-up icons for adding / removing a favorite.
+export const HEART = [
+  '.###...###.',
+  '#####.#####',
+  '###########',
+  '###########',
+  '###########',
+  '.#########.',
+  '..#######..',
+  '...#####...',
+  '....###....',
+  '.....#.....',
+];
+export const HEART_BROKEN = [
+  '.###...###.',
+  '####..#####',
+  '#####.#####',
+  '####..#####',
+  '#####..####',
+  '.####.####.',
+  '..###..##..',
+  '...##.##...',
+  '....#..#...',
+  '.....#.....',
+];
+// The pop-up icons, by name (the Glyphs & icons gallery lists them and replays their animation).
+export const POPUPS = { heart: HEART, 'heart broken': HEART_BROKEN };
+
 // The list icon for a category (custom for unknown ones), in its favorite form when `fav`.
 export const categorySprite = (category, fav = false) =>
   (fav ? SPRITES_FAV[category] || SPRITES_FAV.custom : null) || SPRITES[category] || SPRITES.custom;

@@ -7,7 +7,7 @@ export const VIEW_KEY = 'ringbeat.boards.view';
 export const DEEP_LIMIT = 100;   // the API's largest board
 export const BOARD_SORTS = [
   { id: 'title', label: 'Title' },
-  { id: 'diff-desc', label: 'Hardest first' },
+  { id: 'diff-asc', label: 'Difficulty' },
   { id: 'score', label: 'Top score' },
   { id: 'recent', label: 'Latest' },
 ];
@@ -43,12 +43,12 @@ const topOf = (snap, id, diff) => (snap && snap.boards[id + '|' + diff]) || [];
 const latest = rows => rows.reduce((m, r) => Math.max(m, Number(r.playedAt) || 0), 0);
 
 // The song list for one difficulty: [{ entry, top: [rows], leader: row|null }]. Custom songs are ignored, and a song
-// that is playable at one difficulty only has no board at the other. `sort`: title, diff-desc, score, recent.
+// that is playable at one difficulty only has no board at the other. `sort`: title, diff-asc (difficulty), score, recent.
 export function songRows(snap, entries, diff, { category = 'all', query = '', sort = 'title' } = {}) {
   const q = String(query).trim().toLowerCase();
   const base = entries.filter(e => !String(e.id).startsWith('custom:') && (!e.only || e.only === diff) &&
     (!q || e.title.toLowerCase().includes(q) || (e.tag || '').toLowerCase().includes(q)));
-  const list = applyView(base, { sort: sort === 'diff-desc' ? 'diff-desc' : 'title', category }, diff, null)
+  const list = applyView(base, { sort: sort === 'diff-asc' ? 'diff-asc' : 'title', category }, diff, null)
     .map(entry => { const top = topOf(snap, entry.id, diff); return { entry, top, leader: top[0] || null }; });
   const key = { score: x => x.leader ? x.leader.score : -1, recent: x => latest(x.top) }[sort];
   return key ? list.map((x, i) => ({ x, i })).sort((a, b) => (key(b.x) - key(a.x)) || a.i - b.i).map(o => o.x) : list;

@@ -16,11 +16,11 @@ test('custom songs and songs without a board at this difficulty are left out', (
   assert.deepEqual(songRows(snap, entries, 'hard').map(r => r.entry.id), ['a', 'b']);
 });
 
-test('filters by category and by title, sorts by title, hardness, score and recency', () => {
+test('filters by category and by title, sorts by title, difficulty, score and recency', () => {
   const ids = (o, d = 'normal') => songRows(snap, entries, d, o).map(r => r.entry.id);
   assert.deepEqual(ids({ category: 'pop' }), ['a', 'c']);
   assert.deepEqual(ids({ query: ' BRA ' }), ['b']);
-  assert.deepEqual(ids({ sort: 'diff-desc' }), ['b', 'a', 'c']);
+  assert.deepEqual(ids({ sort: 'diff-asc' }), ['a', 'c', 'b']);
   assert.deepEqual(ids({ sort: 'score' }), ['b', 'a', 'c']);
   assert.deepEqual(ids({ sort: 'recent' }), ['c', 'a', 'b']);
 });

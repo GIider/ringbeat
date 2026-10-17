@@ -75,8 +75,21 @@ test('settings: difficulty, sort and category only accept known values', async (
   ({ settings: s } = await load({ difficulty: 'insane', view: { sort: 'random', category: 'metal' } }));
   assert.equal(s.difficulty, 'normal');
   assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
+  ({ settings: s } = await load({ view: { sort: 'diff-desc' } })); // the old Hardest first option is gone
+  assert.equal(s.view.sort, 'diff-asc');
   ({ settings: s } = await load({ view: 'oops' }));
   assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
+});
+
+test('settings: recent songs are de-duplicated, capped and sanitized', async () => {
+  let { settings: s } = await load({ view: { category: 'recent' }, recent: ['a', 'b', 'a', 7, ''] });
+  assert.deepEqual(s.recent, ['a', 'b']);
+  assert.equal(s.view.category, 'recent');
+  ({ settings: s } = await load({ recent: Array.from({ length: 50 }, (_, i) => 's' + i), view: { category: 'unplayed' } }));
+  assert.equal(s.recent.length, 20);
+  assert.equal(s.view.category, 'unplayed');
+  ({ settings: s } = await load({ recent: 'x' }));
+  assert.deepEqual(s.recent, []);
 });
 
 test('settings: tutorialLessons is a clamped whole number', async () => {

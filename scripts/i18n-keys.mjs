@@ -60,7 +60,7 @@ export function collectKeys({ singulars = false } = {}) {
       if (/[A-Za-z]{2}/.test(v) && !/^(tones|mysongs|stats|messages|profile|settings|normal|off|strict|lenient|hard)$/.test(v)) keys.add(v);
     }
   }
-  for (const w of ['Normal', 'Hard', 'All', 'Custom', 'Perfect', 'Great', 'Good', 'Miss', 'Off', 'Buzzer', 'Smooth', 'Untitled',
+  for (const w of ['Normal', 'Hard', 'All', 'Custom', 'Recent', 'Unplayed', 'Favorites', 'Perfect', 'Great', 'Good', 'Miss', 'Off', 'Buzzer', 'Smooth', 'Untitled',
     'Text', 'Link', 'My song', 'Could not duplicate: storage unavailable', 'Deleted',
     // parser / validation messages (src/rtttl.js, src/mysongs.js), translated by pattern
     'No notes section found (expected name:defaults:notes)', 'No valid notes found', 'Missing defaults section; using d=4,o=6,b=63',
