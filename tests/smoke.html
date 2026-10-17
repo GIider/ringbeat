@@ -241,6 +241,8 @@ f.addEventListener('load', async () => {
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
     $('r-tabs').querySelector('[data-page="3"]').click();
     log($('r-top').children.length === 2 && $('r-top').children[1].classList.contains('cur'), 'results Top tab highlights run #2');
+    key('ArrowRight'); await sleep(40);
+    log($('r-tabs').querySelector('button.sel').dataset.page === '0', 'results: signed out, Top wraps to Score (no World tab)');
     $('btn-menu').click(); await sleep(100);
     log(vis('results') === false, 'left results');
     d.querySelector('.song-row.cur').click(); await sleep(100);
@@ -258,6 +260,11 @@ f.addEventListener('load', async () => {
     for (let i = 0; i < 5; i++) { key('ArrowRight'); await sleep(40); }
     log(/Online/.test($('stat-tab').textContent) && /Sign in|unavailable/.test($('stat-page').textContent), 'stats: Online page asks a signed-out player to sign in');
     log(d.querySelectorAll('#r-tabs button').length === 5, 'results: Score / Stats / Timing / Top / World tabs');
+    log([...d.querySelectorAll('#r-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'results: only the current tab is shown');
+    key('ArrowRight'); await sleep(40);
+    log(/Time/.test($('stat-tab').textContent), 'stats: right on the last page wraps to the first');
+    key('ArrowLeft'); await sleep(40);
+    log(/Online/.test($('stat-tab').textContent), 'stats: left on the first page wraps to the last');
     for (let i = 0; i < 5; i++) { key('ArrowLeft'); await sleep(40); }
     key('ArrowRight'); await sleep(60);
     log(/Score 2\/6/.test($('stat-tab').textContent), 'Score page');

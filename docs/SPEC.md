@@ -83,12 +83,12 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ### Results
 
-- **Pages:** four (←→, `[` `]`, LB/RB, swipe or tab tap).
+- **Pages:** five (four when signed out), shown one tab at a time between ◄ ► arrows like Settings (←→, `[` `]`, LB/RB, swipe or arrow tap; wraps around).
   - **Score:** grade, score, FULL COMBO / ALL PERFECT banner, NEW BEST / rank.
   - **Stats:** accuracy, max combo, judgement counts, ghost hits.
   - **Timing:** early/late histogram, average offset.
   - **Top:** the song's top runs on this device, or "Run not saved".
-  - **World:** the world top 10 and the players around the player's rank (signed in); no request of its own.
+  - **World:** (only when signed in; otherwise the page is not offered) the world top 10 and the players around the player's rank (signed in); no request of its own.
 - **Buttons:** *Retry* / *Next song* (the next song in the current filtered list) / *Tones* (or the screen the run came
   from: *My song*, *Composer*, *RTTTL text*).
 - **Failed runs:** a Sudden-death fail is titled *Failed*.

@@ -707,7 +707,7 @@ function openStats() {
   renderStats();
 }
 function setStatPage(n) {
-  const p = Math.max(0, Math.min(STAT_PAGES.length - 1, n));
+  const p = (n + STAT_PAGES.length) % STAT_PAGES.length;
   if (p === statPage) return;
   statPage = p;
   synth.keyClick();
@@ -1760,10 +1760,18 @@ function renderTopRuns() {
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
 }
+// The World page needs an account; signed out, it isn't offered.
+const resultsPages = () => document.querySelectorAll('#r-tabs button').length - (cloud.available() && cloud.signedIn() ? 0 : 1);
 function setResultsPage(n) {
-  resultsPage = Math.max(0, Math.min(4, n));
+  resultsPage = Math.max(0, Math.min(resultsPages() - 1, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
+}
+
+function stepResultsPage(step) {
+  const n = resultsPages();
+  setResultsPage((resultsPage + step + n) % n);
+  synth.keyClick();
 }
 
 function nextSong() {
@@ -1955,15 +1963,12 @@ function setSettingsTab(id, focus = false) {
     const on = b.dataset.tab === id;
     b.classList.toggle('sel', on); b.setAttribute('aria-selected', on);
   }
-  const at = tabs.indexOf(id);
-  $('set-prev').classList.toggle('off', at === 0); $('set-next').classList.toggle('off', at === tabs.length - 1);
   for (const p of document.querySelectorAll('#settings .set-panel')) p.hidden = p.dataset.panel !== id;
   paintRanges(screens.settings);
   if (focus) $('set-tabs').querySelector('.sel').focus();
 }
 function stepSettingsTab(step) {
-  const tabs = settingsTabs(), i = tabs.indexOf(settingsTab) + step;
-  if (i < 0 || i >= tabs.length) return;
+  const tabs = settingsTabs(), i = (tabs.indexOf(settingsTab) + step + tabs.length) % tabs.length;
   synth.keyClick();
   setSettingsTab(tabs[i], true);
 }
@@ -2138,9 +2143,7 @@ function navigate(dir) {
   }
   if (state === 'select' && (dir === 'left' || dir === 'right')) { cycleCategory(dir === 'left' ? -1 : 1); return; }
   if (state === 'results' && (dir === 'left' || dir === 'right')) {
-    const p = resultsPage;
-    setResultsPage(p + (dir === 'left' ? -1 : 1));
-    if (resultsPage !== p) synth.keyClick();
+    stepResultsPage(dir === 'left' ? -1 : 1);
     return;
   }
   if (!nav.adjust(document.activeElement, dir)) nav.move(root, dir);
@@ -2255,6 +2258,7 @@ function wire() {
   $('set-voice').onclick = () => {
     settings.voice = synth.voice = VOICES[(VOICES.indexOf(settings.voice) + 1) % VOICES.length];
     save(); voiceLabel();
+    if (game.state === 'paused') return; // ensure() would resume the suspended context and un-freeze song time
     synth.ensure();
     synth.playNote({ midi: 76, when: synth.ctx.currentTime + 0.02, duration: 0.12 });
   };
@@ -2481,6 +2485,8 @@ function wire() {
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;
   for (const t of document.querySelectorAll('#r-tabs button')) t.onclick = () => setResultsPage(+t.dataset.page);
+  $('r-prev').onclick = () => stepResultsPage(-1);
+  $('r-next').onclick = () => stepResultsPage(1);
   for (const t of document.querySelectorAll('#dp-tabs button')) t.onclick = () => setDpTab(t.dataset.tab);
   // horizontal swipe flips results pages
   onSwipe($('results'), dir => navigate(dir === 'left' ? 'right' : 'left'));

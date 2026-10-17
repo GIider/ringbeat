@@ -230,11 +230,11 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-cat { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Settings tabs: a pager like Stats (only the current tab shows, between arrows) so any label fits the LCD */
 #set-tabs { margin: 0 0 2px; }
-#set-tabs button { display: none; padding: 0 4px; }
-#set-tabs button.sel { display: block; min-height: 0; }
-#set-tabs button:focus { outline: none; box-shadow: inset 0 0 0 var(--u) var(--ink); }
-#set-tabs .arrow { cursor: pointer; }
-#set-tabs .arrow.off { opacity: .35; cursor: default; }
+#set-tabs button, #r-tabs button { display: none; padding: 0 4px; }
+#set-tabs button.sel, #r-tabs button.sel { display: block; min-height: 0; }
+#set-tabs button:focus, #r-tabs button:focus { outline: none; box-shadow: inset 0 0 0 var(--u) var(--ink); }
+#set-tabs .arrow, #r-tabs .arrow { cursor: pointer; }
+#set-tabs .arrow.off, #r-tabs .arrow.off { opacity: .35; cursor: default; }
 .dp-tabs { display: flex; justify-content: center; gap: 6px; margin: 2px 0 0; }
 .dp-tabs .sel { background: var(--ink); color: var(--lcd); font-weight: 700; padding: 0 4px; }
 .dp-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -446,5 +446,5 @@ body.compact input[type=range] { height: 28px; }
 @media (pointer: coarse) {
   .softbar button, .menu > button, .song-row, .comp-pad button, .nudge button { min-height: 44px; }
   .seg button { min-height: 44px; padding: 0 6px; }
-  #set-tabs .arrow { padding: 10px 14px; }
+  #set-tabs .arrow, #r-tabs .arrow { padding: 10px 14px; }
 }

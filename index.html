@@ -346,12 +346,14 @@
         <section id="results" class="screen" hidden data-title="Results" data-soft-left="Select" data-soft-right="Back">
           <h2 id="r-heading" class="sr">Results</h2>
           <div id="r-song" class="hint center"></div>
-          <div id="r-tabs" class="seg r-tabs" role="tablist">
+          <div id="r-tabs" class="dp-tabs st-tabs seg r-tabs" role="tablist">
+            <span id="r-prev" class="arrow" aria-hidden="true">◄</span>
             <button type="button" class="sel" data-page="0" role="tab" tabindex="-1" data-i18n>Score</button>
             <button type="button" data-page="1" role="tab" tabindex="-1" data-i18n>Stats</button>
             <button type="button" data-page="2" role="tab" tabindex="-1" data-i18n>Timing</button>
             <button type="button" data-page="3" role="tab" tabindex="-1" data-i18n>Top</button>
             <button type="button" data-page="4" role="tab" tabindex="-1" data-i18n>World</button>
+            <span id="r-next" class="arrow" aria-hidden="true">►</span>
           </div>
           <div class="r-pages">
             <div class="r-page" data-page="0">
