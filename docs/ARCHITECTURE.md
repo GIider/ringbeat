@@ -97,6 +97,7 @@ scripts/
   serve.mjs           dependency-free dev server (LAN URLs, no-store, --dev live reload, --cloud points the game at the local API)
   dev-cloud.mjs       npm run dev:cloud: .dev.vars, local D1 migrations and seed, Worker + game server side by side
   seed-local.mjs      fills the local D1 with bot players and their Worker-verified runs (npm run seed)
+  lib/seedplan.mjs    who plays what in the seeded boards: skill pyramid, per-board tiers, random modifiers
   lib/botrun.mjs      a bot plays a song headlessly and the run is encoded as the game uploads it (seed-local, cloud.test)
   smoke.mjs           runs tests/smoke.html in headless Playwright browsers
   build-dist.mjs      stages dist/ and stamps its version.js
@@ -118,7 +119,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, boardsview, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, netsignal, replay, rtttl, settings, stats, worldlines (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, netsignal, replay, rtttl, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

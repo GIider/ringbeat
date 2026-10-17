@@ -334,11 +334,17 @@ no GitHub involved (`&name=` picks the display name). The route answers only whe
 deployed API has no such door.
 
 **Bot-filled boards.** `npm run seed` (`scripts/seed-local.mjs`) creates 40 bot players (`bot-*`, a few with the
-developer flag) whose skills come from the bot ladder in `src/bot.js`. Together they play every built-in song on both
-difficulties, with at least 5 players per board with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers
-are the server's, exactly as for a real run. Options: `--bots=N`, `--songs=N` (default: all), `--seed=N`. Seeding is repeatable
-(it replaces only `bot-*` rows, never your own account); `npm run seed:reset` removes them, `npm run dev:cloud:fresh`
-wipes the whole local D1 first.
+developer flag) with skills from the bot ladder in `src/bot.js`, and they play every built-in song on both difficulties
+with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers are the
+server's, exactly as for a real run. The mix is meant for testing (`scripts/lib/seedplan.mjs`):
+- Skills are a pyramid: sloppy bots are common, the perfect ones (L8) are a single bot.
+- Each board draws a tier that caps who may be on it: 30 % **rookie** (weak bots only), 35 % **casual**, 25 % **good**,
+  10 % **elite** (the only boards with a near-perfect bot). Most boards are therefore winnable by a person.
+- 45 % of the runs use random modifiers (speed, easy/strict judging, mirror, hidden, sudden death), so the chips and
+  the score multiplier show on the boards.
+
+Options: `--bots=N`, `--songs=N` (default: all), `--seed=N`. Seeding is repeatable (it replaces only `bot-*` rows, never
+your own account); `npm run seed:reset` removes them, `npm run dev:cloud:fresh` wipes the whole local D1 first.
 
 **Real GitHub sign-in locally** (rarely needed, e.g. to test the OAuth flow itself): create a second OAuth App with
 the callback `http://localhost:8787/auth/github/callback`, put its id and secret into `server/.dev.vars`, set

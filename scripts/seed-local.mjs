@@ -10,6 +10,7 @@ import { LADDER, mulberry32 } from '../src/bot.js';
 import { SONGS } from '../src/songs.js';
 import { verifyRun } from '../server/src/index.js';
 import { played } from './lib/botrun.mjs';
+import { botLevels, pickTier, crowdFor, pickLoadout } from './lib/seedplan.mjs';
 
 const arg = (name, dflt) => { const a = process.argv.find(x => x.startsWith('--' + name + '=')); return a ? Number(a.split('=')[1]) : dflt; };
 const BOTS = arg('bots', 40), SONG_COUNT = arg('songs', SONGS.length), SEED = arg('seed', 1);
@@ -30,10 +31,11 @@ const NAMES = ['Nova', 'Pixel', 'Beep', 'Snake', 'Ringo', 'Buzz', 'Chirp', 'Tona
 const sql = [...CLEAR];
 if (!RESET) {
   const rnd = mulberry32(SEED), now = Date.now();
+  const levels = botLevels(BOTS, rnd);
   const bots = Array.from({ length: BOTS }, (_, i) => ({
     id: 'bot-' + String(i + 1).padStart(2, '0'),
     name: NAMES[i % NAMES.length] + (i >= NAMES.length ? '-' + (i + 1) : ''),
-    skill: LADDER[Math.min(LADDER.length - 1, Math.floor(i * LADDER.length / BOTS))],
+    level: levels[i],
     dev: i % 17 === 0 ? 1 : 0,
   }));
   for (const b of bots) {
@@ -43,22 +45,32 @@ if (!RESET) {
   // Every n-th song so the picks spread across the categories.
   const step = Math.max(1, Math.floor(SONGS.length / SONG_COUNT));
   const songs = SONGS.filter((_, i) => i % step === 0).slice(0, SONG_COUNT);
-  let n = 0, invalid = 0;
+  let n = 0, retried = 0;
+  const tiers = {};
   for (const song of songs) for (const diff of ['normal', 'hard']) {
-    // The easiest songs are crowded, the rest less so; at least 5 players on every board (fewer only with fewer bots).
-    const crowd = Math.min(BOTS, Math.max(5, Math.round(BOTS * (0.25 + 0.5 * rnd()))));
-    for (const b of bots.slice().sort(() => rnd() - 0.5).slice(0, crowd)) {
+    // A tier caps how good the bots on this board may be, so most boards stay winnable for a human (seedplan.mjs).
+    const tier = pickTier(rnd);
+    tiers[tier.name] = (tiers[tier.name] || 0) + 1;
+    for (const { bot: b, level } of crowdFor(tier, bots, rnd)) {
       const seed = Math.floor(rnd() * 1e9) + 1, at = now - Math.floor(rnd() * 3 * WEEK);
-      const { run } = played(song.id, diff, b.skill, null, seed, undefined, at);
-      const v = verifyRun({ songId: song.id, diff, replay: run.replay, loadout: JSON.stringify(run.loadout), rtttl: null });
-      if (v.verified !== 1) { invalid++; continue; }
+      const loadout = pickLoadout(rnd);
+      // Sudden death can fail a weak bot's run (the Worker marks it invalid): retry without it, then without mods.
+      const tries = loadout ? [loadout, { ...loadout, sudden: false }, null] : [null];
+      let run, v;
+      for (const t of tries) {
+        ({ run } = played(song.id, diff, LADDER[level - 1], t, seed, undefined, at));
+        v = verifyRun({ songId: song.id, diff, replay: run.replay, loadout: JSON.stringify(run.loadout), rtttl: null });
+        if (v.verified === 1) break;
+        retried++;
+      }
+      if (v.verified !== 1) continue;
       sql.push(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version,
         played_at, received_at, replay, verified, rules, loadout, rtttl, flags, hidden) VALUES (${[b.id, `seed-${seed}`, song.id, diff, v.score, v.grade,
         v.accuracy, v.maxCombo, v.fc, v.ap, v.mods, v.mult, 'seed', at, at, run.replay, 1, String(RULES), JSON.stringify(run.loadout), null, v.flags, 0].map(q).join(', ')});`);
       n++;
     }
   }
-  console.log(`seed: ${bots.length} bots, ${n} runs on ${songs.length} songs${invalid ? `, ${invalid} not verified (skipped)` : ''}`);
+  console.log(`seed: ${bots.length} bots, ${n} runs on ${songs.length} songs; boards by tier ${JSON.stringify(tiers)}${retried ? `, ${retried} failed runs replayed with fewer mods` : ''}`);
 }
 sql.push(DIRTY);
 
