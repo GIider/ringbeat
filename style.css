@@ -7,7 +7,7 @@
   --lcd-hi: #b9d67c;
   --lcd: #a3c464;
   --lcd-lo: #8eb253;
-  --ink: #1d2b12;
+  --ink: #1d2b12;         /* keep in sync with INK in src/render.js */
   --ink-dim: #3f5a1f;
   /* play area */
   --night: #0a1308;

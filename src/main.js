@@ -10,7 +10,7 @@ import { Synth, VOICES } from './synth.js';
 import { Game } from './game.js';
 import { planBot, LADDER } from './bot.js';
 import { createAutoplay } from './autoplay.js';
-import { Renderer } from './render.js';
+import { Renderer, INK } from './render.js';
 import { Input, KEY_LABELS, eventAudioTime } from './input.js';
 import { encodeSong, decodeShare } from './share.js';
 import { measureChartAsync } from './bot.js';
@@ -2622,7 +2622,7 @@ function titleFx(on) {
     if (!still.matches) { titleStop = runWelcome(fx, sim); return; }
     sim.jump(TITLE_REST);
     const ctx = fx.getContext('2d');
-    ctx.fillStyle = getComputedStyle(fx).color;
+    ctx.fillStyle = INK; // not the computed color: Dark Reader rewrites it light
     sim.draw((x, y) => ctx.fillRect(x, y, 1, 1));
     titleStop = () => ctx.clearRect(0, 0, fx.width, fx.height);
   });

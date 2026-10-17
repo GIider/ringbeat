@@ -5,7 +5,7 @@ import { GLYPHS, boldGlyph, CAP } from './pixelfont.js';
 import { t as tr } from './i18n.js';
 import { WINDOWS } from './game.js';
 
-const INK = '#1d2b12';
+export const INK = '#1d2b12';
 const PAPER = '#a3c464';   // LCD green, used for text knocked out of an ink box
 const JUDGE_TEXT = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MISS' };
 const BANNER_POOL = 3;

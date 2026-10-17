@@ -1,6 +1,7 @@
 // DOM glue for the idle cameos. The canvas is pointer-events:none and never focusable; this layer only reads
 // the app state (via getState) and paints. It never calls into navigation, selection or the game.
 import { createScheduler, createParade, CAMEOS, CAMEO_STATES } from './cameo.js';
+import { INK } from './render.js';
 
 const CELL = 4;      // CSS px per LCD cell
 const TICK_MS = 100; // sim speed
@@ -44,7 +45,7 @@ export function createCameoLayer({ canvas, getState, enabled, onStatus, onChirp,
   function runCanvas(s) {
     if (!measure()) return false;
     sim = s;
-    ctx.fillStyle = getComputedStyle(canvas).color;
+    ctx.fillStyle = INK; // not the computed color: Dark Reader rewrites it light
     last = performance.now(); acc = 0;
     const frame = now => {
       if (sim !== s) return;

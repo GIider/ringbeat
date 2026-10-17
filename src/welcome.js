@@ -3,6 +3,7 @@
 // (20 Hz). runWelcome() is the only DOM piece: a canvas painted one cell per sim pixel.
 import { GLYPHS } from './pixelfont.js';
 import { SPRITES } from './pixelart.js';
+import { INK } from './render.js';
 
 export const CELL = 4;       // CSS px per LCD cell (same grid as the cameos)
 export const TICK_MS = 50;
@@ -178,7 +179,7 @@ export function measureGrid(canvas) {
 // Paints the sim after every tick; onTick(sim) runs right after each step. -> stop() (clears the canvas).
 export function runWelcome(canvas, sim, { onTick = () => {}, onDone = () => {} } = {}) {
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = getComputedStyle(canvas).color;
+  ctx.fillStyle = INK; // not the computed color: Dark Reader rewrites it light
   let raf = 0, stopped = false, last = performance.now(), acc = 0;
   const paint = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); sim.draw((x, y) => ctx.fillRect(x, y, 1, 1)); };
   const stop = () => { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, canvas.width, canvas.height); };
