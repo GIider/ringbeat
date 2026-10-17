@@ -89,6 +89,9 @@ f.addEventListener('load', async () => {
     log($('dp-tabs').hidden, 'difficulty screen: no World/Local tabs when signed out');
     key('Backspace'); await sleep(80);
     log(vis('select'), 'Backspace -> back to select');
+    $('st-title').click(); await sleep(50);
+    log(vis('hub') && $('hub').dataset.title === 'Categories', 'tapping the title bar opens the category screen');
+    key('Backspace'); await sleep(80);
     $('sel-sort').click(); await sleep(50);
     d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await sleep(80);
     log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);

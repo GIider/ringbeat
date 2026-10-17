@@ -142,6 +142,7 @@ function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].h
   if (!el) return;
   $('st-title').textContent = tr(el.dataset.title || '') + (el.dataset.sub ? ' · ' + tr(el.dataset.sub) : '');
   for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar; show them before measuring
+  $('st-title').classList.toggle('tap', el === screens.select);
   marquee($('st-title'));
   // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
   // single "Select". The bare LCD keeps both tappable labels.
@@ -658,7 +659,7 @@ $('hub-grid').addEventListener('click', ev => {
   else if (b.dataset.cat !== settings.view.category || favKeep.size) setCategory(b.dataset.cat); // picking Favorites again reopens it
   leaveHub();
 });
-$('sel-cat').addEventListener('click', () => { if (state === 'select') openHub(); });
+for (const id of ['sel-cat', 'st-title']) $(id).addEventListener('click', () => { if (state === 'select') { synth.keyClick(); openHub(); } }); // the category heading in the title bar is tappable too
 
 function jumpSectionStep(step) {
   const list = visible();

@@ -270,6 +270,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-search input { flex: 1; min-width: 0; font: inherit; background: #0000; color: var(--ink); border: var(--u) solid var(--ink); border-radius: 0; padding: 2px 4px; }
 .sel-search input:focus { outline: none; box-shadow: inset 0 0 0 var(--u) var(--ink); }
 .sel-cat { cursor: pointer; }
+.st-title.tap { cursor: pointer; }
 /* Category hub */
 #hub { display: flex; flex-direction: column; overflow: hidden; }
 .hub-grid { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; min-height: 0; flex: 1; scrollbar-width: none; }
