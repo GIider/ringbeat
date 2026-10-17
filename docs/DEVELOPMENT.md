@@ -74,6 +74,7 @@ audio/canvas:
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
 | `settings.test.mjs` | Settings sanitising and persistence |
 | `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |
+| `worldlines.test.mjs` | The World page rows: snapshot and near rows merged, score order, gap rows |
 | `docs.test.mjs` | Links between docs resolve; every source file, script and test is in [ARCHITECTURE.md](ARCHITECTURE.md); every npm script is in this file |
 
 **Browser tests:**

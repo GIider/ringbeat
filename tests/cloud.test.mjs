@@ -12,7 +12,7 @@ import { parseRTTTL } from '../src/rtttl.js';
 import { SONGS } from '../src/songs.js';
 import { hashString } from '../src/library.js';
 import * as mods from '../src/mods.js';
-import { createCloud } from '../src/cloud.js';
+import { createCloud, CLOUD_KEY, BOARDS_KEY } from '../src/cloud.js';
 import { createAdmin, AdminError, playerLine, runLine, logLine } from '../src/admin.js';
 import { createNetDebug, describe, line } from '../src/netdebug.js';
 import { createScores } from '../src/scores.js';
@@ -328,6 +328,35 @@ test('cloud: no API configured means no online profile', async () => {
     prefs: { sharedSettings: () => ({}), applyShared: () => false }, apiBase: '', storage, fetch: () => { throw new Error('no'); } });
   assert.equal(cloud.available(), false);
   assert.equal(await cloud.takeLoginHash('#login=' + 'a'.repeat(43)), false);
+});
+
+// A client over seeded storage (no server): what the World page reads from the cache.
+function cached({ ranks, boards, rules = 5 }) {
+  const storage = mem();
+  storage.setItem(CLOUD_KEY, JSON.stringify({ token: 'tok', rules, ranks }));
+  if (boards) storage.setItem(BOARDS_KEY, JSON.stringify(boards));
+  return createCloud({ scores: createScores(storage), stats: createStats(storage), mysongs: createMySongs(storage),
+    prefs: { sharedSettings: () => ({}), applyShared: () => false }, apiBase: API, storage, now: () => 1000,
+    fetch: () => { throw new Error('no request expected'); } });
+}
+
+test('cloud: ranks cached before rows carried fc/ap/dev drop their rows but keep rank and total', () => {
+  const old = { rank: 1, total: 1, at: 10, near: [{ rank: 1, name: 'Me', score: 6184, grade: 'A', me: true }] };
+  const cloud = cached({ ranks: { 'bella|normal': old, 'ode|hard': { rank: 2, total: 5, at: 10,
+    near: [{ rank: 2, name: 'Me', score: 1, grade: 'B', fc: false, ap: false, mods: [], me: true }] } } });
+  assert.equal(cloud.rankNear('bella', 'normal'), null);
+  assert.equal(cloud.rank('bella', 'normal').total, 1);
+  assert.equal(cloud.rankNear('ode', 'hard').length, 1, 'rows in the current format stay');
+});
+
+test('cloud: a newer snapshot with the player in it overrides the rank and total last seen', () => {
+  const near = [{ rank: 1, name: 'Me', score: 6184, grade: 'A', fc: true, ap: false, mods: [], me: true }];
+  const boards = { at: 500, value: { rules: 5, boards: { 'bella|normal': [
+    { rank: 1, total: 2, name: 'Me', score: 6184 }, { rank: 2, total: 2, name: 'Tester', score: 5223 }] } } };
+  const newer = cached({ ranks: { 'bella|normal': { rank: 1, total: 1, at: 100, near } }, boards });
+  assert.deepEqual([newer.rank('bella', 'normal').rank, newer.rank('bella', 'normal').total], [1, 2]);
+  const older = cached({ ranks: { 'bella|normal': { rank: 1, total: 1, at: 900, near } }, boards });
+  assert.equal(older.rank('bella', 'normal').total, 1, 'an older snapshot does not');
 });
 
 // ---- leaderboards: the Worker re-plays each run's input log and ranks its own score ----

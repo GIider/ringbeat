@@ -77,6 +77,7 @@ src/
   cloud.js        optional online profile: sign-in hand-off, POST /sync rounds with dirty checks, scheduling and
                   backoff, device slots, run outbox with replays, rank cache, board snapshot, API_BASE (see CLOUD.md)
   cloudmerge.js   merging the shared cloud document: settings per field, favourites, my songs with deletes, resetAt
+  worldlines.js   the World page's rows: snapshot top and the players around the player merged in score order
   changelog.js    the changelog as Inbox messages (newest = current version) + read-state helpers
   version.js      VERSION / BUILD placeholders, stamped by scripts/build-dist.mjs (see RELEASING.md)
 
@@ -110,7 +111,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, netsignal, replay, rtttl, settings, stats (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, netsignal, replay, rtttl, settings, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

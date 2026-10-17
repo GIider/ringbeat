@@ -52,6 +52,16 @@ class HttpError extends Error {
   constructor(status) { super('HTTP ' + status); this.status = status; }
 }
 
+// Ranks cached before the answer's rows carried fc/ap/mods/dev keep their rank and total but lose the stale rows.
+function freshRanks(ranks) {
+  for (const k of Object.values(ranks)) {
+    if (!k || typeof k !== 'object') continue;
+    const rows = [k.near, k.top].flatMap(a => (Array.isArray(a) ? a : []));
+    if (rows.some(r => !r || typeof r.fc !== 'boolean')) { delete k.near; delete k.top; }
+  }
+  return ranks;
+}
+
 // scores / stats / mysongs: the stores from scores.js, stats.js, mysongs.js.
 // prefs: { sharedSettings, applyShared } from settings.js.
 // isBusy: true while a song is playing or paused; no sync starts then.
@@ -76,7 +86,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
     sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
-    ranks: obj(st.ranks),                              // 'songId|diff' -> { rank, total, near?, top?, at }: the world rank last seen
+    ranks: freshRanks(obj(st.ranks)),                  // 'songId|diff' -> { rank, total, near?, top?, at }: the world rank last seen
     myRanks: st.myRanks && Array.isArray(st.myRanks.rows) && isNum(st.myRanks.at) ? st.myRanks : { at: 0, rows: [] }, // every board the player is on
     rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
     pendingProfile: obj(st.pendingProfile),            // { displayName?, public? } waiting for the next push
@@ -318,7 +328,8 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     const top = boards.value.boards[key];
     if (!top) return;
     const next = top.filter(r => r.name !== me.name);
-    next.push({ name: me.name, score: me.score, grade: me.grade, accuracy: 0, maxCombo: 0, mods: [], playedAt: now() });
+    const { me: _, ...row } = me; // keeps the FC/AP/mods/DEV fields of the answer's row
+    next.push({ accuracy: 0, maxCombo: 0, mods: [], ...row, playedAt: now() });
     next.sort((a, b) => b.score - a.score);
     boards.value.boards[key] = next.slice(0, BOARD_TOP).map((r, i) => ({ ...r, rank: i + 1, total }));
   }
@@ -468,7 +479,14 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       return r.verdicts;
     },
     // The world rank last seen for a song and difficulty: { rank, total, at } or null. No request.
-    rank: (songId, diff) => st.ranks[songId + '|' + diff] || null,
+    // A newer snapshot that has the player in its top overrides the rank and total last seen.
+    rank(songId, diff) {
+      const key = songId + '|' + diff, k = st.ranks[key];
+      if (!k) return null;
+      const v = boards.value, me = (k.near || []).find(n => n.me);
+      const row = me && v && v.boards && v.rules === st.rules && boards.at > k.at && (v.boards[key] || []).find(r => r.name === me.name);
+      return row ? { ...k, rank: row.rank, total: row.total } : k;
+    },
     // The players around the player on one board, from the sync that ranked their run: [{ rank, name, score, grade,
     // me? }] or null. No request.
     // The world top runs as the sync that ranked the player's run saw them, or null.

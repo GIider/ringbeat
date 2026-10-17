@@ -44,6 +44,7 @@ import { createHud, copyReport } from './perfhud.js';
 import { createNetDebug } from './netdebug.js';
 import { createNetSignal } from './netsignal.js';
 import { marquee, marqueeAll } from './marquee.js';
+import { worldLines } from './worldlines.js';
 
 const $ = id => document.getElementById(id);
 setLang(effectiveLang());
@@ -1657,17 +1658,7 @@ game.onFinish = r => {
 // other run can't move the player's rank, so the rank last seen shows without a request. The API re-plays each run and
 // ranks its own score (docs/CLOUD.md › Leaderboards).
 let worldToken = 0;
-// The snapshot's top runs, then a gap marker, then the players around the player's rank (without repeating any).
-function worldLines(top, near) {
-  const out = [];
-  let last = 0;
-  // `near` may be older than `top`: a top row is dropped when it shares a rank or a name with a near row, and the
-  // rest stay in score order.
-  const rest = top.filter(r => !near.some(n => n.rank === r.rank || (n.name && n.name === r.name)));
-  for (const r of rest.sort((a, b) => b.score - a.score)) { out.push(r); last = r.rank; }
-  if (near.length && near[0].rank > last + 1) out.push({ rank: 0, score: '…', grade: '', name: '', gap: true });
-  return out.concat(near);
-}
+let worldRefresh = null; // repaints the "World #n of m" line when a newer snapshot lands (set for runs that are not a new best)
 // The World page: the top ten (from the answer that ranked the run, else the leaderboard snapshot), then the players around the player's rank (they came
 // back with the sync that ranked the run). Nothing here makes a request of its own.
 function paintWorld(songId, diff, token = worldToken) {
@@ -1691,6 +1682,7 @@ function paintWorld(songId, diff, token = worldToken) {
     ol.textContent = '';
     for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
+    if (worldRefresh) worldRefresh();
   };
   if (near.length) paint([]); else say(tr('Loading…'));
   const fresh = cloud.rankTop(songId, diff);
@@ -1708,11 +1700,17 @@ async function showWorldRank(songId, diff, runId, isNewBest, score) {
     return k && tr('World #{n} of {total}', { n: k.rank, total: k.total });
   };
   if (!runId || !isNewBest) {
-    const text = known();
-    el.hidden = !text;
-    if (text) el.textContent = text;
+    // Not a new best: the rank last seen, corrected when the snapshot (a newer view of the board) lands.
+    worldRefresh = () => {
+      if (token !== worldToken) return;
+      const text = known();
+      el.hidden = !text;
+      if (text) el.textContent = text;
+    };
+    worldRefresh();
     return;
   }
+  worldRefresh = null;
   // The snapshot already says where this score lands: show that (dimmed) while the server's answer is on its way.
   const guess = cloud.guessRank(songId, diff, score);
   el.textContent = guess ? tr('World #{n} of {total}', { n: guess.rank, total: guess.total }) : tr('World rank…');
