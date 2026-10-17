@@ -9,12 +9,12 @@ export const BTN = {
 const NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'L3', 'R3', '↑', '↓', '←', '→'];
 export const buttonName = i => NAMES[i] || 'Btn ' + i;
 
-// Lane slot -> buttons. Slots are the 4 lanes.
+// Lane slot -> buttons. Slots are the 4 lanes, ordered so the fingers line up: left shoulder, d-pad right, left face button, right shoulder.
 export const DEFAULT_BINDINGS = {
-  0: [BTN.LEFT, BTN.X, BTN.LB, BTN.LT],
-  1: [BTN.DOWN, BTN.A],
-  2: [BTN.UP, BTN.Y],
-  3: [BTN.RIGHT, BTN.B, BTN.RB, BTN.RT],
+  0: [BTN.LB, BTN.LT],
+  1: [BTN.RIGHT],
+  2: [BTN.X],
+  3: [BTN.RB, BTN.RT],
 };
 export const cloneBindings = b => Object.fromEntries(Object.entries(b).map(([k, v]) => [k, v.slice()]));
 
@@ -27,8 +27,6 @@ export function sanitizeBindings(b) {
   }
   return out;
 }
-
-// Lane for a binding slot given the chart's lane count (3-lane mode uses keys F J K = slots 1..3).
 
 const STICK = 0.6, REPEAT_FIRST = 350, REPEAT_NEXT = 110;
 

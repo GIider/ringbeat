@@ -438,6 +438,17 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Find your song': 'Finde deinen Song',
+  ['76 new songs: games, TV, Eurodance, pop and synth.\n' +
+    'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +
+    'Favorites get a new effect and sound: a heart floats up when you add one and breaks when you remove it.\n' +
+    'Gamepad lanes now follow your fingers: LB, D-pad right, X, RB. Press Reset buttons in Settings to switch.\n' +
+    'Sorting by difficulty groups by half stars. German text no longer gets cut off.']:
+    '76 neue Songs: Spiele, TV, Eurodance, Pop und Synth.\n' +
+    'Die Songauswahl zeigt, wo du bist (Videospiele 3/61). Bild auf und Bild ab blättern, Komma und Punkt springen zwischen Gruppen, / sucht einen Song, G öffnet die Kategorieübersicht, und die Sortierung hat eine eigene Übersicht.\n' +
+    'Favoriten bekommen einen neuen Effekt samt Ton: Ein Herz steigt auf, wenn du einen hinzufügst, und zerbricht, wenn du ihn entfernst.\n' +
+    'Gamepad-Bahnen folgen jetzt deinen Fingern: LB, Steuerkreuz rechts, X, RB. Tippe in den Einstellungen auf Tasten zurücksetzen, um umzustellen.\n' +
+    'Die Sortierung nach Schwierigkeit gruppiert in halben Sternen. Deutscher Text wird nicht mehr abgeschnitten.',
   'Online, nearly stable': 'Online, fast stabil',
   ['The online features are settling down, and we are celebrating!\n' +
     'Sign-in, cloud save and world leaderboards are getting steadier with every update.\n' +

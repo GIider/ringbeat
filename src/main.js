@@ -365,7 +365,7 @@ function placeFx() {
   if (text && text.nodeType === 3 && text.length) rg.setStart(text, 0), rg.setEnd(text, 1);
   const fr = text && text.nodeType === 3 && text.length ? rg.getBoundingClientRect() : t ? t.getBoundingClientRect() : ir;
   b.style.left = fr.left + Math.min(fr.width, 14) / 2 + 'px';
-  b.style.top = ir.top + ir.height / 2 - 10 + 'px';
+  b.style.top = ir.top + ir.height / 2 - 18 + 'px';
   return true;
 }
 
@@ -2219,7 +2219,11 @@ function bindButton(index) {
   capturingSlot = -1;
   for (let o = 0; o < 4; o++) {
     if (o !== s) settings.padBindings[o] = settings.padBindings[o].filter(x => x !== index);
-    if (!settings.padBindings[o].length) settings.padBindings[o] = DEFAULT_BINDINGS[o].filter(x => x !== index).slice(0, 1);
+    if (!settings.padBindings[o].length) {
+      const used = new Set(Object.values(settings.padBindings).flat());
+      const free = DEFAULT_BINDINGS[o].concat([BTN.A, BTN.B, BTN.X, BTN.Y]).find(x => x !== index && !used.has(x));
+      settings.padBindings[o] = [free];
+    }
   }
   settings.padBindings[s] = [index];
   save(); renderBindings();

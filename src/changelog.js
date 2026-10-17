@@ -5,6 +5,14 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.3', date: '2026-10-17', title: 'Find your song',
+    body: '76 new songs: games, TV, Eurodance, pop and synth.\n' +
+      'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +
+      'Favorites get a new effect and sound: a heart floats up when you add one and breaks when you remove it.\n' +
+      'Gamepad lanes now follow your fingers: LB, D-pad right, X, RB. Press Reset buttons in Settings to switch.\n' +
+      'Sorting by difficulty groups by half stars. German text no longer gets cut off.',
+  },
+  {
     version: '2.2', date: '2026-10-17', title: 'Online, nearly stable',
     body: 'The online features are settling down, and we are celebrating!\n' +
       'Sign-in, cloud save and world leaderboards are getting steadier with every update.\n' +

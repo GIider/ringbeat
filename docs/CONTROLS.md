@@ -82,10 +82,12 @@ Gameplay defaults (each lane has several buttons):
 
 | Lane | Buttons |
 |---|---|
-| 1 (left) | D-pad ←, X, LB, LT |
-| 2 | D-pad ↓, A |
-| 3 | D-pad ↑, Y |
-| 4 (right) | D-pad →, B, RB, RT |
+| 1 (left) | LB, LT |
+| 2 | D-pad → |
+| 3 | X |
+| 4 (right) | RB, RT |
+
+The order follows the fingers: left shoulder, right d-pad, left face button, right shoulder.
 
 `Start` pauses, `Back/Select` restarts.
 
