@@ -248,8 +248,10 @@ export async function handle(req, env, now = Date.now()) {
 // ---- helpers ----
 
 async function putDevice(env, uid, deviceId, doc, now) {
+  const known = await env.DB.prepare('SELECT 1 FROM device_slots WHERE user_id = ? AND device_id = ?').bind(uid, deviceId).first();
   await env.DB.prepare(`INSERT INTO device_slots (user_id, device_id, doc, updated) VALUES (?, ?, ?, ?)
     ON CONFLICT (user_id, device_id) DO UPDATE SET doc = excluded.doc, updated = excluded.updated`).bind(uid, deviceId, doc, now).run();
+  if (known) return; // the count only grows with a new device
   // Devices long gone make room: only the newest MAX_DEVICES are kept.
   await env.DB.prepare(`DELETE FROM device_slots WHERE user_id = ? AND device_id NOT IN
     (SELECT device_id FROM device_slots WHERE user_id = ? ORDER BY updated DESC LIMIT ?)`).bind(uid, uid, MAX_DEVICES).run();
@@ -321,15 +323,16 @@ async function adminRoute(env, route, url, body, now, json, fail) {
   const id = v => String(v || '').slice(0, 64);
   if (route === 'GET /admin/players') {
     const like = '%' + String(q.get('q') || '').replace(/[\\%_]/g, c => '\\' + c) + '%';
-    const { results } = await env.DB.prepare(`SELECT u.id, u.display_name AS name, u.hidden, u.banned, u.created,
-      (SELECT COUNT(*) FROM runs r WHERE r.user_id = u.id) AS runs FROM users u
-      WHERE u.display_name LIKE ? ESCAPE '\\' OR u.id = ? ORDER BY u.created DESC LIMIT ? OFFSET ?`)
+    // The page of users first, then each one's run count from runs_user (not a scan per user of the whole page query).
+    const { results } = await env.DB.prepare(`SELECT p.*, (SELECT COUNT(*) FROM runs r WHERE r.user_id = p.id) AS runs FROM (
+      SELECT u.id, u.display_name AS name, u.hidden, u.banned, u.created FROM users u
+      WHERE u.display_name LIKE ? ESCAPE '\\' OR u.id = ? ORDER BY u.created DESC LIMIT ? OFFSET ?) p ORDER BY p.created DESC`)
       .bind(like, id(q.get('q')), ADMIN_PAGE, offset).all();
     return json({ players: results });
   }
   if (route === 'GET /admin/runs') {
     const { results } = await env.DB.prepare(`SELECT id, song_id, diff, score, flags, hidden, verified, played_at
-      FROM runs WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?`).bind(id(q.get('user')), ADMIN_PAGE, offset).all();
+      FROM runs WHERE user_id = ? ORDER BY played_at DESC, id DESC LIMIT ? OFFSET ?`).bind(id(q.get('user')), ADMIN_PAGE, offset).all();
     return json({ runs: results });
   }
   if (route === 'POST /admin/run/delete') {

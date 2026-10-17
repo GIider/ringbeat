@@ -1045,3 +1045,41 @@ test('outbox: a batch the API refuses (400) loses its replays, then itself, inst
   assert.ok((await a.cloud.submit())[next], 'the queue moves again');
   assert.ok(id);
 });
+
+test('admin: a player\'s runs come newest played first; the players list counts each page\'s runs', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const admin = { Authorization: 'Bearer admin-secret' };
+  const get = async path => (await srv.call(path, { headers: admin })).json();
+  const ann = await signedIn(srv, 1, 'Ann'), bob = await signedIn(srv, 2, 'Bob');
+  await ann.post(['a1', 'a2', 'a3'].map(id => ({ ...played('ode', 'normal', LADDER[4]).run, clientRunId: id })));
+  await bob.post([{ ...played('ode', 'normal', LADDER[2]).run, clientRunId: 'b1' }]);
+  // Stored order (id) and played order disagree: a2 was played last, a1 first.
+  const at = { a1: 1000, a2: 3000, a3: 2000 };
+  for (const [id, t] of Object.entries(at)) srv.env.DB.db.prepare('UPDATE runs SET played_at = ? WHERE client_run_id = ?').run(t, id);
+  const runs = (await get('/admin/runs?user=' + ann.id)).runs;
+  assert.deepEqual(runs.map(r => r.played_at), [3000, 2000, 1000]);
+  assert.deepEqual((await get('/admin/runs?user=' + ann.id + '&offset=2')).runs.map(r => r.played_at), [1000]);
+  const players = (await get('/admin/players')).players;
+  assert.deepEqual(Object.fromEntries(players.map(p => [p.name, p.runs])), { Ann: 3, Bob: 1 });
+  assert.deepEqual((await get('/admin/players?offset=1')).players.map(p => p.runs).length, 1);
+});
+
+test('POST /sync: a device slot is rewritten in place, and only the newest 20 devices are kept', async () => {
+  const srv = server();
+  const u = await signedIn(srv, 1, 'Ann');
+  const slots = () => srv.env.DB.db.prepare('SELECT device_id FROM device_slots WHERE user_id = ? ORDER BY updated, device_id').all(u.id).map(r => r.device_id);
+  const push = (deviceId, n) => srv.call('/sync', { method: 'POST', headers: u.h, body: JSON.stringify({ deviceId, device: { n } }) });
+  for (let i = 0; i < 22; i++) {
+    srv.tick(1000);
+    assert.equal((await push('device' + String(i).padStart(4, '0'), i)).status, 200);
+  }
+  assert.equal(slots().length, 20);
+  assert.ok(!slots().includes('device0000') && !slots().includes('device0001'), 'the oldest two made room');
+  // A known device rewriting itself keeps every slot and updates its document.
+  srv.tick(1000);
+  assert.equal((await push('device0002', 99)).status, 200);
+  assert.equal(slots().length, 20);
+  assert.equal(slots().at(-1), 'device0002');
+  assert.equal(JSON.parse(srv.env.DB.db.prepare("SELECT doc FROM device_slots WHERE device_id = 'device0002'").get().doc).n, 99);
+});
