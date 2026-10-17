@@ -26,7 +26,8 @@ import { SORTS, applyView, nextOf, prevOf, ratingOf } from './listview.js';
 import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
-import { menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
+import { GLYPHS, FAMILY } from './pixelfont.js';
+import { MENU_IDS, menuFrame, letterFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
 import { createAdmin, PAGE as ADMIN_PAGE, playerLine, runLine, logLine } from './admin.js';
@@ -36,7 +37,7 @@ import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { coverRows } from './cover.js';
-import { SPRITES, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
+import { SPRITES, SPRITES_FAV, categorySprite, spriteHTML, setSprite, signal, battery, ringing, envelope } from './pixelart.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -109,7 +110,7 @@ const screens = {
   title: $('title'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), msgload: $('msgload'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
   mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), diffpick: $('diffpick'),
-  settings: $('settings'), mods: $('mods'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
+  settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
@@ -164,7 +165,7 @@ function focusDefault(el) {
 // The highlighted list item follows focus but stays lit while focus is elsewhere (e.g. on a phone key).
 let lit = null;
 function light(el) {
-  if (el && el.closest && el.closest('#set-tabs') && lit) { lit.classList.remove('hl'); lit = null; return; }
+  if (el && el.closest && el.closest('#set-tabs, .gl-grid') && lit) { lit.classList.remove('hl'); lit = null; return; }
   const item = el && el.closest && el.closest('.menu > *');
   if (!item || item === lit) return;
   if (lit) lit.classList.remove('hl');
@@ -1439,6 +1440,41 @@ function closeMods() {
   // show() focuses the default difficulty on the next frame; land back on the Mods button instead.
   requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'diffpick') { $('btn-mods').focus({ preventScroll: true }); light($('btn-mods')); } }));
 }
+// Settings › Developer › Glyphs & icons: every font glyph and sprite, built once on first open.
+let glyphsBuilt = false, glyphsLast = 0; // the focused cell is kept for the session
+function buildGlyphs() {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const cell = (info, art, w = 0, extra = '') => `<button type="button" class="gl-cell"${w > 52 ? ` style="grid-column:span ${Math.ceil((w + 8) / 68)}"` : ''}${extra} data-info="${esc(info)}" aria-label="${esc(info)}">${art}</button>`;
+  const TALL = ['phone', 'avatar'];
+  const sprites = (obj, tag, tall = false) => Object.entries(obj).filter(([k]) => TALL.includes(k) === tall).map(([k, r]) => cell(`${tag} ${k} ${r[0].length}×${r.length}`, spriteHTML(r, 2), r[0].length * 2));
+  const glyphs = Object.entries(GLYPHS).map(([ch, g]) => {
+    const cp = 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    const text = `<span class="gl-ch" style="font-family:'${FAMILY}'">${esc(ch)}<b>${esc(ch)}</b></span>`;
+    return cell(`${ch} ${cp} ${g.w}×${g.rows.length}`, text + spriteHTML(g.rows, 3), g.w * 3);
+  });
+  const menu = MENU_IDS.map(id => cell(`menu ${id} ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame(id, 0), 2), ICON_W * 2, `data-menu="${id}"`));
+  const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
+  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), [...sprites(SPRITES, 'icon'), ...sprites(SPRITES_FAV, 'favorite')]) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Menu icons'), menu);
+  glyphsBuilt = true;
+}
+// A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
+let glyphAnim = null;
+function glyphAnimate(cell) {
+  if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0), 2); glyphAnim = null; }
+  const id = cell && cell.dataset.menu;
+  if (!id || still.matches) return;
+  const el = cell.querySelector('.spr');
+  let n = 0;
+  glyphAnim = { id, el, timer: setInterval(() => setSprite(el, menuFrame(id, ++n), 2), MENU_FRAME_MS) };
+  setSprite(el, menuFrame(id, 0), 2);
+}
+function openGlyphs() {
+  if (!glyphsBuilt) buildGlyphs();
+  $('gl-hint').textContent = '';
+  const cells = $('gl-body').querySelectorAll('.gl-cell');
+  cells.forEach((c, i) => { c.toggleAttribute('data-default', i === glyphsLast); });
+  setState('glyphs', 'glyphs');
+}
 function setMod(patch) {
   settings.mods = mods.normalize({ ...settings.mods, ...patch });
   save();
@@ -2085,6 +2121,7 @@ function back() {
     case 'loginprompt': afterLogin(); break;
     case 'settings': closeSettings(); break;
     case 'mods': closeMods(); break;
+    case 'glyphs': openSettings(settingsFrom); break;
     case 'mysongs': openMenu('mysongs'); break;
     case 'diffpick': if (dpBack) dpBack(); else openSelect(); break;
     case 'songmenu': openMySongs(); break;
@@ -2363,6 +2400,17 @@ function wire() {
   $('m-judge').oninput = e => setMod({ judge: mods.JUDGES[+e.target.value] });
   $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
   $('btn-mods-back').onclick = closeMods;
+  $('btn-glyphs').onclick = openGlyphs;
+  $('btn-glyphs-back').onclick = () => openSettings(settingsFrom);
+  $('glyphs').addEventListener('focusout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.gl-cell')) glyphAnimate(null); });
+  $('glyphs').addEventListener('focusin', e => {
+    const c = e.target.closest('.gl-cell');
+    if (!c) return;
+    glyphAnimate(c);
+    glyphsLast = Array.prototype.indexOf.call($('gl-body').querySelectorAll('.gl-cell'), c);
+    $('gl-hint').textContent = c.dataset.info;
+    marquee($('gl-hint'));
+  });
   $('mods').addEventListener('focusin', e => {
     if (MOD_HINTS[e.target.id]) setModHint(e.target.id);
   });

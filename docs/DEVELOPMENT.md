@@ -121,7 +121,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
 
-The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account.
+The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite and menu icon.
 
 **Request log.** With *Request tracker* on, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
 - why each one went out: `start`, `tab back`, `push`, `new best`, `tab hidden`, `boards`, `Sync button`, `signed in`;

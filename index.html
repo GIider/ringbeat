@@ -319,6 +319,7 @@
           <div class="set-panel menu" data-panel="developer" role="tabpanel" hidden>
             <label class="item check"><input id="pref-perf" type="checkbox"> <span data-i18n>Performance overlay</span></label>
             <label class="item check"><input id="pref-net" type="checkbox"> <span data-i18n>Request tracker</span></label>
+            <button id="btn-glyphs" data-i18n>Glyphs &amp; icons</button>
           </div>
           <div class="menu">
             <button id="btn-settings-back" data-i18n>Back</button>
@@ -341,6 +342,13 @@
             <button id="btn-mods-back" data-i18n>Back</button>
           </div>
           <p id="m-hint" class="hint"></p>
+        </section>
+
+        <!-- Glyphs & icons (Settings › Developer) -->
+        <section id="glyphs" class="screen" hidden data-title="Glyphs" data-soft-left="Select" data-soft-right="Back">
+          <div id="gl-body"></div>
+          <p id="gl-hint" class="hint"></p>
+          <div class="menu"><button id="btn-glyphs-back" data-i18n>Back</button></div>
         </section>
 
         <!-- Now playing (shown in the phone while the highway runs) -->

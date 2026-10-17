@@ -21,19 +21,23 @@ export function move(root, dir) {
     (root.querySelector('[data-default]:not([disabled])') || items[0]).focus();
     return true;
   }
-  const c = center(rectOf(cur));
+  const cr = rectOf(cur), c = center(cr);
+  // Gap between two spans on the cross axis: 0 while they overlap, so a wide control counts as in line with everything it spans.
+  const gap = (a0, a1, b0, b1) => Math.max(0, a0 - b1, b0 - a1);
+  // In a grid (data-rows) left/right stay in the current row, so a wide cell above or below is only reached with up/down.
+  const inRow = el => { const r = rectOf(el); return gap(cr.top, cr.bottom, r.top, r.bottom) === 0; };
+  const pool = (dir === 'left' || dir === 'right') && cur.closest('[data-rows]') ? items.filter(inRow) : items;
   let best = null, bestScore = Infinity;
-  for (const el of items) {
+  for (const el of pool) {
     if (el === cur) continue;
     const p = center(rectOf(el));
+    const r = rectOf(el);
     const dx = p.x - c.x, dy = p.y - c.y;
-    let main, cross;
-    if (dir === 'down') { main = dy; cross = Math.abs(dx); }
-    else if (dir === 'up') { main = -dy; cross = Math.abs(dx); }
-    else if (dir === 'right') { main = dx; cross = Math.abs(dy); }
-    else { main = -dx; cross = Math.abs(dy); }
+    const vert = dir === 'down' || dir === 'up';
+    const main = dir === 'down' ? dy : dir === 'up' ? -dy : dir === 'right' ? dx : -dx;
+    const cross = vert ? gap(cr.left, cr.right, r.left, r.right) : gap(cr.top, cr.bottom, r.top, r.bottom);
     if (main < 3) continue;
-    const score = main + cross * 2.5;
+    const score = main + cross * 2.5 + Math.abs(vert ? dx : dy) * 0.01; // centre distance only breaks ties
     if (score < bestScore) { bestScore = score; best = el; }
   }
   if (best) { best.focus(); return true; }
