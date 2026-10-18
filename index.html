@@ -71,16 +71,17 @@
           <p id="welcome-msg" class="blink" data-i18n>Connecting…</p>
         </section>
 
-        <!-- Main menu: one item per screen with a big animated icon, like the 3310 -->
+        <!-- Main menu: a carousel with one big animated icon per screen, like the 3310; the items before and after peek in dithered -->
         <section id="menu" class="screen mm" hidden data-title="" data-soft-left="Select" data-soft-right="Back">
+          <div id="mm-bg" class="mm-bg" aria-hidden="true"></div>
           <div id="mm-body" class="mm-body">
-            <div id="mm-title" class="mm-title"></div>
-            <div class="mm-art">
-              <button id="mm-prev" class="mm-arrow" tabindex="-1" aria-label="Previous item" data-i18n-attr="aria-label">◄</button>
+            <button id="mm-prev" class="mm-peek prev" tabindex="-1" aria-label="Previous item" data-i18n-attr="aria-label"><i id="mm-prev-icon" class="spr"></i><span id="mm-prev-name"></span></button>
+            <div id="mm-hero" class="mm-hero">
+              <div id="mm-title" class="mm-title"></div>
               <i id="mm-icon" class="spr mm-icon"></i>
-              <button id="mm-next" class="mm-arrow" tabindex="-1" aria-label="Next item" data-i18n-attr="aria-label">►</button>
+              <div id="mm-hint" class="mm-hint" aria-live="polite"></div>
             </div>
-            <div id="mm-hint" class="mm-hint" aria-live="polite"></div>
+            <button id="mm-next" class="mm-peek next" tabindex="-1" aria-label="Next item" data-i18n-attr="aria-label"><span id="mm-next-name"></span><i id="mm-next-icon" class="spr"></i></button>
           </div>
           <button id="mm-go" class="sr" data-default>Select</button>
           <div class="mm-scroll" aria-hidden="true"><b id="mm-num">1</b><div class="mm-rail"><i id="mm-thumb"></i></div></div>

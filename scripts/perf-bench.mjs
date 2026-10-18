@@ -247,7 +247,7 @@ const cases = [
   ['render.fx.judge x100 (pool churn)', () => { for (let i = 0; i < 100; i++) rf.r.fx.judge(i & 3, i % 7 ? 'perfect' : 'miss'); }],
 
   // -- menu / pixel-art / animation (pure parts; DOM parts live in perf-menus) --
-  ['menuicons.menuFrame (all ids x 8 ticks)', () => { for (const id of MENU_IDS) for (let n = 0; n < 8; n++) sink += menuFrame(id, n, { unread: n & 1 }).length; }],
+  ['menuicons.menuFrame (all ids x 12 ticks)', () => { for (const id of MENU_IDS) for (let n = 0; n < 12; n++) sink += menuFrame(id, n, { unread: n & 1 }).length; }],
   ['menuicons.menuFrames (all ids, preload)', () => { for (const id of MENU_IDS) sink += menuFrames(id).length; }],
   ['pixelart.spriteSVG (all menu frames)', () => { for (const id of MENU_IDS) for (let n = 0; n < 4; n++) sink += spriteSVG(menuFrame(id, n)).length; }],
   ['pixelart.spriteURL warm (menu icon tick)', () => { for (const id of MENU_IDS) sink += spriteURL(menuFrame(id, 1)).length; }],

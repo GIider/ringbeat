@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createStats, gradeTally, favourite, topSongs, formatDuration, currentStreak, dayKey, STATS_KEY } from '../src/stats.js';
 import { createScores } from '../src/scores.js';
 import { MESSAGES, defaultSeen, unread, markRead } from '../src/changelog.js';
-import { MENU_IDS, menuFrame, menuFrames, ICON_W, ICON_H } from '../src/menuicons.js';
+import { MENU_IDS, menuFrame, menuFrames, menuSheet, ditherRows, menuTile, ICON_W, ICON_H, FRAME_COUNT } from '../src/menuicons.js';
 import { GLYPHS } from '../src/pixelfont.js';
 import { VERSION } from '../src/version.js';
 
@@ -169,11 +169,35 @@ test('menu icons: every item animates, frames are equal-size 1-bit sprites', () 
       }
       assert.ok(new Set(frames.map(f => f.join('/'))).size >= 2, `${id} has no animation`);
       assert.deepEqual(menuFrame(id, frames.length, opts), frames[0], `${id}: loops after its last frame`);
-      assert.ok(frames.every(f => f.some(r => r.slice(0, 13).includes('#'))), `${id}: phone drawn in every frame`);
+      assert.equal(frames.length, FRAME_COUNT, id);
+      assert.ok(frames.every(f => f.some(r => r.includes('#'))), `${id}: something drawn in every frame`);
     }
     assert.deepEqual(menuFrame(id, -1), menuFrame(id, menuFrames(id).length - 1), `${id}: negative frames wrap`);
   }
   assert.notDeepEqual(menuFrame('messages', 1, { unread: true }), menuFrame('messages', 1), 'unread envelope looks different');
+  assert.equal(menuFrame('tones', 3), menuFrame('tones', 3), 'frames are cached');
+});
+
+test('menu icons: the frame strip holds every frame side by side', () => {
+  for (const id of MENU_IDS) for (const opts of [{}, { unread: true }]) {
+    const sheet = menuSheet(id, opts);
+    assert.ok(rectangular(sheet) && sheet.length === ICON_H && sheet[0].length === ICON_W * FRAME_COUNT, id);
+    menuFrames(id, opts).forEach((f, n) => assert.deepEqual(sheet.map(r => r.slice(n * ICON_W, (n + 1) * ICON_W)), f, `${id} frame ${n}`));
+  }
+});
+
+test('menu icons: the dithered peek copy and the backdrop tiles', () => {
+  const rows = menuFrame('settings', 0), d = ditherRows(rows);
+  assert.ok(rectangular(d) && d.length === rows.length && d[0].length === rows[0].length, 'same size');
+  d.forEach((r, y) => [...r].forEach((c, x) => {
+    if (c === '#') assert.ok(rows[y][x] === '#' && (x + y) % 2 === 0, 'only ink on the checker survives');
+    else if (rows[y][x] === '#') assert.ok((x + y) % 2 === 1, 'ink on the checker is kept');
+  }));
+  for (const id of MENU_IDS) {
+    const t = menuTile(id);
+    assert.ok(rectangular(t) && t.length === 16 && t[0].length === 16, `${id}: 16x16 tile`);
+    assert.ok(t.some(r => r.includes('#')), `${id}: tile has ink`);
+  }
 });
 
 test('topSongs: orders by plays then id, limits, skips 0 plays', () => {

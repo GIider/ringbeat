@@ -49,7 +49,7 @@ Every screen has two buttons along the bottom of the LCD, both tappable: left = 
 right = Back (Continue on the results, Pause during play, Clear in the composer). `Enter` / `Esc` and the gamepad's A / B do the
 same. Holding the right one for 1.2 s on the title, menu or song select runs a gag (see [SPEC.md › Extras](SPEC.md#extras)).
 
-The LCD label is tappable too. In the main menu, swipe or scroll the wheel to browse, or tap the icon or the ◄ ► arrows.
+The LCD label is tappable too. In the main menu, swipe or scroll the wheel to browse, tap the icon to open it, or tap the item peeking in above or below.
 
 ## Gamepad (Standard Gamepad API)
 

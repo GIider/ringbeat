@@ -61,7 +61,7 @@ src/
   pixelfont.js    5x7 glyph table + bold cut for the LCD font (scripts/build-font.mjs -> TrueType)
   pixelart.js     1-bit sprites (signal, battery, envelope, ringing phone, category icons) + SVG data-URI / CSS-mask helpers
   admin.js        dev-mode client for the Worker's /admin/* routes (the Admin menu app); the admin token stays in memory only
-  menuicons.js    animated 3310-style main-menu icons (small 3310 + symbol)
+  menuicons.js    animated 3310-style main-menu art (64x48, 12 frames), dithered peeks, backdrop tiles
   cover.js        procedural 72x28 picture-message art per song id
   marquee.js      scrolls text that is too wide for its box
   cameo.js        pure simulations of the idle cameos (snake, Space Impact, SMS, signal wobble, low battery,
@@ -171,10 +171,13 @@ tests/
   - Hidden is renderer-only.
   - Demo attaches `autoplay.js`.
   - The tutorial ignores mods.
-- **Main menu.** The title leads to `menu`, a single screen showing one item at a time (3310 style). Every top-level
-  screen's Back returns to it, on the item it was opened from; that item is remembered for the session, not saved.
-  The icon frames advance from the frame loop (every ~300 ms) and are held still under reduced motion. The icon scale
-  (2–4 LCD px per sprite px) follows the available space.
+- **Main menu.** The title leads to `menu`, a vertical carousel showing one big item at a time (3310 style), with the
+  items before and after peeking in dithered at the top and bottom. Every top-level screen's Back returns to it, on the
+  item it was opened from; that item is remembered for the session, not saved. The icon frames advance from the frame
+  loop (every ~110 ms). The icon scale (whole LCD px per sprite px) follows the available space. Changing item slides the
+  strip in stepped motion, pops the icon, types the title and plays a per-item pitched blip (`synth.menuBlip`); the
+  backdrop is the item's tile drifting behind it, and Select opens the next screen out of the middle. Reduced motion
+  holds the icons still and drops these effects.
 - **Ratings are measured offline.** Built-in song ratings come from bots playing the real `Game` (`npm run bench`).
   They ship as `difficulty.json` and are loaded after first paint, so startup never waits on them. See
   [SONGS.md › Difficulty ratings](SONGS.md#difficulty-ratings).

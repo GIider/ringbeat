@@ -28,7 +28,7 @@ import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { GLYPHS, FAMILY } from './pixelfont.js';
-import { MENU_IDS, menuFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
+import { MENU_IDS, menuFrame, menuSheet, menuPeek, menuTile, FRAME_COUNT, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
 import { createAdmin, PAGE as ADMIN_PAGE, STATUSES, cycle, countsLine, playerLine, runLine, logLine } from './admin.js';
@@ -37,7 +37,7 @@ import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
-import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, ICONS, ICONS_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
+import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, ICONS, ICONS_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, spriteURL, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { createTitle, REST as TITLE_REST, READY as TITLE_READY, TITLE_EXTENT } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
@@ -892,7 +892,7 @@ function openSelect() {
   scheduleAutoPreview();
 }
 
-// ---- main menu: one item per screen, big animated icon, numbered scrollbar (3310 style) ----
+// ---- main menu: a carousel of big animated icons (the neighbours peek in), numbered scrollbar (3310 style) ----
 const MENU = [
   { id: 'tones', title: 'Tones', open: () => { favKeep.clear(); unplayedKeep = null; if (settings.tutorialDone) openSelect(); else openTutPrompt(); } },
   { id: 'mysongs', title: 'My songs', open: () => openMySongs() },
@@ -913,7 +913,7 @@ function refreshMenu() {
   if (has) admin.lock(); // the flag or the sign-in is gone
   if (state === 'admin') openMenu(); else if (state === 'menu') renderMenu();
 }
-const MENU_FRAME_MS = 130;
+const MENU_FRAME_MS = 110;
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 let menuIdx = 0, menuTick = 0, menuNext = 0;
 if (adminOn()) MENU.push(ADMIN_ITEM);
@@ -921,13 +921,41 @@ let unit = 2; // CSS px per LCD pixel (set by layout)
 let unit2 = 3; // ...and the bigger step the text screens use on a wide LCD (see style.css, .big-text)
 const textUnit = () => (lcdWidth() >= SEL_WIDE_PX ? unit2 : unit);
 const unreadCount = () => unread(settings.msgSeen).length;
-// The icon is drawn at 2-4 LCD pixels per sprite pixel, as big as the screen comfortably allows.
-let iconPx = 0;
+// The hero is drawn as big as the screen comfortably allows (whole LCD pixels per sprite pixel); the items before and after
+// peek in at half that, dithered. A screen too short for the strip shows only their names.
+let iconPx = 0, peekPx = 0;
+function sizeMenu() {
+  const box = screens.menu, w = box.clientWidth, h = box.clientHeight;
+  const k = Math.max(1, Math.floor(Math.min(w * 0.82 / ICON_W, h * 0.52 / ICON_H) / unit));
+  const pk = Math.max(1, k >> 1), short = h < ICON_H * unit * (k + pk) + 120;
+  box.classList.toggle('short', short);
+  if (k * unit === iconPx && pk * unit === peekPx) return;
+  iconPx = k * unit; peekPx = pk * unit;
+  for (const id of ['mm-icon', 'mm-prev-icon', 'mm-next-icon']) $(id)._spr = ''; // setSprite only resizes when the image changes
+  box.style.setProperty('--pk', ICON_H * peekPx + 'px');
+  box.style.setProperty('--slot', Math.round(h * 0.3 / unit) * unit + 'px'); // one carousel slot, in whole LCD pixels
+}
+const menuUnread = id => id === 'messages' && unreadCount() > 0;
+// The hero's mask is the item's whole frame strip; a tick only moves it along (no image swap, so nothing can flash blank).
 function paintMenuIcon() {
-  const it = MENU[menuIdx], box = screens.menu, el = $('mm-icon');
-  const k = Math.max(2, Math.min(4, Math.floor(Math.min(box.clientWidth * 0.8 / ICON_W, box.clientHeight * 0.45 / ICON_H) / unit)));
-  if (k * unit !== iconPx) { iconPx = k * unit; el._spr = ''; } // setSprite only resizes when the image changes
-  setSprite(el, menuFrame(it.id, menuTick, { unread: it.id === 'messages' && unreadCount() > 0 }), iconPx);
+  const it = MENU[menuIdx], el = $('mm-icon'), url = spriteURL(menuSheet(it.id, { unread: menuUnread(it.id) }));
+  if (el._spr !== url) {
+    el._spr = url;
+    el.style.width = ICON_W * iconPx + 'px';
+    el.style.height = ICON_H * iconPx + 'px';
+    el.style.webkitMaskImage = el.style.maskImage = `url("${url}")`;
+    el.style.webkitMaskSize = el.style.maskSize = `${ICON_W * FRAME_COUNT * iconPx}px ${ICON_H * iconPx}px`;
+  }
+  const f = ((menuTick % FRAME_COUNT) + FRAME_COUNT) % FRAME_COUNT;
+  el.style.webkitMaskPosition = el.style.maskPosition = `${-f * ICON_W * iconPx}px 0`;
+}
+const menuAt = step => MENU[(menuIdx + step + MENU.length) % MENU.length];
+function paintPeeks() {
+  for (const [side, step] of [['prev', -1], ['next', 1]]) {
+    const it = menuAt(step);
+    setSprite($(`mm-${side}-icon`), menuPeek(it.id, menuUnread(it.id)), peekPx);
+    $(`mm-${side}-name`).textContent = tr(it.title);
+  }
 }
 // The title is double size; a long one ("Einstellungen") drops to one and a half times so it still fits the LCD.
 function fitMenuTitle() {
@@ -935,38 +963,77 @@ function fitMenuTitle() {
   t.classList.remove('sm');
   if (t.scrollWidth > t.clientWidth) t.classList.add('sm');
 }
+const restartAnim = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 function renderMenu(dir = 0) {
   const it = MENU[menuIdx], n = unreadCount();
+  sizeMenu();
   $('mm-title').textContent = tr(it.title);
+  $('mm-title').style.setProperty('--chars', [...tr(it.title)].length);
   $('mm-go').textContent = tr(it.title);
   fitMenuTitle();
   $('mm-num').textContent = menuIdx + 1;
-  $('mm-thumb').style.setProperty('--p', (menuIdx / (MENU.length - 1)).toFixed(3));
+  const sc = document.querySelector('#menu .mm-scroll');
+  sc.style.setProperty('--n', MENU.length);
+  sc.style.setProperty('--i', menuIdx);
   $('mm-hint').textContent = it.id === 'messages' && n ? tn(n, '{n} new message', '{n} new messages') : '';
+  const bg = $('mm-bg'), tile = `url("${spriteURL(menuTile(it.id))}")`, swap = bg._tile !== tile;
+  if (swap) { bg._tile = tile; bg.style.setProperty('--tile', tile); }
   paintMenuIcon();
-  if (dir) {
-    const b = $('mm-body');
-    b.classList.remove('slide-up', 'slide-down'); void b.offsetWidth;
-    b.classList.add(dir > 0 ? 'slide-up' : 'slide-down');
+  paintPeeks();
+  if (dir && !still.matches) { // restart every effect with a single reflow
+    const fx = [[$('mm-body'), dir > 0 ? 'from-below' : 'from-above'], [$('mm-icon'), 'pop'], [$('mm-title'), 'type'], [$('mm-num'), 'flip']];
+    if (swap) fx.push([bg, 'swap']);
+    $('mm-body').classList.remove('from-below', 'from-above');
+    for (const [el, cls] of fx) el.classList.remove(cls);
+    void bg.offsetWidth;
+    for (const [el, cls] of fx) el.classList.add(cls);
   }
 }
+// Builds and decodes every item's frame strip, peek and tile once, while the player is still looking at the first item,
+// so scrolling to one shows it at once instead of blank until the browser has decoded the new image.
+let menuWarm = null;
+function warmMenu() {
+  if (menuWarm) return;
+  menuWarm = [];
+  const idle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
+  idle(() => {
+    for (const { id } of MENU) {
+      for (const rows of [menuSheet(id), menuSheet(id, { unread: true }), menuPeek(id), menuPeek(id, true), menuTile(id)]) {
+        const img = new Image();
+        img.src = spriteURL(rows);
+        if (img.decode) img.decode().catch(() => {});
+        menuWarm.push(img); // kept so the decoded images stay cached
+      }
+    }
+  });
+}
+const MENU_FX = [['mm-body', 'from-below'], ['mm-body', 'from-above'], ['mm-icon', 'pop'], ['mm-title', 'type'], ['mm-num', 'flip'], ['mm-bg', 'swap']];
 function openMenu(id) {
+  // A screen shown again replays the CSS animations its elements still carry, so coming back must not slide or pop.
+  for (const [el, cls] of MENU_FX) $(el).classList.remove(cls);
   if (id) menuIdx = Math.max(0, MENU.findIndex(m => m.id === id));
   menuTick = 0; menuNext = performance.now() + MENU_FRAME_MS;
   setState('menu', 'menu');
   renderMenu(); // after showing: the icon is sized from the visible screen
+  warmMenu();
 }
-function menuJump(i) {
+// dir: which way the strip travels (+1 = the next item comes up from below). Wrapping around still moves one step.
+function menuJump(i, dir = Math.sign(i - menuIdx)) {
   const to = (i + MENU.length) % MENU.length;
   if (to === menuIdx) return;
-  const dir = i > menuIdx ? 1 : -1;
   menuIdx = to;
   menuTick = 0; menuNext = performance.now() + MENU_FRAME_MS;
+  synth.menuBlip(menuIdx);
   renderMenu(dir);
 }
-const menuStep = step => menuJump(menuIdx + step);
+const menuStep = step => menuJump(menuIdx + step, step);
 function menuSelect() {
   MENU[menuIdx].open();
+  const el = state !== 'menu' && activeScreen();
+  if (el && !still.matches) {
+    restartAnim(el, 'launch-in');
+    el.addEventListener('animationend', () => el.classList.remove('launch-in'), { once: true });
+  }
 }
 // Called every frame while the menu is up: steps the icon animation (held still for reduced motion).
 function menuAnim(now) {
@@ -2926,19 +2993,19 @@ function wire() {
 
   // main menu: tap the item to open it, arrows / swipe / wheel to browse
   $('mm-go').onclick = menuSelect;
-  $('mm-prev').onclick = e => { e.stopPropagation(); synth.keyClick(); menuStep(-1); };
-  $('mm-next').onclick = e => { e.stopPropagation(); synth.keyClick(); menuStep(1); };
+  $('mm-prev').onclick = e => { e.stopPropagation(); menuStep(-1); };
+  $('mm-next').onclick = e => { e.stopPropagation(); menuStep(1); };
   for (const b of [$('mm-prev'), $('mm-next')]) b.addEventListener('pointerdown', e => e.preventDefault()); // keep focus on the item
   {
     let wheelAt = 0;
     const m = $('menu');
-    const swiped = onSwipe(m, dir => { synth.keyClick(); menuStep(dir === 'left' || dir === 'up' ? 1 : -1); }, { axis: 'both', threshold: 30 });
+    const swiped = onSwipe(m, dir => { menuStep(dir === 'left' || dir === 'up' ? 1 : -1); }, { axis: 'both', threshold: 30 });
     $('mm-body').addEventListener('click', () => { if (!swiped()) { synth.keyClick(); menuSelect(); } });
     m.addEventListener('wheel', e => {
       e.preventDefault();
       const now = performance.now();
       if (now - wheelAt < 180 || !e.deltaY) return;
-      wheelAt = now; synth.keyClick(); menuStep(e.deltaY > 0 ? 1 : -1);
+      wheelAt = now; menuStep(e.deltaY > 0 ? 1 : -1);
     }, { passive: false });
   }
   // stats: swipe or tap the arrows for pages
@@ -3348,7 +3415,7 @@ function onKey(e) {
     return;
   }
   if (state === 'menu' && !typing && !e.repeat && /^[1-9]$/.test(e.key) && +e.key <= MENU.length) {
-    e.preventDefault(); synth.keyClick(); menuJump(+e.key - 1); return;
+    e.preventDefault(); menuJump(+e.key - 1); return;
   }
   if (menu && !e.repeat && (e.code === 'Enter' || e.code === 'Space') && !typing) synth.keyClick();
   if (e.code === 'KeyR' && !typing && ['countin', 'playing', 'resuming', 'paused', 'results'].includes(state)) { restartRun(); return; }
@@ -3364,7 +3431,7 @@ function onKey(e) {
     if (range && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; // native slider handling
     e.preventDefault();
     setDevice('kbd');
-    if (!(state === 'composer' && !csMenu)) synth.keyClick();
+    if (!(state === 'composer' && !csMenu) && state !== 'menu') synth.keyClick(); // the menu blips its own note
     navigate(dirs[e.code]);
   }
 }
@@ -3414,7 +3481,7 @@ function layout(animate = false) {
     unit = u;
   }
   if (state === 'profile') { $('pf-icon')._spr = ''; setSprite($('pf-icon'), PERSON_ART, textUnit() * 2); }
-  if (state === 'menu') paintMenuIcon();
+  if (state === 'menu') { sizeMenu(); paintMenuIcon(); paintPeeks(); }
   const lg = $('legend');
   body.classList.toggle('legend-on', framed && x >= 286);
   lg.style.left = Math.max(16, x - 270) + 'px';

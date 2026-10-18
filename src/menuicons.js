@@ -1,17 +1,17 @@
-// Main-menu art in the style of the 3310's menu: a small 3310 on the left (its LCD reacts) and the item's animated symbol
-// beside it. Each icon is a list of equal-size frames ('#' = ink); menuFrame() composes phone + symbol.
+// Main-menu hero art: one big animated 1-bit picture per item (64x48, 12 frames), drawn procedurally in the 3310's style.
+// A frame is a list of equal-length rows ('#' = ink). Also here: the dithered copies the carousel shows for the neighbouring
+// items and a small pattern tile per item for the scrolling backdrop.
 import { SPRITES } from './pixelart.js';
 
-export const ICON_W = 44, ICON_H = 21;
-const SYM_X = 14, SYM_W = ICON_W - SYM_X; // the symbol's own 30x21 canvas, blitted beside the phone
-const FRAME_COUNT = 8; // every icon loops over 8 frames
+export const ICON_W = 64, ICON_H = 48;
+export const FRAME_COUNT = 12; // every icon loops over 12 frames
 
 // ---- tiny raster helpers (grid = array of char arrays) ----
 const grid = (w, h) => Array.from({ length: h }, () => Array(w).fill('.'));
 const rows = g => g.map(r => r.join(''));
 function px(g, x, y, on = true) { if (y >= 0 && y < g.length && x >= 0 && x < g[0].length) g[y][x] = on ? '#' : '.'; }
-function hline(g, x0, x1, y) { for (let x = x0; x <= x1; x++) px(g, x, y); }
-function vline(g, x, y0, y1) { for (let y = y0; y <= y1; y++) px(g, x, y); }
+function hline(g, x0, x1, y, on = true) { for (let x = x0; x <= x1; x++) px(g, x, y, on); }
+function vline(g, x, y0, y1, on = true) { for (let y = y0; y <= y1; y++) px(g, x, y, on); }
 function rect(g, x, y, w, h) { hline(g, x, x + w - 1, y); hline(g, x, x + w - 1, y + h - 1); vline(g, x, y, y + h - 1); vline(g, x + w - 1, y, y + h - 1); }
 function fill(g, x, y, w, h, on = true) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) px(g, i, j, on); }
 function line(g, x0, y0, x1, y1) { // Bresenham
@@ -25,6 +25,9 @@ function line(g, x0, y0, x1, y1) { // Bresenham
     if (e2 <= dx) { err += dx; y0 += sy; }
   }
 }
+function disc(g, cx, cy, r, on = true) {
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.8) px(g, cx + x, cy + y, on);
+}
 // Stamp a sprite; `solid` first clears each row between its outermost ink pixels so it hides what is behind it.
 function stamp(g, spr, ox, oy, solid = false) {
   spr.forEach((r, y) => {
@@ -34,105 +37,300 @@ function stamp(g, spr, ox, oy, solid = false) {
   });
 }
 const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+const wave = (f, phase = 0) => Math.sin((f / FRAME_COUNT) * 2 * Math.PI + phase); // one period per loop
+const SPARK = [['...#...', '.......', '...#...', '#.###.#', '...#...', '.......', '...#...'], ['.......', '.......', '...#...', '..###..', '...#...', '.......', '.......']];
+function spark(g, x, y, big) { stamp(g, SPARK[big ? 0 : 1], x - 3, y - 3); }
 
-// ---- the phone ----
-// A small 3310 like SPRITES.nokia: earpiece, LCD window (interior x 4..8, y 4..6), Navi key, 4 rows of keys.
-export const PHONE_S = [
-  '..#########..',
-  '.#.........#.',
-  '.#.........#.',
-  '.#.#######.#.',
-  '.#.#.....#.#.',
-  '.#.#.....#.#.',
-  '.#.#.....#.#.',
-  '.#.#######.#.',
-  '.#.........#.',
-  '.#...###...#.',
-  '.#.........#.',
-  '.#..#.#.#..#.',
-  '.#.........#.',
-  '.#..#.#.#..#.',
-  '.#.........#.',
-  '.#..#.#.#..#.',
-  '.#.........#.',
-  '.#..#.#.#..#.',
-  '.#.........#.',
-  '..#.......#..',
-  '...#######...',
+// ---- Tones: a 3310 rings and shakes, notes fly out of it ----
+const PHONE = SPRITES.nokia; // 24x42, its LCD window inside at x 5..18, y 7..18
+const SHAKE = [0, -1, 1, -1, 1, -1, 1, 0, 0, 0, 0, 0];
+const QUAVER = ['...#..', '...##.', '...#.#', '...#..', '.###..', '####..', '.##...'];
+const QUAVERS = [ // two beamed eighths
+  '...#####',
+  '...#...#',
+  '...#...#',
+  '...#...#',
+  '.###.###',
+  '########',
+  '.##..##.',
 ];
-// What the phone's LCD shows for the item (f = frame 0..7).
-function lcd(g, id, f, unread) {
-  switch (id) {
-    case 'tones': if (f % 2) { px(g, 4, 5); px(g, 8, 5); px(g, 6, 5); } else { px(g, 5, 5); px(g, 7, 5); } break;
-    case 'mysongs': hline(g, 4, 4 + (f >> 1), 5); break;
-    case 'stats': [0, 1, 2].forEach(i => { const h = 1 + ((f + i * 2) % 3); fill(g, 4 + i * 2, 7 - h, 1, h); }); break;
-    case 'messages': rect(g, 4, 4, 5, 3); if (f >= 2 && f <= 5) px(g, 6, 5); break;
-    case 'profile': px(g, 5, 4); px(g, 7, 4); if (f % 4 < 2) hline(g, 5, 7, 6); else px(g, 6, 6); break;
-    case 'settings': px(g, 6, 5); if (f % 2) { px(g, 6, 4); px(g, 5, 5); px(g, 7, 5); px(g, 6, 6); } else { px(g, 5, 4); px(g, 7, 4); px(g, 5, 6); px(g, 7, 6); } break;
-    case 'admin': rect(g, 5, 5, 3, 2); if (f % 2) px(g, 6, 4); break;
+function tones(g, f) {
+  const ox = 4 + SHAKE[f], oy = 3;
+  stamp(g, PHONE, ox, oy, true);
+  // the phone's own LCD: an equaliser bouncing to the ring
+  for (let i = 0; i < 4; i++) {
+    const h = 2 + Math.round(4 * (1 + wave(f * 2, i * 1.4)));
+    fill(g, ox + 6 + i * 3, oy + 18 - h + 1, 2, h);
+  }
+  if (SHAKE[f]) { // ring marks beside the phone while it shakes
+    const s = f % 2;
+    line(g, ox - 3 + s, oy + 4, ox - 1 + s, oy + 6); line(g, ox + 26 - s, oy + 4, ox + 24 - s, oy + 6);
+  }
+  // sound waves: arcs to the right, swelling out from the phone
+  for (let k = 0; k < 3; k++) {
+    const r = 6 + k * 5 + ((f >> 1) % 2), cx = ox + 20, cy = oy + 20;
+    if ((f + k * 4) % 12 >= 8) continue;
+    for (let a = -0.6; a <= 0.6; a += 0.04) px(g, Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r));
+  }
+  // three notes rising up and out to the right, out of step
+  for (let i = 0; i < 3; i++) {
+    const p = (f + i * 4) % 12;
+    if (p >= 10) continue;
+    const x = 38 + Math.round(p * 2.1 + Math.sin(p * 0.9 + i) * 1.5), y = 30 - Math.round(p * 2.9);
+    stamp(g, i === 1 ? QUAVERS : QUAVER, x, y, true);
   }
 }
 
-// ---- symbols (drawn on their own 30x21 canvas; the usual area is x 2..27, y 5..18) ----
-const NOTE_PAIR = [ // beamed eighth notes
-  '...##########',
-  '...##########',
-  '...#........#',
-  '...#........#',
-  '...#........#',
-  '.###......###',
-  '####.....####',
-  '####.....####',
-  '.##.......##.',
+// ---- My songs: a pencil writes a tune on a staff ----
+const STAFF = [16, 21, 26, 31, 36];
+const HEAD = ['.###.', '#####', '#####', '.###.'];
+const TUNE = [[14, 31], [25, 26], [36, 21], [47, 28]]; // note head x, centre y
+const CLEF = [
+  '..##.',
+  '.#..#',
+  '.#..#',
+  '.#.#.',
+  '.##..',
+  '##...',
+  '#.#..',
+  '#.###',
+  '#.#.#',
+  '.##.#',
+  '..##.',
+  '..#..',
+  '..#..',
+  '#.#..',
+  '.#...',
 ];
-const BOB = [0, -1, -1, -1, 0, 1, 1, 1];
-const WAVES = [0, 1, 2, 3, 3, 2, 1, 0]; // how many sound waves are showing
-function tones(g, n) {
-  stamp(g, NOTE_PAIR, 4, 7 + BOB[n]);
-  // sound waves to the right, growing then fading
-  for (let k = 0; k < WAVES[n]; k++) {
-    const x = 20 + k * 3, h = 2 + k;
-    vline(g, x, 11 - h, 11 + h); px(g, x - 1, 11 - h); px(g, x - 1, 11 + h);
+const PENCIL = [
+  '.......###',
+  '......#..#',
+  '.....#..#.',
+  '....#..#..',
+  '...#..#...',
+  '..#..#....',
+  '.#..#.....',
+  '##.#......',
+  '###.......',
+  '#.........',
+];
+function note(g, x, y) { stamp(g, HEAD, x, y - 2, true); vline(g, x + 4, y - 13, y); }
+function mysongs(g, f) {
+  for (const y of STAFF) hline(g, 3, 60, y);
+  vline(g, 60, STAFF[0], STAFF[4]); vline(g, 58, STAFF[0], STAFF[4]);
+  stamp(g, CLEF, 4, 14, true);
+  const shown = f < 8 ? 1 + (f >> 1) : 4;
+  TUNE.slice(0, shown).forEach(([x, y], i) => note(g, x, y - (f >= 8 && (f + i) % 2 ? 2 : 0)));
+  if (shown >= 2) { // the first two share a beam
+    const b = (f >= 8 && f % 2 ? 2 : 0), c = (f >= 8 && (f + 1) % 2 ? 2 : 0);
+    line(g, TUNE[0][0] + 4, TUNE[0][1] - 13 - b, TUNE[1][0] + 4, TUNE[1][1] - 13 - c);
+    line(g, TUNE[0][0] + 4, TUNE[0][1] - 12 - b, TUNE[1][0] + 4, TUNE[1][1] - 12 - c);
+  }
+  if (f < 8) { // writing: the pencil scribbles beside the newest note
+    const [x, y] = TUNE[shown - 1];
+    stamp(g, PENCIL, x + 6 + (f % 2), y - 9 + (f % 2), true);
+  } else { // done: it lifts off up and to the right from where it stopped
+    const [x, y] = TUNE[3], k = f - 7;
+    stamp(g, PENCIL, x + 7 + k * 2, y - 9 - k * 5, true);
   }
 }
-const HEADS = [[6, 13], [10, 11], [14, 9], [18, 11]];
-function mysongs(g, n) {
-  for (let i = 0; i < 5; i++) hline(g, 3, 26, 7 + i * 2);
-  const shown = 1 + (n >> 1);
-  HEADS.slice(0, shown).forEach(([x, y]) => { fill(g, x, y, 3, 2); vline(g, x + 2, y - 4, y); });
-  const [hx, hy] = HEADS[shown - 1];
-  stamp(g, SPRITES.custom, hx + 3, hy - 6 + (n % 2), true); // the pencil follows the last note, scribbling
+
+// ---- Stats: a live bar chart, a star on the leader ----
+const BASE = [12, 20, 15, 27, 21];
+const STAR = ['...#...', '...#...', '..###..', '#######', '.#####.', '..###..', '.##.##.', '.#...#.'];
+function stats(g, f) {
+  vline(g, 5, 3, 43); hline(g, 5, 61, 43);
+  for (let y = 11; y < 43; y += 8) px(g, 4, y);
+  let top = 0, best = 0;
+  const hs = BASE.map((b, i) => b + Math.round(3 * wave(f, i * 1.7)));
+  hs.forEach((h, i) => { if (h > best) { best = h; top = i; } });
+  hs.forEach((h, i) => {
+    const x = 10 + i * 10, y = 43 - h;
+    if (i % 2) { rect(g, x, y, 7, h); for (let j = y + 2; j < 43; j += 2) for (let k = x + 2 - (j % 4 ? 0 : 1); k < x + 6; k += 2) px(g, k, j); }
+    else fill(g, x, y, 7, h);
+  });
+  const sx = 10 + top * 10, sy = 43 - best - 10 + (f % 4 < 2 ? 0 : -1);
+  stamp(g, STAR, sx, sy);
+  if (f % 6 < 3) { px(g, sx - 2, sy + 1); px(g, sx + 8, sy + 2); } else { px(g, sx - 1, sy - 1); px(g, sx + 9, sy); }
 }
-const BARS = [4, 8, 6, 11, 9];
-const GROW = [0.3, 0.6, 0.85, 1, 1, 1, 0.85, 0.6];
-function stats(g, n) {
-  hline(g, 3, 26, 17);
-  vline(g, 3, 6, 17);
-  BARS.forEach((h, i) => { const bh = Math.max(1, Math.round(h * GROW[n])); fill(g, 6 + i * 4, 17 - bh, 3, bh); });
+
+// ---- Messages: the envelope opens and a letter peeks out; unread: it jitters with a badge ----
+const EX = 12, EY = 20, EW = 38, EH = 23;
+const FLAP = [13, 6, -3, -9, -9, -9, -9, -9, -9, -9, -3, 6]; // where the flap's tip is (below the top edge = shut)
+const PEEK = [0, 0, 0, 0, 4, 8, 11, 12, 11, 8, 4, 0]; // rows of letter above the envelope
+const JITTER = [0, 1, -1, 1, -1, 0, 0, 0, 0, 0, 0, 0];
+const SPARKS = [[4, 12, 0], [56, 4, 3], [60, 34, 6], [30, 6, 9], [6, 40, 4]]; // x, y, phase: twinkling out of step
+const flap = (g, x, y, tip) => { line(g, x, y, x + 18, y + tip); line(g, x + EW - 1, y, x + EW - 19, y + tip); };
+// The envelope body; `tip` > 0 draws the flap folded down over its front.
+function envelope(g, x, y, tip = 13) {
+  fill(g, x, y, EW, EH, false);
+  rect(g, x, y, EW, EH);
+  if (tip > 0) flap(g, x, y, tip);
 }
-function envelopeClosed(g, x, y) {
-  rect(g, x, y, 18, 11);
-  line(g, x + 1, y + 1, x + 8, y + 7); line(g, x + 16, y + 1, x + 9, y + 7);
+function messages(g, f, { unread = false } = {}) {
+  if (unread) {
+    const x = EX + JITTER[f];
+    envelope(g, x, EY);
+    disc(g, x + EW, EY, 6); // the "new" badge with a ! knocked out of it
+    vline(g, x + EW, EY - 3, EY + 1, false); px(g, x + EW, EY + 3, false);
+    for (const [sx, sy, ph] of SPARKS) { const k = (f + ph) % 12; if (k < 4) spark(g, sx, sy, k === 1 || k === 2); }
+    return;
+  }
+  const r = PEEK[f], tip = FLAP[f];
+  if (tip <= 0) flap(g, EX, EY, tip); // an open flap stands up behind the letter
+  if (r) { // the letter rising out
+    const lx = EX + 7, lw = EW - 14, ly = EY - r;
+    fill(g, lx, ly, lw, r + 2, false); rect(g, lx, ly, lw, r + 6);
+    [[3, 16], [6, 19], [9, 11]].forEach(([dy, len]) => { if (dy < r) hline(g, lx + 3, lx + 3 + len, ly + dy); });
+  }
+  envelope(g, EX, EY, tip);
 }
-const PEEK = [0, 1, 2, 3, 3, 2, 1, 0]; // read: how many rows of letter show above the envelope
-const BADGE = [0, 1, 2, 2, 2, 2, 1, 0]; // unread: a small "new" spark gently grows and fades
-const SPARKS = [[25, 5, 0], [3, 4, 3], [27, 12, 5], [14, 2, 6], [2, 14, 1]]; // x, y, phase offset: sparkles twinkle out of step
-function messages(g, n, { unread = false } = {}) {
-  if (unread) { // closed envelope, still, with the spark at its corner
-    envelopeClosed(g, 5, 6);
-    for (const [x, y, phase] of SPARKS) {
-      const lvl = BADGE[(n + phase) % 8];
-      if (lvl >= 1) px(g, x, y);
-      if (lvl >= 2) { px(g, x - 1, y); px(g, x + 1, y); px(g, x, y - 1); px(g, x, y + 1); }
-    }
-  } else { // read: the envelope stays shut and a letter slides up out of it and back
-    const r = PEEK[n], top = 6 - r;
-    if (r) { vline(g, 8, top, 6); vline(g, 19, top, 6); hline(g, 8, 19, top); }
-    if (r >= 3) hline(g, 10, 17, top + 2);
-    envelopeClosed(g, 5, 6);
+
+// ---- Profile: two players trade places, the one in front wears the crown ----
+const BUST = [
+  '.......#######.......',
+  '......#.......#......',
+  '.....#.........#.....',
+  '.....#.........#.....',
+  '.....#.........#.....',
+  '.....#.........#.....',
+  '.....#.........#.....',
+  '......#.......#......',
+  '.......#######.......',
+  '.........###.........',
+  '.....###########.....',
+  '...##...........##...',
+  '..#...............#..',
+  '.#.................#.',
+  '.#.................#.',
+  '#...................#',
+  '#...................#',
+  '#...................#',
+  '#####################',
+];
+const CROWN = ['#..#..#', '#.###.#', '#######', '#######'];
+const SWAP = [0, 0, 0, 1 / 4, 1 / 2, 3 / 4, 1, 1, 1, 3 / 4, 1 / 2, 1 / 4];
+function profile(g, f) {
+  const t = SWAP[f], a = [8, 24], b = [34, 13];
+  // the x moves ease in for both, so they stay apart half way instead of passing through each other
+  const p1 = [lerp(a[0], b[0], t * t), lerp(a[1], b[1], t)], p2 = [lerp(b[0], a[0], t * t), lerp(b[1], a[1], t)];
+  const [front, back] = t < 0.5 ? [p1, p2] : [p2, p1];
+  stamp(g, BUST, back[0], back[1]);
+  stamp(g, BUST, front[0], front[1], true);
+  stamp(g, CROWN, front[0] + 7, front[1] - 6, true);
+  if (f === 0 || f === 6) spark(g, front[0] + 17, front[1] - 7, true);
+  if (f === 1 || f === 7) spark(g, front[0] + 17, front[1] - 7, false);
+  if (t > 0 && t < 1) { // swap arrows on the right
+    vline(g, 58, 10, 20); line(g, 55, 13, 58, 10); line(g, 61, 13, 58, 10);
+    vline(g, 58, 26, 36); line(g, 55, 33, 58, 36); line(g, 61, 33, 58, 36);
   }
 }
-const PERSON = [
+
+// ---- Settings: two gears meshing ----
+// Real gear geometry: both share one tooth size (MODULE), so a gear's pitch radius is MODULE * teeth / 2 and the centres
+// sit exactly the two pitch radii apart. They turn at speeds inverse to their tooth counts, each by TURN teeth per loop,
+// so the teeth roll into each other's gaps. TURN = 2 is 60 degrees of the big gear: its six spokes repeat, so the loop is
+// seamless.
+const MODULE = 2.4, BIG_N = 12, SMALL_N = 6, TURN = 2;
+const pitchR = n => MODULE * n / 2;
+// One gear centred on (cx, cy) (any real point), turned so a tooth points at angle `ang`. Teeth taper towards the tip;
+// a big gear gets a rim, six spokes and a hub, a small one is solid around its axle.
+function gear(g, cx, cy, n, ang) {
+  const rp = pitchR(n), tip = rp + MODULE * 0.85, root = rp - MODULE, big = n > 8, hole = big ? 3 : 2;
+  for (let y = Math.floor(cy - tip - 1); y <= Math.ceil(cy + tip + 1); y++) for (let x = Math.floor(cx - tip - 1); x <= Math.ceil(cx + tip + 1); x++) {
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx) - ang;
+    if (r > tip || r <= hole) continue;
+    const tooth = r > root - 0.5 && Math.cos(a * n) > 0.15 + 0.3 * Math.max(0, (r - rp) / (tip - rp)); // narrower at the tip
+    const body = big ? (r <= root && r > root - 2.6) || r <= hole + 2.6 || (r <= root && Math.abs(Math.sin(3 * a)) * r < 1.3) : r <= root;
+    if (tooth || body) px(g, x, y);
+  }
+}
+const MESH = -0.62; // direction from the big gear's centre to the small one's (up and to the right)
+const BIG = [27.5, 27.5], SMALL = [BIG[0] + Math.cos(MESH) * (pitchR(BIG_N) + pitchR(SMALL_N)), BIG[1] + Math.sin(MESH) * (pitchR(BIG_N) + pitchR(SMALL_N))];
+function settings(g, f) {
+  const t = f / FRAME_COUNT;
+  // at t = 0 the big gear has a tooth on the line between the centres and the small one has a gap facing it
+  gear(g, BIG[0], BIG[1], BIG_N, MESH + t * TURN * 2 * Math.PI / BIG_N);
+  gear(g, SMALL[0], SMALL[1], SMALL_N, MESH + Math.PI + Math.PI / SMALL_N - t * TURN * 2 * Math.PI / SMALL_N);
+}
+
+// ---- Admin (dev only): a shield with a keyhole, a glint sweeping across ----
+const SX = 16, SY = 4, SW = 32, SH = 40;
+function inShield(x, y) {
+  if (x < 0 || x >= SW || y < 0 || y >= SH) return false;
+  if (y < 18) return y > 0 || (x > 1 && x < SW - 2);
+  const hw = (SW / 2) * (1 - ((y - 18) / (SH - 18)) ** 2);
+  return Math.abs(x + 0.5 - SW / 2) <= hw;
+}
+function admin(g, f) {
+  const c = -26 + f * 9; // the glint band: x - y = c
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+    if (!inShield(x, y)) continue;
+    const edge = !inShield(x - 2, y) || !inShield(x + 2, y) || !inShield(x, y - 2) || !inShield(x, y + 2);
+    const d = x - y - c;
+    if (edge || (f < 8 && d >= 0 && d < 3)) px(g, SX + x, SY + y);
+  }
+  disc(g, 32, 19, 4); // keyhole
+  for (let y = 22; y <= 30; y++) hline(g, 32 - 1 - ((y - 22) >> 2), 32 + 1 + ((y - 22) >> 2), y);
+  if (f === 8 || f === 9) spark(g, SX + SW - 3, SY + 3, f === 8);
+}
+
+const SYMBOLS = { tones, mysongs, stats, messages, profile, settings, admin };
+export const MENU_IDS = Object.keys(SYMBOLS);
+
+// One frame (any integer n, wraps) of a menu icon -> rows. Frames are cached: the menu repaints one every tick.
+const cache = new Map();
+export function menuFrame(id, n = 0, opts = {}) {
+  const f = ((n % FRAME_COUNT) + FRAME_COUNT) % FRAME_COUNT, key = `${id}/${f}/${opts.unread ? 1 : 0}`;
+  let out = cache.get(key);
+  if (!out) {
+    const g = grid(ICON_W, ICON_H);
+    SYMBOLS[id](g, f, opts);
+    cache.set(key, out = rows(g));
+  }
+  return out;
+}
+// All frames of an icon side by side in one sprite (cached): the menu shows one by moving the mask, so stepping the
+// animation never swaps the image (a newly swapped image can flash blank while the browser decodes it).
+const sheets = new Map();
+export function menuSheet(id, opts = {}) {
+  const key = id + (opts.unread ? '/u' : '');
+  let out = sheets.get(key);
+  if (!out) {
+    const fr = menuFrames(id, opts);
+    sheets.set(key, out = fr[0].map((_, y) => fr.map(f => f[y]).join('')));
+  }
+  return out;
+}
+// Every distinct frame of an icon (for tests and preloading).
+export const menuFrames = (id, opts) => Array.from({ length: FRAME_COUNT }, (_, n) => menuFrame(id, n, opts));
+
+// Half the ink in a checker: how the carousel greys out the items above and below the current one.
+export const ditherRows = rows => rows.map((r, y) => [...r].map((c, x) => (c === '#' && (x + y) % 2 === 0 ? '#' : '.')).join(''));
+
+// The dithered first frame of an item, as the carousel shows it above or below the current one (cached).
+const peeks = new Map();
+export function menuPeek(id, unread = false) {
+  const key = id + (unread ? '/u' : '');
+  let out = peeks.get(key);
+  if (!out) peeks.set(key, out = ditherRows(menuFrame(id, 0, { unread })));
+  return out;
+}
+
+// Backdrop tiles (16x16, repeated across the LCD behind the current item): a small motif and an offset accent.
+const TILES = {
+  tones: ['...#............', '...##...........', '...#.#..........', '...#............', '.###............', '####............', '.##.............', '................', '................', '.........#####..', '.........#...#..', '.........#...#..', '.......###.###..', '......########..', '.......##..##...', '................'],
+  mysongs: ['................', '..##............', '.####...........', '.####...........', '..##............', '................', '................', '................', '################', '................', '................', '...........##...', '..........####..', '..........####..', '...........##...', '................'],
+  stats: ['................', '.....#..........', '.....#..........', '.#...#..........', '.#.#.#..........', '.#.#.#..........', '######..........', '................', '................', '................', '.........#......', '.........#.#....', '.......#.#.#....', '.......#.#.#....', '......######....', '................'],
+  messages: ['................', '.#######........', '.##...##........', '.#.#.#.#........', '.#..#..#........', '.#######........', '................', '................', '................', '................', '.........#######', '.........##...##', '.........#.#.#.#', '.........#..#..#', '.........#######', '................'],
+  profile: ['................', '..###...........', '.#...#..........', '..###...........', '.#####..........', '#.....#.........', '#######.........', '................', '................', '..........###...', '.........#...#..', '..........###...', '.........#####..', '........#.....#.', '........#######.', '................'],
+  settings: ['................', '...#.#..........', '..#####.........', '.##...##........', '..#...#.........', '.##...##........', '..#####.........', '...#.#..........', '................', '................', '..........#.....', '.........###....', '..........#.....', '................', '................', '................'],
+  admin: ['................', '.#####..........', '.#...#..........', '.#.#.#..........', '..#.#...........', '...#............', '................', '................', '................', '..........##....', '.........#..#...', '.........#..#...', '..........##....', '...........#....', '...........##...', '................'],
+};
+export const menuTile = id => TILES[id];
+
+// ---- Messages screens ----
+export const PERSON_ART = [
   '....###....',
   '...#...#...',
   '..#.....#..',
@@ -145,82 +343,6 @@ const PERSON = [
   '#.........#',
   '###########',
 ];
-const SWAP = [0, 0, 1 / 3, 2 / 3, 1, 1, 2 / 3, 1 / 3];
-function profile(g, n) {
-  // two players trading places: they slide past each other and the one in front changes halfway
-  const t = SWAP[n], a = [6, 6], b = [14, 4];
-  const p1 = [lerp(a[0], b[0], t), lerp(a[1], b[1], t)], p2 = [lerp(b[0], a[0], t), lerp(b[1], a[1], t)];
-  const [front, back] = t < 0.5 ? [p1, p2] : [p2, p1];
-  stamp(g, PERSON, back[0], back[1] + 3);
-  stamp(g, PERSON, front[0], front[1] + 3, true);
-  if (n === 1 || n === 5) { hline(g, 23, 26, 7); px(g, 25, 6); px(g, 25, 8); hline(g, 23, 26, 11); px(g, 24, 10); px(g, 24, 12); }
-}
-const WRENCH = [
-  '......#..#',
-  '......#..#',
-  '......####',
-  '.....##...',
-  '....##....',
-  '...##.....',
-  '..##......',
-  '.##.......',
-  '##........',
-  '#.........',
-];
-const NUDGE = [0, 0, 1, 1, 1, 1, 0, 0];
-function gear(g, cx, cy, turn) {
-  for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) {
-    const r = Math.hypot(x, y), a = Math.atan2(y, x) + turn * Math.PI / 8;
-    const tooth = Math.cos(a * 4 * 2) > 0.35; // 8 teeth
-    if (r <= 1.6) continue; // axle hole
-    if (r <= 4.6 || (r <= 6.6 && tooth)) px(g, cx + x, cy + y);
-  }
-}
-function settings(g, n) {
-  stamp(g, WRENCH, 4 + NUDGE[n], 7 - NUDGE[n]);
-  gear(g, 19, 11, n / 4); // eight teeth: a quarter step per frame loops after two whole steps
-}
-
-const SHIELD = [
-  '#############',
-  '#...........#',
-  '#...........#',
-  '#...........#',
-  '#...........#',
-  '#...........#',
-  '.#.........#.',
-  '..#.......#..',
-  '...#.....#...',
-  '....#####....',
-];
-// Dev-only admin app: a shield with a keyhole; the shine sweeps across it.
-function admin(g, n) {
-  stamp(g, SHIELD, 8, 5);
-  if (n >= 1 && n <= 6) { // diagonal glint, skipping the keyhole
-    const sx = 9 + (n - 1) * 2;
-    for (let i = 0; i < 4; i++) if (sx + i < 13 || sx + i > 15) px(g, sx + i, 11 - i);
-  }
-  fill(g, 13, 8, 3, 3); vline(g, 14, 11, 13);
-}
-
-const SYMBOLS = { tones, mysongs, stats, messages, profile, settings, admin };
-export const MENU_IDS = Object.keys(SYMBOLS);
-
-// One frame (any integer n, wraps) of a menu icon -> rows.
-export function menuFrame(id, n = 0, opts = {}) {
-  const g = grid(ICON_W, ICON_H), sym = grid(SYM_W, ICON_H);
-  const f = ((n % FRAME_COUNT) + FRAME_COUNT) % FRAME_COUNT;
-  SYMBOLS[id](sym, f, opts);
-  sym.forEach((r, y) => r.forEach((c, x) => { if (c === '#') px(g, SYM_X + x, y); }));
-  stamp(g, PHONE_S, 0, 0);
-  lcd(g, id, f, !!opts.unread);
-  return rows(g);
-}
-// Every distinct frame of an icon (for tests and preloading).
-export const menuFrames = (id, opts) => Array.from({ length: FRAME_COUNT }, (_, n) => menuFrame(id, n, opts));
-
-// ---- Messages screens ----
-export const PERSON_ART = PERSON;
 // Inbox row icons, 14x9 like the status-bar envelope: sealed (unread) and opened (read).
 export const ENVELOPE_SMALL_OPEN = [
   '......##......',

@@ -175,27 +175,53 @@ textarea::placeholder { color: var(--ink-dim); }
 #welcome-msg { margin: 0; padding: 0 6px; background: var(--lcd); }
 #welcome-msg.ok { animation: none; }
 
-/* ---------- main menu: one item per screen (3310) ---------- */
+/* ---------- main menu: a vertical carousel, one big item at a time (3310) ---------- */
 .mm { display: flex; flex-direction: column; overflow: hidden; padding-right: calc(var(--u) * 10); }
-.mm-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: calc(var(--u) * 3); cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+/* backdrop: the item's pattern tile, faint, drifting one tile pixel per step (main.js sets --tile) */
+.mm-bg { position: absolute; inset: 0; pointer-events: none; background: var(--ink); opacity: .08;
+  -webkit-mask-image: var(--tile); mask-image: var(--tile); -webkit-mask-size: calc(var(--u) * 32); mask-size: calc(var(--u) * 32);
+  -webkit-mask-repeat: repeat; mask-repeat: repeat; animation: mm-drift 8s steps(16) infinite; }
+.mm-bg.swap { animation: mm-drift 8s steps(16) infinite, mm-bg-in .2s steps(2); }
+@keyframes mm-drift { from { -webkit-mask-position: 0 0; mask-position: 0 0; }
+  to { -webkit-mask-position: calc(var(--u) * 32) calc(var(--u) * 32); mask-position: calc(var(--u) * 32) calc(var(--u) * 32); } }
+@keyframes mm-bg-in { from { opacity: 0; } }
+.mm-body { position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.mm-hero { flex: 1; min-height: 0; align-self: stretch; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 3); }
 .mm-title { font-weight: 700; font-size: calc(var(--fs) * 2); line-height: 1; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .mm-title.sm { font-size: calc(var(--fs) * 1.5); }
-.mm-art { display: flex; align-items: center; gap: calc(var(--u) * 3); }
-.mm-arrow { background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--ink-dim); }
-.mm-arrow:hover { color: var(--ink); }
+.mm-title.type { animation: hello-in .24s steps(var(--chars, 8)) both; }
+.mm-icon.pop { animation: mm-pop .21s steps(1, end); }
+@keyframes mm-pop { 0% { scale: .7; } 34% { scale: 1.12; } 67% { scale: 1.04; } 100% { scale: 1; } }
 .mm-hint { min-height: 1.2em; font-weight: 700; }
-.mm-body.slide-up { animation: mm-up .16s steps(2) 1; }
-.mm-body.slide-down { animation: mm-down .16s steps(2) 1; }
-@keyframes mm-up { from { transform: translateY(calc(var(--u) * 10)); } }
-@keyframes mm-down { from { transform: translateY(calc(var(--u) * -10)); } }
-/* scrollbar: item number on top, a rail, and a bracket thumb that walks down it */
-.mm-scroll { position: absolute; right: calc(var(--u) * 2); top: 0; bottom: calc(var(--u) * 3); width: calc(var(--u) * 8);
+/* the items before and after: dithered, half size, cut off by the LCD edge (--pk is their icon height) */
+.mm-peek { flex: none; display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 2); padding: 0; border: 0; background: none;
+  color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mm-peek span { color: var(--ink-dim); white-space: nowrap; }
+.mm-peek.prev { margin-top: calc(var(--pk, 0px) * -.4); }
+.mm-peek.next { margin-bottom: calc(var(--pk, 0px) * -.4); }
+.mm-peek:hover span { color: var(--ink); }
+.mm.short .mm-peek .spr { display: none; }
+.mm.short .mm-peek { margin: 0; }
+/* scrolling: the strip arrives from one slot away (--slot) in chunky steps */
+.mm-body.from-below { animation: mm-from-below .18s steps(4, end); }
+.mm-body.from-above { animation: mm-from-above .18s steps(4, end); }
+@keyframes mm-from-below { from { transform: translateY(var(--slot, 40px)); } }
+@keyframes mm-from-above { from { transform: translateY(calc(var(--slot, 40px) * -1)); } }
+/* Select: the next screen opens out of the middle */
+.screen.launch-in { animation: mm-launch .18s steps(4, end); }
+@keyframes mm-launch { from { clip-path: inset(36% 36%); } to { clip-path: inset(0); } }
+/* scrollbar: item number on top, a rail with a tick per item, and a bracket thumb that steps between them (--n items, --i current) */
+.mm-scroll { position: absolute; z-index: 1; right: calc(var(--u) * 2); top: 0; bottom: calc(var(--u) * 3); width: calc(var(--u) * 8);
   display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
 .mm-scroll b { line-height: 1.1; }
+.mm-scroll b.flip { animation: mm-flip .12s steps(1, end); }
+@keyframes mm-flip { from { visibility: hidden; } }
 .mm-rail { position: relative; flex: 1; width: var(--u); margin-right: calc(var(--u) * 2); background: var(--ink); }
-.mm-rail i { position: absolute; left: calc(var(--u) * -3); width: calc(var(--u) * 3); height: 24%; top: calc(var(--p, 0) * 76%);
-  border: var(--u) solid var(--ink); border-right: 0; background: var(--lcd); }
+.mm-rail::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--u) * -1); width: calc(var(--u) * 3);
+  background: repeating-linear-gradient(180deg, var(--ink) 0 var(--u), transparent var(--u) calc(100% / var(--n, 6))); }
+.mm-rail i { position: absolute; left: calc(var(--u) * -3); width: calc(var(--u) * 3); height: calc(100% / var(--n, 6)); top: calc(var(--i, 0) * 100% / var(--n, 6));
+  border: var(--u) solid var(--ink); border-right: 0; background: var(--lcd); transition: top .15s steps(3, end); }
 
 /* ---------- stats ---------- */
 #stats { display: flex; flex-direction: column; }
@@ -523,7 +549,9 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   .scrolls .mq, .vscroll { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
   .grade.stamp, .menu > button:focus, .menu > .hl, #st-signal.blip { animation: none; }
-  .st-title.hello, .mm-body.slide-up, .mm-body.slide-down, .gbar i, .mixbar { animation: none; }
+  .st-title.hello, .gbar i, .mixbar { animation: none; }
+  .mm-bg, .mm-body.from-below, .mm-body.from-above, .mm-icon.pop, .mm-title.type, .mm-scroll b.flip, .screen.launch-in { animation: none; }
+  .mm-rail i { transition: none; }
 }
 
 /* ---------- composer ---------- */
@@ -636,7 +664,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 
 /* text screens on a wide LCD: one step bigger (the --u2 / --fs2 pair is set by layout() in whole device pixels) */
 @container (min-width: 800px) {
-  #inbox, #message, #profile, #admin, #composer, #custom, #hub, #pause { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+  #inbox, #message, #profile, #admin, #composer, #custom, #hub, #pause, #menu { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
 }
 
 /* settings on a wide LCD: every tab is a panel, two columns */
