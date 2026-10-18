@@ -53,6 +53,7 @@ src/
                   tutorial cards
   calibration.js  latency calibration: 12 ticks at 90 BPM, median offset
   synth.js        Web Audio voices (piezo buzzer, smooth, plus data-driven VOICE_SPECS), ticks, stray buzz, miss thud, key click, jingles
+  sfx-registry.js every Synth sound effect as data (Settings › Developer › Sound library; tests/sfx-registry.test.mjs guards coverage)
 
   -- drawing and UI --
   render.js       the LCD canvas: highway, two HUD rows, judgement chips, banners, hit effects, the Hidden mod; text
@@ -131,7 +132,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, boardsview, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  domshims, game, i18n, mods, modules, netbench, netsignal, replay, rtttl, scorechart, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
+                  domshims, game, i18n, mods, modules, netbench, netsignal, replay, rtttl, scorechart, seed, settings, sfx-registry, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

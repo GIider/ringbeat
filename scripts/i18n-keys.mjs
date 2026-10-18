@@ -9,6 +9,7 @@ import { SORTS } from '../src/listview.js';
 import { BOARD_SORTS } from '../src/boardsview.js';
 import { STAGES } from '../src/tutorial.js';
 import { MESSAGES } from '../src/changelog.js';
+import { SFX_CATEGORIES } from '../src/sfx-registry.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = f => fs.readFileSync(root + f, 'utf8');
@@ -67,6 +68,7 @@ export function collectKeys({ singulars = false } = {}) {
     'Ignored default "{kv}"', 'Invalid default {kv}; using {fb}', 'Skipped unknown token "{tok}"', 'Skipped "{tok}": bad duration {dur}',
     'Skipped "{tok}": octave {oct} out of range 4-7', 'Nothing to save', 'Too long ({len}/{max} characters)', 'No notes long enough to play',
     'PERFECT', 'GREAT', 'GOOD', 'MISS', 'Clearing memory...', 'Memory cleared', 'Just kidding.', 'Failed', 'Results']) keys.add(w);
+  for (const c of SFX_CATEGORIES) keys.add(c); // Settings › Developer › Sound library headings
   return [...keys].filter(k => /[A-Za-zÄÖÜäöü]{2}/.test(k)).sort();
 }
 

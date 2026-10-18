@@ -59,6 +59,12 @@ lane 3 = `X`, lane 4 = `RB` / `RT`. Settings › Controller shows the connection
 lane (`Esc` cancels) and has a *Reset buttons* action. Song picker buttons are in the
 [song picker table](#song-picker-navigation).
 
+## Developer tools
+
+Settings › Developer has two viewers, **Glyphs & icons** and **Sound library**. Both are grids: arrows / d-pad move, `Enter` / `A`
+(or a tap) activates (in the Sound library that plays the sound and cuts the previous one), and `Esc` / `B` / the right soft key
+goes back to the Developer tab with the viewer's entry highlighted. The focused cell is remembered for the session.
+
 ## Touch
 
 - **Play:** tap and hold the lane columns (multi-touch). To hit a double or triple with fewer fingers, press the first lane and slide the

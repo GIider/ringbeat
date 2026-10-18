@@ -18,7 +18,8 @@ if (!commit) {
   try { commit = execSync('git rev-parse --short=7 HEAD', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { commit = ''; }
 }
 if (commit && !/^[0-9a-f]{7}$/.test(commit)) throw new Error('GITHUB_SHA must be a hex commit hash, got ' + process.env.GITHUB_SHA);
-const info = { number: Number(build), commit: commit || 'dev', date: new Date().toISOString().slice(0, 10) };
+const now = new Date().toISOString();
+const info = { number: Number(build), commit: commit || 'dev', date: now.slice(0, 10), time: now.slice(11, 16) };
 const base = readFileSync(resolve(ROOT, 'src/version.js'), 'utf8');
 const stamped = base
   .replace(/export const VERSION = [^;]*;/, `export const VERSION = '${version}';`)
