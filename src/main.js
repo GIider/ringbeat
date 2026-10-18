@@ -3127,8 +3127,9 @@ function wire() {
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
   window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); });
-  // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click.
-  const wake = () => { if (game.state !== 'paused') synth.wake(); };
+  // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click. The first gesture also creates the
+  // context: after a sign-in redirect the page loads straight into the menu (no title press), and the menu sounds need a context.
+  const wake = () => { if (game.state === 'paused') return; if (synth.ctx) synth.wake(); else synth.ensure(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => {
