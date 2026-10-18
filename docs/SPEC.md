@@ -90,8 +90,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Stats:** accuracy, max combo, judgement counts, ghost hits.
   - **Chart:** the score chart (`src/scorechart.js`): dotted bars = how many notes fall in each slice of the song, the line = the player's accuracy in that slice (axis 0 / 50 / 100 %), misses = a dotted drop line, a ring on the line and a block under the baseline, ghost taps = a cross above the baseline. On a wide LCD nothing on this screen scrolls: the board scrolls up and down like a marquee when it has more rows than room. Below it the early/late timing histogram and the average offset.
   - **Top:** one leaderboard. Signed in, a *Global* / *Local* toggle switches it (Global first): the world top 10 and the players around the player's rank, or the song's top runs on this device. Signed out: the local runs, or "Run not saved".
-- **Buttons:** *Retry* / *Next song* (the next song in the current filtered list) / *Tones* (or the screen the run came
-  from: *My song*, *Composer*, *RTTTL text*).
+- **Buttons:** *Retry* / *Tones* (or the screen the run came from: *My song*, *Composer*, *RTTTL text*).
 - **Failed runs:** a Sudden-death fail is titled *Failed*.
 
 ### My songs

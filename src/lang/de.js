@@ -305,7 +305,6 @@ export const de = {
   'Skip tutorial': 'Tutorial überspringen',
   'Back to lesson': 'Zurück zur Lektion',
   'Retry': 'Nochmal',
-  'Next song': 'Nächster Song',
   'Max combo': 'Max. Combo',
   'Ghost hits': 'Fehltipps',
   'Early ◄ timing ► Late': 'Früh ◄ Timing ► Spät',
@@ -428,6 +427,15 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Chords': 'Akkorde',
+  ['Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
+    'New on Hard: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
+    'Wide screens count your doubles and triples while you play. The Next song button is gone from the results.\n' +
+    'Ratings were measured again. Scores from before this update no longer rank on the world boards.']:
+    'Slides gibt es nicht mehr: diese Noten sind jetzt normale Noten, und mehr Songs haben Doppelnoten.\n' +
+    'Neu auf Hard: Dreifachnoten. Drei Noten mit einer Brücke fallen zusammen, drück also alle drei Spuren gleichzeitig. Die zusätzlichen Noten von Doppel- und Dreifachnoten sind stumm, ein perfekter Lauf klingt genau wie der Song.\n' +
+    'Breite Bildschirme zählen deine Doppel- und Dreifachnoten beim Spielen. Die Taste Nächster Song im Ergebnis ist weg.\n' +
+    'Die Wertungen wurden neu gemessen. Punkte von vor diesem Update zählen nicht mehr in den Weltranglisten.',
   'New look': 'Neuer Look',
   ['One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
     'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +

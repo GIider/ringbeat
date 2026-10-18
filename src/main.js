@@ -2190,15 +2190,6 @@ function stepResultsPage(step) {
   synth.keyClick();
 }
 
-function nextSong() {
-  const list = visible().length ? visible() : entries();
-  const i = Math.max(0, list.findIndex(e => e.id === (run ? run.entry.id : selectedId)));
-  const e = list[(i + 1) % list.length];
-  selectedId = e.id;
-  settings.lastSongId = e.id; save();
-  startRun({ entry: e, ret: run && run.ret, retLabel: run && run.retLabel });
-}
-
 // ---- tutorial ----
 // Input hint for the device in use only; refreshed in place when the device changes.
 function controlsHint() {
@@ -3105,7 +3096,6 @@ function wire() {
   // swipe through the tutorial lessons (swipe left = next)
   onSwipe($('tutorial'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('btn-retry').onclick = restartRun;
-  $('btn-next').onclick = nextSong;
   $('btn-menu').onclick = leaveToSelect;
 
   // calibration

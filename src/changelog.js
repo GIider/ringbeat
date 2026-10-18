@@ -5,6 +5,13 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.6', date: '2026-10-18', title: 'Chords',
+    body: 'Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
+      'New on Hard: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
+      'Wide screens count your doubles and triples while you play. The Next song button is gone from the results.\n' +
+      'Ratings were measured again. Scores from before this update no longer rank on the world boards.',
+  },
+  {
     version: '2.5', date: '2026-10-18', title: 'New look',
     body: 'One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
       'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +
