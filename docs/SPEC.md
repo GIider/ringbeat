@@ -159,7 +159,9 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
     per 4 s. A bridge joins the three heads. All three notes are judged separately.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.
 - **Score:** Perfect 300 / Great 200 / Good 100, times a combo multiplier of +0.1 per 10 combo, up to ×1.5 at 50 combo
-  (a miss resets it). A completed hold adds 100 × the multiplier.
+  (a miss resets it). While a hold is held it scores 10 × the multiplier per beat
+  (a dropped hold keeps the ticks it earned). A completed hold adds a release bonus × the multiplier by how close the
+  release is to the tail: 200 within the Perfect window, 150 within Great, 100 otherwise (holding to the end is Perfect).
 - **Accuracy:** Perfect 1, Great ⅔, Good ⅓, Miss 0, averaged over all judged notes. A dropped hold counts as a miss.
 - **Grade:** S ≥ 95 %, A ≥ 90 %, B ≥ 80 %, C ≥ 70 %, D below.
 - **Full combo (FC):** no misses in the run (a dropped hold is a miss). **All perfect (AP):** FC and every note Perfect.
