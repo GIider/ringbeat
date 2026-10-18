@@ -1377,14 +1377,9 @@ function importSharedText(text) {
 
 // -- song screen: the song's details, its top runs and the Play button --
 function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
-// One-row text: a long line scrolls instead of wrapping. Leaderboard lines keep the score (`pin`) still, before (`pinFirst`) or
-// after the part that scrolls, so its first digit never slides out of view.
-const NB = '\u00a0';
-const oneRow = (html, pin, pinFirst = true) => {
-  const sc = `<span class="sc"><span class="mq">${html}</span></span>`, fx = `<span class="fx">${pin}</span>`;
-  return `<span class="ln">${pinFirst ? fx + sc : sc + fx}</span>`;
-};
-const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln .sc, .dp-line'));
+// One-row text (leaderboard lines, the Play and Mods rows): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
+const oneRow = html => `<span class="ln"><span class="mq">${html}</span></span>`;
+const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln, .dp-line'));
 let dpBack = null, dpEntry = null, dpTab = 'local';
 // Signed-in players get World (first) and Local tabs; everyone else just sees their local runs.
 const dpTabs = () => cloud.available() && cloud.signedIn();
@@ -1409,7 +1404,7 @@ function paintDpLocal(e, d, box) {
   ol.className = 'top';
   for (const r of (rec ? rec.top : [])) {
     const li = document.createElement('li');
-    li.innerHTML = oneRow(`${NB}· ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`, `${r.score} · ${esc(r.grade)}`);
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
@@ -1434,7 +1429,7 @@ function paintDpWorldLines(b, near, box, msg) {
     const li = document.createElement('li');
     li.value = r.rank;
     li.className = r.gap ? 'gap' : r.me ? 'cur' : '';
-    li.innerHTML = oneRow(nameHTML(r), `${NB}· ${r.score}${r.gap ? '' : badgeHTML(r, true)}`, false);
+    li.innerHTML = oneRow(`${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   box.textContent = '';
@@ -1939,7 +1934,7 @@ function paintWorld(songId, diff, token = worldToken) {
     const li = document.createElement('li');
     li.value = r.rank;
     if (r.me) li.className = 'cur';
-    li.innerHTML = oneRow(`${NB}· ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`, `${r.score} · ${esc(r.grade)}`);
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`);
     if (cls) li.className = cls;
     ol.appendChild(li);
   };
@@ -1949,7 +1944,7 @@ function paintWorld(songId, diff, token = worldToken) {
     ol.textContent = '';
     for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
-    marqueeAll(ol.querySelectorAll('.ln .sc'));
+    marqueeAll(ol.querySelectorAll('.ln'));
     if (worldRefresh) worldRefresh();
   };
   if (near.length) paint([]); else say(tr('Loading…'));
@@ -2000,7 +1995,7 @@ function renderTopRuns() {
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
     if (topRuns.rank === i + 1) li.className = 'cur';
-    li.innerHTML = oneRow(`${NB}· ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`, `${r.score} · ${esc(r.grade)}`);
+    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
     ol.appendChild(li);
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
@@ -2011,7 +2006,7 @@ function setResultsPage(n) {
   resultsPage = Math.max(0, Math.min(resultsPages() - 1, n));
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
-  marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln .sc'));
+  marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln'));
 }
 
 function stepResultsPage(step) {
