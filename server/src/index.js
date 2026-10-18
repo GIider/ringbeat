@@ -359,6 +359,11 @@ const audit = (env, now, action, target, detail = '') =>
   env.DB.prepare('INSERT INTO admin_log (at, action, target, detail) VALUES (?, ?, ?, ?)').bind(now, action, target, detail);
 
 const ADMIN_PAGE = 20;
+// A player's runs by state (GET /admin/runs?status=), against the current RULES. `valid` is what can count on a board.
+const RUN_GROUPS = {
+  valid: `(verified = 1 AND hidden = 0 AND rules = '${RULES}')`, verified: 'verified = 1', pending: 'verified = 0', rejected: 'verified = -1',
+  flagged: "flags != ''", hidden: 'hidden = 1', outdated: `rules != '${RULES}'`,
+};
 const TABLES = ['users', 'runs', 'sessions', 'device_slots', 'shared_docs', 'oauth_states', 'login_codes', 'admin_log'];
 
 // The /admin/* routes beyond hide and verify. The caller has already checked ADMIN_TOKEN.
@@ -376,9 +381,16 @@ async function adminRoute(env, route, url, body, now, json, fail) {
     return json({ players: results });
   }
   if (route === 'GET /admin/runs') {
-    const { results } = await env.DB.prepare(`SELECT id, song_id, score, flags, hidden, verified, played_at
-      FROM runs WHERE user_id = ? ORDER BY played_at DESC, id DESC LIMIT ? OFFSET ?`).bind(id(q.get('user')), ADMIN_PAGE, offset).all();
-    return json({ runs: results });
+    const uid = id(q.get('user'));
+    const where = Object.hasOwn(RUN_GROUPS, q.get('status')) ? RUN_GROUPS[q.get('status')] : '1', version = id(q.get('version'));
+    const { results } = await env.DB.prepare(`SELECT id, song_id, score, flags, hidden, verified, played_at, game_version, rules
+      FROM runs WHERE user_id = ? AND ${where} AND (? = '' OR game_version = ?) ORDER BY played_at DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(uid, version, version, ADMIN_PAGE, offset).all();
+    // The player's whole history by group (ignoring the filters), so the groups can show their sizes.
+    const counts = await env.DB.prepare(`SELECT ${Object.entries(RUN_GROUPS).map(([k, w]) => `COALESCE(SUM(${w}), 0) AS ${k}`).join(', ')}, COUNT(*) AS total
+      FROM runs WHERE user_id = ?`).bind(uid).first();
+    const versions = await env.DB.prepare('SELECT game_version AS v FROM runs WHERE user_id = ? GROUP BY game_version ORDER BY MAX(played_at) DESC LIMIT 20').bind(uid).all();
+    return json({ runs: results, counts, versions: versions.results.map(x => x.v) });
   }
   if (route === 'POST /admin/run/delete') {
     if (!Number.isInteger(body.runId)) return fail(400, 'bad run');

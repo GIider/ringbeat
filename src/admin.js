@@ -46,7 +46,8 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
     },
     stats: () => call('GET', '/admin/stats'),
     players: (q = '', offset = 0) => call('GET', '/admin/players' + qs({ q, offset })).then(r => r.players),
-    runs: (user, offset = 0) => call('GET', '/admin/runs' + qs({ user, offset })).then(r => r.runs),
+    // -> { runs, counts (the player's runs per STATUSES group, `total`), versions (game versions seen, newest first) }
+    runs: (user, { status = '', version = '', offset = 0 } = {}) => call('GET', '/admin/runs' + qs({ user, status, version, offset })),
     flagged: () => call('GET', '/admin/flagged').then(r => r.runs),
     log: () => call('GET', '/admin/log').then(r => r.log),
     deleteRun: runId => post('/admin/run/delete', { runId }),
@@ -64,7 +65,12 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
 }
 
 // ---- one-line summaries for the list rows (pure) ----
+// The player view's groups, in the order the filter button cycles through them ('' = all runs).
+export const STATUSES = ['', 'valid', 'verified', 'pending', 'rejected', 'flagged', 'hidden', 'outdated'];
+// The next entry of `list` after `cur` (wraps; an unknown `cur` starts over).
+export const cycle = (list, cur) => list[(list.indexOf(cur) + 1) % list.length];
+export const countsLine = c => STATUSES.filter(Boolean).filter(k => c[k]).map(k => `${c[k]} ${k}`).join(' · ');
 export const playerLine = p => `${p.name}${p.banned ? ' [banned]' : p.hidden ? ' [hidden]' : ''} · ${p.runs}`;
 export const runLine = r => `${r.name ? r.name + ' · ' : ''}${r.song_id} · ${r.score}` +
-  `${r.flags ? ' · ' + r.flags : ''}${r.hidden ? ' · hidden' : ''}${r.verified === 0 ? ' · pending' : ''}`;
+  `${r.flags ? ' · ' + r.flags : ''}${r.hidden ? ' · hidden' : ''}${r.verified === 0 ? ' · pending' : r.verified === -1 ? ' · rejected' : ''}${r.game_version ? ' · v' + r.game_version : ''}`;
 export const logLine = l => `${new Date(l.at).toISOString().slice(0, 16).replace('T', ' ')} ${l.action} ${l.target}${l.detail ? ' ' + l.detail : ''}`;

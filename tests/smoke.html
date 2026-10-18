@@ -42,6 +42,9 @@ f.addEventListener('load', async () => {
     w.__ringbeat.settings.tutorialDone = true;
     log(vis('title') && !vis('select'), 'title screen visible');
     key('Space'); await settle();
+    log(vis('title'), 'first run: a key before the prompt appears is ignored');
+    await waitFor(() => !$('title').classList.contains('wait'), 'title prompt', 10000);
+    key('Space'); await settle();
     log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
     log($('soft-left').textContent === 'Select' && $('soft-right').textContent === 'Back', 'menu: Select / Back soft keys');
     await waitFor(() => d.activeElement === $('mm-go'), 'menu focus');

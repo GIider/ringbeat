@@ -14,7 +14,7 @@ import { hashString } from '../src/library.js';
 import * as mods from '../src/mods.js';
 import { played } from '../scripts/lib/botrun.mjs';
 import { createCloud, CLOUD_KEY, BOARDS_KEY } from '../src/cloud.js';
-import { createAdmin, AdminError, playerLine, runLine, logLine } from '../src/admin.js';
+import { createAdmin, AdminError, STATUSES, cycle, countsLine, playerLine, runLine, logLine } from '../src/admin.js';
 import { createNetDebug, describe, line, wireOf, estimateUnzip } from '../src/netdebug.js';
 import { createScores } from '../src/scores.js';
 import { createStats } from '../src/stats.js';
@@ -1137,6 +1137,31 @@ test('admin: players, runs, ban/unban, deletes, unflag, stats, purge and the aud
   for (const a of ['ban', 'unban', 'unflag', 'delete run', 'purge expired', 'rebuild boards', 'delete player']) assert.ok(log.includes(a), a);
 });
 
+test('admin: a players runs by group, with counts and a version filter', async () => {
+  const srv = server();
+  srv.env.ADMIN_TOKEN = 'admin-secret';
+  const get = async path => (await srv.call(path, { headers: { Authorization: 'Bearer admin-secret' } })).json();
+  const ann = await signedIn(srv, 1, 'Ann');
+  for (const id of ['a1', 'a2', 'a3', 'a4']) await ann.post([{ ...played('ode', LADDER[4]).run, clientRunId: id }]);
+  const sql = q => srv.env.DB.db.prepare(q).run();
+  sql("UPDATE runs SET verified = 0 WHERE client_run_id = 'a1'");
+  sql("UPDATE runs SET verified = -1 WHERE client_run_id = 'a2'");
+  sql("UPDATE runs SET flags = 'flat', game_version = '0.0.1' WHERE client_run_id = 'a3'");
+  sql("UPDATE runs SET hidden = 1, rules = '0' WHERE client_run_id = 'a4'");
+  const q = extra => get('/admin/runs?user=' + ann.id + extra);
+  const all = await q('');
+  assert.equal(all.runs.length, 4);
+  assert.deepEqual(all.counts, { valid: 1, verified: 2, pending: 1, rejected: 1, flagged: 1, hidden: 1, outdated: 1, total: 4 });
+  assert.equal(all.versions.length, 2);
+  for (const [status, n] of [['valid', 1], ['verified', 2], ['pending', 1], ['rejected', 1], ['flagged', 1], ['hidden', 1], ['outdated', 1], ['nope', 4], ['constructor', 4]])
+    assert.equal((await q('&status=' + status)).runs.length, n, status);
+  assert.equal((await q('&version=0.0.1')).runs.length, 1);
+  assert.equal((await q('&version=0.0.1&status=pending')).runs.length, 0, 'filters combine');
+  assert.equal(countsLine(all.counts), '1 valid · 2 verified · 1 pending · 1 rejected · 1 flagged · 1 hidden · 1 outdated');
+  assert.equal(cycle(STATUSES, 'outdated'), '');
+  assert.equal(cycle(STATUSES, ''), 'valid');
+});
+
 test('admin client: a wrong token is refused and forgotten, the right one works and is never stored', async () => {
   const srv = server();
   srv.env.ADMIN_TOKEN = 'admin-secret';
@@ -1152,14 +1177,14 @@ test('admin client: a wrong token is refused and forgotten, the right one works 
   await ann.post([{ ...played('ode', LADDER[4]).run, clientRunId: 'a1' }]);
   const [p] = await admin.players('ann');
   assert.equal(playerLine(p), 'Ann · 1');
-  const [r] = await admin.runs(p.id);
+  const [r] = (await admin.runs(p.id)).runs;
   assert.match(runLine({ ...r, name: 'Ann' }), /^Ann · ode · \d+/);
   await admin.ban(p.id, true);
   assert.equal(playerLine((await admin.players('ann'))[0]), 'Ann [banned] · 1');
   assert.match(logLine((await admin.log())[0]), /^\d{4}-\d\d-\d\d \d\d:\d\d ban user /);
   await admin.ban(p.id, false);
   await admin.deleteRun(r.id);
-  assert.deepEqual(await admin.runs(p.id), []);
+  assert.deepEqual((await admin.runs(p.id)).runs, []);
   assert.ok(calls.every(c => c.headers.Authorization === 'Bearer admin-secret' || c.headers.Authorization === 'Bearer nope'));
   admin.lock();
   await assert.rejects(admin.stats(), e => e.status === 404);

@@ -31,7 +31,7 @@ import { GLYPHS, FAMILY } from './pixelfont.js';
 import { MENU_IDS, menuFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
-import { createAdmin, PAGE as ADMIN_PAGE, playerLine, runLine, logLine } from './admin.js';
+import { createAdmin, PAGE as ADMIN_PAGE, STATUSES, cycle, countsLine, playerLine, runLine, logLine } from './admin.js';
 import { RULES, encodeLog } from './replay.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
@@ -39,7 +39,7 @@ import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, ICONS, ICONS_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
-import { createTitle, REST as TITLE_REST, TITLE_EXTENT } from './titlefx.js';
+import { createTitle, REST as TITLE_REST, READY as TITLE_READY, TITLE_EXTENT } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -326,8 +326,8 @@ function showToast(fill, ms) {
 // the Glyphs viewer's cells; the element is position:relative). Added: the heart beats three times. Removed: it beats once,
 // then cracks into two halves and pixel shards. The timings match style.css (.beat, .fx.break).
 const SHARDS = [[-12, -9, -90], [11, -12, 120], [-15, 5, 60], [14, 8, -140], [-5, 15, 200], [6, 16, -70]]; // dx, dy, rot
-const HEART_MS = { add: 1000, break: 1150 };
-const HEART_CRACK_MS = 520; // the heart beats this long before it cracks (favBreak's crackAt)
+const HEART_MS = { add: 500, break: 575 };
+const HEART_CRACK_MS = 260; // the heart beats this long before it cracks (favBreak's crackAt)
 function heartCrackHTML() {
   const half = (r, side) => `<span class="fx-half ${side}">${spriteHTML(r, 3)}</span>`;
   return `<span class="fx break"><span class="fx-whole">${spriteHTML(HEART, 3)}</span>${half(HEART_HALVES[0], 'l')}${half(HEART_HALVES[1], 'r')}` +
@@ -1101,7 +1101,8 @@ function fitStatScroll() {
 // ---- admin (?dev or a dev-flag account): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
 // The token is kept in memory only. Views form a stack; Back pops it and reloads the view underneath. ----
 const admin = createAdmin({ apiBase, debug: netDebug });
-let adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
+const adStatusName = () => ({ '': tr('all'), valid: tr('valid'), verified: tr('verified'), pending: tr('pending'), rejected: tr('rejected'), flagged: tr('flagged'), hidden: tr('hidden'), outdated: tr('outdated') });
+let adVersions = [], adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
 function openAdmin() {
   adStack = []; adMsg = ''; adArm = '';
   setState('admin', 'admin');
@@ -1139,8 +1140,15 @@ async function adminShow(view) {
         def = adRows.length ? 'player' : '';
         break;
       case 'player':
-        adRows = await admin.runs(view.p.id, view.offset);
-        html = `<p class="hint">${esc(playerLine(view.p))}</p>` +
+        {
+          const r = await admin.runs(view.p.id, view);
+          adRows = r.runs; adVersions = r.versions;
+          const n = view.status ? r.counts[view.status] : r.counts.total;
+          html = `<p class="hint">${esc(playerLine(view.p))}<br>${esc(countsLine(r.counts) || tr('No runs'))}</p>` +
+            btn('status', tr('Show: {s} ({n})', { s: adStatusName()[view.status || ''], n })) +
+            (adVersions.length > 1 ? btn('version', tr('Version: {v}', { v: view.version || tr('all') })) : '');
+        }
+        html +=
           btn('ban', view.p.banned ? tr('Whitelist (unban)') : tr('Blacklist (ban)')) +
           btn('hideplayer', view.p.hidden && !view.p.banned ? tr('Show on boards') : tr('Hide from boards')) +
           btn('delplayer', tr('Delete player')) + rows(adRows, 'run', runLine) + pages();
@@ -1205,6 +1213,8 @@ function wireAdmin() {
       case 'lock': admin.lock(); openMenu('admin'); break;
       case 'players': go({ v: 'players', q: '', offset: 0 }); break;
       case 'flagged': case 'maint': case 'log': go({ v: b.dataset.act }); break;
+      case 'status': reload({ status: cycle(STATUSES, view.status || ''), offset: 0 }); break;
+      case 'version': reload({ version: cycle(['', ...adVersions], view.version || ''), offset: 0 }); break;
       case 'search': reload({ q: $('ad-q').value.trim(), offset: 0 }); break;
       case 'prev': case 'next': reload({ offset: Math.max(0, (view.offset || 0) + (b.dataset.act === 'next' ? ADMIN_PAGE : -ADMIN_PAGE)) }); break;
       case 'player': go({ v: 'player', p: row, offset: 0 }); break;
@@ -2403,14 +2413,19 @@ function stepSettingsTab(step) {
 function syncSettingsTabs() {
   if (state === 'settings' && settingsTabs().join() + pad.canRumble !== shownTabs) setSettingsTab(settingsTab);
 }
-function openSettings(from = 'menu') {
+function openSettings(from = 'menu', focusId = '') {
   settingsFrom = from;
   document.querySelectorAll('#settings .menu-only').forEach(el => { el.hidden = from === 'paused'; });
   capturingSlot = -1;
   renderBindings();
   showOffset();
+  if (focusId) { // come back with that button highlighted (e.g. leaving the Glyphs viewer)
+    screens.settings.querySelectorAll('[data-default]').forEach(el => el.removeAttribute('data-default'));
+    $(focusId).setAttribute('data-default', '');
+  }
   setState('settings', 'settings');
   setSettingsTab(settingsTab);
+  if (focusId) focusDefault(screens.settings); // the tab panel was hidden when setState focused
 }
 
 function closeSettings() {
@@ -2520,7 +2535,7 @@ function back() {
     case 'tutprompt': skipTutPrompt(); break;
     case 'loginprompt': afterLogin(); break;
     case 'settings': closeSettings(); break;
-    case 'glyphs': openSettings(settingsFrom); break;
+    case 'glyphs': openSettings(settingsFrom, 'btn-glyphs'); break;
     case 'mysongs': openMenu('mysongs'); break;
     case 'songmenu': openMySongs(); break;
     case 'custom': if (txtUid) openSongMenu(txtUid); else openMySongs(); break;
@@ -2727,9 +2742,10 @@ function welcomeStart(exchange) {
 }
 
 // The title's ringing 3310 (titlefx.js) on the LCD canvas while the title is up. Reduced motion paints one still frame.
-let titleStop = null, titleOn = false;
+let titleStop = null, titleOn = false, titleReady = settings.titleSeen;
 function titleFx(on) {
   titleOn = on;
+  if (on && !settings.titleSeen) setTitleReady(false);
   if (titleStop) titleStop();
   titleStop = null;
   const fx = $('title-fx');
@@ -2746,7 +2762,11 @@ function titleFx(on) {
     }
     const cell = CELL * m, { w, h } = measureGrid(fx, cell);
     const sim = createTitle(w, h, Math.ceil((lcd - text) / cell) + 1, settings.invert); // the DOM text under the scene is kept clear
-    if (!still.matches) { titleStop = runWelcome(fx, sim); return; }
+    if (!still.matches) {
+      titleStop = runWelcome(fx, sim, { onTick: s => { if (s.tick >= TITLE_READY) setTitleReady(true); } });
+      return;
+    }
+    setTitleReady(true);
     sim.jump(TITLE_REST);
     const ctx = fx.getContext('2d');
     ctx.fillStyle = INK; // not the computed color: Dark Reader rewrites it light
@@ -2755,8 +2775,16 @@ function titleFx(on) {
   });
 }
 
+// First run: the title can't be skipped until the logo and phone have landed and "Press any key" starts blinking.
+function setTitleReady(ready) {
+  titleReady = ready;
+  $('title').classList.toggle('wait', !ready);
+  if (ready && !settings.titleSeen) { settings.titleSeen = true; save(); }
+}
+
 let booted = false;
 function startFromTitle() {
+  if (!titleReady) return;
   synth.ensure();
   if (!booted) { booted = true; synth.jingle(); }
   openMenu('tones');
@@ -2934,7 +2962,7 @@ function wire() {
   // mods
   $('btn-glyphs').onclick = openGlyphs;
   $('btn-float-reset').onclick = () => { resetFloatBoxes(); synth.keyClick(); };
-  $('btn-glyphs-back').onclick = () => openSettings(settingsFrom);
+  $('btn-glyphs-back').onclick = () => openSettings(settingsFrom, 'btn-glyphs');
   $('glyphs').addEventListener('focusout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.gl-cell')) glyphAnimate(null); });
   $('glyphs').addEventListener('focusin', e => {
     const c = e.target.closest('.gl-cell');
@@ -3556,7 +3584,7 @@ phoneIdle();
 setMode();
 layout(); // place the phone before the first paint, without the slide
 // Row heights change once the pixel font arrives: re-centre the cursor row then.
-if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
+if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); if (state === 'menu') fitMenuTitle(); });
 if (demoKind) demo(demoKind);
 try { // the overlay used to be remembered outside the settings: adopt that once
   if (localStorage.getItem('ringbeat.perf')) { settings.perfOverlay = true; save(); }

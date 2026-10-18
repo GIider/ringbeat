@@ -221,3 +221,10 @@ test('settings: invert is a strict boolean that round-trips and is synced', asyn
   const { SYNCED_SETTINGS } = await import('../src/cloudmerge.js');
   assert.ok(SYNCED_SETTINGS.includes('invert'));
 });
+
+test('settings: titleSeen is kept on this device and never synced', async () => {
+  assert.equal((await load({ titleSeen: true })).settings.titleSeen, true);
+  assert.equal((await load({ titleSeen: 'yes' })).settings.titleSeen, false);
+  const { sharedSettings } = await load({ titleSeen: true });
+  assert.ok(!('titleSeen' in sharedSettings().settings));
+});

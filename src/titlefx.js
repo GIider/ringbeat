@@ -8,6 +8,7 @@ import { circle, bayer, stamp, power } from './welcome.js';
 export const NAME = 'RINGBEAT';
 // Tick marks (50 ms each): power-on, the phone falls, the letters land, then the ring cycle loops every LOOP ticks (8.4 s; a multiple of 6, 7, 12 and 24 so every rhythm in it repeats exactly).
 export const T = { DROP: 16, LOGO: 24, RING: 42, LOOP: 168 };
+export const READY = T.RING; // the logo has landed and the phone has settled: the "Press any key" prompt may appear
 export const REST = T.RING + 125; // the still frame: between two ring bursts, notes still in the air
 const FALL = 7;
 const BOUNCE = [0, -3, -5, -6, -5, -3, 0, -2, -3, -2, 0]; // heights (cells) of the two bounces after the fall
