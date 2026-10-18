@@ -5,6 +5,8 @@
 
 **Play now:** <https://giider.github.io/ringbeat/>
 
+**Browse:** [World leaderboards](https://giider.github.io/ringbeat/boards.html) · [Chart explorer](https://giider.github.io/ringbeat/charts.html)
+
 Ringbeat is a browser rhythm game whose charts are generated automatically from RTTTL (Nokia ringtone) text. It is
 dressed up as a late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the note highway
 runs inside that LCD.
@@ -51,7 +53,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - 249 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
-  - A public **chart explorer** (`charts.html`) lists every song's chart with its note counts by kind (taps, holds, rolls,
+  - A public **chart explorer** ([`charts.html`](https://giider.github.io/ringbeat/charts.html)) lists every song's chart with its note counts by kind (taps, holds, rolls,
     doubles, triples), density and rating, with filters and sortable columns. It builds everything in the browser from
     the game's own code, so it is always current. `npm start` serves it at <http://localhost:8000/charts.html>.
 - **Scoring:**
@@ -84,7 +86,7 @@ the game never needs the network and `localStorage` stays the source of truth.
   server's: the game uploads your key presses and the API re-plays them through the same game code, so a claimed score
   can't be faked. Runs under older scoring rules don't rank ("Not ranked: update the game").
 - **Where you see it:** *World #n of total* on the results screen, the world top 10 under your own runs on each song,
-  and an Online page in Stats. The **World boards** page (`boards.html`, linked from Profile) lets anyone browse every song's board, signed in or not. Prefer to stay off the boards? Profile → *On leaderboards: Off*.
+  and an Online page in Stats. The **World boards** page ([`boards.html`](https://giider.github.io/ringbeat/boards.html), linked from Profile) lets anyone browse every song's board, signed in or not. Prefer to stay off the boards? Profile → *On leaderboards: Off*.
 - **Your data:** you can sign out or delete the online profile and everything stored with it at any time; see
   [PRIVACY.md](docs/PRIVACY.md).
 - **Self-hosting:** the API is a Cloudflare Worker + D1 in `server/`; setup, local development (a local API needs its
