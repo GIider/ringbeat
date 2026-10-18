@@ -12,7 +12,8 @@ export const SORTS = [
 export const ratingOf = e => (e.rating && e.rating[e.chart] != null ? e.rating[e.chart] : (e.stars[e.chart] || 0) * 1.4);
 
 // `search` filters by title / tag substring; `recent` is the played-song ids, newest first (the Recent view keeps that order); `keep` are ids the Unplayed view still lists after being played.
-export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scores, favorites = [], recent = [], search = '', keep = []) {
+// `sortFavorites` (default: `favorites`) is who counts as a favorite for the Favorites sort, so the order can stay put while the player toggles hearts.
+export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scores, favorites = [], recent = [], search = '', keep = [], sortFavorites = favorites) {
   let list = entries.map((e, i) => ({ e, i }));
   if (category === 'favorites') list = list.filter(x => favorites.includes(x.e.id));
   else if (category === 'recent') {
@@ -20,7 +21,7 @@ export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scor
     return list.sort((a, b) => recent.indexOf(a.e.id) - recent.indexOf(b.e.id)).map(x => x.e).filter(matches(search));
   } else if (category === 'unplayed') list = list.filter(x => !scores.get(x.e.id, x.e.chart) || keep.includes(x.e.id));
   else if (category !== 'all') list = list.filter(x => x.e.category === category);
-  const isFav = x => favorites.includes(x.e.id);
+  const isFav = x => sortFavorites.includes(x.e.id);
   const cmp = {
     'diff-asc': (a, b) => ratingOf(a.e) - ratingOf(b.e),
     title: (a, b) => a.e.title.localeCompare(b.e.title),

@@ -674,3 +674,12 @@ test('tutorial: roll notes carry a finite tickDur (auto-play rolls must not sust
   assert.ok(rolls.length > 0);
   for (const n of rolls) assert.ok(Number.isFinite(n.tickDur) && n.tickDur > 0);
 });
+
+test('applyView: the Favorites sort can use its own favorite list, so toggling a heart keeps the order', () => {
+  const es = ['a', 'b', 'c'].map((id, i) => ({ id, title: id, bpm: 100, length: 10, category: 'pop', stars: { normal: i + 1 }, rating: null, chart: 'normal' }));
+  const sc = { get: () => null };
+  const ids = (favs, sortFavs) => applyView(es, { sort: 'fav' }, sc, favs, [], '', [], sortFavs).map(e => e.id);
+  assert.deepEqual(ids(['c'], ['c']), ['c', 'a', 'b']);
+  assert.deepEqual(ids(['c', 'a'], ['c']), ['c', 'a', 'b']); // 'a' was just favorited: it stays put
+  assert.deepEqual(ids(['c', 'a']), ['a', 'c', 'b']);        // a fresh snapshot moves it up
+});

@@ -428,7 +428,10 @@ const entries = () => (customs.length ? [...builtins, ...customs] : builtins);
 const entryById = id => entries().find(e => e.id === id) || null;
 const selectedEntry = () => entryById(selectedId) || visible()[0] || entries()[0];
 // Entries after the song-select sort/filter.
-const visible = () => applyView(entries(), settings.view, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery, unplayedKeep ? [unplayedKeep] : []);
+// The Favorites sort keeps the order it had when the list was entered: toggling a heart does not move the song under the cursor.
+// The snapshot is dropped (the next visible() takes a fresh one) when the screen is entered or the view changes.
+let sortFavs = null;
+const visible = () => applyView(entries(), settings.view, scores, favKeep.size ? [...settings.favorites, ...favKeep] : settings.favorites, settings.recent, searchQuery, unplayedKeep ? [unplayedKeep] : [], sortFavs ||= settings.favorites.slice());
 let searchQuery = '', selMoveAt = 0; // title/tag filter typed in the picker (not persisted); when the cursor last moved
 // New players start on the top of the default view (easiest first), computed from the current ratings.
 const defaultSongId = () => (applyView(builtins, { sort: 'diff-asc', category: 'all' }, scores)[0] || builtins[0]).id;
@@ -696,6 +699,7 @@ function jumpSectionStep(step) {
   jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort));
 }
 function setCategory(id) {
+  sortFavs = null;
   favKeep.clear(); unplayedKeep = null;
   settings.view.category = id; save();
   const keep = selectedEntry();
@@ -835,6 +839,7 @@ function scheduleAutoPreview() {
 
 function setView(key, list, step = 1) { setViewTo(key, (step < 0 ? prevOf : nextOf)(list, settings.view[key])); }
 function setViewTo(key, id) {
+  sortFavs = null;
   settings.view[key] = id;
   save();
   const keep = selectedEntry();
@@ -861,6 +866,7 @@ function revealRow(row) {
   else list.scrollTo({ top: list.scrollTop + delta, behavior: still.matches ? 'auto' : 'smooth' });
 }
 function openSelect() {
+  sortFavs = null; // coming back to the list: favorites float to the top again
   selDetail = false;
   $('select').classList.remove('detail');
   renderList();
