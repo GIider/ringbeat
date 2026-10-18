@@ -294,7 +294,7 @@ function konamiReward() {
 function eggToken(code) {
   if (!gagStates()) { konami.reset(); imeiCode.reset(); return; }
   if (!code) return;
-  if (konami.feed(code)) konamiReward();
+  if (konami.feed(code)) { konamiReward(); showImei(); }
   if (imeiCode.feed(code)) showImei();
 }
 // Touch / mouse route to the IMEI panel: IMEI_TAPS quick taps on the version label.
@@ -2437,7 +2437,7 @@ function menuButton(index) {
     case BTN.A: case BTN.START:
       if (state === 'title') { startFromTitle(); return; }
       if (state === 'composer' && !csMenu) { if (index === BTN.A) compInput('add'); else setCompMenu(true); return; }
-      if (root) nav.confirm(root);
+      confirmScreen(root);
       break;
     case BTN.B: back(); break;
     case BTN.X:
@@ -2507,6 +2507,11 @@ function navigate(dir) {
 }
 
 // ---- phone keys & soft keys ----
+// Confirm on a screen: the focused control, else the screen's default one (focus may not have landed yet, e.g. right after a modal opens).
+function confirmScreen(root) {
+  if (!root) return;
+  if (!nav.confirm(root)) { const d = root.querySelector('[data-default]:not([disabled])'); if (d) d.click(); }
+}
 function softLeft() {
   switch (state) {
     case 'title': startFromTitle(); break;
@@ -2515,7 +2520,7 @@ function softLeft() {
     case 'stats': navigate('right'); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
-    default: { const root = activeScreen(); if (root) nav.confirm(root); }
+    default: confirmScreen(activeScreen());
   }
 }
 // C key (right soft label on the bare LCD): Back fires on release; holding it ~1.2 s runs the fake memory wipe
@@ -2919,7 +2924,7 @@ function wire() {
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('welcome').addEventListener('click', skipWelcome);
-  $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a')) startFromTitle(); });
+  $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a, .boot-version')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;
@@ -2959,7 +2964,9 @@ function wire() {
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   $('boot-version').textContent = 'v' + VERSION;
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the IMEI panel also shows the build number
-  $('boot-version').addEventListener('click', e => { e.stopPropagation(); tapVersion(); }); // don't also start the game
+  // The version and build lines are the tap target for the IMEI panel: they count taps instead of starting the game or opening GitHub
+  // (the credit link is in the panel itself). Whole lines, not just the link text, so a fingertip can hit them.
+  for (const el of document.querySelectorAll('.boot-version')) el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); tapVersion(); });
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { queueHeadFit();  if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'title') titleFx(true); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 

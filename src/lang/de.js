@@ -299,7 +299,6 @@ export const de = {
   'Skip tutorial': 'Tutorial überspringen',
   'Back to lesson': 'Zurück zur Lektion',
   'Retry': 'Nochmal',
-  'Continue': 'Weiter',
   'Song Info': 'Songinfo',
   'Next song': 'Nächster Song',
   'Max combo': 'Max. Combo',
