@@ -358,6 +358,7 @@ export const de = {
   'Volume': 'Lautstärke',
   'Scroll time': 'Scrollzeit',
   'Backing pulse': 'Begleitpuls',
+  'Mute when unfocused': 'Stumm bei Fokusverlust',
   'Auto-play rolls': 'Wirbel automatisch',
   'Song preview': 'Song-Vorschau',
   'Idle animations': 'Leerlauf-Animationen',

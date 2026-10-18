@@ -2773,6 +2773,9 @@ function wire() {
   const ra = $('pref-rollaudio');
   ra.checked = settings.rollAudio;
   ra.onchange = () => { settings.rollAudio = ra.checked; game.rollAudio = settings.rollAudio; save(); };
+  const mu = $('pref-muteunfocused');
+  mu.checked = settings.muteUnfocused;
+  mu.onchange = () => { settings.muteUnfocused = mu.checked; syncFocusMute(); save(); };
   const jc = $('pref-juice'), hp = $('pref-haptics');
   jc.checked = settings.juice; hp.checked = settings.haptics;
   const syncJuice = () => { renderer.juice = settings.juice; hp.disabled = !settings.juice; };
@@ -2830,7 +2833,7 @@ function wire() {
   settingsArrived = () => {
     sc.value = settings.scrollTime; $('scroll-val').textContent = sc.value + 's';
     bk.checked = settings.backing; pv.checked = settings.preview; $('pref-gags').checked = settings.idleGags;
-    ra.checked = settings.rollAudio; jc.checked = settings.juice; hp.checked = settings.haptics;
+    ra.checked = settings.rollAudio; mu.checked = settings.muteUnfocused; syncFocusMute(); jc.checked = settings.juice; hp.checked = settings.haptics;
     cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
     inv.checked = settings.invert; renderer.invert = settings.invert;
     if (titleOn) titleFx(true);
@@ -3136,13 +3139,18 @@ function wire() {
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', e => { if (e.code === 'KeyC') endHold(); });
-  window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); });
+  // "Mute when unfocused": silence the output while the tab is hidden or the window has lost focus (the clock keeps running)
+  const syncFocusMute = () => synth.setFocusMuted(settings.muteUnfocused && (document.hidden || !document.hasFocus()));
+  window.addEventListener('blur', () => { endHold(); input.reset && input.reset(); syncFocusMute(); });
+  for (const ev of ['focus', 'pagehide', 'pageshow']) window.addEventListener(ev, syncFocusMute);
+  syncFocusMute();
   // Gamepad input may not count as a user gesture; resume a suspended context on the next key/click. The first gesture also creates the
   // context: after a sign-in redirect the page loads straight into the menu (no title press), and the menu sounds need a context.
   const wake = () => { if (game.state === 'paused') return; if (synth.ctx) synth.wake(); else synth.ensure(); };
   window.addEventListener('keydown', wake, true);
   window.addEventListener('pointerdown', wake, true);
   document.addEventListener('visibilitychange', () => {
+    syncFocusMute();
     if (document.hidden) { pauseGame(); cloud.flush(); } else { cloud.wake(); if (game.state !== 'paused') synth.wake(); } // audio clock keeps running when hidden
   });
   window.addEventListener('pagehide', commitTime);

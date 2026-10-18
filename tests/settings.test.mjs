@@ -68,6 +68,15 @@ test('settings: boolean flags default on except backing', async () => {
   assert.equal(s.backing, false);
 });
 
+test('settings: muteUnfocused defaults on and loads when turned off', async () => {
+  let { settings: s } = await load({});
+  assert.equal(s.muteUnfocused, true);
+  ({ settings: s } = await load({ muteUnfocused: false }));
+  assert.equal(s.muteUnfocused, false);
+  ({ settings: s } = await load({ muteUnfocused: 'no' }));
+  assert.equal(s.muteUnfocused, true);
+});
+
 test('settings: sort and category only accept known values', async () => {
   let { settings: s } = await load({ difficulty: 'hard', view: { sort: 'bpm', category: 'ndw' } });
   assert.equal(s.difficulty, undefined); // the difficulty setting is gone

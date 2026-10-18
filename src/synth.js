@@ -29,6 +29,7 @@ export class Synth {
   constructor() {
     this.ctx = null;
     this.volume = 0.7;
+    this.focusMuted = false;
     this.voice = 'buzzer'; // one of VOICES: 'buzzer' (phone piezo) | 'smooth' (two detuned squares with a soft envelope) | VOICE_SPECS keys
   }
 
@@ -64,7 +65,22 @@ export class Synth {
 
   setVolume(v) {
     this.volume = Math.max(0, Math.min(1, v));
-    if (this.master) this.master.gain.value = this.volume * 0.8;
+    this._applyGain(false);
+  }
+
+  // Silence the output while the page is unfocused without touching the volume setting. The clock keeps running.
+  setFocusMuted(b) {
+    b = !!b;
+    if (b === this.focusMuted) return;
+    this.focusMuted = b;
+    this._applyGain(true);
+  }
+
+  _applyGain(ramp) {
+    if (!this.master) return;
+    const target = this.focusMuted ? 0 : this.volume * 0.8, g = this.master.gain;
+    if (ramp && g.setTargetAtTime) { g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(target, this.ctx.currentTime, 0.015); } // short ramp: no clicks
+    else { if (g.cancelScheduledValues) g.cancelScheduledValues(0); g.value = target; }
   }
 
   getAudioClock() { return this.ctx ? this.ctx.currentTime : 0; }

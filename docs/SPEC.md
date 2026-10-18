@@ -123,6 +123,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Notes scroll upward (`settings.invert`, synced): the receptors sit under the HUD and the notes rise from the bottom; presentation only, so scoring and replays are identical (`Renderer.invert`, `createTitle(..., invert)`)
   - Backing pulse (off by default)
   - Auto-play rolls
+  - Mute when unfocused (on by default; per device): silences the output while the tab is hidden or the window is blurred. Only the master gain is muted, so the audio clock keeps running
   - Song preview
   - Idle animations
   - Hit effects
