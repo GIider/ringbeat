@@ -158,7 +158,7 @@ export const de = {
   'Mode': 'Modus',
   'Chart': 'Verlauf',
   'Score chart: accuracy over the song, with the note density': 'Verlauf: Genauigkeit über den Song, mit der Notendichte',
-  'Compact view': 'Kompaktansicht',
+  'Compact view': 'Vollbildschirm',
   'Style': 'Stil',
   'Visuals': 'Optik',
   'Input': 'Eingabe',
@@ -429,7 +429,7 @@ export const de = {
     'Songauswahl: Details neben der Liste mit Sternen, Favoriten-Herz, Modifikatoren (tippen zeigt, was sie tun) und der globalen oder lokalen Top 10. Am Handy öffnet Wählen die Details, ein Wisch nach oben oder unten wählt den nächsten Song. Sortierung und Suche werden bei wenig Platz zu Symbolen.\n' +
     'Beim Spielen: BPM, Zeit, Combo und eine Genauigkeitsanzeige auf breiten Bildschirmen, die Pause ist ein Pop-up.\n' +
     'Ergebnis und Statistik zeigen bei genug Platz alles auf einem Bildschirm. Das neue Verlaufsdiagramm zeigt deine Genauigkeit über den Song, mit markierten Fehlern und Fehltipps. Bestenlisten gehen bis 10.\n' +
-    'Weg: das Tastenfeld und der Mods-Bildschirm. Einstellungen -> Kompaktansicht gibt dir das schlichte LCD. Probier den Konami-Code oder tippe fünfmal auf die Version.',
+    'Weg: das Tastenfeld und der Mods-Bildschirm. Einstellungen -> Vollbildschirm gibt dir das schlichte LCD. Probier den Konami-Code oder tippe fünfmal auf die Version.',
   'Ring ring': 'Ring ring',
   ['New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
     'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +
@@ -440,7 +440,7 @@ export const de = {
     'Die Menü-Symbole wurden überarbeitet: ein kleines 3310 neben jedem Symbol, weichere Animationen, Funkeln bei ungelesenen Nachrichten. Nachrichten öffnen sofort, der SMS-Ton spielt einmal pro Besuch.\n' +
     'Songauswahl: J und K springen zwischen Gruppen, der Punkt schaltet die Schwierigkeit um, die Überschrift öffnet den Kategorie-Bildschirm. Hoch beim ersten Song springt zum letzten.\n' +
     'Am Touchscreen wählt ein Tipp die Schwierigkeit aus, ein zweiter startet. Das Favoriten-Herz ist leichter zu treffen.\n' +
-    'Neu: Einstellungen -> Kompaktansicht. Behoben: Umlaute in Fettschrift, ein doppelter Song, weißes Logo mit Dark Reader.',
+    'Neu: Einstellungen -> Vollbildschirm. Behoben: Umlaute in Fettschrift, ein doppelter Song, weißes Logo mit Dark Reader.',
   'Find your song': 'Finde deinen Song',
   ['76 new songs: games, TV, Eurodance, pop and synth.\n' +
     'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +
