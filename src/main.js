@@ -2333,6 +2333,8 @@ function placeHaptics() {
   row.hidden = !home;
   if (home && row.parentNode !== home) home.appendChild(row);
 }
+// Wide LCD: every tab is a panel of one screen (no tab strip); narrower: one tab at a time between ◄ ►.
+const settingsAll = () => lcdWidth() >= SEL_WIDE_PX;
 function setSettingsTab(id, focus = false) {
   const tabs = settingsTabs();
   if (!tabs.includes(id)) id = tabs[0];
@@ -2344,11 +2346,14 @@ function setSettingsTab(id, focus = false) {
     const on = b.dataset.tab === id;
     b.classList.toggle('sel', on); b.setAttribute('aria-selected', on);
   }
-  for (const p of document.querySelectorAll('#settings .set-panel')) p.hidden = p.dataset.panel !== id;
+  const all = settingsAll();
+  $('set-tabs').hidden = all;
+  for (const p of document.querySelectorAll('#settings .set-panel')) p.hidden = all ? !tabs.includes(p.dataset.panel) : p.dataset.panel !== id;
   paintRanges(screens.settings);
-  if (focus) $('set-tabs').querySelector('.sel').focus();
+  if (focus && !all) $('set-tabs').querySelector('.sel').focus();
 }
 function stepSettingsTab(step) {
+  if (settingsAll()) return; // every tab is on screen
   const tabs = settingsTabs(), i = (tabs.indexOf(settingsTab) + step + tabs.length) % tabs.length;
   synth.keyClick();
   setSettingsTab(tabs[i], true);
@@ -3272,6 +3277,7 @@ function layout(animate = false) {
   if (state === 'select' && dpEntry) fitRows($('dp-panel'));
   queueHeadFit();
   if (state === 'stats') renderStats(); // wide <-> narrow: panels or pages
+  if (state === 'settings') setSettingsTab(settingsTab);
   if (state === 'results') setResultsPage(resultsPage); // wide <-> narrow: panels or pages
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
 }

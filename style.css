@@ -624,5 +624,18 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 
 /* text screens on a wide LCD: one step bigger (the --u2 / --fs2 pair is set by layout() in whole device pixels) */
 @container (min-width: 800px) {
-  #inbox, #message, #settings, #profile, #admin { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+  #inbox, #message, #profile, #admin { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+}
+
+/* settings on a wide LCD: every tab is a panel, two columns */
+.set-h { display: none; }
+@container (min-width: 800px) {
+  #settings { display: flex; flex-direction: column; overflow: hidden; }
+  .set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(min-content, 1fr); gap: 8px; overflow-y: auto; scrollbar-width: none; }
+  .set-panel { display: flex; flex-direction: column; justify-content: space-evenly; border: var(--u) solid var(--ink); border-radius: 4px; padding: 4px 8px; min-width: 0; }
+  .set-panel .item.check { justify-content: flex-start; gap: 10px; }
+  .set-panel .item.check span { margin-left: 0; }
+  #settings > .menu { display: none; } /* the soft Back button does it */
+  .set-panel[hidden] { display: none; }
+  .set-h { display: block; margin: 0 0 2px; font-size: inherit; text-align: center; border-bottom: var(--u) dotted var(--ink); }
 }
