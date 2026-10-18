@@ -21,6 +21,7 @@ const VOICE_SPECS = {
   saw:      { layers: [{ type: 'sawtooth' }, { type: 'sawtooth', detune: 6, gain: 0.5 }], a: 0.01, d: 0.08, s: 0.6, r: 0.08, peak: 0.13, lp: { from: 1800, to: 1800, time: 0 }, vib: 12 },
   gameboy:  { layers: [{ type: 'square' }], a: 0.002, d: 0.03, s: 0.8, r: 0.04, peak: 0.14, vib: 20 },
 };
+const MENU_NOTES = [84, 86, 88, 91, 93, 96, 98]; // C6 D6 E6 G6 A6 C7 D7
 export const VOICES = ['buzzer', 'smooth', ...Object.keys(VOICE_SPECS)];
 const ARP_SPAN = 12; // seconds of arpeggio steps scheduled ahead for a note held without a known end
 const pulseWaves = new WeakMap();
@@ -303,6 +304,9 @@ export class Synth {
     o.start(t); o.stop(t + 0.04);
     this._cleanup(o, [o, g]);
   }
+
+  // Main-menu scroll: the key beep, pitched by item on a rising pentatonic, so scrolling through plays a little run.
+  menuBlip(i) { this._beeps([[MENU_NOTES[((i % MENU_NOTES.length) + MENU_NOTES.length) % MENU_NOTES.length], 0, 0.03]], 0.05); }
 
   // "Not available" buzz: two short low beeps.
   blocked() {

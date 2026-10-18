@@ -118,7 +118,7 @@ Everything visual is made here, with no external fonts or images:
 - `src/pixelfont.js`: hand-drawn 5×7 LCD font (ASCII, German umlauts, UI symbols). `npm run font` compiles it to
   TrueType (`assets/fonts/rb-pixel.ttf` plus a bold cut).
 - `src/pixelart.js`: 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
-- `src/menuicons.js`: the animated main-menu icons (folder card + symbol + pressing hand), drawn in code.
+- `src/menuicons.js`: the animated main-menu art (one 64×48 picture per item), drawn in code.
 - `src/cover.js`: per-song 72×28 "picture message" art, generated from the song id.
 
 ## Song sources & credits
