@@ -3332,6 +3332,9 @@ function layout(animate = false) {
   unit2 = Math.round(u * dpr * 4 / 3) / dpr;
   ph.style.setProperty('--fs2', unit2 * 10 + 'px');
   ph.style.setProperty('--u2', unit2 + 'px');
+  const unit3 = Math.round(u * dpr * 5 / 3) / dpr; // the two question screens (tutorial? sign in?) go a step further
+  ph.style.setProperty('--fs3', unit3 * 10 + 'px');
+  ph.style.setProperty('--u3', unit3 + 'px');
   renderer.setPixelScale(u);
   if (unit !== u) {
     unit = u;

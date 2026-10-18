@@ -652,3 +652,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .title-lang { position: absolute; top: 4px; right: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; background: none; border: 0; color: inherit; cursor: pointer; opacity: .75; font-size: calc(var(--fs) * .8); }
 .title-lang:hover, .title-lang:focus-visible { opacity: 1; }
 #set-lang { display: flex; align-items: center; gap: 8px; }
+@container (min-width: 800px) {
+  #tutprompt, #loginprompt { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); display: flex; flex-direction: column; justify-content: center; gap: .6em; padding: 0 5%; }
+  #tutprompt[hidden], #loginprompt[hidden] { display: none; }
+}
