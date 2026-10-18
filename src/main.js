@@ -498,10 +498,7 @@ function renderCategories() {
   }
   let cur = null;
   for (const b of strip.children) { const on = b.dataset.cat === viewTab.id; b.classList.toggle('sel', on); if (on) cur = b; }
-  if (cur) {
-    const sr = strip.getBoundingClientRect(), cr = cur.getBoundingClientRect();
-    if (sr.width) strip.scrollLeft += cr.left + cr.width / 2 - (sr.left + sr.width / 2);
-  }
+  stripUncentered = !centerTab(); // measured while the screen is hidden: fitHead centres it once it shows
   renderPosition();
 }
 // Header: the category goes in the status title ("Tones · Video Games"); the row shows the cursor position and section ("3/61 · T").
@@ -516,6 +513,15 @@ function renderPosition() {
   cat.textContent = pos;
   queueHeadFit();
 }
+// Scroll the category strip so the current tab sits in the middle; false when the strip has no size yet (hidden screen).
+let stripUncentered = false;
+function centerTab(instant = false) {
+  const strip = $('sel-tabs'), cur = strip.querySelector('.sel'), sr = strip.getBoundingClientRect();
+  if (!cur || !sr.width) return false;
+  const cr = cur.getBoundingClientRect(), delta = cr.left + cr.width / 2 - (sr.left + sr.width / 2);
+  if (instant) { strip.style.scrollBehavior = 'auto'; strip.scrollLeft += delta; strip.style.scrollBehavior = ''; } else strip.scrollLeft += delta;
+  return true;
+}
 // Header row: sort chip (icon + name), position text, Find (icon + word). When the words would crowd the middle text, only the icons show.
 let headFitQueued = false;
 const queueHeadFit = () => {
@@ -524,6 +530,7 @@ const queueHeadFit = () => {
   requestAnimationFrame(() => { headFitQueued = false; if (!screens.select.hidden) fitHead(); });
 };
 function fitHead() {
+  if (stripUncentered) stripUncentered = !centerTab(true); // the screen was hidden when the tabs were drawn
   const sortEl = $('sel-sort'), findEl = $('sel-find'), cat = $('sel-cat');
   const sort = SORTS.find(x => x.id === settings.view.sort), name = tr(sort.label), find = tr('Find');
   const icon = rows => spriteHTML(rows, 2);
