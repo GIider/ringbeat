@@ -632,7 +632,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 
 /* text screens on a wide LCD: one step bigger (the --u2 / --fs2 pair is set by layout() in whole device pixels) */
 @container (min-width: 800px) {
-  #inbox, #message, #profile, #admin { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+  #inbox, #message, #profile, #admin, #composer, #custom, #hub, #pause { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
 }
 
 /* settings on a wide LCD: every tab is a panel, two columns */
@@ -655,4 +655,8 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 @container (min-width: 800px) {
   #tutprompt, #loginprompt { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); display: flex; flex-direction: column; justify-content: center; gap: .6em; padding: 0 5%; }
   #tutprompt[hidden], #loginprompt[hidden] { display: none; }
+}
+@container (min-width: 800px) {
+  /* short menus and the lesson cards: the bigger step (5/3) so they don't sit in a corner of a big LCD */
+  #tutorial, #mysongs, #songmenu, #calib { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); }
 }

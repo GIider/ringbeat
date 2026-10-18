@@ -145,7 +145,7 @@ tests/
 - **Crisp pixel text.** The LCD font size is 30 px on a wide LCD and 20 px otherwise. It is then snapped so that one font
   pixel is a whole number of device pixels (`u = round(fs / 10 × dpr) / dpr`, `--fs = 10u`). The canvas does not use
   `fillText`: `render.js` draws the same glyph table as sprites, so canvas and DOM text match pixel for pixel.
-  - On a wide LCD the text screens (messages, settings, profile, admin) use one bigger step, 4/3 of the unit (`--u2` / `--fs2`, rounded to whole device pixels by `layout()`, applied by a container query in `style.css`).
+  - On a wide LCD the text screens (messages, settings, profile, admin) use one bigger step, 4/3 of the unit (`--u2` / `--fs2`, rounded to whole device pixels by `layout()`, applied by a container query in `style.css`; the tutorial prompts, lesson cards and short menus use a 5/3 step, `--u3` / `--fs3`).
 - **Soft keys.** Each screen declares `data-title`, `data-soft-left` and `data-soft-right`.
   - Right soft key (the C key) = `back()`.
   - Left soft key = a per-state action (`softLeft`), by default "select the focused item" (else the screen's `[data-default]`).
