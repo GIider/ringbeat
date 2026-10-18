@@ -90,10 +90,10 @@ without adding them to `main`'s history:
 
 The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name>.png`.
 
-`npm run screenshots` (`scripts/screenshots.mjs`) takes eleven shots from `?demo=` states (see
+`npm run screenshots` (`scripts/screenshots.mjs`) takes eight shots from `?demo=` states (see
 [DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)), all as the same signed-in demo player:
-- `title`, `menu`, `results` (with a filled global leaderboard), `stats` (every page, with scores, grades and world ranks), `pause`, `inbox`, `profile` and `settings` (Sound tab) at desktop size (1000×1100, the wide LCD), and `select` (seeded grades and FC/AP badges, the details pane with a filled global board and a modifier loadout switched on, and the key legend beside the phone) at 1280×1100.
-- `info` (the song details view) and `play` at mobile size (480×800).
+- `results` (with a filled global leaderboard), `stats` (every page, with scores, grades and world ranks), `pause` and `profile` at desktop size (1000×1100, the wide LCD), and `select` (seeded grades and FC/AP badges, the details pane with a filled global board and a modifier loadout switched on, and the key legend beside the phone) at 1280×1100.
+- `info` (the song details view), `play` and `inbox` at mobile size (480×800).
 Shots that are no longer taken are deleted from the output directory, so the published branch loses them on the next run.
 
 The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in with cached world boards and ranks, lifetime stats, local scores, a modifier loadout and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.

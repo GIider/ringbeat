@@ -17,25 +17,20 @@ leaderboards; see [Online](#online-optional).
 
 The screenshots show a signed-in demo player ("Nova") with fixed scores and stats.
 
-| Title | Main menu | Song picker |
+| Song picker | Results | Stats |
 | --- | --- | --- |
-| ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song picker](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
-| Title screen: the scene scales up with the LCD. "Press any key" (or "Tap") starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with category tabs, sort and Find, and the details beside it: stars, favorite heart, modifier chips, the global / local top 10. |
-
-| Results | Stats | Playing |
-| --- | --- | --- |
-| ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/stats-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) |
-| Results: grade, stats, a score chart (note density, accuracy, misses and ghost taps) and one leaderboard, all on one screen. | Stats: every page at once when there is room. | Playing on a wide LCD: BPM and time on the left, combo, judgement counts and the accuracy meter on the right. |
+| ![Song picker](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) | ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/stats-desktop.png) |
+| Song list with category tabs, sort and Find, and the details beside it: stars, favorite heart, modifier chips, the global / local top 10. | Results: grade, stats, a score chart (note density, accuracy, misses and ghost taps) and one leaderboard, all on one screen. | Stats: every page at once when there is room. |
 
 | Pause | Song details (mobile) | Playing (mobile) |
 | --- | --- | --- |
 | ![Pause](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/pause-desktop.png) | ![Song details (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/info-mobile.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
-| Pause is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. |
+| Playing on a wide LCD, paused: the pause menu is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. |
 
-| Messages | Profile | Settings |
-| --- | --- | --- |
-| ![Messages](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-desktop.png) | ![Profile](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/profile-desktop.png) | ![Settings](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/settings-desktop.png) |
-| Messages: the changelog arrives as texts, unread ones in bold. | Profile of a signed-in player: name, play time, leaderboard visibility, sync status. | Settings, Sound tab: volume, tone, backing pulse and auto-play rolls. |
+| Messages (mobile) | Profile |
+| --- | --- |
+| ![Messages (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-mobile.png) | ![Profile](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/profile-desktop.png) |
+| Messages: the changelog arrives as texts, unread ones in bold. | Profile of a signed-in player: name, play time, leaderboard visibility, sync status. |
 
 CI regenerates the screenshots on every push to `main` (see [docs/RELEASING.md](docs/RELEASING.md#screenshots)).
 
