@@ -2320,7 +2320,7 @@ function bindButton(index) {
 }
 let settingsFrom = 'menu';
 let settingsTab = 'sound';
-const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'controller', 'general', 'developer'];
+const ALL_SETTINGS_TABS = ['sound', 'gameplay', 'effects', 'general', 'developer', 'controller'];
 // Button mapping is only offered while a controller is connected.
 const settingsTabs = () => ALL_SETTINGS_TABS.filter(t => t !== 'controller' || pad.connected);
 let shownTabs = '';

@@ -115,7 +115,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ### Settings
 
-- **Layout:** one tab at a time between ◄ ► on a narrow LCD; on a wide one (800 px and up) every tab is a panel (Sound, Gameplay, Effects, Controller when a pad is connected, General, Developer) in two columns, with no tab strip.
+- **Layout:** one tab at a time between ◄ ► on a narrow LCD; on a wide one (800 px and up) every tab is a panel (Sound, Gameplay, Effects, General, Developer, and Controller last when a pad is connected) in two columns, filled down the left column first, with no tab strip.
 - **Items:**
   - Tone (buzzer / smooth / pulse / triangle / arpeggio / bell / organ / pluck / sawtooth / Game Boy)
   - Language (English / Deutsch; follows the browser until set)

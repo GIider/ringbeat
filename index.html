@@ -308,9 +308,9 @@
             <button type="button" role="tab" data-tab="sound" data-i18n>Sound</button>
             <button type="button" role="tab" data-tab="gameplay" data-i18n>Gameplay</button>
             <button type="button" role="tab" data-tab="effects" data-i18n>Effects</button>
-            <button type="button" role="tab" data-tab="controller" data-i18n>Controller</button>
             <button type="button" role="tab" data-tab="general" data-i18n>General</button>
             <button type="button" role="tab" data-tab="developer" data-i18n>Developer</button>
+            <button type="button" role="tab" data-tab="controller" data-i18n>Controller</button>
             <span id="set-next" class="arrow" aria-hidden="true">►</span>
           </div>
           <div class="set-grid">
@@ -336,13 +336,6 @@
               <label class="item check"><input id="pref-compact" type="checkbox"> <span data-i18n>Compact view</span></label>
               <label class="item check"><input id="pref-gags" type="checkbox"> <span data-i18n>Idle animations</span></label>
             </div>
-            <div class="set-panel" data-panel="controller" role="tabpanel" hidden>
-              <h3 class="set-h" data-i18n>Controller</h3>
-              <div id="pad-status" class="hint"></div>
-              <div id="bind-grid" class="menu bind-grid"></div>
-              <div id="pad-extras" class="menu"></div>
-              <div class="menu"><button id="btn-bind-reset" data-i18n>Reset buttons</button></div>
-            </div>
             <div class="set-panel menu" data-panel="general" role="tabpanel" hidden>
               <h3 class="set-h" data-i18n>General</h3>
               <button id="set-lang">Language: English</button>
@@ -355,6 +348,13 @@
               <label class="item check"><input id="pref-net" type="checkbox"> <span data-i18n>Request tracker</span></label>
               <button id="btn-float-reset" data-i18n>Reset overlay positions</button>
               <button id="btn-glyphs" data-i18n>Glyphs &amp; icons</button>
+            </div>
+            <div class="set-panel" data-panel="controller" role="tabpanel" hidden>
+              <h3 class="set-h" data-i18n>Controller</h3>
+              <div id="pad-status" class="hint"></div>
+              <div id="bind-grid" class="menu bind-grid"></div>
+              <div id="pad-extras" class="menu"></div>
+              <div class="menu"><button id="btn-bind-reset" data-i18n>Reset buttons</button></div>
             </div>
           </div>
           <div class="menu">

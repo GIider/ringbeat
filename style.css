@@ -631,7 +631,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .set-h { display: none; }
 @container (min-width: 800px) {
   #settings { display: flex; flex-direction: column; overflow: hidden; }
-  .set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(min-content, 1fr); gap: 8px; overflow-y: auto; scrollbar-width: none; }
+  .set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(min-content, 1fr)); grid-auto-flow: column; gap: 8px; overflow-y: auto; scrollbar-width: none; }
   .set-panel { display: flex; flex-direction: column; justify-content: space-evenly; border: var(--u) solid var(--ink); border-radius: 4px; padding: 4px 8px; min-width: 0; }
   .set-panel .item.check { justify-content: flex-start; gap: 10px; }
   .set-panel .item.check span { margin-left: 0; }
