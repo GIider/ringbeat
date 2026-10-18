@@ -1942,12 +1942,7 @@ game.onFinish = r => {
   if (run && run.entry && !demo) { stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used }); cloud.schedule(); }
   screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-heading').textContent = tr(screens.results.dataset.title);
-  $('r-song').textContent = run ? run.entry.title + (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
-  if (run && run.entry) {
-    const en = run.entry;
-    $('r-info').innerHTML = [[tr('BPM'), en.bpm], [tr('Length'), formatLength(en.length)], [tr('Rating'), `${estMark(en)}${starsValue(ratingOf(en))} / 5`]]
-      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(String(v))}</dd>`).join('');
-  }
+  $('r-song').textContent = run ? [run.entry.title, `${run.entry.bpm} BPM`, formatLength(run.entry.length)].join(' · ') + (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
   juiceResults(r);
   $('r-grade').textContent = r.grade;
   $('r-grade').dataset.grade = r.grade;
@@ -1994,7 +1989,9 @@ game.onFinish = r => {
   renderHistogram(r.deltas);
   setResultsPage(0);
   setState('results', 'results');
-  drawResultsChart(); // after the screen is shown: the canvas is measured
+  marquee($('r-song'));
+  fitRows($('r-boardbox'));
+  drawResultsChart(); // after the screen is shown: the boxes are measured
 };
 
 // The results screen's world line. A new best goes up right away and its rank comes back with the same request; any
@@ -2079,6 +2076,7 @@ function renderBoard() {
   if (resultsBoard === 'world') paintWorld(resultsSong && resultsSong.id, resultsSong && resultsSong.diff);
   else renderTopRuns();
   marqueeAll($('r-top').querySelectorAll('.ln'));
+  fitRows($('r-boardbox'));
 }
 function setResultsBoard(b) { resultsBoard = b; renderBoard(); }
 function drawResultsChart() {
@@ -2108,6 +2106,7 @@ function setResultsPage(n) {
   for (const el of document.querySelectorAll('#results .r-page')) el.hidden = all ? false : +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
   marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln'));
+  fitRows($('r-boardbox'));
   drawResultsChart();
 }
 
@@ -3314,7 +3313,7 @@ function demoTimeline(e) {
     const k = (i * 7 + 3) % 10;
     return [n.time, rough ? [1, 2 / 3, 1 / 3, 0, 0, 2 / 3, 1, 0, 1 / 3, 2 / 3][k] : k === 4 ? 2 / 3 : 1];
   });
-  return { length: chart.length, noteTimes: chart.notes.map(n => n.time), events };
+  return { length: chart.length, noteTimes: chart.notes.map(n => n.time), events, ghosts: [chart.length * 0.18, chart.length * 0.52, chart.length * 0.53] };
 }
 
 // ---- frame loop ----

@@ -69,6 +69,7 @@ export class Game {
     this.accSum = 0;
     this.deltas = [];         // signed hit offsets in seconds (+ = late), in hit order
     this.events = [];         // [note time, accuracy weight] per judged note (the results' score chart)
+    this.ghostTimes = [];     // song times of the ghost taps (stray presses), for the same chart
     // Everything that changed the outcome, in order: [songTime, code], code = lane (press), lane + 8 (release) or -1
     // (an update that judged something or ended the song). Replaying it gives the same results (replay.js).
     this.log = [];
@@ -154,6 +155,7 @@ export class Game {
       const early = this.judgedCount === 0 && first && t < first.time - this.reach;
       if (this.notesLeft > 0 && !early) {
         this.strays++; this.combo = 0;
+        this.ghostTimes.push(t);
         this.synth.playStray?.(lane);
         if (this.suddenDeath) this._fail();
       }
@@ -331,7 +333,7 @@ export class Game {
       accuracy: this.accuracy, grade: this.grade, ghosts: this.strays,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
       deltas: this.deltas.slice(), failed: this.failed,
-      timeline: { length: this.chart.length, noteTimes: this.chart.notes.map(n => n.time), events: this.events.slice() },
+      timeline: { length: this.chart.length, noteTimes: this.chart.notes.map(n => n.time), events: this.events.slice(), ghosts: this.ghostTimes.slice() },
     };
   }
 }

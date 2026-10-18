@@ -40,7 +40,7 @@ export function textWidth(str, bold = false) {
   for (const ch of str) w += glyph(ch, bold).w + 1;
   return Math.max(0, w - 1);
 }
-function paintText(c, str, x, y, color, bold) {
+export function paintText(c, str, x, y, color, bold) {
   c.fillStyle = color;
   for (const ch of str) {
     const g = glyph(ch, bold), up = g.up || 0;
