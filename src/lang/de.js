@@ -102,7 +102,6 @@ export const de = {
   'Your runs are hidden from leaderboards': 'Deine Durchgänge sind in den Bestenlisten verborgen',
 
   // ---- leaderboards ----
-  'World': 'Welt',
   'Local': 'Lokal',
   'Sign in for world ranks': 'Anmelden für Weltranglisten',
   'World rank…': 'Weltrang…',
@@ -157,6 +156,9 @@ export const de = {
   'Length': 'Länge',
   'Modifiers': 'Modifikatoren',
   'Mode': 'Modus',
+  'Chart': 'Verlauf',
+  'Bars: notes · Line: accuracy · Ticks: misses': 'Balken: Noten · Linie: Genauigkeit · Striche: Fehler',
+  'Score chart: accuracy over the song, with the note density': 'Verlauf: Genauigkeit über den Song, mit der Notendichte',
   'Compact view': 'Kompaktansicht',
   'Style': 'Stil',
   'Visuals': 'Optik',
@@ -303,7 +305,6 @@ export const de = {
   'Next song': 'Nächster Song',
   'Max combo': 'Max. Combo',
   'Ghost hits': 'Fehltipps',
-  'Timing': 'Timing',
   'Early ◄ timing ► Late': 'Früh ◄ Timing ► Spät',
   'Run not saved': 'Durchgang nicht gespeichert',
   'Sudden death: run not saved': 'Sudden Death: Durchgang nicht gespeichert',

@@ -11,6 +11,7 @@ import { Game } from './game.js';
 import { planBot, LADDER } from './bot.js';
 import { createAutoplay } from './autoplay.js';
 import { Renderer, INK } from './render.js';
+import { scoreSeries, drawScoreChart } from './scorechart.js';
 import { Input, KEY_LABELS, eventAudioTime } from './input.js';
 import { encodeSong, decodeShare } from './share.js';
 import { measureChartAsync } from './bot.js';
@@ -264,7 +265,7 @@ function showImei() {
   showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + (BUILD.number ? 'Build ' + BUILD.number + '\n' : '') +
     buildLine(BUILD, false));
   $('gag-link').hidden = false;
-  setSprite($('gag-art'), SPRITES.avatar, 2);
+  setSprite($('gag-art'), SPRITES.avatar, lcdWidth() >= SEL_WIDE_PX ? 4 : 2);
   $('gag-art').hidden = false;
   $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
   gagTimer = setTimeout(hideGag, 8000);
@@ -1435,7 +1436,8 @@ function renderDpPanel() {
   if (!tabs) dpTab = 'local';
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
-  $('sd-best').hidden = dpTab !== 'world'; // locally the top run is the best run
+  const rec = scores.get(e.id, e.chart);
+  $('sd-best').hidden = dpTab !== 'world' || !(rec && rec.best); // locally the top run is the best run; nothing to show for an unplayed song
   if (!$('sd-best').hidden) marqueeAll($('sd-best').querySelectorAll('.ln')); // a narrow pane scrolls the row instead of cutting it off
   box.textContent = '';
   if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
@@ -1965,8 +1967,10 @@ game.onFinish = r => {
   best.hidden = true;
   $('r-world').hidden = true;
   worldToken++;
-  paintWorld(null);
   topRuns = { runs: [], rank: null };
+  resultsSong = null;
+  resultsBoard = boardTabs() ? 'world' : 'local'; // signed in: the world board first, the toggle switches to the local one
+  resultsTimeline = r.timeline || null;
   if (demo) {
     // demo runs are never saved and show no best/rank line
   } else if (r.failed) {
@@ -1979,16 +1983,18 @@ game.onFinish = r => {
       replay: game.log ? encodeLog(game.log) : undefined, rules: RULES, loadout: run.modsUsed, // no log: ?demo=results
       rtttl: run.entry.id.startsWith('custom:') ? run.entry.rtttl : undefined,
     }) : null;
+    resultsSong = { id: run.entry.id, diff: run.diff };
     showWorldRank(run.entry.id, run.diff, runId, rec.isNewBest, r.score);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
     topRuns = { runs: scores.get(run.entry.id, run.diff)?.top || [], rank: rec.rank };
   }
-  renderTopRuns();
+  renderBoard();
   renderHistogram(r.deltas);
   setResultsPage(0);
   setState('results', 'results');
+  drawResultsChart(); // after the screen is shown: the canvas is measured
 };
 
 // The results screen's world line. A new best goes up right away and its rank comes back with the same request; any
@@ -1999,7 +2005,8 @@ let worldRefresh = null; // repaints the "World #n of m" line when a newer snaps
 // The World page: the top ten (from the answer that ranked the run, else the leaderboard snapshot), then the players around the player's rank (they came
 // back with the sync that ranked the run). Nothing here makes a request of its own.
 function paintWorld(songId, diff, token = worldToken) {
-  const ol = $('r-world-list'), msg = $('r-world-empty');
+  if (resultsBoard !== 'world') return;
+  const ol = $('r-top'), msg = $('r-top-empty');
   ol.textContent = '';
   const say = text => { msg.hidden = !text; msg.textContent = text || ''; };
   if (!songId || !cloud.available()) return say(tr('Run not saved'));
@@ -2012,7 +2019,7 @@ function paintWorld(songId, diff, token = worldToken) {
   };
   const near = cloud.rankNear(songId, diff) || [];
   const paint = top => {
-    if (token !== worldToken) return;
+    if (token !== worldToken || resultsBoard !== 'world') return;
     ol.textContent = '';
     for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
@@ -2061,8 +2068,27 @@ async function showWorldRank(songId, diff, runId, isNewBest, score) {
 }
 
 let resultsPage = 0, topRuns = { runs: [], rank: null };
+let resultsBoard = 'local', resultsSong = null, resultsTimeline = null;
+// Signed-in players can switch the one leaderboard between Global and Local.
+const boardTabs = () => cloud.available() && cloud.signedIn();
+function renderBoard() {
+  const tabs = boardTabs();
+  if (!tabs) resultsBoard = 'local';
+  $('r-board-tabs').hidden = !tabs;
+  for (const b of $('r-board-tabs').querySelectorAll('button')) { const on = b.dataset.board === resultsBoard; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
+  if (resultsBoard === 'world') paintWorld(resultsSong && resultsSong.id, resultsSong && resultsSong.diff);
+  else renderTopRuns();
+  marqueeAll($('r-top').querySelectorAll('.ln'));
+}
+function setResultsBoard(b) { resultsBoard = b; renderBoard(); }
+function drawResultsChart() {
+  const cv = $('r-chart');
+  if (!resultsTimeline || !cv.parentElement.clientWidth) return;
+  drawScoreChart(cv, scoreSeries(resultsTimeline, Math.max(16, Math.min(80, Math.floor(cv.parentElement.clientWidth / unit / 5)))), unit);
+}
 function renderTopRuns() {
   const ol = $('r-top');
+  $('r-top-empty').textContent = tr('Run not saved');
   ol.textContent = '';
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
@@ -2073,15 +2099,16 @@ function renderTopRuns() {
   $('r-top-empty').hidden = topRuns.runs.length > 0;
 }
 // The World page needs an account; signed out, it isn't offered.
-const resultsPages = () => document.querySelectorAll('#r-tabs button').length - (cloud.available() && cloud.signedIn() ? 0 : 1);
+const resultsPages = () => document.querySelectorAll('#r-tabs button').length;
 // Wide LCD: every page is a panel of one screen (the World list only when signed in), so there is nothing to page through.
 const resultsAll = () => lcdWidth() >= SEL_WIDE_PX;
 function setResultsPage(n) {
   resultsPage = Math.max(0, Math.min(resultsPages() - 1, n));
-  const all = resultsAll(), world = cloud.available() && cloud.signedIn();
-  for (const el of document.querySelectorAll('#results .r-page')) el.hidden = all ? el.dataset.page === '4' && !world : +el.dataset.page !== resultsPage;
+  const all = resultsAll();
+  for (const el of document.querySelectorAll('#results .r-page')) el.hidden = all ? false : +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
   marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln'));
+  drawResultsChart();
 }
 
 function stepResultsPage(step) {
@@ -2936,6 +2963,7 @@ function wire() {
       if (document.activeElement && document.activeElement.closest('#r-tabs')) focusDefault(screens.results);
     };
   }
+  $('r-board-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.board !== resultsBoard) { synth.keyClick(); setResultsBoard(b.dataset.board); } });
   $('r-prev').onclick = () => stepResultsPage(-1);
   $('r-next').onclick = () => stepResultsPage(1);
   for (const t of document.querySelectorAll('#dp-tabs button')) t.onclick = () => setDpTab(t.dataset.tab);
@@ -3244,7 +3272,7 @@ function demo(kind) {
     const demoFc = kind === 'fc';
     run = { entry: selectedEntry(), diff: selectedEntry().chart };
     game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A', ghosts: demoFc ? 0 : 3,
-      fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01] });
+      fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01], timeline: demoTimeline(selectedEntry()) });
   } else if (kind === 'play' || kind === 'pause') {
     const e = selectedEntry();
     const chart = generateChart(e.song, { difficulty: e.chart });
@@ -3276,6 +3304,17 @@ function demo(kind) {
     if (kind === 'pause') { state = 'paused'; show('paused'); } else setState('playing', null);
     input.enabled = false;
   }
+}
+
+// A fixed, plausible run over the entry's own chart (fixture for ?demo=results: strong start, a rough patch in the middle).
+function demoTimeline(e) {
+  const chart = generateChart(e.song, { difficulty: e.chart });
+  const events = chart.notes.map((n, i) => {
+    const p = n.time / chart.length, rough = p > 0.45 && p < 0.6;
+    const k = (i * 7 + 3) % 10;
+    return [n.time, rough ? [1, 2 / 3, 1 / 3, 0, 0, 2 / 3, 1, 0, 1 / 3, 2 / 3][k] : k === 4 ? 2 / 3 : 1];
+  });
+  return { length: chart.length, noteTimes: chart.notes.map(n => n.time), events };
 }
 
 // ---- frame loop ----

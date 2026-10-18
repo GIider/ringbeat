@@ -83,6 +83,7 @@ audio/canvas:
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
 | `settings.test.mjs` | Settings sanitising and persistence |
 | `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |
+| `scorechart.test.mjs` | The results' score chart series: density per slice, accuracy averages, miss counts |
 | `worldlines.test.mjs` | The World page rows: snapshot and near rows merged, score order, gap rows |
 | `seed.test.mjs` | The local leaderboard seeder's plan: skill pyramid, board tiers, random modifiers |
 | `docs.test.mjs` | Links between docs resolve; every source file, script and test is in [ARCHITECTURE.md](ARCHITECTURE.md); every npm script is in this file |

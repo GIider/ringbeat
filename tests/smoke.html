@@ -321,7 +321,7 @@ f.addEventListener('load', async () => {
     log(!/Since|counted from/.test($('stat-page').textContent), 'Time page has no "Since"/"counted from" hints');
     for (let i = 0; i < 5; i++) { key('ArrowRight'); await settle(); }
     log(/Online/.test($('stat-tab').textContent) && /Sign in|unavailable/.test($('stat-page').textContent), 'stats: Online page asks a signed-out player to sign in');
-    log(d.querySelectorAll('#r-tabs button').length === 5, 'results: Score / Stats / Timing / Top / World tabs');
+    log(d.querySelectorAll('#r-tabs button').length === 4, 'results: Score / Stats / Chart / Top tabs');
     log([...d.querySelectorAll('#r-tabs button:not(.sel)')].every(b => !b.getClientRects().length), 'results: only the current tab is shown');
     key('ArrowRight'); await settle();
     log(/Time/.test($('stat-tab').textContent), 'stats: right on the last page wraps to the first');

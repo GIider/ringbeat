@@ -376,9 +376,8 @@
             <span id="r-prev" class="arrow" aria-hidden="true">◄</span>
             <button type="button" class="sel" data-page="0" role="tab" tabindex="-1" data-i18n>Score</button>
             <button type="button" data-page="1" role="tab" tabindex="-1" data-i18n>Stats</button>
-            <button type="button" data-page="2" role="tab" tabindex="-1" data-i18n>Timing</button>
+            <button type="button" data-page="2" role="tab" tabindex="-1" data-i18n>Chart</button>
             <button type="button" data-page="3" role="tab" tabindex="-1" data-i18n>Top</button>
-            <button type="button" data-page="4" role="tab" tabindex="-1" data-i18n>World</button>
             <span id="r-next" class="arrow" aria-hidden="true">►</span>
           </div>
           <div class="r-pages">
@@ -401,17 +400,19 @@
               </table>
             </div>
             <div class="r-page" data-page="2" hidden>
+              <div class="r-chartbox"><canvas id="r-chart" role="img" aria-label="Score chart: accuracy over the song, with the note density" data-i18n-attr="aria-label"></canvas></div>
+              <div class="hint r-chart-key" data-i18n>Bars: notes · Line: accuracy · Ticks: misses</div>
               <div class="hist-label hint" data-i18n>Early ◄ timing ► Late</div>
               <div id="r-hist" class="hist"></div>
               <div id="r-offset" class="hint center"></div>
             </div>
             <div class="r-page" data-page="3" hidden>
+              <div id="r-board-tabs" class="seg dp-seg" role="tablist" hidden>
+                <button type="button" role="tab" tabindex="-1" data-board="world" data-i18n>Global</button>
+                <button type="button" role="tab" tabindex="-1" data-board="local" data-i18n>Local</button>
+              </div>
               <ol id="r-top" class="top"></ol>
               <div id="r-top-empty" class="hint center" hidden data-i18n>Run not saved</div>
-            </div>
-            <div class="r-page" data-page="4" hidden>
-              <ol id="r-world-list" class="top"></ol>
-              <div id="r-world-empty" class="hint center" hidden></div>
             </div>
             <!-- Wide LCDs only: every page is a panel, so this one has no tab -->
             <div class="r-page r-info" data-page="5" hidden>

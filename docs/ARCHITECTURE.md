@@ -55,6 +55,7 @@ src/
   -- drawing and UI --
   render.js       the LCD canvas: highway, two HUD rows, judgement chips, banners, hit effects, the Hidden mod; text
                   is drawn as pixel-font glyph sprites; visual only, never used for judging
+  scorechart.js   the results' score chart: note density bars + accuracy line + misses (pure series maths, canvas painter)
   pixelfont.js    5x7 glyph table + bold cut for the LCD font (scripts/build-font.mjs -> TrueType)
   pixelart.js     1-bit sprites (signal, battery, envelope, ringing phone, category icons) + SVG data-URI / CSS-mask helpers
   admin.js        dev-mode client for the Worker's /admin/* routes (the Admin menu app); the admin token stays in memory only
@@ -72,7 +73,7 @@ src/
   -- data and persistence --
   settings.js     persisted settings (ringbeat.v1): audio, display, controller bindings, mods, language, tutorial
                   progress, read messages, list view; change stamps for cloud sync (sharedSettings / applyShared)
-  scores.js       highscores store, top 5 per song and chart (injectable storage); combineScores shows other
+  scores.js       highscores store, top 10 per song and chart (injectable storage); combineScores shows other
                   devices' synced scores alongside
   stats.js        lifetime stats store (playtime, runs, notes, score, day streak, play-day list), derived grade
                   tally / top songs, one-time backfill from scores; combineStats pools synced devices
@@ -128,7 +129,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, boardsview, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, netbench, netsignal, replay, rtttl, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
+                  game, i18n, mods, modules, netbench, netsignal, replay, rtttl, scorechart, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```
@@ -185,7 +186,7 @@ defaults.
 | Key | Module | Holds |
 |---|---|---|
 | `ringbeat.v1` | `settings.js` | Settings: voice, language, volume, scroll time, toggles, calibration, list view, last song, tutorial progress, pad bindings, mods, read messages |
-| `ringbeat.scores.v1` | `scores.js` | Highscores: top 5 runs and play count per song id × chart |
+| `ringbeat.scores.v1` | `scores.js` | Highscores: top 10 runs and play count per song id × chart |
 | `ringbeat.stats.v1` | `stats.js` | Lifetime stats |
 | `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
 | `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |
