@@ -27,7 +27,7 @@ Use Node 22 (what CI runs). ES modules need an HTTP server: opening `index.html`
 | `npm test` | Node unit tests (`tests/*.test.mjs`), the headless Chromium smoke test and the cut-off text audit, run side by side (`scripts/test-all.mjs`) |
 | `npm run smoke` | Only the smoke test (`scripts/smoke.mjs` → `tests/smoke.html`) |
 | `npm run audit:overflow` | Only the cut-off text audit (`scripts/overflow-audit.mjs`): English and German at 320-900px, fails on text that is clipped without the marquee  (`AUDIT_JOBS=n` sets how many language/viewport runs go in parallel, default 4) |
-| `npm run coverage` | Node unit tests with `--experimental-test-coverage` |
+| `npm run coverage` | Node unit tests with `--experimental-test-coverage`. Browser-only modules (`main.js`, `render.js`, `nav.js`, `marquee.js`, `boards.js`, `charts.js`, `cameolayer.js`, `rowfmt.js`, `perfhud.js`) are not imported by the unit tests, so they are missing or low here and covered by `npm run smoke` instead |
 | `npm run build` | Stage the runtime files into `dist/`, version-stamped (see [RELEASING.md](RELEASING.md#the-dist-build)) |
 | `npm run bench` | Re-measure every built-in song with the bot ladder → `src/difficulty.json` (`-- --runs N`, default 30; see [SONGS.md](SONGS.md#difficulty-ratings)) |
 | `npm run bench:net` | Cloud request cost: `GET /boards` formats (raw / gzip / brotli size, decompress, parse) and a live API (encoding, wire vs decoded bytes, timings, 304s); `-- --url <api> --runs N --offline --live` (see [PERFORMANCE.md](PERFORMANCE.md#cloud-requests)) |
@@ -83,6 +83,7 @@ audio/canvas:
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
 | `settings.test.mjs` | Settings sanitising and persistence |
 | `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |
+| `domshims.test.mjs` | The thin browser-facing modules against fakes: swipe gestures, draggable overlay boxes, key/pointer input timing, the score chart painter, static translation |
 | `scorechart.test.mjs` | The results' score chart series: density per slice, accuracy averages, miss counts |
 | `worldlines.test.mjs` | The World page rows: snapshot and near rows merged, score order, gap rows |
 | `seed.test.mjs` | The local leaderboard seeder's plan: skill pyramid, board tiers, random modifiers |

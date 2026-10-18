@@ -1401,3 +1401,46 @@ test('the request log can be switched off: nothing is logged or drawn while off'
   assert.equal(log.enabled, true);
   assert.equal(made.length, 1); // the panel shows as soon as it is switched on
 });
+
+test('admin: every action hits its endpoint with the right body, and the row summaries cover the flags', async () => {
+  const sent = [];
+  const fetch = async (url, init) => {
+    sent.push([init.method, url.replace('https://api.test', ''), init.body ? JSON.parse(init.body) : null, init.headers.Authorization]);
+    const path = url.replace('https://api.test', '').split('?')[0];
+    if (path === '/admin/flagged') return new Response(JSON.stringify({ runs: [] }));
+    if (path === '/admin/runs') return new Response(JSON.stringify({ runs: [], counts: {}, versions: [] }));
+    if (path.startsWith('/admin/') && init.method === 'POST') return new Response(null, { status: 204 });
+    return new Response(JSON.stringify({ players: [], log: [] }));
+  };
+  const admin = createAdmin({ apiBase: 'https://api.test', fetch });
+  assert.equal(admin.unlocked(), false);
+  await admin.unlock('  secret ');
+  assert.equal(admin.unlocked(), true);
+  await admin.stats();
+  await admin.players();
+  await admin.runs('u1', { status: 'flagged', version: '3.0', offset: 20 });
+  await admin.runs('u1');
+  await admin.flagged();
+  for (const [fn, args] of [['deleteRun', ['r1']], ['deletePlayer', ['u1']], ['ban', ['u1', true]], ['hideRun', ['r1', true]], ['hidePlayer', ['u1', false]],
+    ['unflag', ['r1']], ['purgeExpired', []], ['purgeStuck', []], ['purgeOutdated', []], ['rebuild', []], ['verify', []]]) {
+    assert.equal(await admin[fn](...args), null, fn);
+  }
+  const posts = sent.filter(s => s[0] === 'POST').map(s => [s[1], s[2]]);
+  assert.deepEqual(posts, [
+    ['/admin/run/delete', { runId: 'r1' }], ['/admin/player/delete', { userId: 'u1' }], ['/admin/ban', { userId: 'u1', banned: true }],
+    ['/admin/hide', { runId: 'r1', hidden: true }], ['/admin/hide', { userId: 'u1', hidden: false }], ['/admin/unflag', { runId: 'r1' }],
+    ['/admin/purge', { what: 'expired' }], ['/admin/purge', { what: 'stuck' }], ['/admin/purge', { what: 'outdated' }],
+    ['/admin/rebuild', {}], ['/admin/verify', {}],
+  ]);
+  assert.ok(sent.every(s => s[3] === 'Bearer secret'), 'the trimmed token rides on every call');
+  assert.equal(sent.find(s => s[1].startsWith('/admin/runs?'))[1], '/admin/runs?user=u1&status=flagged&version=3.0&offset=20');
+  assert.ok(sent.some(s => s[1] === '/admin/runs?user=u1'), 'empty filters stay out of the query string');
+  admin.lock();
+  assert.equal(admin.unlocked(), false);
+  assert.equal(cycle(STATUSES, 'outdated'), '', 'the filter wraps around');
+  assert.equal(cycle(STATUSES, 'nope'), '', 'an unknown entry starts over');
+  assert.equal(playerLine({ name: 'Bo', hidden: true, runs: 2 }), 'Bo [hidden] · 2');
+  assert.equal(runLine({ song_id: 's', score: 5, flags: 'fast', hidden: 1, verified: 0, game_version: '3.0' }), 's · 5 · fast · hidden · pending · v3.0');
+  assert.equal(runLine({ song_id: 's', score: 5, verified: -1 }), 's · 5 · rejected');
+  assert.equal(logLine({ at: 0, action: 'ban', target: 'u', detail: 'why' }), '1970-01-01 00:00 ban u why');
+});

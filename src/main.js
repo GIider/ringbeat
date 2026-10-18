@@ -745,21 +745,18 @@ function renderList() {
     p.textContent = tr('No songs match this filter.');
     box.appendChild(p);
   }
+  // One parse of one string: the list has hundreds of rows and is rebuilt on every sort / category change.
+  let html = '';
   for (const e of list) {
-    const b = document.createElement('button');
-    b.className = 'song-row';
-    b.dataset.id = e.id;
-    b.setAttribute('role', 'option');
     const rec = scores.get(e.id);
     const best = rec && rec.best;
     const fav = isFavorite(e.id);
-    if (fav) b.classList.add('fav');
-    b.innerHTML =
+    html += `<button class="song-row${fav ? ' fav' : ''}" data-id="${esc(e.id)}" role="option">` +
       spriteHTML(categorySprite(e.category, fav), 'u', 'cat') +
       `<span class="t">${esc(e.title)}</span>` +
-      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span>`;
-    box.appendChild(b);
+      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span></button>`;
   }
+  if (html) box.insertAdjacentHTML('beforeend', html);
   renderAz();
   markSelected();
   queueThumb();
@@ -863,8 +860,11 @@ function revealRow(row) {
   const pad = Math.min(rr.height, lr.height / 4);
   const delta = rr.top < lr.top + pad ? rr.top - (lr.top + pad) : rr.bottom > lr.bottom - pad ? rr.bottom - (lr.bottom - pad) : 0;
   if (!delta) return;
-  if (Math.abs(delta) > lr.height * 0.6) list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
-  else list.scrollTo({ top: list.scrollTop + delta, behavior: still.matches ? 'auto' : 'smooth' });
+  if (Math.abs(delta) > lr.height * 0.6) {
+    list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
+    // Rows far from the viewport are not laid out (content-visibility), so the title could not be measured before the jump.
+    if (row.classList.contains('cur')) marquee(row.querySelector('.t'));
+  } else list.scrollTo({ top: list.scrollTop + delta, behavior: still.matches ? 'auto' : 'smooth' });
 }
 function openSelect() {
   sortFavs = null; // coming back to the list: favorites float to the top again

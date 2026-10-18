@@ -306,7 +306,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .hub-card.cur .n, .hub-card:focus .n { color: inherit; }
 @media (pointer: coarse) { .hub-card { min-height: 48px; } }
 .song-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 2px 6px;
-  min-height: 28px; cursor: pointer; color: var(--ink); contain: layout style; }
+  min-height: 28px; cursor: pointer; color: var(--ink); contain: layout style; content-visibility: auto; contain-intrinsic-block-size: auto 28px; }
 .song-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-row .b { flex: none; font-weight: 700; }
 .song-row .badge, .sel-info .badge, .sd-stats .badge { font-size: calc(var(--fs) * .6); padding: 0 2px; margin-left: 3px; vertical-align: middle; }

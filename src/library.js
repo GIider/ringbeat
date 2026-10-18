@@ -31,7 +31,8 @@ function derive(rtttl) {
   const song = parseRTTTL(rtttl);
   d = { song, chart: null };
   try { d.chart = generateChart(song); } catch { /* unplayable: makeEntry returns null */ }
-  if (derived.size > 256) derived.clear();
+  // Cap above the built-in count so a full rebuild never wipes its own memo; only custom songs push past it.
+  if (derived.size > SONGS.length + 64) derived.clear();
   derived.set(rtttl, d);
   return d;
 }
