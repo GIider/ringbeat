@@ -144,8 +144,8 @@ f.addEventListener('load', async () => {
     const nav = d.defaultView.navigator, getPads = nav.getGamepads;
     nav.getGamepads = () => [{ id: 'Test Pad', index: 0, buttons: [], axes: [0, 0], timestamp: 0 }];
     await waitFor(() => $('pad-status').textContent.includes('Test Pad'), 'controller detection');
-    d.querySelector('#set-tabs [data-tab=effects]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await settle();
-    log(!d.querySelector('[data-panel=controller]').hidden, 'controller connected: Effects -> Controller tab');
+    d.querySelector('#set-tabs [data-tab=developer]').click(); d.querySelector('#set-tabs button.sel').focus(); key('ArrowRight'); await settle();
+    log(!d.querySelector('[data-panel=controller]').hidden, 'controller connected: Developer -> Controller tab (the last one)');
     {
       // Vibration: nowhere on a desktop without rumble; under Controller with a rumble pad; under Effects on a phone
       const row = d.getElementById('pref-haptics').closest('label'), where = () => row.hidden ? 'hidden' : row.parentNode.dataset.panel || row.parentNode.id;
