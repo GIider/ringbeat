@@ -32,36 +32,41 @@ button { font: inherit; color: inherit; }
 /* ---------- play area: the 8-bit canvas lives on the LCD ---------- */
 #stage { display: block; margin: 0 auto; image-rendering: pixelated; touch-action: none; }
 
-/* ---------- the phone ---------- */
-#phone { position: fixed; z-index: 3; left: 50%; top: 2vh; width: 440px; height: 880px;
-  background: url(assets/phone.svg) center / 100% 100% no-repeat;
+/* ---------- the frame: a Nokia 3410-ish body around the LCD that runs off the bottom of the window (so the viewport cuts it
+   and the two soft keys). layout() zeroes --bz/--tp and drops .framed on small screens so the LCD is fullscreen ---------- */
+#phone { position: fixed; z-index: 3; left: 0; top: 0; width: 100vw; height: 100vh; --bz: 0px; --tp: 0px; --bb: 0px; --lh: 100vh;
+  background: linear-gradient(90deg, #1a2032, #2e3850 12%, #323c55 50%, #29324a 90%, #171c29);
+  border-radius: calc(var(--bz) * 3.2) calc(var(--bz) * 3.2) 0 0 / calc(var(--bz) * 3.6) calc(var(--bz) * 3.6) 0 0;
+  box-shadow: 0 calc(var(--bz) * .6) calc(var(--bz) * 2) #0008, inset 0 0 0 calc(var(--bz) / 9) #0006;
   transition: left .55s var(--ease), top .55s var(--ease), width .55s var(--ease), height .55s var(--ease), opacity .3s; }
 #phone.no-anim { transition: none; }
-body.compact #phone { background: none; }
-
-.keys .k { position: absolute; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 50%;
-  left: calc(var(--x) / 440 * 100%); top: calc(var(--y) / 880 * 100%);
-  width: calc(var(--w, 92) / 440 * 100%); height: calc(var(--h, 46) / 880 * 100%); transform: rotate(var(--r, 0deg));
-  -webkit-tap-highlight-color: transparent; }
-.keys .k:hover { background: radial-gradient(closest-side, #ffffff22, transparent); }
-.keys .k:active, .keys .k.down { background: radial-gradient(closest-side, #0006, #0002 80%, transparent); }
-.keys .k-soft { border-radius: 40%; }
-body.compact .keys { display: none; }
+#phone::before { content: ""; position: absolute; left: 50%; top: calc(var(--tp) * .38); width: calc(var(--tp) * 2); height: calc(var(--tp) * .2);
+  transform: translateX(-50%); border-radius: 99px; background: #0a0d16; box-shadow: inset 0 1px 2px #000a, 0 1px 0 #fff2; }
+/* the two soft keys under the LCD: only their tops show, the window edge cuts them off */
+.navkey { position: absolute; top: calc(var(--tp) + var(--lh) + var(--bz) * .8); width: 30%; height: calc(var(--bz) * 4); padding: 0; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  border-radius: 99px / 70%; background: linear-gradient(180deg, #4a5878, #2a3350 55%, #1b2238);
+  box-shadow: inset 0 1px 0 #fff3, 0 2px 4px #0008; }
+.navkey:active { filter: brightness(.7); }
+.navkey.l { left: calc(var(--bz) * 1.2); transform: rotate(-4deg); }
+.navkey.r { right: calc(var(--bz) * 1.2); transform: rotate(4deg); }
+#phone:not(.framed)::before, #phone:not(.framed) .navkey { display: none; }
 
 /* ---------- LCD ---------- */
-.lcd { position: absolute; left: 12.727%; top: 11.136%; width: 74.545%; height: 44.091%; border-radius: 3.2% / 2.6%;
+.lcd { position: absolute; left: var(--bz); top: var(--tp); right: var(--bz); bottom: var(--bb); border-radius: calc(var(--bz) * .6);
   display: flex; flex-direction: column; overflow: hidden; color: var(--ink); line-height: 1.2; isolation: isolate;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: radial-gradient(ellipse at 40% 25%, var(--lcd-hi), var(--lcd) 55%, var(--lcd-lo));
   box-shadow: inset 0 0 0 2px #0004, inset 0 6px 16px #0005; }
 .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
   background: repeating-linear-gradient(0deg, #0000 0 calc(var(--u) - 0.5px), #2a3a1a10 calc(var(--u) - 0.5px) var(--u)),
               repeating-linear-gradient(90deg, #0000 0 calc(var(--u) - 0.5px), #2a3a1a10 calc(var(--u) - 0.5px) var(--u)); }
-body.compact .lcd { left: 0; top: 0; width: 100%; height: 100%; border-radius: 0;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 
 .statusbar { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 4px; min-height: 34px; }
-.st-title { flex: 1; text-align: center; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.screens { position: relative; flex: 1; min-height: 0; }
+/* the title (with the picker's ◄ ► right beside it) sits in the middle; signal and battery take the two ends */
+.st-title { flex: 0 1 auto; min-width: 0; text-align: center; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#st-signal { margin-right: auto; }
+#st-battery { margin-left: auto; }
+.screens { position: relative; flex: 1; min-height: 0; container-type: inline-size; }
 .screen { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 10px 6px;
   scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
 .screen[hidden], .menu-only[hidden], [hidden] { display: none !important; }
@@ -91,7 +96,10 @@ h2 { margin: 2px 0 6px; font-size: var(--fs); font-weight: 700; }
 .gl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 4px; margin-bottom: 8px; }
 .gl-cell { background: transparent; border: var(--u) solid var(--ink-dim); overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; min-width: 0; }
 .gl-ch { display: inline-flex; gap: 6px; }
-.gl-cell:focus { background: var(--ink); color: var(--lcd); outline: none; }
+/* the focused cell is marked by a frame drawn outside it, so the icon itself is never covered */
+.gl-cell { position: relative; overflow: visible; }
+#glyphs .gl-cell:focus, #glyphs .menu > .gl-cell:focus { background: transparent; color: inherit; outline: none; animation: none; }
+.gl-cell:focus::after { content: ""; position: absolute; inset: calc(var(--u) * -3); border: calc(var(--u) * 2) solid var(--ink); pointer-events: none; }
 #m-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ad-log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .center { text-align: center; }
@@ -197,7 +205,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .stat-page > :first-child { margin-top: auto; }
 .stat-page > :last-child { margin-bottom: auto; }
 .stat-page table { margin: 4px auto; }
-.st-big { font-size: calc(var(--fs) * 2); font-weight: 700; text-align: center; line-height: 1.1; white-space: nowrap; }
+.st-big { font-size: calc(var(--fs) * 2); font-weight: 700; text-align: center; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-fav, .st-row { display: flex; gap: 6px; min-width: 0; white-space: nowrap; }
 .st-fav { justify-content: center; }
 .st-fav .ic, .st-fav .n, .st-row .rk, .st-row .n { flex: none; }
@@ -239,7 +247,9 @@ textarea::placeholder { color: var(--ink-dim); }
 /* ---------- song select ---------- */
 #select { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
-.sel-head .sel-cat { flex: 0 1 auto; }
+.sel-head { justify-content: space-between; }
+.sel-head .sel-cat { flex: 1 1 auto; min-width: 0; }
+.sel-head .chip { display: inline-flex; align-items: center; gap: 6px; flex: none; background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusbar .arrow { flex: none; font: inherit; color: inherit; background: none; border: 0; padding: 0 4px; cursor: pointer; }
 .sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
 .seg { display: flex; gap: 2px; }
@@ -259,12 +269,13 @@ textarea::placeholder { color: var(--ink-dim); }
 .dp-tabs .sel { background: var(--ink); color: var(--lcd); font-weight: 700; padding: 0 4px; }
 .dp-line, .ln { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dp-line { flex: 1; }
-#songscreen .menu > button { flex-wrap: nowrap; }
 .dp-panel { min-height: 3.2em; }
+.sel-detail .dp-panel { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+.vscroll { animation: vmq var(--dur, 4s) ease-in-out infinite alternate; }
+@keyframes vmq { 0%, 15% { transform: translateY(0); } 85%, 100% { transform: translateY(var(--dy)); } }
+.sel-detail .top { margin: 0; }
 .dp-seg { justify-content: center; margin: 2px 0; }
 .sel-sub { display: flex; justify-content: center; align-items: center; color: var(--ink-dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; }
-.sel-sub .chip { flex: none; }
-.sel-sub #sel-sort { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .song-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 .song-list { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; border-top: var(--u) solid var(--ink); border-bottom: var(--u) solid var(--ink);
   scrollbar-width: none; }
@@ -297,12 +308,58 @@ textarea::placeholder { color: var(--ink-dim); }
   min-height: 28px; cursor: pointer; color: var(--ink); contain: layout style; }
 .song-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-row .b { flex: none; font-weight: 700; }
+.song-row .badge, .sel-info .badge, .sd-stats .badge { font-size: calc(var(--fs) * .6); padding: 0 2px; margin-left: 3px; vertical-align: middle; }
 .song-row.cur { background: var(--ink); color: var(--lcd); }
 .song-row.cur .spr.cat { cursor: pointer; }
 .song-row:focus { outline: none; }
 .song-row:hover:not(.cur) { box-shadow: inset 0 0 0 var(--u) var(--ink); }
 .song-list .empty { margin: 12px; text-align: center; }
 .sel-info { padding: 3px 2px 4px; min-height: 2.4em; }
+/* Picker body: list (+ details beside it on wide LCDs; on narrow ones the details are a view of their own, via Select) */
+.sel-main { flex: 1; min-height: 0; display: flex; }
+.sel-left { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.sel-detail { display: none; flex: none; flex-direction: column; width: 46%; min-height: 0; overflow: hidden; padding: 2px 8px 4px; border-left: var(--u) solid var(--ink); }
+.sd-head { display: flex; align-items: center; gap: 8px; }
+.sel-detail h2 { flex: 1; min-width: 0; margin: 2px 0 0; font-size: calc(var(--fs) * 1.4); line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-fav { position: relative; line-height: 0; flex: none; background: none; border: 0; padding: 2px; cursor: pointer; color: inherit; opacity: .3; }
+.sd-fav.on, .sd-fav.beat, .sd-fav.playing { opacity: 1; }
+.sd-fav.playing > .spr { visibility: hidden; }
+.sd-sub { display: flex; align-items: baseline; gap: 10px; min-width: 0; white-space: nowrap; }
+.sd-sub .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#select.detail .sel-left { display: none; }
+#select.detail .sel-detail { display: flex; flex: 1; width: auto; border-left: 0; }
+.sd-stars { flex: none; }
+.sd-mods { position: relative; }
+/* the modifier explanation: a bubble over the board that fades by itself (JS removes .show after the fade) */
+.sd-hint { position: absolute; left: 0; right: 0; top: 100%; z-index: 6; margin: 2px 0 0; padding: 3px 8px; background: var(--ink); color: var(--lcd); border-radius: 3px;
+  white-space: normal; text-align: left; pointer-events: none; opacity: 0; }
+.sd-hint.show { animation: hint-fade 4.5s ease-out forwards; }
+@keyframes hint-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sd-hint.show { animation: none; opacity: 1; } }
+.sd-stats { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 0 12px; margin: 4px 0; align-items: center; }
+.sd-stats dt { color: var(--ink-dim); }
+.sd-stats dd { margin: 0; font-weight: 700; }
+.sd-modhead { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; border-top: var(--u) dotted var(--ink); padding-top: 4px; }
+.sd-modhead .chip { background: none; border: 0; color: inherit; cursor: pointer; }
+.sd-modhead .chip.on { font-weight: 700; text-decoration: underline; }
+.sd-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.sd-chips button { flex: 1 0 17%; display: flex; flex-direction: column; align-items: center; background: none; color: inherit; border: var(--u) solid var(--ink); padding: 2px 0 1px; cursor: pointer; }
+.sd-chips button b { line-height: 1.1; }
+.sd-chips button span { font-size: calc(var(--fs) * .6); color: var(--ink-dim); }
+.sd-chips button.on { background: var(--ink); color: var(--lcd); }
+.sd-chips button.cur { box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--lcd), 0 0 0 var(--u) var(--ink); }
+.sd-chips button.on span { color: inherit; }
+.sel-tabs { display: flex; flex: 1; min-width: 0; gap: 4px; overflow-x: auto; scrollbar-width: none; white-space: nowrap; scroll-behavior: smooth; }
+/* half-width spacers so the current tab can always sit in the middle while the others scroll around it */
+.sel-tabs::before, .sel-tabs::after { content: ""; flex: 0 0 50%; }
+.sel-tabs::-webkit-scrollbar { display: none; }
+.sel-tabs button { background: none; border: 0; color: inherit; padding: 0 6px; cursor: pointer; flex: none; }
+.sel-tabs button.sel { background: var(--ink); color: var(--lcd); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .sel-tabs { scroll-behavior: auto; } }
+@container (min-width: 800px) {
+  .sel-detail { display: flex; }
+  #select .sel-info { display: none; }
+}
 .sel-info > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sel-info .stars-bar { margin-right: 6px; }
 .badge { display: inline-block; padding: 0 3px; margin-left: 4px; border: var(--u) solid currentColor; font-size: var(--fs); line-height: 1; }
@@ -322,10 +379,13 @@ textarea::placeholder { color: var(--ink-dim); }
 #dp-cover { margin: 0 auto 2px; }
 .d-best { min-height: 1.2em; }
 .top { margin: 0 0 6px; padding-left: 1.6em; }
-.top li { margin: 1px 0; padding: 0 3px 0 calc(3px + var(--u)); }
+.top li { margin: 0; height: calc(var(--fs) * 1.35); overflow: hidden; padding: 0 3px 0 calc(3px + var(--u)); } /* every row the same height; long ones run as a marquee */
 
 /* ---------- now playing ---------- */
 .np { padding: 0; overflow: hidden; }
+/* Pause: a modal box over the dimmed playfield */
+#pause { display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--lcd) 72%, transparent); z-index: 4; }
+#pause .menu { min-width: min(70%, calc(var(--fs) * 14)); padding: 10px; background: var(--lcd); border: calc(var(--u) * 2) solid var(--ink); box-shadow: calc(var(--u) * 2) calc(var(--u) * 2) 0 var(--ink); }
 .np-count { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column;
   align-items: center; gap: calc(var(--u) * 2); background: var(--lcd); border: var(--u) solid var(--ink); padding: calc(var(--u) * 3) calc(var(--u) * 6);
   pointer-events: none; white-space: nowrap; font-weight: 700; -webkit-font-smoothing: auto; font-smooth: auto; }
@@ -398,45 +458,37 @@ td + td { text-align: right; font-weight: 700; }
   background: var(--lcd); color: var(--ink); border: var(--u) solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
   padding: 8px 12px; text-align: center; font-weight: 700; pointer-events: none; }
 .toast.on-lcd { bottom: auto; transform: translate(-50%, -50%); }
-/* Favorite effect, centred on the selected row's genre icon (#fav-fx is a zero-size anchor; every part is centred on it).
-   Added: the heart grows out of the icon and floats away. Removed: the heart appears, jitters, then cracks into two halves
-   and pixel shards (the 0.26s delay matches FX_CRACK_MS in main.js). Only translate/scale/rotate/opacity are animated. */
-#fav-fx { position: fixed; z-index: 20; width: 0; height: 0; color: var(--ink); line-height: 0; pointer-events: none; }
-#fav-fx[hidden] { display: none; }
-.fx { position: absolute; left: 0; top: 0; }
+/* Heart control animations (see playHeart in main.js), inside the element that holds the resting heart.
+   Added: the heart beats three times. Removed: it beats once, then cracks into two halves and pixel shards (the .52s delay
+   matches HEART_CRACK_MS). Only translate/scale/rotate/opacity are animated. */
+.fx { position: absolute; left: 50%; top: 50%; color: var(--ink); line-height: 0; pointer-events: none; }
 .fx > span, .fx > i { position: absolute; left: 0; top: 0; }
-.fx .spr { translate: -50% -50%; /* LCD-coloured outline so the ink heart reads over the dark selected row */
-  filter: drop-shadow(1px 0 0 var(--lcd)) drop-shadow(-1px 0 0 var(--lcd)) drop-shadow(0 1px 0 var(--lcd)) drop-shadow(0 -1px 0 var(--lcd)); }
-.fx-heart { animation: heart-float .95s cubic-bezier(.2, .7, .3, 1) both; }
-.fx-whole { animation: heart-appear .26s ease-out both; }
-.fx-half { animation: .6s cubic-bezier(.3, 0, .8, .6) .26s both; opacity: 0; }
+.fx .spr { translate: -50% -50%; }
+.beat > .spr { animation: heart-beat3 .95s ease-out both; }
+.fx-whole { animation: heart-beat1 .52s ease-out both; }
+.fx-half { animation: .6s cubic-bezier(.3, 0, .8, .6) .52s both; opacity: 0; }
 .fx-half.l { animation-name: half-l; }
 .fx-half.r { animation-name: half-r; }
-.fx-shard { width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; background: currentColor; opacity: 0; animation: shard .5s steps(5) .26s both; animation-delay: calc(.26s + var(--n) * .01s); }
+.fx-shard { width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; background: currentColor; opacity: 0; animation: shard .5s steps(5) .52s both; animation-delay: calc(.52s + var(--n) * .01s); }
 .gl-pop { display: inline-block; position: relative; line-height: 0; }
-.gl-pop > .fx { left: 50%; top: 50%; }
 .gl-pop.playing > .spr { visibility: hidden; }
-@keyframes heart-float {
-  0% { scale: .3; translate: 0 0; rotate: 0deg; opacity: 1; }
-  18% { scale: 1.2; }
-  30% { scale: 1; translate: 0 -4px; rotate: -6deg; opacity: 1; }
-  65% { translate: 5px -22px; rotate: 7deg; opacity: .9; }
-  100% { scale: .85; translate: -3px -40px; rotate: -4deg; opacity: 0; }
+@keyframes heart-beat3 {
+  0%, 18%, 43%, 70%, 100% { scale: 1; }
+  8%, 33%, 58% { scale: 1.3; }
 }
-@keyframes heart-appear {
-  0% { scale: .4; translate: 0 0; opacity: 1; }
-  45% { scale: 1.15; }
-  60% { scale: 1; translate: 0 0; }
-  70% { translate: -2px 1px; }
-  80% { translate: 2px -1px; }
-  90% { translate: -1px 0; opacity: 1; }
-  100% { scale: 1; translate: 0 0; opacity: 0; }
+@keyframes heart-beat1 {
+  0%, 60%, 100% { scale: 1; }
+  25% { scale: 1.3; }
+  80% { scale: 1.18; }
+  98% { opacity: 1; }
+  100% { opacity: 0; }
 }
 @keyframes half-l { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: -16px 26px; rotate: -32deg; } }
 @keyframes half-r { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: 16px 30px; rotate: 38deg; } }
 @keyframes shard { 0% { opacity: 1; translate: 0 0; rotate: 0deg; } 100% { opacity: 0; translate: var(--dx) calc(var(--dy) + 14px); rotate: var(--rot); } }
 @media (prefers-reduced-motion: reduce) {
-  .fx-heart, .fx-half.l, .fx-half.r { animation: fx-fade .6s ease-out both; }
+  .beat > .spr { animation: none; }
+  .fx-half.l, .fx-half.r { animation: fx-fade .6s ease-out both; }
   .fx-whole, .fx-shard { display: none; }
 }
 @keyframes fx-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
@@ -467,7 +519,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   #phone { transition: none !important; }
   .blink, .ld-bars i { animation: none; }
   .scrolls { text-overflow: ellipsis; }
-  .scrolls .mq { animation: none; }
+  .scrolls .mq, .vscroll { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
   .grade.stamp, .menu > button:focus, .menu > .hl, #st-signal.blip { animation: none; }
   .st-title.hello, .mm-body.slide-up, .mm-body.slide-down, .gbar i, .mixbar { animation: none; }
@@ -492,9 +544,11 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .lcd.flash { filter: invert(1); }
 /* the sign-in intro paints the whole LCD, behind the status bar and the screens */
 .welcome-fx { position: absolute; left: 0; top: 0; z-index: -1; color: var(--ink); pointer-events: none; image-rendering: pixelated; }
-.gag { position: absolute; inset: 0; z-index: 4; background: var(--lcd); display: flex; flex-direction: column;
+.gag { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; text-align: center; pointer-events: none; padding: 8px; }
 .gag-title { font-weight: 700; }
+/* wide LCDs: the IMEI / gag panels scale up with the screen */
+@container (min-width: 800px) { .gag { font-size: calc(var(--fs) * 1.6); gap: .4em; } .gag-bar i { width: 18px; height: 26px; } }
 .gag-text { white-space: pre-line; }
 .gag-link { color: var(--ink); text-decoration: underline; }
 .gag-art[hidden] { display: none; } /* .spr's inline-block would override [hidden] */
@@ -510,8 +564,17 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   font: 11px/1.3 ui-monospace, monospace; color: #9cf; background: rgba(0, 0, 0, .7); pointer-events: none;
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .top li.gap { list-style: none; }
+/* leaderboard rows: #rank, score, name (marquee), pills */
+.top:has(.brow) { padding-left: 0; list-style: none; }
+.top li.brow { display: flex; align-items: center; gap: .3em; list-style: none; text-align: left; }
+.brow .rk { flex: none; width: 2.2em; font-weight: 700; }
+.brow .sc { flex: none; min-width: 3.6em; }
+.brow .nm { flex: 1; min-width: 0; }
+.brow .pl { flex: none; width: 3.2em; } /* FC / mods: just wide enough for one pill, longer ones run as a marquee */
+.top li.brow.gap .rk { width: auto; }
 .top li.cur { background: color-mix(in srgb, var(--ink) 16%, transparent); box-shadow: inset 3px 0 0 var(--ink); font-weight: 700; }
-.top .badge { margin-top: 1px; }
+.top .badge { margin: 0 0 0 3px; padding: 0 2px; font-size: calc(var(--fs) * .6); vertical-align: middle; }
+.top .badge.mod { font-size: calc(var(--fs) * .6); }
 .nm.dev { color: var(--ink); background: linear-gradient(90deg, var(--ink), var(--ink-dim), #5f7f2f, var(--ink-dim), var(--ink)) 0 0 / 200% 100%;
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: dev-wave 3s steps(8) infinite; }
 @keyframes dev-wave { to { background-position: -200% 0; } }
@@ -522,17 +585,11 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .bar { height: 8px; margin: 4px 0; border: var(--u) solid var(--ink); }
 .bar > i { display: block; height: 100%; width: 0; background: var(--ink); }
 
-/* ---------- touch / compact ---------- */
-.comp-pad { display: none; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 4px 0; }
+/* ---------- touch ---------- */
+.comp-pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 4px 0; }
 .comp-pad button { min-height: 32px; padding: 0; border: var(--u) solid var(--ink); background: none; }
 .comp-pad button:active { background: var(--ink); color: var(--lcd); }
-body.compact .comp-pad { display: grid; }
-body.compact .comp-help.keys-only { display: none; }
-@media (pointer: coarse) {
-  .comp-pad { display: grid; }
-  .comp-help.keys-only { display: none; }
-}
-body.compact input[type=range] { height: 28px; }
+@media (pointer: coarse) { .comp-help.keys-only { display: none; } }
 @media (pointer: coarse) { input[type=range] { height: 28px; } }
 
 /* Larger touch targets (>= 44px) on coarse pointers */
@@ -541,3 +598,70 @@ body.compact input[type=range] { height: 28px; }
   .seg button { min-height: 44px; padding: 0 6px; }
   #set-tabs .arrow, #r-tabs .arrow { padding: 10px 14px; }
 }
+
+/* results: score chart, board */
+.r-chartbox { position: relative; width: 100%; height: calc(var(--fs) * 5); flex: none; }
+#r-chart { display: block; image-rendering: pixelated; }
+.r-boardbox { flex: 1; min-height: 0; overflow: hidden; width: 100%; }
+.r-page[data-page="3"] { align-items: stretch; }
+/* Results on a wide LCD: nothing scrolls. Score | stats on top; the chart (and timing) and the one leaderboard share what is left. */
+@container (min-width: 800px) {
+  #r-tabs { display: none; }
+  .r-pages { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; overflow: hidden; }
+  .r-page { height: auto; min-height: 0; overflow: hidden; border: var(--u) solid var(--ink); border-radius: 4px; padding: 6px 8px; justify-content: center; }
+  .r-page[data-page="0"] { grid-column: 1; grid-row: 1; }
+  .r-page[data-page="1"] { grid-column: 2; grid-row: 1; }
+  .r-page[data-page="2"] { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+  .r-page[data-page="3"] { grid-column: 2; grid-row: 2; justify-content: flex-start; }
+  .r-page .grade { font-size: calc(var(--fs) * 3.5); }
+  .r-page .big { font-size: calc(var(--fs) * 1.8); }
+  .r-chartbox { flex: 1; height: auto; min-height: calc(var(--fs) * 3); }
+  .menu.r-foot { flex-direction: row; gap: 8px; }
+  .menu.r-foot > button { flex: 1; justify-content: center; text-align: center; border: var(--u) solid var(--ink); }
+}
+
+/* narrow details view: the sort / category rows belong to the list, and a vertical swipe changes the song */
+#select.detail .sel-head, #select.detail .sel-sub, #select.detail .sel-search { display: none; }
+#select.detail .sel-detail { touch-action: none; }
+
+/* stats on a wide LCD: all six pages as panels, nothing scrolls by hand */
+.stat-all { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stat-all[hidden] { display: none; }
+.stat-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; border: var(--u) solid var(--ink); border-radius: 4px; padding: 4px 8px; }
+.stat-panel h3 { margin: 0 0 2px; font-size: inherit; text-align: center; border-bottom: var(--u) dotted var(--ink); }
+.stat-all .stat-page { overflow: hidden; }
+.stat-all .st-scroll { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.stat-all .st-big { font-size: calc(var(--fs) * 1.5); }
+
+/* text screens on a wide LCD: one step bigger (the --u2 / --fs2 pair is set by layout() in whole device pixels) */
+@container (min-width: 800px) {
+  #inbox, #message, #profile, #admin, #composer, #custom, #hub, #pause { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+}
+
+/* settings on a wide LCD: every tab is a panel, two columns */
+.set-h { display: none; }
+@container (min-width: 800px) {
+  #settings { display: flex; flex-direction: column; overflow: hidden; }
+  .set-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(min-content, 1fr)); grid-auto-flow: column; gap: 8px; overflow-y: auto; scrollbar-width: none; }
+  .set-panel { display: flex; flex-direction: column; justify-content: space-evenly; border: var(--u) solid var(--ink); border-radius: 4px; padding: 4px 8px; min-width: 0; }
+  .set-panel .item.check { justify-content: flex-start; gap: 10px; }
+  .set-panel .item.check span { margin-left: 0; }
+  #settings > .menu { display: none; } /* the soft Back button does it */
+  .set-panel[hidden] { display: none; }
+  .set-h { display: block; margin: 0 0 2px; font-size: inherit; text-align: center; border-bottom: var(--u) dotted var(--ink); }
+}
+
+/* title screen: language toggle in the top right corner */
+.title-lang { position: absolute; top: 4px; right: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; background: none; border: 0; color: inherit; cursor: pointer; opacity: .75; font-size: calc(var(--fs) * .8); }
+.title-lang:hover, .title-lang:focus-visible { opacity: 1; }
+#set-lang { display: flex; align-items: center; gap: 8px; }
+@container (min-width: 800px) {
+  #tutprompt, #loginprompt { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); display: flex; flex-direction: column; justify-content: center; gap: .6em; padding: 0 5%; }
+  #tutprompt[hidden], #loginprompt[hidden] { display: none; }
+}
+@container (min-width: 800px) {
+  /* short menus and the lesson cards: the bigger step (5/3) so they don't sit in a corner of a big LCD */
+  #tutorial, #mysongs, #songmenu, #calib { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); }
+}
+/* the gag / IMEI panel shows on the bare LCD (its own background), so what is under it is hidden instead of covered */
+body.gag-on .screens > :not(#gag), body.gag-on .lcd > canvas { visibility: hidden; }

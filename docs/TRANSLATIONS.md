@@ -51,6 +51,6 @@ string (including `tn()` singulars) needs a glyph in the LCD font.
 5. Run `npm test`. `tests/i18n.test.mjs` loops over all `LANGS`, so the new language is checked for gaps, stale
    entries, placeholders, plural shapes (`[one, other]`) and glyphs with no test changes.
 
-Translated strings have to fit the LCD, which is narrow. Check long ones on a compact screen: `npm run audit:overflow` visits the screens in English and German at 320-900px and fails on any text that is cut off without the marquee (it also runs in `npm test`, so before every push).
+Translated strings have to fit the LCD, which is narrow. Check long ones on a narrow screen: `npm run audit:overflow` visits the screens in English and German at 320-900px and fails on any text that is cut off without the marquee (it also runs in `npm test`, so before every push).
 
 See also: [DEVELOPMENT.md](DEVELOPMENT.md) · [RELEASING.md](RELEASING.md) · [ARCHITECTURE.md](ARCHITECTURE.md)

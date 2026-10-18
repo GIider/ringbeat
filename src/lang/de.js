@@ -14,7 +14,6 @@ export const de = {
   'Song': 'Song',
   'Composer': 'Komponist',
   'RTTTL text': 'RTTTL-Text',
-  'Mods': 'Mods',
   'Latency': 'Latenz',
   'Tutorial': 'Tutorial',
   'Paused': 'Pause',
@@ -27,6 +26,9 @@ export const de = {
   'Next': 'Weiter',
   'Skip': 'Überspringen',
   'Options': 'Optionen',
+  'Pause': 'Pause',
+  'COMBO': 'COMBO',
+  'ACC': 'GEN.',
   'Menu': 'Menü',
   'Clear': 'Löschen',
   'Del': 'Entf',
@@ -40,7 +42,6 @@ export const de = {
   'Connected': 'Verbunden',
   'Ringbeat on GitHub': 'Ringbeat auf GitHub',
   'Made by Blackjack': 'Von Blackjack',
-  'Enter number': 'Nummer eingeben',
   'Previous item': 'Vorheriger Eintrag',
   'Next item': 'Nächster Eintrag',
   '{n} new messages': ['{n} neue Nachricht', '{n} neue Nachrichten'],
@@ -82,6 +83,7 @@ export const de = {
   'Sign in with GitHub': 'Mit GitHub anmelden',
   'Sign out': 'Abmelden',
   'Export my data': 'Meine Daten exportieren',
+  'Export my data ({s} s)': 'Meine Daten exportieren ({s} s)',
   'Data exported': 'Daten exportiert',
   'Delete online profile': 'Online-Profil löschen',
   'Online profiles are not available yet.': 'Online-Profile gibt es noch nicht.',
@@ -101,7 +103,6 @@ export const de = {
   'Your runs are hidden from leaderboards': 'Deine Durchgänge sind in den Bestenlisten verborgen',
 
   // ---- leaderboards ----
-  'World': 'Welt',
   'Local': 'Lokal',
   'Sign in for world ranks': 'Anmelden für Weltranglisten',
   'World rank…': 'Weltrang…',
@@ -151,9 +152,28 @@ export const de = {
   'Folk & Kids': 'Volk/Kinder',
   'Title': 'Titel',
   'BPM': 'BPM',
+  'Board': 'Rangliste',
+  'Global': 'Global',
+  'Length': 'Länge',
+  'Modifiers': 'Modifikatoren',
+  'Mode': 'Modus',
+  'Delete save': 'Spielstand löschen',
+  'ARE YOU REALLY SURE???': 'BIST DU WIRKLICH SICHER???',
+  'ARE YOU REALLY, REALLY SURE???': 'BIST DU WIRKLICH, WIRKLICH SICHER???',
+  'Modifier hints': 'Modifikator-Hinweise',
+  'Chart': 'Verlauf',
+  'Score chart: accuracy over the song, with the note density': 'Verlauf: Genauigkeit über den Song, mit der Notendichte',
+  'Compact view': 'Vollbildschirm',
+  'Notes scroll upward': 'Noten laufen nach oben',
+  'Style': 'Stil',
+  'Visuals': 'Optik',
+  'Input': 'Eingabe',
+  'MR': 'MR',
+  'ST': 'ST',
+  'HD': 'HD',
+  'SD': 'SD',
+  'Plays': 'Spiele',
   'Duration': 'Dauer',
-  'Favorite added': 'Favorit hinzugefügt',
-  'Favorite removed': 'Favorit entfernt',
   'No songs match this filter.': 'Keine Songs für diesen Filter.',
   'New': 'Neu',
   '{n} notes': ['{n} Note', '{n} Noten'],
@@ -254,18 +274,10 @@ export const de = {
   'No notes long enough to play': 'Keine Note lang genug zum Spielen',
 
   // ---- difficulty picker & mods ----
-  'Mods: {summary}': 'Mods: {summary}',
   'Off': 'Aus',
   'Speed': 'Tempo',
-  'Mirror lanes': 'Bahnen spiegeln',
-  'Hidden notes': 'Versteckte Noten',
-  'Sudden death': 'Sudden Death',
-  'Demo (autoplay)': 'Demo (Autoplay)',
-  'Judging': 'Wertung',
   'Lenient': 'Großzügig',
   'Strict': 'Streng',
-  'Reset all': 'Alles zurücksetzen',
-  'Mods reset': 'Mods zurückgesetzt',
   'Plays the song faster or slower. Pitch stays the same.': 'Spielt den Song schneller oder langsamer. Die Tonhöhe bleibt.',
   'Flips the lanes left to right.': 'Vertauscht die Bahnen links und rechts.',
   'Notes vanish just before the hit line.': 'Noten verschwinden kurz vor der Trefferlinie.',
@@ -294,7 +306,6 @@ export const de = {
   'Next song': 'Nächster Song',
   'Max combo': 'Max. Combo',
   'Ghost hits': 'Fehltipps',
-  'Timing': 'Timing',
   'Early ◄ timing ► Late': 'Früh ◄ Timing ► Spät',
   'Run not saved': 'Durchgang nicht gespeichert',
   'Sudden death: run not saved': 'Sudden Death: Durchgang nicht gespeichert',
@@ -350,7 +361,6 @@ export const de = {
   'Song preview': 'Song-Vorschau',
   'Idle animations': 'Leerlauf-Animationen',
   'Hit effects': 'Trefferfeedback',
-  'Compact view': 'Kompaktansicht',
   'Vibration': 'Vibration',
   'Combo popup': 'Combo-Einblendung',
   'Sound': 'Ton',
@@ -364,6 +374,8 @@ export const de = {
   'Glyphs & icons': 'Zeichen & Symbole',
   'Glyphs': 'Zeichen',
   'Icons': 'Symbole',
+  'Category icons': 'Kategorie-Symbole',
+  'Favorite icons': 'Favoriten-Symbole',
   'Large icons': 'Große Symbole',
   'Pop-ups': 'Pop-ups',
   'Menu icons': 'Menüsymbole',
@@ -397,7 +409,6 @@ export const de = {
   'Clearing memory...': 'Speicher wird gelöscht...',
   'Memory cleared': 'Speicher gelöscht',
   'Just kidding.': 'War nur Spaß.',
-  'Cheat activated': 'Cheat aktiviert',
 
   // ---- key legend & phone keys ----
   'Playing': 'Spielen',
@@ -412,20 +423,20 @@ export const de = {
   'Esc': 'Esc',
   'Bksp': 'Rück',
   'Enter': 'Enter',
-  'Phone keys': 'Handytasten',
-  'Clear / Back': 'Löschen / Zurück',
-  'Up': 'Hoch',
-  'Down': 'Runter',
-  '2 (up)': '2 (hoch)',
-  '4 (left)': '4 (links)',
-  '5 (select)': '5 (wählen)',
-  '6 (right)': '6 (rechts)',
-  '8 (down)': '8 (runter)',
-  'Star': 'Stern',
-  'Hash': 'Raute',
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'New look': 'Neuer Look',
+  ['One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
+    'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +
+    'Playing: BPM, time, combo and a live accuracy meter on wide screens, and Pause is a pop-up.\n' +
+    'Results and Stats show everything on one screen when there is room. The new score chart plots your accuracy over the song with misses and ghost taps marked. Top runs go up to 10.\n' +
+    'Gone: the keypad and the Mods screen. Settings -> Compact view gives you the plain LCD. Try the Konami code or tap the version five times.']:
+    'Ein neuer Look für alle Bildschirme. Am Desktop sitzt das LCD in einem Nokia-Gehäuse, das aus dem Fenster ragt, auf kleinen Bildschirmen füllt es das Fenster. Jeder Bildschirm hat Wählen und Zurück, auch als Tasten am Handy.\n' +
+    'Songauswahl: Details neben der Liste mit Sternen, Favoriten-Herz, Modifikatoren (tippen zeigt, was sie tun) und der globalen oder lokalen Top 10. Am Handy öffnet Wählen die Details, ein Wisch nach oben oder unten wählt den nächsten Song. Sortierung und Suche werden bei wenig Platz zu Symbolen.\n' +
+    'Beim Spielen: BPM, Zeit, Combo und eine Genauigkeitsanzeige auf breiten Bildschirmen, die Pause ist ein Pop-up.\n' +
+    'Ergebnis und Statistik zeigen bei genug Platz alles auf einem Bildschirm. Das neue Verlaufsdiagramm zeigt deine Genauigkeit über den Song, mit markierten Fehlern und Fehltipps. Bestenlisten gehen bis 10.\n' +
+    'Weg: das Tastenfeld und der Mods-Bildschirm. Einstellungen -> Vollbildschirm gibt dir das schlichte LCD. Probier den Konami-Code oder tippe fünfmal auf die Version.',
   'Ring ring': 'Ring ring',
   ['New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
     'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +
@@ -436,7 +447,7 @@ export const de = {
     'Die Menü-Symbole wurden überarbeitet: ein kleines 3310 neben jedem Symbol, weichere Animationen, Funkeln bei ungelesenen Nachrichten. Nachrichten öffnen sofort, der SMS-Ton spielt einmal pro Besuch.\n' +
     'Songauswahl: J und K springen zwischen Gruppen, der Punkt schaltet die Schwierigkeit um, die Überschrift öffnet den Kategorie-Bildschirm. Hoch beim ersten Song springt zum letzten.\n' +
     'Am Touchscreen wählt ein Tipp die Schwierigkeit aus, ein zweiter startet. Das Favoriten-Herz ist leichter zu treffen.\n' +
-    'Neu: Einstellungen -> Kompaktansicht. Behoben: Umlaute in Fettschrift, ein doppelter Song, weißes Logo mit Dark Reader.',
+    'Neu: Einstellungen -> Vollbildschirm. Behoben: Umlaute in Fettschrift, ein doppelter Song, weißes Logo mit Dark Reader.',
   'Find your song': 'Finde deinen Song',
   ['76 new songs: games, TV, Eurodance, pop and synth.\n' +
     'Song select shows where you are (Video Games 3/61). PageUp and PageDown page, comma and period jump between groups, / finds a song, G opens the category hub, and sort order has its own hub.\n' +

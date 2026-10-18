@@ -83,6 +83,7 @@ audio/canvas:
 | `rtttl.test.mjs` | Parser edge cases, every built-in parses without warnings, share-link encode/decode |
 | `settings.test.mjs` | Settings sanitising and persistence |
 | `stats.test.mjs` | Lifetime stats, changelog ordering / glyphs / unread logic, menu icons, top songs |
+| `scorechart.test.mjs` | The results' score chart series: density per slice, accuracy averages, miss counts |
 | `worldlines.test.mjs` | The World page rows: snapshot and near rows merged, score order, gap rows |
 | `seed.test.mjs` | The local leaderboard seeder's plan: skill pyramid, board tiers, random modifiers |
 | `docs.test.mjs` | Links between docs resolve; every source file, script and test is in [ARCHITECTURE.md](ARCHITECTURE.md); every npm script is in this file |
@@ -113,7 +114,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 
 | Hook | Effect |
 |---|---|
-| `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `title` (stays on the title screen), `menu` (on Settings), `select`, `info`, `mods`, `play`, `pause`, `results`, `fc`, `settings`, `stats`, `grades` (stats page 4, with seeded scores), `inbox`, `profile`, `message` (anything else lands on `select`; `select` also records a fixed spread of best runs around the cursor). `?demo=` pages never sync with the cloud. `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
+| `?demo=<state>` | Boots straight into a screen with the Nokia Tune loaded: `title` (stays on the title screen), `menu` (on Settings), `select`, `info` (the details view on narrow LCDs; wide ones show them beside the list), `play`, `pause`, `results`, `fc`, `settings`, `stats`, `inbox`, `profile`, `message` (anything else lands on `select`; `select` also records a fixed spread of best runs around the cursor). `?demo=` pages never sync with the cloud. `play` / `pause` freeze the highway after a seeded bot has played up to the middle note. Used by `npm run screenshots` |
 | `?dev` | Dev mode: a panel with a button per cameo plus stop, IMEI, wipe and Konami, and the **Admin** menu app (7th item, also shown without `?dev` to a signed-in dev-flag account; needs the Worker's `ADMIN_TOKEN`, see [CLOUD.md](CLOUD.md#leaderboards)) |
 | `?dev=<cameo id>` / `?dev=now` | Dev mode, and idle cameos every 2–4 s instead of every 45–150 s (only that cameo, or any) |
 | `#s=<base64url>[&r=<rating>]` | A share link: saves the song to My songs and selects it (see [SONGS.md](SONGS.md#share-links)) |
@@ -124,7 +125,7 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 
 The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Drag either overlay to move it, pull its bottom-right corner to resize it, double-click to reset (position is kept per device); **Reset overlay positions** resets both. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite, pop-up icon and menu icon (focusing a menu icon or pop-up replays its animation).
 
-**New symbols, animations, glyphs and icons must be viewable in that gallery.** When you add one (a font glyph, a sprite in `src/pixelart.js`, a pop-up, a menu icon or an animated frame set), register it where the gallery reads from (`GLYPHS`, `SPRITES` / `SPRITES_FAV`, `POPUPS`, `MENU_IDS`) or add a section in `buildGlyphs()` (`src/main.js`), make it replay its animation on focus, and extend the rectangular-art check in `tests/assets.test.mjs`.
+**New symbols, animations, glyphs and icons must be viewable in that gallery.** When you add one (a font glyph, a sprite in `src/pixelart.js`, a pop-up, a menu icon or an animated frame set), register it where the gallery reads from (`GLYPHS`, `SPRITES` / `ICONS` / `ICONS_FAV`, `POPUPS`, `MENU_IDS`) or add a section in `buildGlyphs()` (`src/main.js`), make it replay its animation on focus, and extend the rectangular-art check in `tests/assets.test.mjs`.
 
 **Request log.** With *Request tracker* on, a panel in the bottom-left corner lists the last cloud requests (`src/netdebug.js`):
 - why each one went out: `start`, `tab back`, `push`, `new best`, `tab hidden`, `boards`, `Sync button`, `signed in`;

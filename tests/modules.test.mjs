@@ -12,7 +12,7 @@ import { eventAudioTime } from '../src/input.js';
 import { Pad, BTN, buttonName, cloneBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 import { createSms, createSignalWobble, createLowBattery, createScheduler, CAMEOS } from '../src/cameo.js';
 import { formatImei, fakeImei } from '../src/secrets.js';
-import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES, SPRITES_FAV, categorySprite } from '../src/pixelart.js';
+import { envelope, signal, battery, spriteURL, spriteSVG, SPRITES, ICONS, ICONS_FAV, categorySprite } from '../src/pixelart.js';
 import { createTitle, layoutTitle, dropDy, T as TT, REST as TITLE_REST } from '../src/titlefx.js';
 import { createWelcome, layoutName, T as WT, TICK_MS } from '../src/welcome.js';
 import { CATEGORIES } from '../src/songs.js';
@@ -603,19 +603,20 @@ test('pixelart: spriteURL is a cached SVG data URI', () => {
   for (const k of Object.keys(SPRITES)) assert.ok(spriteURL(SPRITES[k]).length > 30, k);
 });
 
-test('pixelart: every category icon has a distinct favorite variant of the same size', () => {
+test('pixelart: every category icon has a distinct favorite variant of the same height', () => {
   const cats = [...CATEGORIES.map(c => c.id), 'custom'];
-  assert.deepEqual(Object.keys(SPRITES_FAV).sort(), cats.sort());
+  assert.deepEqual(Object.keys(ICONS_FAV).sort(), cats.sort());
   for (const k of cats) {
-    const a = SPRITES[k], b = SPRITES_FAV[k];
+    const a = ICONS[k], b = ICONS_FAV[k];
     assert.equal(b.length, a.length, k);
+    assert.equal(b.length, 11, k);
     assert.ok(b.every(r => r.length === a[0].length && /^[#.]+$/.test(r)), k);
     assert.notDeepEqual(b, a, k);
     assert.equal(categorySprite(k, true), b);
     assert.equal(categorySprite(k), a);
   }
-  assert.equal(categorySprite('nope', true), SPRITES_FAV.custom);
-  assert.equal(categorySprite('nope'), SPRITES.custom);
+  assert.equal(categorySprite('nope', true), ICONS_FAV.custom);
+  assert.equal(categorySprite('nope'), ICONS.custom);
 });
 
 import { swipeDir } from '../src/swipe.js';

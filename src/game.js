@@ -68,6 +68,8 @@ export class Game {
     this.notesLeft = chart.notes.length; // notes not yet judged (a dropped hold does not add to this)
     this.accSum = 0;
     this.deltas = [];         // signed hit offsets in seconds (+ = late), in hit order
+    this.events = [];         // [note time, accuracy weight] per judged note (the results' score chart)
+    this.ghostTimes = [];     // song times of the ghost taps (stray presses), for the same chart
     // Everything that changed the outcome, in order: [songTime, code], code = lane (press), lane + 8 (release) or -1
     // (an update that judged something or ended the song). Replaying it gives the same results (replay.js).
     this.log = [];
@@ -153,6 +155,7 @@ export class Game {
       const early = this.judgedCount === 0 && first && t < first.time - this.reach;
       if (this.notesLeft > 0 && !early) {
         this.strays++; this.combo = 0;
+        this.ghostTimes.push(t);
         this.synth.playStray?.(lane);
         if (this.suddenDeath) this._fail();
       }
@@ -244,6 +247,7 @@ export class Game {
     this.counts[j]++;
     this.judgedCount++;
     this.accSum += ACCURACY_WEIGHT[j];
+    this.events.push([n.time, ACCURACY_WEIGHT[j]]);
     this.score += Math.round(POINTS[j] * this.multiplier);
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
@@ -254,6 +258,7 @@ export class Game {
     if (headMissed) { n.judged = true; n.judgement = 'miss'; this.notesLeft--; }
     this.counts.miss++;
     this.judgedCount++;
+    this.events.push([n.time, 0]);
     this.combo = 0;
     this.synth.playMiss(n.midi);
     this.fx.judge(n.lane, 'miss');
@@ -328,6 +333,7 @@ export class Game {
       accuracy: this.accuracy, grade: this.grade, ghosts: this.strays,
       fc, ap: fc && this.counts.great + this.counts.good === 0,
       deltas: this.deltas.slice(), failed: this.failed,
+      timeline: { length: this.chart.length, noteTimes: this.chart.notes.map(n => n.time), events: this.events.slice(), ghosts: this.ghostTimes.slice() },
     };
   }
 }

@@ -53,7 +53,7 @@ Patch releases need nothing: every commit to `main` bumps the patch.
    - `BUILD.commit`: the first 7 characters of `GITHUB_SHA`, else `git rev-parse --short=7 HEAD`, else `dev`.
    - `BUILD.date`: today.
 
-The source `src/version.js` is never modified. The title screen shows the version and `commit · date`; the `*#06#`
+The source `src/version.js` is never modified. The title screen shows the version and `commit · date`; the IMEI
 panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
 
 ## CI
@@ -90,12 +90,13 @@ without adding them to `main`'s history:
 
 The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name>.png`.
 
-`npm run screenshots` (`scripts/screenshots.mjs`) takes ten shots from `?demo=` states (see
+`npm run screenshots` (`scripts/screenshots.mjs`) takes seven shots from `?demo=` states (see
 [DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)), all as the same signed-in demo player:
-- `title`, `menu`, `select` (with seeded grades and FC/AP badges), `mods` (1.2× speed, mirror lanes, hidden notes and sudden death on; held in memory, never saved), `play`, `inbox`, `profile`, `settings` (Sound tab) and `grades` (Stats, Grades page) at desktop size (1280×1100 / 1000×1100).
-- `play` at compact size (480×800).
+- `results` (with a filled global leaderboard), `stats` (every page, with scores, grades and world ranks) and `pause` at desktop size (1000×1100, the wide LCD), and `select` (seeded grades and FC/AP badges, the details pane with a filled global board and a modifier loadout switched on, and the key legend beside the phone) at 1280×1100.
+- `info` (the song details view), `play` and `inbox` at mobile size (480×800).
+Shots that are no longer taken are deleted from the output directory, so the published branch loses them on the next run.
 
-The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in, lifetime stats and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.
+The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in with cached world boards and ranks, lifetime stats, local scores, a modifier loadout and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.
 All of them use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.
 With ImageMagick (`magick` or `convert`), each shot is reduced to a 128-colour PNG8 and only rewritten when its pixels
 differ, so unchanged shots keep their exact bytes.

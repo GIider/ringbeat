@@ -10,7 +10,7 @@ a quick start; come here for the details.
 | Doc | What's in it |
 |---|---|
 | [SPEC.md](SPEC.md) | Product behaviour: screens and flow, gameplay rules and numbers, highscores, stats, modifiers, tutorial, extras |
-| [CONTROLS.md](CONTROLS.md) | Every input: keyboard, the drawn phone keys, touch, gamepad |
+| [CONTROLS.md](CONTROLS.md) | Every input: keyboard, soft buttons, touch, gamepad |
 
 ## Design
 

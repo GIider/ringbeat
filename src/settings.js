@@ -26,8 +26,10 @@ function fromRaw(raw) {
   backing: typeof raw.backing === 'boolean' ? raw.backing : false, // off for new players; saved choices are kept
   rollAudio: raw.rollAudio === true, // first press of a roll plays the song's real notes (scoring still follows mashing)
   preview: raw.preview !== false,
+  invert: raw.invert === true,      // notes scroll bottom to top, receptors near the top (presentation only: scoring and replays ignore it)
+  compactView: raw.compactView === true, // no phone frame: the LCD fills the window (per device)
+  modHints: raw.modHints !== false, // the bubble that explains a modifier when it is cycled in the song picker
   idleGags: raw.idleGags !== false,
-  compactView: raw.compactView === true, // force the bare-LCD layout on big windows (per device)
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
   haptics: raw.haptics !== false,   // vibration on supporting devices (needs juice)
   perfOverlay: raw.perfOverlay === true, // developer: the profiler overlay (Settings › Developer)

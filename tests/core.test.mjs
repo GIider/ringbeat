@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { MESSAGES } from '../src/changelog.js';
-import { computeVersion } from '../scripts/version-lib.mjs';
+import { computeVersion, cleanGitEnv } from '../scripts/version-lib.mjs';
 import { sanitizeBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
@@ -503,7 +503,7 @@ test('composer: stepPitch crosses octaves and clamps; controller add', () => {
 
 test('computeVersion: minor from the newest changelog entry, patch = commits since it was added', () => {
   const dir = mkdtempSync(join(tmpdir(), 'rb-ver-'));
-  const sh = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
+  const sh = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, env: cleanGitEnv(), stdio: 'ignore' }); // the pre-commit hook runs the tests with GIT_DIR set
   const entry = v => writeFileSync(join(dir, 'src/changelog.js'), `export const MESSAGES = [\n  {\n    version: '${v}', date: 'x',\n  },\n];\n`);
   mkdirSync(join(dir, 'src'));
   sh('init', '-q');
@@ -673,4 +673,13 @@ test('tutorial: roll notes carry a finite tickDur (auto-play rolls must not sust
   const rolls = STAGES.flatMap(s => buildStageChart(s).notes).filter(n => n.isRoll);
   assert.ok(rolls.length > 0);
   for (const n of rolls) assert.ok(Number.isFinite(n.tickDur) && n.tickDur > 0);
+});
+
+test('applyView: the Favorites sort can use its own favorite list, so toggling a heart keeps the order', () => {
+  const es = ['a', 'b', 'c'].map((id, i) => ({ id, title: id, bpm: 100, length: 10, category: 'pop', stars: { normal: i + 1 }, rating: null, chart: 'normal' }));
+  const sc = { get: () => null };
+  const ids = (favs, sortFavs) => applyView(es, { sort: 'fav' }, sc, favs, [], '', [], sortFavs).map(e => e.id);
+  assert.deepEqual(ids(['c'], ['c']), ['c', 'a', 'b']);
+  assert.deepEqual(ids(['c', 'a'], ['c']), ['c', 'a', 'b']); // 'a' was just favorited: it stays put
+  assert.deepEqual(ids(['c', 'a']), ['a', 'c', 'b']);        // a fresh snapshot moves it up
 });

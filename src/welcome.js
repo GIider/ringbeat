@@ -176,10 +176,10 @@ export function power(put, t, w, h) {
 }
 
 // -- DOM: size the canvas to its parent in cells, and run a sim on it at TICK_MS --
-export function measureGrid(canvas) {
-  const p = canvas.parentElement, w = Math.floor(p.clientWidth / CELL), h = Math.floor(p.clientHeight / CELL);
+export function measureGrid(canvas, cell = CELL) {
+  const p = canvas.parentElement, w = Math.floor(p.clientWidth / cell), h = Math.floor(p.clientHeight / cell);
   canvas.width = w; canvas.height = h;
-  canvas.style.width = w * CELL + 'px'; canvas.style.height = h * CELL + 'px';
+  canvas.style.width = w * cell + 'px'; canvas.style.height = h * cell + 'px';
   return { w, h };
 }
 

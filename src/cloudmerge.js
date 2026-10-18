@@ -7,7 +7,7 @@ const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
 // Settings that follow the player across devices. Everything else in settings.js stays per device: volume,
 // calibration (audio latency is the device's), controller bindings, the last selected song, the old custom slot.
-export const SYNCED_SETTINGS = ['lang', 'voice', 'scrollTime', 'backing', 'rollAudio', 'preview', 'idleGags', 'juice', 'haptics', 'comboPopup', 'perfOverlay', 'netTracker',
+export const SYNCED_SETTINGS = ['lang', 'voice', 'scrollTime', 'invert', 'backing', 'rollAudio', 'preview', 'idleGags', 'juice', 'haptics', 'comboPopup', 'perfOverlay', 'netTracker',
   'view', 'mods', 'tutorialDone', 'tutorialLessons', 'msgSeen'];
 
 export const blankShared = () => ({ v: 1, settings: {}, settingsT: {}, favorites: {}, songs: {}, gone: {}, resetAt: 0 });

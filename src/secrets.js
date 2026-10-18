@@ -16,7 +16,8 @@ export function createSequenceMatcher(sequence) {
 }
 
 export const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
-export const IMEI_CODE = ['*', '#', '0', '6', '#'];
+export const IMEI_CODE = ['ArrowDown', 'ArrowUp', 'ArrowDown', 'ArrowUp', 'KeyA']; // keyboard and gamepad (D-pad + A)
+export const IMEI_TAPS = 5; // or: tap the version label this many times in a row (touch / mouse)
 
 export function luhnCheckDigit(digits) {
   let sum = 0;

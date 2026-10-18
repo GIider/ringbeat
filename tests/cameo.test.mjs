@@ -88,7 +88,7 @@ test('Konami and IMEI matchers', () => {
   ['ArrowUp', 'ArrowUp', 'ArrowLeft'].forEach(t => k2.feed(t));
   assert.equal(KONAMI.map(t => k2.feed(t)).at(-1), true);
   const m = createSequenceMatcher(IMEI_CODE);
-  assert.equal(['*', '#', '0', '6', '#'].map(t => m.feed(t)).at(-1), true);
+  assert.equal(['ArrowDown', 'ArrowUp', 'ArrowDown', 'ArrowUp', 'KeyA'].map(t => m.feed(t)).at(-1), true);
 });
 
 test('fake IMEI: 15 digits, valid Luhn, reserved prefix, stable', () => {

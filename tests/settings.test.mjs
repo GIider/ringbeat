@@ -23,6 +23,7 @@ test('settings: empty or corrupt storage gives defaults', async () => {
     assert.equal(s.voice, 'buzzer');
     assert.equal(s.scrollTime, 1.6);
     assert.equal(s.backing, false);
+    assert.equal(s.invert, false);
     assert.equal(s.calibration, 0);
     assert.deepEqual(s.view, { sort: 'diff-asc', category: 'all' });
     assert.equal(s.tutorialDone, false);
@@ -206,4 +207,17 @@ test('settings: welcomeSeen is kept on this device and never synced', async () =
   assert.equal((await load({ welcomeSeen: 'yes' })).settings.welcomeSeen, false);
   const { sharedSettings } = await load({ welcomeSeen: true });
   assert.ok(!('welcomeSeen' in sharedSettings().settings));
+});
+
+test('settings: invert is a strict boolean that round-trips and is synced', async () => {
+  const { settings: s, saveSettings, store } = await load({});
+  assert.equal(s.invert, false);
+  s.invert = true;
+  for (const v of ['yes', 1, null]) assert.equal((await load({ invert: v })).settings.invert, false, String(v));
+  globalThis.localStorage = { setItem: (k, v) => store.set(k, v) };
+  saveSettings();
+  delete globalThis.localStorage;
+  assert.equal((await load(store.get('ringbeat.v1'))).settings.invert, true);
+  const { SYNCED_SETTINGS } = await import('../src/cloudmerge.js');
+  assert.ok(SYNCED_SETTINGS.includes('invert'));
 });

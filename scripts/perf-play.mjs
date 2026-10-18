@@ -34,12 +34,16 @@ try {
       await sleep(200);
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
       await sleep(200);
+      $('mm-go').click();                     // menu -> Tones (song select)
+      await sleep(300);
       const row = document.querySelectorAll('.song-row')[idx];
       row.click(); await sleep(150);
-      row.click(); await sleep(250);          // second click = play -> song screen
-      const go = document.querySelector('#songscreen [data-default]');
-      if (!go) return { error: 'no song screen, state=' + rb.state };
-      go.click();
+      row.click(); await sleep(250);          // second click = play (wide LCD) or the details view (narrow: Play button there)
+      if (rb.state === 'select') {
+        const go = $('sd-go');
+        if (!go) return { error: 'no song details, state=' + rb.state };
+        go.click();
+      }
       for (let i = 0; i < 100 && !rb.game.active; i++) await sleep(50);
       if (!rb.game.active) return { error: 'song did not start, state=' + rb.state };
       const KEYS = { 3: ['KeyF', 'KeyJ', 'KeyK'], 4: ['KeyD', 'KeyF', 'KeyJ', 'KeyK'] };

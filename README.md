@@ -9,7 +9,7 @@ Ringbeat is a browser rhythm game whose charts are generated automatically from 
 dressed up as a late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the note highway
 runs inside that LCD.
 All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). There are no dependencies and no
-build step, and the few assets (pixel font, phone artwork) are made in this repo; see [Assets](#assets).
+build step, and the few assets (pixel font, icons) are made in this repo; see [Assets](#assets).
 Everything works offline and signed out. An optional GitHub sign-in adds cloud save and server-verified world
 leaderboards; see [Online](#online-optional).
 
@@ -17,27 +17,21 @@ leaderboards; see [Online](#online-optional).
 
 The screenshots show a signed-in demo player ("Nova") with fixed scores and stats.
 
-| Title | Main menu | Song list |
+| Song picker | Results | Stats |
 | --- | --- | --- |
-| ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
-| Title screen: "Press any key" (or "Tap" on touch screens) starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with each song's best grade and FC (full combo) / AP (all perfect) badges, and the cursor song's best score below. |
+| ![Song picker](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) | ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/stats-desktop.png) |
+| Song list with category tabs, sort and Find, and the details beside it: stars, favorite heart, modifier chips, the global / local top 10. | Results: grade, stats, a score chart (note density, accuracy, misses and ghost taps) and one leaderboard, all on one screen. | Stats: every page at once when there is room. |
 
-| Mods | Playing | Playing (compact) |
+| Pause | Song details (mobile) | Playing (mobile) |
 | --- | --- | --- |
-| ![Mods](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/mods-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing (compact)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
-| Mods: 1.2x speed, mirror lanes, hidden notes, sudden death. | Playing on the phone. | Compact layout: on small windows the LCD fills the window. |
+| ![Pause](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/pause-desktop.png) | ![Song details (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/info-mobile.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
+| Playing on a wide LCD, paused: the pause menu is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. |
 
-| Messages | Profile | Settings |
-| --- | --- | --- |
-| ![Messages](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-desktop.png) | ![Profile](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/profile-desktop.png) | ![Settings](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/settings-desktop.png) |
-| Messages: the changelog arrives as texts, unread ones in bold. | Profile of a signed-in player: name, play time, leaderboard visibility, sync status. | Settings, Sound tab: volume, tone, backing pulse and auto-play rolls. |
-
-| Stats |
+| Messages (mobile) |
 | --- |
-| ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/grades-desktop.png) |
-| Stats, Grades page: how many songs ended on each grade, from the saved best runs. |
+| ![Messages (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-mobile.png) |
+| Messages: the changelog arrives as texts, unread ones in bold. |
 
-On small windows (under 600 px wide or 520 px tall) the phone body is dropped and the LCD fills the window.
 CI regenerates the screenshots on every push to `main` (see [docs/RELEASING.md](docs/RELEASING.md#screenshots)).
 
 ## Quick start
@@ -58,7 +52,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
 - **Scoring:**
-  - Local highscores (top 5 per song).
+  - Local highscores (top 10 per song).
   - Optional online profile with world leaderboards (see [Online](#online-optional)).
   - Full combo / all perfect indicators.
   - Timing histogram.
@@ -71,7 +65,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - First-run tutorial.
   - Idle cameos and a few easter eggs.
 - **Input and sound:**
-  - Keyboard, touch and gamepad (rebindable), with clickable phone keys.
+  - Keyboard, touch and gamepad (rebindable), with Select / Back soft buttons on every screen.
   - Latency calibration.
   - Ten instrument voices (buzzer, smooth, pulse, triangle, arpeggio, bell, organ, pluck, sawtooth, Game Boy).
 - **Languages:** English and German (follows the browser language, switchable in Settings).
@@ -96,7 +90,7 @@ the game never needs the network and `localStorage` stays the source of truth.
 ## Controls
 
 `D F J K` play the 4 lanes; on touch, tap the lanes; on a gamepad, use the d-pad / face buttons / shoulders. `Esc` pauses and `R` restarts.
-In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or click the phone's Menu, C and ▲▼ keys and keypad.
+In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or tap the two soft buttons at the bottom of the screen.
 On song select, `D`/`F` changes the sort, `J`/`K` jump between groups and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
 
 ## Documentation
@@ -118,7 +112,6 @@ Everything visual is made here, with no external fonts or images:
 
 - `src/pixelfont.js`: hand-drawn 5×7 LCD font (ASCII, German umlauts, UI symbols). `npm run font` compiles it to
   TrueType (`assets/fonts/rb-pixel.ttf` plus a bold cut).
-- `assets/phone.svg`: the phone shells. The LCD and key hit areas are DOM laid over them.
 - `src/pixelart.js`: 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
 - `src/menuicons.js`: the animated main-menu icons (folder card + symbol + pressing hand), drawn in code.
 - `src/cover.js`: per-song 72×28 "picture message" art, generated from the song id.
