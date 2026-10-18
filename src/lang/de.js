@@ -29,6 +29,7 @@ export const de = {
   'Pause': 'Pause',
   'COMBO': 'COMBO',
   'ACC': 'GEN.',
+  'NOTES': 'NOTEN',
   'DBL': 'DPL',
   'TRI': 'TRP',
   'Menu': 'Menü',

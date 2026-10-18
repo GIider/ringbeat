@@ -584,6 +584,9 @@ export class Renderer {
       this._text(c, String(game.counts[j]), rx, y, INK, false, 1, 'right');
       y += 10;
     }
+    this._text(c, tr('NOTES'), rl, y, INK, false); // notes judged / in the chart
+    this._text(c, game.judgedCount + '/' + game.chart.notes.length, rx, y, INK, false, 1, 'right');
+    y += 10;
     for (const [k, label] of [['doubles', tr('DBL')], ['triples', tr('TRI')]]) { // chords cleared / in the chart, only when the chart has any
       const ch = game.chords[k];
       if (!ch.total) continue;
