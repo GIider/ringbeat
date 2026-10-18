@@ -616,3 +616,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   .menu.r-foot { flex-direction: row; gap: 8px; }
   .menu.r-foot > button { flex: 1; justify-content: center; text-align: center; border: var(--u) solid var(--ink); }
 }
+
+/* narrow details view: the sort / category rows belong to the list, and a vertical swipe changes the song */
+#select.detail .sel-head, #select.detail .sel-sub, #select.detail .sel-search { display: none; }
+#select.detail .sel-detail { touch-action: none; }

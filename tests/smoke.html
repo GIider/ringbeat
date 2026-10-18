@@ -250,6 +250,13 @@ f.addEventListener('load', async () => {
 
     d.querySelector('.song-row.cur').click(); await settle();
     log(vis('select') && $('select').classList.contains('detail'), 'song details');
+    {
+      const t0 = $('sd-title').textContent;
+      key('ArrowDown'); await settle();
+      log($('sd-title').textContent !== t0 && $('select').classList.contains('detail') && getComputedStyle($('select').querySelector('.sel-head')).display === 'none', 'details view: down steps to the next song; the sort / category rows are hidden');
+      key('ArrowUp'); await settle();
+      log($('sd-title').textContent === t0, 'details view: up steps back');
+    }
     // mods: chips in the picker (a tap cycles one and explains it); sticky loadout
     const chip = i => $('sd-chips').children[i];
     log($('sd-chips').children.length === 5 && [...$('sd-chips').children].every(b => !b.classList.contains('on')), 'modifier chips start off');

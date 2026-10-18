@@ -1418,6 +1418,14 @@ const selWide = () => lcdWidth() >= SEL_WIDE_PX;
 let selDetail = false, dpEntry = null, dpTab = 'local', paneTimer = 0;
 // Signed-in players get Global (first) and Local tabs; everyone else just sees their local runs.
 const dpTabs = () => cloud.available() && cloud.signedIn();
+// Narrow details view: previous / next song in the list (swipe down / up, or the up / down keys).
+function stepSong(step) {
+  const list = visible();
+  if (list.length < 2) return;
+  const i = list.findIndex(e => e.id === selectedId);
+  synth.keyClick();
+  selectSong(list[(i + step + list.length) % list.length].id, false); // the list is out of view; focusCurrentRow reveals the row when it comes back
+}
 function setSelDetail(on) {
   selDetail = on;
   $('select').classList.toggle('detail', on);
@@ -2507,7 +2515,8 @@ function navigate(dir) {
   if (state === 'results' && (dir === 'up' || dir === 'down') && scrollResults(dir)) return;
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
-  if (state === 'select' && selDetail) { // the narrow details view: left / right switch the board, up / down have nothing to move
+  if (state === 'select' && selDetail) { // the narrow details view: up / down step to the next / previous song, left / right switch the board
+    if (dir === 'up' || dir === 'down') stepSong(dir === 'down' ? 1 : -1);
     if ((dir === 'left' || dir === 'right') && dpTabs()) { const tab = dir === 'left' ? 'world' : 'local'; if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); } }
     return;
   }
@@ -2795,7 +2804,8 @@ function wire() {
 
   // title / select
   $('btn-start').onclick = startFromTitle;
-  $('sd-chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { synth.keyClick(); cycleMod(b.dataset.mod); } });
+  const detailSwiped = onSwipe($('sel-detail'), dir => { if (selDetail) stepSong(dir === 'up' ? 1 : -1); }, { axis: 'y' });
+  $('sd-chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !detailSwiped()) { synth.keyClick(); cycleMod(b.dataset.mod); } });
   $('sd-go').onclick = playSelected;
   $('sd-fav').onclick = () => toggleFavorite();
   $('dp-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.tab !== dpTab) { synth.keyClick(); setDpTab(b.dataset.tab); } });
