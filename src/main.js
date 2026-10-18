@@ -2798,7 +2798,7 @@ function wire() {
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
   const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: voiceName() }); };
   const paintTitleLang = () => { $('title-lang').innerHTML = spriteHTML(ICON_GLOBE, 2) + `<span>${esc(getLang().toUpperCase())}</span>`; $('title-lang').title = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
-  const langLabel = () => { $('set-lang').textContent = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
+  const langLabel = () => { $('set-lang').innerHTML = spriteHTML(ICON_GLOBE, 2) + esc(tr('Language: {lang}', { lang: LANGS[getLang()] })); }; // the title screen's globe
   // Everything that was drawn from text is redrawn; screens opened later render fresh.
   const relocalize = () => {
     applyStatic();

@@ -651,3 +651,4 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 /* title screen: language toggle in the top right corner */
 .title-lang { position: absolute; top: 4px; right: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; background: none; border: 0; color: inherit; cursor: pointer; opacity: .75; font-size: calc(var(--fs) * .8); }
 .title-lang:hover, .title-lang:focus-visible { opacity: 1; }
+#set-lang { display: flex; align-items: center; gap: 8px; }
