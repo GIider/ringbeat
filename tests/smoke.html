@@ -43,7 +43,7 @@ f.addEventListener('load', async () => {
     log(vis('title') && !vis('select'), 'title screen visible');
     key('Space'); await settle();
     log(vis('menu') && !vis('title') && $('mm-title').textContent === 'Tones' && $('mm-num').textContent === '1', 'any key -> main menu on Tones');
-    log($('soft-left').textContent === 'Select' && $('soft-left').parentElement.classList.contains('solo'), 'menu: single centred Select');
+    log($('soft-left').textContent === 'Select' && $('soft-right').textContent === 'Back', 'menu: Select / Back soft keys');
     await waitFor(() => d.activeElement === $('mm-go'), 'menu focus');
     log(d.activeElement === $('mm-go'), 'menu item focused');
     key('ArrowDown'); await settle();
@@ -64,13 +64,7 @@ f.addEventListener('load', async () => {
     key('ArrowDown'); await settle();
     const desc = el => el ? (el.id || el.className) + ':' + (el.textContent || '').slice(0, 20) : 'none';
     log(d.activeElement === rows2[4], 'arrow down moves focus', desc(d.activeElement) + ' vs ' + desc(rows2[4]) + ' idx=' + [...rows2].indexOf(d.activeElement));
-    const phoneKey = k => d.querySelector(`#phone .k[data-key="${k}"]`).dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-    phoneKey('8'); await settle();
-    log(d.activeElement === rows2[5], 'keypad 8 moves down');
-    phoneKey('up'); await settle();
-    log(d.activeElement === rows2[4], 'rocker up moves up');
-    phoneKey('down'); await settle();
-    log(d.activeElement === rows2[5], 'rocker down moves down');
+    const phoneKey = k => d.getElementById(k === 'softR' ? 'soft-right' : 'soft-left').dispatchEvent(new w.PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
     const pointerUp = () => w.dispatchEvent(new w.PointerEvent('pointerup'));
     phoneKey('softR');
     await waitFor(() => vis('gag') && /Clearing/.test($('gag-text').textContent), 'hold gesture');
@@ -79,12 +73,12 @@ f.addEventListener('load', async () => {
     log(!vis('gag-art'), 'wipe shows no avatar');
     phoneKey('softR'); pointerUp(); await settle();
     log(!vis('gag') && vis('select'), 'tapping C again stops the wipe (no Back)');
-    for (const k of ['*', '#', '0', '6', '#']) phoneKey(k);
+    for (const k of ['ArrowDown', 'ArrowUp', 'ArrowDown', 'ArrowUp', 'KeyA']) key(k);
     await settle();
-    log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), '*#06# shows the IMEI panel with the avatar');
+    log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), 'D-pad/A code shows the IMEI panel with the avatar');
     key('KeyX'); await settle();
     log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
-    const catOf = () => $('st-title').textContent + ' ' + $('sel-cat').textContent.replace(/^\d+\//, ''); // heading (with category) + total, without the cursor position
+    const catOf = () => $('sel-tabs').querySelector('.sel').textContent + ' ' + $('sel-cat').textContent.replace(/^\d+\//, ''); // current category tab + total, without the cursor position
     const cat0 = catOf();
     key('ArrowRight'); await settle();
     log(catOf() !== cat0 && vis('select'), 'right arrow switches category');
@@ -93,12 +87,13 @@ f.addEventListener('load', async () => {
     const sec0 = $('sel-cat').textContent;
     key('KeyJ'); await settle(); key('KeyK'); await settle();
     log(vis('select') && $('sel-cat').textContent.length > 0, 'J/K jump groups', sec0);
-    log($('soft-left').textContent === 'Select' && /^Tones · ./.test($('st-title').textContent), 'soft keys + status title');
+    log($('soft-left').textContent === 'Select' && $('st-title').textContent === 'Tones' && $('sel-tabs').children.length > 3, 'soft keys + status title, category tabs');
     d.activeElement.click(); await settle(); // Enter on a focused button is a native click
-    log(vis('songscreen') && $('dp-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'song screen with details');
-    log($('dp-tabs').hidden, 'song screen: no World/Local tabs when signed out');
+    log(vis('select') && $('select').classList.contains('detail') && $('sd-title').textContent.length > 0 && $('dp-panel').textContent.length > 0, 'Select on a narrow LCD opens the song details');
+    log($('dp-tabs').hidden, 'song details: no Global/Local tabs when signed out');
+    log($('sd-chips').children.length === 5 && $('sd-chips').children[0].textContent.includes('1.0x'), 'modifier chips in the picker');
     key('Backspace'); await settle();
-    log(vis('select'), 'Backspace -> back to select');
+    log(vis('select') && !$('select').classList.contains('detail'), 'Backspace -> back to the song list');
     $('st-title').click(); await settle();
     log(vis('hub') && $('hub').dataset.title === 'Categories', 'tapping the title bar opens the category screen');
     key('Backspace'); await settle();
@@ -115,6 +110,8 @@ f.addEventListener('load', async () => {
       tap(rr.right - 4); await settle();
       log(fav() === was, 'a tap far from the icon does not toggle the favorite');
     }
+    log($('select').classList.contains('detail'), 're-tapping the selected row opens its details');
+    key('Backspace'); await settle();
     $('sel-sort').click(); await settle();
     d.querySelector('#hub-grid [data-sort="diff-asc"]').click(); await settle();
     log(/ · \d(\.\d)? - \d(\.\d)?$/.test($('sel-cat').textContent) && vis('select'), 'sort by difficulty: header shows the star range', $('sel-cat').textContent);
@@ -222,10 +219,12 @@ f.addEventListener('load', async () => {
     log($('status').className.includes('ok') && !$('btn-custom-play').disabled, 'custom RTTTL accepted');
     $('btn-custom-save').click(); await settle();
     log(w.__ringbeat.mysongs.count() === 1 && vis('songmenu'), 'pasted song saved, song menu shown');
-    $('sm-play').click(); await settle();
-    log(vis('songscreen'), 'play opens the song screen');
-    key('Escape'); await settle();
-    log(vis('songmenu'), 'difficulty back to song menu');
+    $('sm-play').click();
+    await waitFor(() => hookOf().state === 'countin' || hookOf().state === 'playing', 'custom game start');
+    log(!vis('songmenu') && !vis('select'), 'My song: play starts the run directly');
+    key('Escape'); await settle(); // pause
+    $('btn-quit').click(); await settle();
+    log(vis('songmenu'), 'quitting returns to the song menu');
     log(/~\d\.\d ★/.test($('sm-meta').textContent) && $('sm-calc').textContent === 'Calculate difficulty', 'custom song shows an estimated (~) rating', $('sm-meta').textContent);
     // Check the transient state before yielding: a short calculation may finish before a timer fires.
     $('sm-calc').click();
@@ -250,24 +249,29 @@ f.addEventListener('load', async () => {
     key('1'); await settle(); $('mm-go').click(); await settle();
 
     d.querySelector('.song-row.cur').click(); await settle();
-    log(vis('songscreen'), 'song screen');
-    // mods: own screen, sticky loadout, summary on the picker button
-    log($('btn-mods').textContent === 'Mods: Off', 'mods button starts Off');
-    $('btn-mods').click(); await settle();
-    log(vis('mods') && !vis('songscreen') && $('m-mult').textContent === '×1.00', 'mods screen opens');
-    $('m-hidden').checked = true; $('m-hidden').dispatchEvent(new w.Event('change'));
-    $('m-speed').value = 7; $('m-speed').dispatchEvent(new w.Event('input'));
-    log($('m-mult').textContent === '×1.32', 'mods multiplier updates live', $('m-mult').textContent);
-    key('Escape'); await settle();
-    log(vis('songscreen') && /1\.2x HD/.test($('btn-mods').textContent), 'back returns to the song screen with a mods summary', $('btn-mods').textContent);
-    log(JSON.parse(w.localStorage.getItem('ringbeat.v1')).mods.speed === 1.2, 'mods persist in settings');
-    $('btn-mods').click(); await settle();
-    $('btn-mods-reset').click(); await settle();
-    $('btn-mods-back').click(); await settle();
-    log(vis('songscreen') && $('btn-mods').textContent === 'Mods: Off', 'reset all clears the loadout');
-    d.querySelector('#songscreen [data-default]').click();
+    log(vis('select') && $('select').classList.contains('detail'), 'song details');
+    // mods: chips in the picker (a tap cycles one and explains it); sticky loadout
+    const chip = i => $('sd-chips').children[i];
+    log($('sd-chips').children.length === 5 && [...$('sd-chips').children].every(b => !b.classList.contains('on')), 'modifier chips start off');
+    chip(2).click(); await settle();
+    log(/HD/.test(chip(2).textContent) && $('sd-hint').textContent.length > 10 && /^×1\.10/.test($('sd-mult').textContent), 'a chip cycles and explains the mod', $('sd-hint').textContent + ' ' + $('sd-mult').textContent);
+    chip(4).click(); await settle();
+    log(/SD/.test(chip(4).textContent), 'mode chip: sudden death');
+    chip(4).click(); chip(4).click(); await settle();
+    log(/--/.test(chip(4).textContent), 'mode chip cycles back to off');
+    chip(0).click(); chip(3).click(); await settle();
+    log(JSON.parse(w.localStorage.getItem('ringbeat.v1')).mods.speed === 1.1, 'mods persist in settings');
+    chip(2).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(0).click(); chip(3).click(); chip(3).click(); await settle();
+    log([...$('sd-chips').children].every(b => !b.classList.contains('on')), 'cycling every chip around clears the loadout', $('sd-chips').textContent);
+    $('sd-chips').children[0].click(); await settle();
+    log(/1\.1x/.test($('sd-chips').children[0].textContent), 'tapping the speed chip steps the speed');
+    $('sd-chips').children[0].click(); $('sd-chips').children[0].click(); $('sd-chips').children[0].click();
+    $('sd-chips').children[0].click(); $('sd-chips').children[0].click(); $('sd-chips').children[0].click();
+    $('sd-chips').children[0].click(); $('sd-chips').children[0].click(); await settle();
+    log(/1\.0x/.test($('sd-chips').children[0].textContent), 'the speed chip wraps around to normal');
+    $('sd-go').click();
     await waitFor(() => hookOf().state === 'countin' || hookOf().state === 'playing', 'game start');
-    log(!vis('select') && !vis('songscreen') && !vis('results'), 'normal play starts');
+    log(!vis('select') && !vis('results'), 'normal play starts');
     key('KeyR'); await waitFor(() => hookOf().state === 'countin' || hookOf().state === 'playing', 'game restart');
     log(!vis('select'), 'R restarts');
     // fake a finished run to exercise results / highscores / FC banner
@@ -291,9 +295,9 @@ f.addEventListener('load', async () => {
     $('btn-menu').click(); await settle();
     log(vis('select') && d.querySelector('.song-row.cur .badge.ap'), 'AP badge in list');
     d.querySelector('.song-row.cur').click(); await settle();
-    log(vis('songscreen') && !!d.querySelector('#songscreen [data-default]'), 'play opens the song screen');
-    log($('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
-    d.querySelector('#songscreen [data-default]').click();
+    log(vis('select') && $('select').classList.contains('detail'), 'select opens the song details');
+    await waitFor(() => $('dp-panel').textContent.includes('1234'), 'best run shown in Top: ' + $('dp-panel').textContent);
+    $('sd-go').click();
     await waitFor(() => rb.state === 'countin' || rb.state === 'playing', 'second game start');
     rb.game.onFinish(fake(500, { fc: false, ap: false, grade: 'B', counts: { perfect: 6, great: 1, good: 0, miss: 1 } })); await settle();
     log($('r-banner').hidden && $('r-best').textContent.includes('Rank #2'), 'second run ranked #2: ' + $('r-best').textContent);
@@ -304,7 +308,7 @@ f.addEventListener('load', async () => {
     $('btn-menu').click(); await settle();
     log(vis('results') === false, 'left results');
     d.querySelector('.song-row.cur').click(); await settle();
-    key('ArrowRight'); await settle();
+    await waitFor(() => d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
     log(d.querySelectorAll('#dp-panel li').length === 2, 'top runs listed');
     key('Backspace'); await settle();
     log(vis('select'), 'back to select again');

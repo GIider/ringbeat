@@ -10,11 +10,11 @@ assets are made in the repo, with no runtime dependencies and no build step.
 ## Screens & flow
 
 ```
-title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶ select ─▶ song ─▶ play ─▶ results ─▶ select
-               │                                                          │          ▲ │
-               │                                                          │          │ └─ pause ─▶ resume (3-2-1) | restart
-               │                                                          │          │           | settings | back to select
-               │                                                          └─ Mods ─▶ mods screen ─▶ back to the song screen
+title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶ select ─▶ play ─▶ results ─▶ select
+               │                                                  │          ▲ │
+               │                                                  │          │ └─ pause ─▶ resume (3-2-1) | restart
+               │                                                  │          │           | settings | back to select
+               │                                                  └─ Customize ─▶ mods screen ─▶ back to select
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
                ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
                ├─ 4 Messages ─▶ inbox ─▶ message
@@ -26,11 +26,10 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 | Screen | Purpose |
 |---|---|
 | Title | Boot screen: an LCD scene (power-on, a Nokia 3310 drops in and bounces, the RINGBEAT logo lands letter by letter) that then rings in an 8.4 s loop (vibrating phone, sound waves, floating notes, a falling-note highway on the phone's own screen, a glint and a ripple across the logo); reduced motion shows one still frame. Below it "Press any key" ("Tap" on touch screens), the version (linking to GitHub) and the build line. The first boot plays a short power-on jingle. The key press also satisfies the browser's audio-gesture requirement. |
-| Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (a small 3310 beside the item's symbol), a numbered scrollbar on the right and a centred *Select*. You can browse with ↑↓/←→, keypad 2/8, digits 1–6 (7 for Admin), swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
+| Main menu | 3310 style: one item per screen, with a big title, an animated 1-bit icon (a small 3310 beside the item's symbol), a numbered scrollbar on the right and the Select / Back soft keys. You can browse with ↑↓/←→, digits 1–6 (7 for Admin), swipe, the wheel or the ◄► arrows. Back returns to the title. The menu returns to the last item used in the session. |
 | Login prompt | Shown once per device after the tutorial (played or skipped, or *No thanks* on the tutorial prompt) to a player who isn't signed in: *Sign in with GitHub* / *Not now*. |
 | Tutorial prompt | Shown the first time Tones is opened, unless the player has already picked a song: *Play tutorial* / *No thanks*. See [Tutorial](#tutorial). |
 | Song select | Covered in the [Song select](#song-select) section below. |
-| Song | Song art, BPM and length; a *Play* row (stars + rating, note count); the song's top runs below ("No plays yet" until played). A *Mods* button (gamepad X) shows the active loadout, e.g. `Mods: 1.2x HD ▸`, and opens the Mods screen. |
 | Mods | Speed, Mirror, Hidden, Sudden death, Demo (autoplay), Judging; a live score multiplier; *Reset all*. See [Modifiers](#modifiers). |
 | Play | Covered in the [Play screen](#play-screen) section below. |
 | Pause | *Resume* (with a 3-2-1 "GET READY" countdown; audio stays frozen meanwhile), *Restart*, *Settings*, and *Tones* (or the screen the run came from). Back resumes. During the tutorial, *Back to lesson* replaces the last button. Play also pauses when the tab is hidden or a gamepad disconnects. |
@@ -59,7 +58,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Footer:** stars + rating, note count, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide
   screens (no hint line on the LCD).
 - **Selecting and playing:** focusing or tapping a row selects it, and an optional 10 s preview plays. Confirming,
-  double-clicking or re-tapping the selected row opens the song screen.
+  double-clicking or re-tapping the selected row plays it on a wide LCD (800 px and up), where the details sit beside the list. On a narrow LCD the first confirm opens the details view (cover, stats, the four modifier chips, the local / global board, your best, *Play* and *Add to Favorites*) and *Play* starts the song.
+- **Details pane:** BPM, length, rating, local plays and grade; the Modifiers row has four chips (Speed, Style = mirror, Visuals = hidden, Input = judging) that cycle on a tap (`M` / gamepad X opens the full Mods screen via *Customize*); *Global* / *Local* boards (`T` / gamepad R3 switch).
 - **Rating:** `1 + 16.2 ×` the position on an eight-level simulated skill ladder where bots start full-combo-ing the
   chart at least half the time, capped at 10. Stars = rating ÷ 1.4. Unmeasured songs show an estimate. See
   [SONGS.md › Difficulty ratings](SONGS.md#difficulty-ratings).
@@ -213,7 +213,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   player's best run on that board), or *Not ranked* / *Not ranked: update the game* / *World rank pending*. Any
   other run shows the world rank last seen for that board, or nothing when there is none yet. Signed out: *Sign in
   for world ranks*.
-- **Song detail** (the song screen): the world top 10, under the local top runs.
+- **Song detail** (the picker's details pane): the *Global* tab shows the world top 10 around the player's rank; *Local* shows the local top runs.
   Boards are readable signed out; they are cached for a minute.
 
 ## Stats
@@ -240,7 +240,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## Modifiers
 
-A sticky loadout (`settings.mods`) chosen on the Mods screen and applied to every run, except the tutorial. Most mods
+A sticky loadout (`settings.mods`) chosen with the picker's modifier chips or the Mods screen and applied to every run, except the tutorial. Most mods
 are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 
 | Mod | Values | Effect | Score |
@@ -255,7 +255,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 - The multiplier is the product of the active mods, capped at 2.0 (no floor) (except Demo, which forces 0), and is folded
   into the stored score. Grade and accuracy stay raw.
 - Mod tags (e.g. `1.2x HD`) are stored with the run and shown in the HUD, in top runs and on results.
-- Stars are rated on the unmodded chart. The song screen's Mods button shows the active loadout, and
+- Stars are rated on the unmodded chart. The picker's modifier chips show the active loadout, and
   the multiplier is shown on the Mods screen and on results.
 
 ## Tutorial
@@ -286,8 +286,7 @@ Decorative and harmless: none of these touch scores, stats or the selection.
   only if audio is already running.
 - **Konami code** (keyboard, or d-pad + B A on a gamepad) on title / menu / song select: "Cheat activated", a flash and a
   snake parade.
-- **`*#06#`** shows an IMEI panel: a fake, Luhn-valid IMEI, the version and build, and a credit link. Typing `*` opens a
-  dialer-style number view.
+- **IMEI panel** (↓ ↑ ↓ ↑ A on keyboard or gamepad on title / menu / song select, or five quick taps on the title screen's version label): a fake, Luhn-valid IMEI, the version and build, and a credit link.
 - **Holding C** for 1.2 s on title / menu / song select: "Clearing memory…", then "Just kidding."
 
 ## Controls

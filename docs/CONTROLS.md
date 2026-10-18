@@ -43,24 +43,13 @@ works with every input. Lane keys are fixed; gamepad buttons are rebindable. Wha
 In the RTTTL text box, `Enter` leaves the field (`Shift+Enter` = newline), and `↑` / `↓` leave it from the first / last
 position.
 
-## Phone keys (mouse / touch)
+## Soft keys (mouse / touch)
 
-The drawn phone's keys work, laid out like a 3310:
-
-- **Menu** key (wide oval under the LCD): does what the single centred label says (Select / Read / Next…). On the song
-  list it picks the song. During play it pauses.
-- **C** (left): Back (Del in the composer). During play it pauses. Holding it for 1.2 s on the title, menu or song select
-  runs a gag (see [SPEC.md › Extras](SPEC.md#extras)).
-- **▲▼ rocker** (right): up / down.
-- **Song list keypad:** `1` / `3` page up / down, `7` / `9` previous / next group, `0` random song. (`*` and `#` stay free for
-  the secret dial codes; Up from the first song wraps to the last.)
-- **Keypad:** `5` = select (pauses during play), `2` `8` `4` `6` = up / down / left / right. In the composer the keypad
-  is the note entry, as on the keyboard.
+Every screen has two buttons along the bottom of the LCD, both tappable: left = the action (Select by default, Read, Next, Retry…),
+right = Back (Continue on the results, Pause during play, Clear in the composer). `Enter` / `Esc` and the gamepad's A / B do the
+same. Holding the right one for 1.2 s on the title, menu or song select runs a gag (see [SPEC.md › Extras](SPEC.md#extras)).
 
 The LCD label is tappable too. In the main menu, swipe or scroll the wheel to browse, or tap the icon or the ◄ ► arrows.
-
-On the bare LCD (compact mode) there are no phone keys, so both soft-key labels are shown and tappable: left = the
-action, right = Back.
 
 ## Gamepad (Standard Gamepad API)
 
@@ -77,7 +66,7 @@ lane (`Esc` cancels) and has a *Reset buttons* action. Song picker buttons are i
 - **Main menu, Stats, Results, Messages, tutorial cards:** swipe left / right for the next / previous item or page (tap
   the arrows or tabs where shown). Tap a loading message to skip the animation.
 - **Song select:** on wide screens every navigation key is listed in a panel to the right of the phone. There is no hint line
-  on the LCD, so narrow and compact screens show none. With a controller, the category arrows in the header also become
+  on the LCD, so narrow screens show none. With a controller, the category arrows in the header also become
   LB / RB.
 - **Tutorial cards:** show the lane inputs for the device in use (keys, pad buttons or touch).
 - **Legend:** on wide screens, a legend beside the phone lists the menu and play keys.

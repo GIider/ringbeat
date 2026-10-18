@@ -13,11 +13,15 @@ const RING_POOL = 12, LABEL_POOL = 8, DEBRIS_POOL = 24;
 const DEBRIS_DIRS = [[-1, -1], [1, -1], [-1, 1], [1, 1]]; // diagonal pixel debris on a perfect hit
 const SPRITE_MAX = 200;   // cached text strings (each has up to 4 colour/weight variants)
 const LANE_MAX = 40;
+const RAIL_L = 64, RAIL_R = 84, RAIL_LANE_MIN = 24; // wide LCDs: stat rails left and right of the lanes (BPM / time, combo / judgement counts)
 const NOTE_H = 7;
 const HIDE_FRAC = 0.35;  // Hidden mod: share of the approach time (nearest the hit line) where notes are not drawn
 const HEAD = 1;           // rows above the cap line that text sprites keep (raised umlaut dots)
 const LABEL_H = CAP + 2;   // key-label row under each receptor
 
+// 1-bit icons for the rails (rows of '#' / '.')
+const ICON_NOTE = ['...########', '...########', '...##....##', '...##....##', '...##....##', '...##....##', '.####..####', '#####.#####', '.###...###.'];
+const ICON_CLOCK = ['...#####...', '..##...##..', '.##..#..##.', '.#...#...#.', '##...#...##', '##...###.##', '##.......##', '.#.......#.', '.##.....##.', '..##...##..', '...#####...'];
 const BOLD = {};
 const glyph = (ch, bold) => {
   const g = GLYPHS[ch] || GLYPHS[ch.toUpperCase()] || GLYPHS[' '];
@@ -148,6 +152,7 @@ export class Renderer {
     const w = Math.floor(cw / this.u), h = Math.floor(ch / this.u);
     this.w = w; this.h = h;
     this.canvas.width = w; this.canvas.height = h;
+    this.c.imageSmoothingEnabled = false;         // scaled text sprites (the combo) stay crisp
     if (this.canvas.style) { this.canvas.style.width = w * this.u + 'px'; this.canvas.style.height = h * this.u + 'px'; }
     this._layout();
   }
@@ -176,8 +181,10 @@ export class Renderer {
 
   _layout() {
     const W = this.w, H = this.h, n = this.lanes;
-    this.laneW = Math.max(8, Math.min(LANE_MAX, Math.floor((W - 4) / n)));
-    this.x0 = Math.floor((W - this.laneW * n) / 2);
+    this.rails = W >= RAIL_L + RAIL_R + RAIL_LANE_MIN * n;
+    const railL = this.rails ? RAIL_L : 0, area = W - railL - (this.rails ? RAIL_R : 0);
+    this.laneW = Math.max(8, Math.min(LANE_MAX, Math.floor((area - 4) / n)));
+    this.x0 = railL + Math.floor((area - this.laneW * n) / 2);
     this.top = 20;                                // below the two HUD rows
     // The receptor box *is* the target: its height spans the +-good window at the current scroll speed, so a note is
     // hittable exactly while it overlaps the box, and perfect while it sits on the centre band.
@@ -529,6 +536,56 @@ export class Renderer {
     }
   }
 
+  _icon(c, rows, x, y) {
+    for (let r = 0; r < rows.length; r++) for (let k = 0; k < rows[r].length; k++) if (rows[r][k] === '#') c.fillRect(x + k, y + r, 1, 1);
+  }
+
+  // Wide LCDs: progress bar in the top row, BPM / time on the left, combo / judgement counts / accuracy meter on the right.
+  _rails(game, t, now, fx, cmb) {
+    const c = this.c, W = this.w, H = this.h, len = game.chart.length || 1;
+    const p = Math.max(0, Math.min(1, t / len));
+    const bx = 3 + textWidth(this._scoreTxt, true) + 8, bw = W - 2 - textWidth(this._accTxt) - 8 - bx;
+    if (bw > 12) { // outline + fill
+      c.fillStyle = INK;
+      c.fillRect(bx, 2, bw, 1); c.fillRect(bx, 6, bw, 1); c.fillRect(bx, 2, 1, 5); c.fillRect(bx + bw - 1, 2, 1, 5);
+      c.fillRect(bx + 2, 4, Math.round((bw - 4) * p), 1);
+    }
+    // left rail: BPM and time left, each under its icon
+    const left = Math.max(0, Math.ceil(len - t));
+    if (left !== this._timeS) { this._timeS = left; this._timeTxt = String((left / 60) | 0).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0'); }
+    c.fillStyle = INK;
+    this._icon(c, ICON_NOTE, 4, 30);
+    this._text(c, 'BPM', 3, 43, INK, false);
+    this._text(c, String(Math.round(game.chart.bpm || 0)), 3, 53, INK, true);
+    this._icon(c, ICON_CLOCK, 4, 70);
+    this._text(c, this._timeTxt, 3, 84, INK, true);
+    // right rail: combo (centred over its label), judgement counts, accuracy meter
+    const rx = W - 3, rl = W - RAIL_R + 2, rc = Math.round((rl + rx) / 2);
+    const num = String(cmb), nw = textWidth(num, true) * 3;
+    if (fx && now - this.popT < 0.1) {
+      c.fillStyle = INK; c.fillRect(rc - (nw >> 1) - 2, 13, nw + 4, CAP * 3 + 4);
+      this._text(c, num, rc, 15, PAPER, true, 3, 'center');
+    } else this._text(c, num, rc, 15, INK, true, 3, 'center');
+    this._text(c, tr('COMBO'), rc, 15 + CAP * 3 + 3, INK, true, 1, 'center');
+    c.fillStyle = INK; c.fillRect(rl, 15 + CAP * 3 + 14, rx - rl, 1);
+    let y = 15 + CAP * 3 + 20;
+    for (const j of ['perfect', 'great', 'good', 'miss']) {
+      this._text(c, tr(JUDGE_TEXT[j]), rl, y, INK, false);
+      this._text(c, String(game.counts[j]), rx, y, INK, false, 1, 'right');
+      y += 10;
+    }
+    // accuracy meter: ten segments, bottom up
+    const mh = Math.min(H - y - 26, 70), mx = rx - 10;
+    if (mh > 24) {
+      const my = H - 8 - mh, segs = 10, fill = game.judgedCount ? Math.round(Math.max(0, Math.min(100, game.accuracy)) / 100 * segs) : 0; // starts empty
+      this._text(c, tr('ACC'), rx, my - 10, INK, false, 1, 'right');
+      c.fillStyle = INK;
+      c.fillRect(mx, my, 10, 1); c.fillRect(mx, my + mh - 1, 10, 1); c.fillRect(mx, my, 1, mh); c.fillRect(mx + 9, my, 1, mh);
+      const sh = (mh - 4) / segs;
+      for (let i = 0; i < fill; i++) c.fillRect(mx + 2, Math.round(my + mh - 2 - (i + 1) * sh) + 1, 6, Math.max(1, Math.floor(sh) - 1));
+    }
+  }
+
   _hud(game, t, now) {
     const c = this.c, W = this.w, H = this.h;
 
@@ -556,7 +613,7 @@ export class Renderer {
 
     const fx = this.juice && !this.reduced;
     if (game.score !== this._lastScore) { if (game.score > this._lastScore) this.bumpT = now; this._lastScore = game.score; }
-    // Row 1: score + grade/accuracy. Row 2: FC/AP (or the active mod chips) + combo.
+    // Row 1: score + grade/accuracy (+ the progress bar between them on wide LCDs). Row 2: FC/AP (or the active mod chips) + combo.
     this._text(c, this._scoreTxt, 3, fx && now - this.bumpT < 0.06 ? 0 : 1, INK, true);
     this._text(c, this._accTxt, W - 2, 1, INK, false, 1, 'right');
     c.fillStyle = INK; c.fillRect(0, 10, W, 1);
@@ -564,7 +621,8 @@ export class Renderer {
     if (game.fcAlive && game.judgedCount >= 5) tag = tr(game.apAlive ? 'ALL PERFECT' : 'FULL COMBO');
     if (!tag) tag = this.modLabel;
     if (tag) this._text(c, tag, 3, 12, INK, false);
-    if (cmb > 1) {
+    if (this.rails) this._rails(game, t, now, fx, cmb);
+    else if (cmb > 1) {
       // Fall back to the short form when the full string would collide with the left tag.
       const full = this._comboTxt;
       const fits = !tag || 3 + textWidth(tag) + 4 + textWidth(full, true) < W - 2;

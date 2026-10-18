@@ -26,7 +26,7 @@ export function createHud(perf, { interval = 500 } = {}) {
       el.className = 'perf-hud';
       el.style.cssText = 'position:fixed;top:4px;left:4px;z-index:9999;margin:0;padding:4px 6px;font:11px/1.3 ui-monospace,monospace;color:#9f9;background:rgba(0,0,0,.65);pointer-events:none;white-space:pre';
       document.body.appendChild(el);
-      unfloat = floatBox(el, 'perf', { defaults: () => (document.body.classList.contains('compact') ? { top: 4, right: 4 } : { top: 4, left: 4 }) });
+      unfloat = floatBox(el, 'perf', { defaults: () => ({ top: 4, left: 4 }) });
       // Main-thread tasks over 50 ms (GC, layout, script) show up here even when the frame timer misses them.
       longTasks = 0; longMax = 0;
       try {

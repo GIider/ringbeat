@@ -22,9 +22,9 @@ The screenshots show a signed-in demo player ("Nova") with fixed scores and stat
 | ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
 | Title screen: "Press any key" (or "Tap" on touch screens) starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with each song's best grade and FC (full combo) / AP (all perfect) badges, and the cursor song's best score below. |
 
-| Mods | Playing | Playing (compact) |
+| Results | Playing | Playing (mobile) |
 | --- | --- | --- |
-| ![Mods](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/mods-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing (compact)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-compact.png) |
+| ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
 | Mods: 1.2x speed, mirror lanes, hidden notes, sudden death. | Playing on the phone. | Compact layout: on small windows the LCD fills the window. |
 
 | Messages | Profile | Settings |
@@ -96,7 +96,7 @@ the game never needs the network and `localStorage` stays the source of truth.
 ## Controls
 
 `D F J K` play the 4 lanes; on touch, tap the lanes; on a gamepad, use the d-pad / face buttons / shoulders. `Esc` pauses and `R` restarts.
-In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or click the phone's Menu, C and ▲▼ keys and keypad.
+In menus, use the arrows, `Enter` and `Esc`/`Backspace`, or `1`–`6` for main-menu items, or tap the two soft buttons at the bottom of the screen.
 On song select, `D`/`F` changes the sort, `J`/`K` jump between groups and `V` toggles a favorite. Full list: [docs/CONTROLS.md](docs/CONTROLS.md).
 
 ## Documentation
@@ -118,7 +118,6 @@ Everything visual is made here, with no external fonts or images:
 
 - `src/pixelfont.js`: hand-drawn 5×7 LCD font (ASCII, German umlauts, UI symbols). `npm run font` compiles it to
   TrueType (`assets/fonts/rb-pixel.ttf` plus a bold cut).
-- `assets/phone.svg`: the phone shells. The LCD and key hit areas are DOM laid over them.
 - `src/pixelart.js`: 1-bit sprites (signal bars, battery, ringing phone, category icons) used as CSS masks.
 - `src/menuicons.js`: the animated main-menu icons (folder card + symbol + pressing hand), drawn in code.
 - `src/cover.js`: per-song 72×28 "picture message" art, generated from the song id.

@@ -2,7 +2,7 @@
 // Storage is injectable (getItem/setItem/removeItem) so the logic is testable and survives blocked storage.
 
 export const SCORES_KEY = 'ringbeat.scores.v1';
-export const TOP_N = 5;
+export const TOP_N = 10;
 
 const memoryStorage = () => {
   const m = new Map();

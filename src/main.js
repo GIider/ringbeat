@@ -1,7 +1,7 @@
 // Bootstrap, screen state machine, wiring.
 // States: title -> menu -> (select | mysongs -> songmenu / composer / custom | stats | inbox -> message | profile
 //   | settings <-> calibration); first visit to Tones: tutprompt -> tutorial
-//   select <-> (songscreen <-> mods) -> countin -> playing <-> paused (-> resuming) -> results -> select
+//   select <-> mods;  select -> countin -> playing <-> paused (-> resuming) -> results -> select
 // Every screen is a <section> inside the phone's LCD; during play the #nowplaying screen holds the highway canvas.
 
 import { generateChart } from './chart.js';
@@ -36,14 +36,13 @@ import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
-import { coverRows } from './cover.js';
 import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { createTitle, REST as TITLE_REST } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
-import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, fakeImei, formatImei } from './secrets.js';
+import { createSequenceMatcher, createWipeGag, KONAMI, IMEI_CODE, IMEI_TAPS, fakeImei, formatImei } from './secrets.js';
 import { createHud, copyReport } from './perfhud.js';
 import { createNetDebug } from './netdebug.js';
 import { resetFloatBoxes } from './floatbox.js';
@@ -63,10 +62,6 @@ synth.voice = settings.voice;
 const game = new Game(synth);
 const renderer = new Renderer($('stage'));
 renderer.scrollTime = settings.scrollTime;
-// Rolling quality of the last judgements drives the phones' signal bars.
-const QUALITY = { perfect: 1, great: 0.8, good: 0.5, miss: 0 };
-const recent = new Float32Array(16);
-let recentN = 0;
 // Juice: layered sound + vibration on top of the renderer's visual effects. All gated by settings.juice.
 let prevCombo = 0;
 const buzz = ms => {
@@ -93,7 +88,6 @@ game.fx = {
   banner: renderer.fx.banner,
   judge: (lane, j) => {
     renderer.fx.judge(lane, j);
-    recent[recentN++ % recent.length] = QUALITY[j];
     if (settings.juice) juiceJudge(lane, j); else prevCombo = game.combo;
   },
 };
@@ -112,20 +106,21 @@ let lastDevice = 'kbd'; // 'kbd' | 'pad' | 'touch'; decides which labels the lan
 const screens = {
   title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
-  hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'), songscreen: $('songscreen'),
-  settings: $('settings'), mods: $('mods'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
+  hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'),
+  settings: $('settings'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
 function show(name) {
   name = name || (inPlay() ? 'nowplaying' : name);
-  for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  // Pause is a modal over the frozen playfield, not a screen of its own.
+  for (const [k, el] of Object.entries(screens)) el.hidden = k !== name && !(name === 'paused' && k === 'nowplaying');
   document.body.classList.toggle('in-select', name === 'select');
   if (name !== 'select') dismissFx();
   titleFx(name === 'title');
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
-  if (!['select', 'custom', 'mysongs', 'songmenu', 'composer', 'songscreen'].includes(name)) stopPreview();
+  if (!['select', 'custom', 'mysongs', 'songmenu', 'composer'].includes(name)) stopPreview();
   const el = screens[name];
   if (el) {
     refreshChrome(el);
@@ -137,7 +132,6 @@ function show(name) {
   cameo.sync();
   if (!gagStates()) hideGag();
 }
-const phoneMode = () => !document.body.classList.contains('compact');
 function setState(s, screen) { state = s; show(screen); input.enabled = s === 'countin' || s === 'playing'; }
 // Status bar title + soft-key labels come from the visible screen's data attributes.
 function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].hidden)]) {
@@ -149,10 +143,7 @@ function refreshChrome(el = screens[Object.keys(screens).find(k => !screens[k].h
   for (const id of ['sel-arrow-l', 'sel-arrow-r']) $(id).hidden = el !== screens.select; // category arrows live in the title bar; show them before measuring
   $('st-title').classList.toggle('tap', el === screens.select);
   marquee($('st-title'));
-  // With the phone body drawn, only the Menu key's label shows (C is the implied Back), centred like the 3310's
-  // single "Select". The bare LCD keeps both tappable labels.
-  const phone = phoneMode();
-  const left = tr(el.dataset.softLeft || ''), right = phone ? '' : tr(el.dataset.softRight || '');
+  const left = tr(el.dataset.softLeft || ''), right = tr(el.dataset.softRight || '');
   $('soft-left').textContent = left;
   $('soft-right').textContent = right;
   $('soft-left').parentElement.classList.toggle('solo', !!left && !right);
@@ -239,7 +230,7 @@ if (DEV) {
 const konami = createSequenceMatcher(KONAMI);
 const imeiCode = createSequenceMatcher(IMEI_CODE);
 const wipe = createWipeGag();
-let gagTimer = 0, gagHold = 0, gagTick = 0, holdFired = false, dialTimer = 0, dialBuf = '';
+let gagTimer = 0, gagHold = 0, gagTick = 0, holdFired = false;
 // Hold gesture (C key, keyboard or phone): fires the wipe gag after HOLD_MS. It then runs on after the key is let go;
 // the next C press stops it.
 const HOLD_MS = 1200;
@@ -249,12 +240,10 @@ function beginHold(onFire) {
   gagHold = setTimeout(() => { gagHold = 0; holdFired = true; onFire(); }, HOLD_MS);
 }
 function endHold() { clearTimeout(gagHold); gagHold = 0; return holdFired; }
-// While the number view is up the phone acts as a dialer: nothing underneath can be selected or navigated.
-const dialing = () => !!dialTimer;
 const gagStates = () => ['title', 'menu', 'select'].includes(state);
 function hideGag() {
-  clearTimeout(gagTimer); clearTimeout(gagHold); clearInterval(gagTick); clearTimeout(dialTimer);
-  gagTimer = gagHold = gagTick = dialTimer = 0; dialBuf = '';
+  clearTimeout(gagTimer); clearTimeout(gagHold); clearInterval(gagTick);
+  gagTimer = gagHold = gagTick = 0;
   if ($('gag')) $('gag').style.pointerEvents = '';
   wipe.cancel();
   if ($('gag')) $('gag').hidden = true;
@@ -301,21 +290,19 @@ function konamiReward() {
   chirp([72, 76, 79, 84]);
   cameo.parade();
 }
-// Fed passively from every key source; consumes nothing. Armed only on title/select.
-function eggToken(code, key) {
+// Fed passively from keyboard and gamepad; consumes nothing. Armed only on title/menu/select.
+function eggToken(code) {
   if (!gagStates()) { konami.reset(); imeiCode.reset(); return; }
-  if (code && konami.feed(code)) konamiReward();
-  if (!key) return;
-  if (imeiCode.feed(key)) { showImei(); return; }
-  // "*" opens a dialer-style number view as a hint; it fades after a few idle seconds.
-  if (/^[0-9*#]$/.test(key) && (dialBuf || key === '*') && !gagTick && !gagTimer) {
-    dialBuf = (dialBuf + key).slice(-15);
-    stopPreview();
-    $('gag').style.pointerEvents = 'auto'; // swallows clicks on the song list underneath
-    showGag(tr('Enter number'), dialBuf + '_');
-    clearTimeout(dialTimer);
-    dialTimer = setTimeout(hideGag, 3000);
-  }
+  if (!code) return;
+  if (konami.feed(code)) konamiReward();
+  if (imeiCode.feed(code)) showImei();
+}
+// Touch / mouse route to the IMEI panel: IMEI_TAPS quick taps on the version label.
+let verTaps = 0, verTimer = 0;
+function tapVersion() {
+  clearTimeout(verTimer);
+  verTimer = setTimeout(() => { verTaps = 0; }, 1200);
+  if (++verTaps >= IMEI_TAPS) { verTaps = 0; showImei(); }
 }
 
 let toastTimer = 0;
@@ -333,9 +320,8 @@ function showToast(fill, ms) {
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
-// Favorite effect over a song's genre icon (the label is for screen readers only). Added: the heart grows out of the icon
-// and floats away. Removed: the heart appears, then cracks into two halves and pixel shards. Both are pinned to the row:
-// the effect follows it while the list scrolls and is dismissed once the row is out of view or gone.
+// Favorite effect over the heart beside the song's name (the label is for screen readers only). Added: the heart grows and
+// floats away. Removed: the heart appears, then cracks into two halves and pixel shards.
 const SHARDS = [[-16, -12, -90], [14, -16, 120], [-20, 6, 60], [19, 10, -140], [-6, 20, 200], [8, 22, -70]]; // dx, dy, rot
 const FX_MS = { add: 950, break: 850 };
 const FX_CRACK_MS = 260; // the heart holds this long before it cracks (see .fx.break in style.css; favBreak's crackAt)
@@ -361,20 +347,15 @@ function dismissFx() {
   fxId = '';
   $('fav-fx').hidden = true;
 }
-// Centre the effect on the first letter of its row's title, a little above the row; false (and dismissed) when that row is not fully inside the list viewport.
+// Centre the effect on the heart beside the song's name in the details pane; false (and dismissed) when that pane is not on screen (narrow list view).
 function placeFx() {
   const b = $('fav-fx');
   if (b.hidden) return false;
-  const row = Array.from($('song-list').children).find(r => r.dataset.id === fxId), icon = row && row.querySelector('.spr.cat');
-  if (!icon) { dismissFx(); return false; }
-  const ir = icon.getBoundingClientRect(), list = $('song-list').getBoundingClientRect();
-  if (ir.top < list.top || ir.bottom > list.bottom) { dismissFx(); return false; }
-  // Over the first letter of the song's title (not the icon at the LCD edge, where the heart would be cut off).
-  const t = row.querySelector('.t'), text = t && t.firstChild, rg = document.createRange();
-  if (text && text.nodeType === 3 && text.length) rg.setStart(text, 0), rg.setEnd(text, 1);
-  const fr = text && text.nodeType === 3 && text.length ? rg.getBoundingClientRect() : t ? t.getBoundingClientRect() : ir;
-  b.style.left = fr.left + Math.min(fr.width, 14) / 2 + 'px';
-  b.style.top = ir.top + ir.height / 2 - 18 + 'px';
+  const heart = $('sd-fav');
+  if (state !== 'select' || fxId !== selectedId || !heart.getClientRects().length) { dismissFx(); return false; }
+  const r = heart.getBoundingClientRect();
+  b.style.left = r.left + r.width / 2 + 'px';
+  b.style.top = r.top + r.height / 2 + 'px';
   return true;
 }
 
@@ -434,7 +415,7 @@ cloud.onChange(e => {
     else if (state === 'menu') renderMenu();
   }
   if (e.ranks && state === 'stats') renderStats();
-  if ((e === 'signedin' || e === 'signedout' || e.ranks) && state === 'songscreen') { if (e === 'signedin') dpTab = 'world'; renderDpPanel(); }
+  if ((e === 'signedin' || e === 'signedout' || e.ranks) && state === 'select') { if (e === 'signedin') dpTab = 'world'; renderDpPanel(); }
   if (e === 'profile' || e === 'signedin') $('pf-name-input').value = (cloud.profile() || {}).name || '';
   if (state === 'profile') renderProfile();
 });
@@ -511,6 +492,24 @@ function renderCategories() {
   const tabs = categoryTabs();
   if (!tabs.some(t => t.id === settings.view.category)) settings.view.category = 'all';
   viewTab = tabs.find(x => x.id === settings.view.category);
+  // The strip is built once per tab set and only re-marked afterwards, so the current tab stays in the middle and the others scroll past it.
+  const strip = $('sel-tabs'), sig = tabs.map(t => t.id + ':' + tr(t.label)).join('|');
+  if (strip.dataset.sig !== sig) {
+    strip.dataset.sig = sig;
+    strip.textContent = '';
+    for (const t of tabs) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.tabIndex = -1; b.dataset.cat = t.id;
+      b.textContent = tr(t.label);
+      strip.appendChild(b);
+    }
+  }
+  let cur = null;
+  for (const b of strip.children) { const on = b.dataset.cat === viewTab.id; b.classList.toggle('sel', on); if (on) cur = b; }
+  if (cur) {
+    const sr = strip.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+    if (sr.width) strip.scrollLeft += cr.left + cr.width / 2 - (sr.left + sr.width / 2);
+  }
   renderPosition();
 }
 // Header: the category goes in the status title ("Tones · Video Games"); the row shows the cursor position and section ("3/61 · T").
@@ -523,7 +522,6 @@ function renderPosition() {
   sec = sectionRange(sec, settings.view.sort, r => fmt(r, 1)); // the band as a range, stars in the same format as the stars value
     const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
   cat.textContent = pos;
-  if (screens.select.dataset.sub !== t.label) { screens.select.dataset.sub = t.label; if (state === 'select') refreshChrome(screens.select); }
   $('sel-sort').textContent = tr(SORTS.find(x => x.id === settings.view.sort).label);
 }
 // Move the cursor to list index `i` (clamped) and keep it in view.
@@ -670,6 +668,7 @@ $('hub-grid').addEventListener('click', ev => {
   else if (b.dataset.cat !== settings.view.category || favKeep.size) setCategory(b.dataset.cat); // picking Favorites again reopens it
   leaveHub();
 });
+$('sel-tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b && b.dataset.cat !== settings.view.category) { synth.keyClick(); setCategory(b.dataset.cat); } });
 for (const id of ['sel-cat', 'st-title']) $(id).addEventListener('click', () => { if (state === 'select') { synth.keyClick(); openHub(); } }); // the category heading in the title bar is tappable too
 
 function jumpSectionStep(step) {
@@ -704,6 +703,7 @@ function toggleFavorite(id = selectedId) {
   if (!on && settings.view.category === 'favorites') favKeep.add(id); else favKeep.delete(id);
   save();
   renderList();
+  renderPane();
   if (state === 'select') focusCurrentRow(); // the list may have re-sorted around the cursor
   // After focusCurrentRow's frame has put the row back in view, so the effect finds the icon where it ended up.
   requestAnimationFrame(() => requestAnimationFrame(() => favFx(id, on ? 'add' : 'break')));
@@ -788,6 +788,7 @@ function renderDetail() {
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
     `<div title="${esc(tn(e.notes[e.chart], '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   if (e.tag) marquee($('sel-info').children[1]); // a long author / source scrolls like a long title
+  renderPane();
 }
 
 function selectSong(id, scroll = true) {
@@ -836,6 +837,8 @@ function revealRow(row) {
   if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
 }
 function openSelect() {
+  selDetail = false;
+  $('select').classList.remove('detail');
   renderList();
   renderDetail();
   setState('select', 'select');
@@ -1375,14 +1378,27 @@ function importSharedText(text) {
   return r;
 }
 
-// -- song screen: the song's details, its top runs and the Play button --
+// -- song details: the right pane of the picker (a view of its own on narrow LCDs, reached with Select) --
 function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
-// One-row text (leaderboard lines, the Play and Mods rows): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
+// One-row text (leaderboard lines): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
 const oneRow = html => `<span class="ln"><span class="mq">${html}</span></span>`;
 const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln, .dp-line'));
-let dpBack = null, dpEntry = null, dpTab = 'local';
-// Signed-in players get World (first) and Local tabs; everyone else just sees their local runs.
+// One leaderboard row (picker, results): #rank, score, name, FC / mod pills, accuracy, grade. `name` is empty for the player's own local runs.
+const boardRow = (r, rank, name = '') =>
+  `<span class="rk">#${rank}</span><span class="sc">${r.score}</span><span class="ln nm"><span class="mq">${name}</span></span>` +
+  `<span class="ln pl"><span class="mq">${badgeHTML(r, true)}</span></span><span class="ac">${fmt(r.accuracy, 1)}%</span><span class="gr">${esc(r.grade)}</span>`;
+const SEL_WIDE_PX = 800; // LCD width from which the details sit beside the list (keep in step with the @container rule in style.css)
+const lcdWidth = () => document.querySelector('.screens').clientWidth; // the screens' own width is 0 while they are hidden
+const selWide = () => lcdWidth() >= SEL_WIDE_PX;
+let selDetail = false, dpEntry = null, dpTab = 'local', paneTimer = 0;
+// Signed-in players get Global (first) and Local tabs; everyone else just sees their local runs.
 const dpTabs = () => cloud.available() && cloud.signedIn();
+function setSelDetail(on) {
+  selDetail = on;
+  $('select').classList.toggle('detail', on);
+  if (on) { renderPane(); $('sd-go').focus({ preventScroll: true }); } else if (state === 'select') focusCurrentRow();
+}
+function toggleDpTab() { if (dpTabs()) setDpTab(dpTab === 'world' ? 'local' : 'world'); }
 function setDpTab(tab) {
   dpTab = tab;
   renderDpPanel();
@@ -1395,16 +1411,36 @@ function renderDpPanel() {
   if (!tabs) dpTab = 'local';
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
+  $('sd-best').hidden = dpTab !== 'world'; // locally the top run is the best run
   box.textContent = '';
-  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); marqueeRows(box); }
+  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
+}
+// The board takes the room the pane has left (under the "Your Best" row when that shows). Rows that don't all fit
+// scroll up and down like a marquee instead of being cut off.
+function fitRows(box) {
+  const ol = box.querySelector('ol');
+  if (!ol) return;
+  ol.classList.remove('vscroll');
+  box.style.maxHeight = '';
+  const pane = $('sel-detail'), best = $('sd-best');
+  const avail = Math.floor(pane.getBoundingClientRect().bottom - (best.hidden ? 0 : best.offsetHeight + 8) - 8 - box.getBoundingClientRect().top);
+  if (avail <= 0) return;
+  box.style.maxHeight = avail + 'px';
+  const over = ol.offsetHeight - avail;
+  if (over > 1) {
+    ol.style.setProperty('--dy', -over + 'px');
+    ol.style.setProperty('--dur', Math.max(3, over / 30).toFixed(1) + 's');
+    ol.classList.add('vscroll');
+  }
 }
 function paintDpLocal(e, d, box) {
   const rec = scores.get(e.id, d);
   const ol = document.createElement('ol');
   ol.className = 'top';
-  for (const r of (rec ? rec.top : [])) {
+  for (const [i, r] of (rec ? rec.top : []).entries()) {
     const li = document.createElement('li');
-    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
+    li.className = 'brow';
+    li.innerHTML = boardRow(r, i + 1);
     ol.appendChild(li);
   }
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
@@ -1427,34 +1463,41 @@ function paintDpWorldLines(b, near, box, msg) {
   ol.className = 'top';
   for (const r of lines) {
     const li = document.createElement('li');
-    li.value = r.rank;
-    li.className = r.gap ? 'gap' : r.me ? 'cur' : '';
-    li.innerHTML = oneRow(`${nameHTML(r)} · ${r.score}${r.gap ? '' : badgeHTML(r, true)}`);
+    li.className = 'brow' + (r.gap ? ' gap' : r.me ? ' cur' : '');
+    li.innerHTML = r.gap ? '<span class="rk">…</span>' : boardRow(r, r.rank, nameHTML(r));
     ol.appendChild(li);
   }
   box.textContent = '';
   box.appendChild(ol);
+  fitRows(box);
   marqueeRows(box);
 }
-function openSongScreen(entry, ret, retLabel, goBack, uid) {
-  dpBack = goBack;
-  dpEntry = entry;
-  dpTab = dpTabs() ? 'world' : 'local';
-  setSprite($('dp-cover'), coverRows(entry.id, entry.category), 2);
-  $('dp-title').textContent = entry.title;
-  $('dp-meta').textContent = `${entry.tag ? entry.tag + ' · ' : ''}${entry.bpm} BPM · ${formatLength(entry.length)}`;
-  const play = $('dp-play'), n = entry.notes[entry.chart] || 0;
-  play.innerHTML = '<span class="dp-line"><span class="mq">' + esc(tr('Play')) + ` · ${starsText(ratingOf(entry))} ${estMark(entry)}${starsValue(ratingOf(entry))} · ${tn(n, '{n} note', '{n} notes')}` + '</span></span>';
-  play.disabled = !n;
-  play.onclick = () => {
-    if (uid) { selectedId = entry.id; settings.lastSongId = entry.id; }
-    save();
-    startRun({ entry, ret, retLabel });
-  };
-  renderDpPanel();
+// The pane follows the cursor: text at once, the cover and the leaderboard once the cursor rests (no work while scrolling).
+function renderPane() {
+  const e = selectedEntry();
+  if (!e) return;
+  const rec = scores.get(e.id, e.chart), best = rec && rec.best;
+  $('sd-title').textContent = e.title;
+  marquee($('sd-title'));
+  $('sd-stars').innerHTML = `${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>`;
+  $('sd-tag').textContent = e.tag || tr(((CATEGORIES.find(c => c.id === e.category) || {}).label) || 'Custom');
+  const rows = [[tr('BPM'), e.bpm], [tr('Length'), formatLength(e.length)], [tr('Plays'), rec ? rec.plays : 0], [tr('Grade'), best ? `<span class="badge">${esc(best.grade)}</span>${badgeHTML(rec)}` : '-']];
+  $('sd-stats').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${typeof v === 'string' && v.startsWith('<') ? v : esc(String(v))}</dd>`).join('');
+  const wr = cloud.signedIn() ? cloud.rank(e.id, e.chart) : null; // the player's place on the world board, when known
+  $('sd-best').innerHTML = `<b>${esc(tr('Your Best'))}${wr ? ' #' + wr.rank : ''}</b> ${best ? `${best.score} ${badgeHTML(best, true)} ${fmt(best.accuracy, 1)}% ${esc(best.grade)}` : esc(tr('No plays yet'))}`;
+  const fav = isFavorite(e.id);
+  if ($('sd-fav').dataset.on !== String(fav) || !$('sd-fav').firstChild) { $('sd-fav').dataset.on = String(fav); $('sd-fav').innerHTML = spriteHTML(HEART, 3); }
+  $('sd-fav').classList.toggle('on', fav);
+  $('sd-fav').setAttribute('aria-pressed', String(fav));
+  $('sd-go').disabled = !(e.notes[e.chart] || 0);
   refreshModsButton();
-  setState('songscreen', 'songscreen');
-  marqueeRows($('songscreen')); // measured once the screen is shown
+  clearTimeout(paneTimer);
+  paneTimer = setTimeout(() => {
+    if (state !== 'select' || selectedEntry() !== e) return;
+    dpEntry = e;
+    if (dpTabs() && !$('dp-tabs').dataset.seen) { $('dp-tabs').dataset.seen = '1'; dpTab = 'world'; }
+    renderDpPanel();
+  }, 160);
 }
 
 // -- composer --
@@ -1583,13 +1626,16 @@ function openCustom(text = '', uid = '') {
   setState('custom', 'custom');
 }
 
-// ---- mods (sticky loadout, edited on its own screen opened from the difficulty picker) ----
-function refreshModsButton() {
-  const on = mods.isActive(settings.mods);
-  $('btn-mods').innerHTML = `<span class="dp-line"><span class="mq">${esc(tr('Mods: {summary}', { summary: tr(mods.summary(settings.mods)) }) + (on ? ' ▸' : ''))}</span></span>`;
-  $('btn-mods').classList.toggle('sel', on);
-  marqueeAll($('btn-mods').querySelectorAll('.dp-line'));
-}
+// ---- mods (sticky loadout: chips in the song picker, the full list on its own screen via Customize) ----
+// The picker's Modifiers row: five chips, each cycles one setting. Tapping (or cycling) one explains the mod underneath.
+const MOD_CHIPS = ['speed', 'style', 'visuals', 'input', 'mode'];
+const modChips = m => ({
+  speed: [fmt(m.speed, 1) + 'x', tr('Speed'), m.speed !== 1],
+  style: [m.mirror ? 'MR' : 'ST', tr('Style'), m.mirror],
+  visuals: [m.hidden ? 'HD' : '--', tr('Visuals'), m.hidden],
+  input: [{ lenient: 'EZ', off: 'NM', strict: 'ST' }[m.judge], tr('Input'), m.judge !== 'off'],
+  mode: [m.demo ? 'DEMO' : m.sudden ? 'SD' : '--', tr('Mode'), m.demo || m.sudden],
+});
 const MOD_HINTS = {
   'm-speed': 'Plays the song faster or slower. Pitch stays the same.',
   'm-mirror': 'Flips the lanes left to right.',
@@ -1599,34 +1645,35 @@ const MOD_HINTS = {
   'm-judge': 'Lenient widens the timing windows, Strict narrows them.',
 };
 const JUDGE_LABELS = { lenient: 'Lenient', off: 'Normal', strict: 'Strict' };
-function updateModsUI() {
-  const m = settings.mods;
-  $('m-speed').value = mods.SPEEDS.indexOf(m.speed);
-  $('m-speed-val').textContent = m.speed === 1 ? tr('Normal') : fmt(m.speed, 1) + '×';
-  $('m-mirror').checked = m.mirror;
-  $('m-hidden').checked = m.hidden;
-  $('m-sudden').checked = m.sudden;
-  $('m-demo').checked = m.demo;
-  $('m-judge').value = mods.JUDGES.indexOf(m.judge);
-  $('m-judge-val').textContent = tr(JUDGE_LABELS[m.judge]);
-  $('m-mult').textContent = mods.multText(mods.multiplier(m));
-  paintRanges($('mods'));
+const MOD_HINT_ID = { speed: 'm-speed', style: 'm-mirror', visuals: 'm-hidden', input: 'm-judge' };
+let modChip = 0; // gamepad cursor over the chips
+function refreshModsButton() {
+  const m = mods.normalize(settings.mods), chips = modChips(m);
+  MOD_CHIPS.forEach((k, i) => {
+    const b = $('sd-chips').children[i], [v, label, on] = chips[k];
+    b.innerHTML = `<b>${esc(v)}</b><span>${esc(label)}</span>`;
+    b.classList.toggle('on', on);
+    b.classList.toggle('cur', i === modChip && lastDevice === 'pad');
+  });
+  $('sd-mult').textContent = mods.isActive(m) ? mods.multText(mods.multiplier(m)) : '';
 }
-function setModHint(id) {
-  $('m-hint').textContent = tr(MOD_HINTS[id]);
-  marquee($('m-hint'));
+function showModHint(which) {
+  const m = mods.normalize(settings.mods);
+  const id = which === 'mode' ? (m.demo ? 'm-demo' : 'm-sudden') : MOD_HINT_ID[which];
+  const pre = which === 'input' ? tr(JUDGE_LABELS[m.judge]) + ': ' : which === 'mode' && !m.demo && !m.sudden ? tr('Normal') + ': ' : '';
+  $('sd-hint').textContent = which === 'mode' && !m.demo && !m.sudden ? tr('Normal') : pre + tr(MOD_HINTS[id]);
+  marquee($('sd-hint'));
+  fitRows($('dp-panel')); // the hint takes room from the board
 }
-function openMods() {
-  updateModsUI();
-  setState('mods', 'mods'); // shown first, so the marquee can measure the hint
-  setModHint('m-speed');
-}
-function closeMods() {
-  refreshModsButton();
-  renderDpPanel();
-  setState('songscreen', 'songscreen');
-  // show() focuses the default difficulty on the next frame; land back on the Mods button instead.
-  requestAnimationFrame(() => requestAnimationFrame(() => { if (state === 'songscreen') { $('btn-mods').focus({ preventScroll: true }); light($('btn-mods')); } }));
+function cycleMod(which) {
+  const m = mods.normalize(settings.mods);
+  modChip = Math.max(0, MOD_CHIPS.indexOf(which));
+  if (which === 'speed') setMod({ speed: mods.SPEEDS[(mods.SPEEDS.indexOf(m.speed) + 1) % mods.SPEEDS.length] });
+  else if (which === 'style') setMod({ mirror: !m.mirror });
+  else if (which === 'visuals') setMod({ hidden: !m.hidden });
+  else if (which === 'input') setMod({ judge: mods.JUDGES[(mods.JUDGES.indexOf(m.judge) + 1) % mods.JUDGES.length] });
+  else setMod(m.demo ? { demo: false } : m.sudden ? { sudden: false, demo: true } : { sudden: true });
+  showModHint(which);
 }
 // Settings › Developer › Glyphs & icons: every font glyph and sprite, built once on first open.
 let glyphsBuilt = false, glyphsLast = 0; // the focused cell is kept for the session
@@ -1680,7 +1727,7 @@ function openGlyphs() {
 function setMod(patch) {
   settings.mods = mods.normalize({ ...settings.mods, ...patch });
   save();
-  updateModsUI();
+  refreshModsButton();
 }
 
 // ---- play / pause / results ----
@@ -1727,8 +1774,7 @@ function startRun(r) {
   renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
   renderer.resetState();
   screens.nowplaying.dataset.title = renderer.title;
-  recent.fill(1); recentN = 0;
-  phoneCache.key = '';
+  setSprite($('st-signal'), signal(5), 2); // the bars stay full while playing
   input.setLanes(chart.lanes);
   padHeld.forEach(s => s.clear());
   game.start(chart, { leadIn: r.tutorial ? 1.5 : 2, backing: settings.backing, rollAudio: settings.rollAudio, calibration: settings.calibration,
@@ -1738,9 +1784,13 @@ function startRun(r) {
 }
 function restartRun() { abortRun('restart'); resumeEnd = 0; setResumeCount(0); if (run) startRun(run); }
 
+// Wide LCD: the details are already beside the list, so Select plays. Narrow: the first Select opens them.
 function playSelected() {
   const e = selectedEntry();
-  if (e) openSongScreen(e, null, null, openSelect);
+  if (!e) return;
+  if (!selWide() && !selDetail) { setSelDetail(true); return; }
+  save();
+  startRun({ entry: e });
 }
 
 function leaveToSelect() {
@@ -1870,8 +1920,12 @@ game.onFinish = r => {
   if (run && run.entry && !demo) { stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used }); cloud.schedule(); }
   screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-heading').textContent = tr(screens.results.dataset.title);
-  $('r-song').textContent = run ? `${run.entry.title} · ${cap(run.diff)}` +
-    (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
+  $('r-song').textContent = run ? run.entry.title + (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
+  if (run && run.entry) {
+    const en = run.entry;
+    $('r-info').innerHTML = [[tr('BPM'), en.bpm], [tr('Length'), formatLength(en.length)], [tr('Rating'), `${estMark(en)}${starsValue(ratingOf(en))} / 5`]]
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(String(v))}</dd>`).join('');
+  }
   juiceResults(r);
   $('r-grade').textContent = r.grade;
   $('r-grade').dataset.grade = r.grade;
@@ -1932,10 +1986,8 @@ function paintWorld(songId, diff, token = worldToken) {
   if (!cloud.signedIn()) return say(tr('Sign in for world ranks'));
   const add = (r, cls) => {
     const li = document.createElement('li');
-    li.value = r.rank;
-    if (r.me) li.className = 'cur';
-    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${nameHTML(r)}${r.gap ? '' : badgeHTML(r, true)}`);
-    if (cls) li.className = cls;
+    li.className = 'brow' + (cls ? ' ' + cls : r.me ? ' cur' : '');
+    li.innerHTML = r.gap ? '<span class="rk">…</span>' : boardRow(r, r.rank, nameHTML(r));
     ol.appendChild(li);
   };
   const near = cloud.rankNear(songId, diff) || [];
@@ -1994,22 +2046,26 @@ function renderTopRuns() {
   ol.textContent = '';
   for (const [i, r] of topRuns.runs.entries()) {
     const li = document.createElement('li');
-    if (topRuns.rank === i + 1) li.className = 'cur';
-    li.innerHTML = oneRow(`${r.score} · ${esc(r.grade)} · ${fmt(r.accuracy, 1)}%${badgeHTML(r, true)}`);
+    li.className = 'brow' + (topRuns.rank === i + 1 ? ' cur' : '');
+    li.innerHTML = boardRow(r, i + 1);
     ol.appendChild(li);
   }
   $('r-top-empty').hidden = topRuns.runs.length > 0;
 }
 // The World page needs an account; signed out, it isn't offered.
 const resultsPages = () => document.querySelectorAll('#r-tabs button').length - (cloud.available() && cloud.signedIn() ? 0 : 1);
+// Wide LCD: every page is a panel of one screen (the World list only when signed in), so there is nothing to page through.
+const resultsAll = () => lcdWidth() >= SEL_WIDE_PX;
 function setResultsPage(n) {
   resultsPage = Math.max(0, Math.min(resultsPages() - 1, n));
-  for (const el of document.querySelectorAll('#results .r-page')) el.hidden = +el.dataset.page !== resultsPage;
+  const all = resultsAll(), world = cloud.available() && cloud.signedIn();
+  for (const el of document.querySelectorAll('#results .r-page')) el.hidden = all ? el.dataset.page === '4' && !world : +el.dataset.page !== resultsPage;
   for (const el of document.querySelectorAll('#r-tabs button')) { const on = +el.dataset.page === resultsPage; el.classList.toggle('sel', on); el.setAttribute('aria-selected', on); }
   marqueeAll($('results').querySelectorAll('.r-page:not([hidden]) .ln'));
 }
 
 function stepResultsPage(step) {
+  if (resultsAll()) return;
   const n = resultsPages();
   setResultsPage((resultsPage + step + n) % n);
   synth.keyClick();
@@ -2262,9 +2318,9 @@ function selectHints() {
   // Every key is listed in the panel beside the phone (shown when the screen is wide enough).
   const rows = pad
     ? [[[bn(BTN.LB), bn(BTN.RB)], tr('Category')], [[bn(BTN.LT)], tr('Sort')], [[bn(BTN.Y)], tr('All categories')],
-      [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X)], tr('Random')]]
+      [[bn(BTN.RT), bn(BTN.BACK)], tr('Group')], [[bn(BTN.X), bn(BTN.R3)], tr('Modifiers')], [[bn(BTN.L3)], tr('Random')]]
     : [[['◄', '►'], tr('Category')], [['D', 'F'], tr('Sort')], [['J', 'K'], tr('Group')], [['V'], tr('Favorite')],
-      [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [['/'], tr('Find')]];
+      [['1-5'], tr('Modifiers')], [['T'], tr('Board')], [['R'], tr('Random')], [['G'], tr('All categories')], [['PgUp', 'PgDn'], tr('Page')], [['/'], tr('Find')]];
   const side = $('sel-keys');
   side.replaceChildren();
   const head = document.createElement('b');
@@ -2295,8 +2351,7 @@ pad.onButton = (index, down, ts) => {
     return;
   }
   if (!down) return;
-  eggToken({ [BTN.UP]: 'ArrowUp', [BTN.DOWN]: 'ArrowDown', [BTN.LEFT]: 'ArrowLeft', [BTN.RIGHT]: 'ArrowRight', [BTN.B]: 'KeyB', [BTN.A]: 'KeyA' }[index] || '', '');
-  if (dialing()) { if (index === BTN.B) hideGag(); return; }
+  eggToken({ [BTN.UP]: 'ArrowUp', [BTN.DOWN]: 'ArrowDown', [BTN.LEFT]: 'ArrowLeft', [BTN.RIGHT]: 'ArrowRight', [BTN.B]: 'KeyB', [BTN.A]: 'KeyA' }[index] || '');
   if (capturingSlot >= 0 && state === 'settings') { bindButton(index); return; }
   if (state === 'calibration') {
     if (index === BTN.B || index === BTN.START) leaveCalibration();
@@ -2330,7 +2385,7 @@ function back() {
     case 'title': break;
     case 'welcome': skipWelcome(); break;
     case 'menu': setState('title', 'title'); break;
-    case 'select': stopPreview(); openMenu('tones'); break;
+    case 'select': if (selDetail) { setSelDetail(false); break; } stopPreview(); openMenu('tones'); break;
     case 'hub': leaveHub(); break;
     case 'stats': case 'inbox': case 'profile': openMenu(); break;
     case 'admin': adminBack(); break;
@@ -2339,10 +2394,8 @@ function back() {
     case 'tutprompt': skipTutPrompt(); break;
     case 'loginprompt': afterLogin(); break;
     case 'settings': closeSettings(); break;
-    case 'mods': closeMods(); break;
     case 'glyphs': openSettings(settingsFrom); break;
     case 'mysongs': openMenu('mysongs'); break;
-    case 'songscreen': if (dpBack) dpBack(); else openSelect(); break;
     case 'songmenu': openMySongs(); break;
     case 'custom': if (txtUid) openSongMenu(txtUid); else openMySongs(); break;
     case 'composer':
@@ -2368,9 +2421,8 @@ function menuButton(index) {
       break;
     case BTN.B: back(); break;
     case BTN.X:
-      if (state === 'songscreen') openMods();
-      else if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
-      else if (state === 'select') randomSong();
+      if (state === 'composer' && !csMenu) { const e = compEntry(); if (e) togglePreview(e); }
+      else if (state === 'select') cycleMod(MOD_CHIPS[modChip]);
       break;
     case BTN.LB: if (state === 'composer' && !csMenu) compInput('8'); else if (state === 'select') cycleCategory(-1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('left'); break;
     case BTN.RB: if (state === 'composer' && !csMenu) compInput('9'); else if (state === 'select') cycleCategory(1); else if (state === 'results' || state === 'stats' || state === 'message') navigate('right'); break;
@@ -2378,6 +2430,8 @@ function menuButton(index) {
     case BTN.LT: if (state === 'select') setView('sort', SORTS); break;
     case BTN.RT: if (state === 'select') jumpSectionStep(1); break;
     case BTN.BACK: if (state === 'select') jumpSectionStep(-1); break;
+    case BTN.L3: if (state === 'select') randomSong(); break;
+    case BTN.R3: if (state === 'select') { modChip = (modChip + 1) % MOD_CHIPS.length; refreshModsButton(); showModHint(MOD_CHIPS[modChip]); } break;
   }
 }
 let padStreak = 0, padStreakAt = 0;
@@ -2406,9 +2460,8 @@ function navigate(dir) {
   if (state === 'results' && (dir === 'up' || dir === 'down') && scrollResults(dir)) return;
   if (state === 'message') { if (dir === 'up' || dir === 'down') scrollMessage(dir); else stepMessage(dir === 'right' ? 1 : -1); return; }
   if (state === 'tutorial' && (dir === 'left' || dir === 'right')) { tutorialStep(dir === 'left' ? -1 : 1); return; }
-  if (state === 'songscreen' && (dir === 'left' || dir === 'right') && dpTabs()) {
-    const tab = dir === 'left' ? 'world' : 'local';
-    if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); }
+  if (state === 'select' && selDetail) { // the narrow details view: left / right switch the board, up / down have nothing to move
+    if ((dir === 'left' || dir === 'right') && dpTabs()) { const tab = dir === 'left' ? 'world' : 'local'; if (tab !== dpTab) { synth.keyClick(); setDpTab(tab); } }
     return;
   }
   if (state === 'settings' && (dir === 'left' || dir === 'right') && document.activeElement.closest('#set-tabs')) {
@@ -2426,7 +2479,7 @@ function navigate(dir) {
   // Down from the last song wraps to the first, the same way.
   if (state === 'select' && dir === 'down' && !searchOpen() && performance.now() - selMoveAt > 400
     && visible().length && visible()[visible().length - 1].id === selectedId) { jumpTo(0); return; }
-  if (state === 'results' && (dir === 'left' || dir === 'right')) {
+  if (state === 'results' && (dir === 'left' || dir === 'right') && !resultsAll()) {
     stepResultsPage(dir === 'left' ? -1 : 1);
     return;
   }
@@ -2439,6 +2492,7 @@ function softLeft() {
     case 'title': startFromTitle(); break;
     case 'select': nav.confirm(activeScreen()); break; // the Menu key picks the song
     case 'message': stepMessage(1); break;
+    case 'stats': navigate('right'); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
     case 'countin': case 'playing': case 'resuming': pauseGame(); break;
     default: { const root = activeScreen(); if (root) nav.confirm(root); }
@@ -2457,44 +2511,20 @@ function softRightDown() {
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', up);
 }
-// Phone keypad shortcuts in the song list: 1/3 page, 7/9 group, 0 random (* and # stay free for the secret dial codes;
-// Up/Down wrap at the ends of the list).
-function selectKey(key) {
-  switch (key) {
-    case '1': jumpPage(-1); break;
-    case '3': jumpPage(1); break;
-    case '7': jumpSectionStep(-1); break;
-    case '9': jumpSectionStep(1); break;
-    case '0': randomSong(); break;
-    default: return false;
-  }
-  return true;
-}
+// Soft keys (the two bottom buttons; keyboard Enter/Esc and the gamepad reach the same handlers).
 function phoneKey(key) {
   if (!$('gag').hidden && gagTimer) hideGag();
-  if (key.length === 1) eggToken('', key);
-  if (dialing()) { if (key === 'softR') hideGag(); return; }
   if (state === 'composer' && !csMenu) {
     if (key === 'softL') setCompMenu(true);
     else if (key === 'softR') compInput('del');
-    else if (key === 'ok') { const e = compEntry(); if (e) togglePreview(e); }
-    else compInput(key);
     return;
   }
   if (!inPlay()) synth.keyClick();
   if (state === 'title') { startFromTitle(); return; }
   if (state === 'welcome') { skipWelcome(); return; }
-  if (state === 'calibration' && key !== 'softR' && key !== 'softL' && key !== 'ok') { calibTap({ timeStamp: performance.now() }); return; }
-  if (state === 'select' && selectKey(key)) return;
-  switch (key) {
-    case 'softL': softLeft(); break;
-    case 'softR': back(); break;
-    case 'ok': case '5': if (inPlay()) pauseGame(); else { const root = activeScreen(); if (root) nav.confirm(root); } break;
-    case '2': case 'up': navigate('up'); break;
-    case '8': case 'down': navigate('down'); break;
-    case '4': navigate('left'); break;
-    case '6': navigate('right'); break;
-  }
+  if (state === 'calibration' && key !== 'softR' && key !== 'softL') { calibTap({ timeStamp: performance.now() }); return; }
+  if (key === 'softL') softLeft();
+  else if (key === 'softR') back();
 }
 
 // ---- wiring ----
@@ -2594,9 +2624,6 @@ function wire() {
   syncJuice();
   jc.onchange = () => { settings.juice = jc.checked; syncJuice(); save(); };
   hp.onchange = () => { settings.haptics = hp.checked; save(); };
-  const cv = $('pref-compact');
-  cv.checked = settings.compactView;
-  cv.onchange = () => { settings.compactView = cv.checked; save(); layout(true); };
   const cp = $('pref-combopopup');
   cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
   cp.onchange = () => { settings.comboPopup = cp.checked; renderer.comboPopup = cp.checked; save(); };
@@ -2604,6 +2631,8 @@ function wire() {
   po.checked = settings.perfOverlay; nt.checked = settings.netTracker;
   po.onchange = () => setPerf(po.checked);
   nt.onchange = () => { settings.netTracker = nt.checked; netDebug.enable(nt.checked); save(); };
+  $('pref-compact').checked = settings.compactView;
+  $('pref-compact').onchange = e => { settings.compactView = e.target.checked; save(); layout(true); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
@@ -2714,17 +2743,12 @@ function wire() {
 
   // title / select
   $('btn-start').onclick = startFromTitle;
-  $('btn-mods').onclick = openMods;
+  $('sd-chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { synth.keyClick(); cycleMod(b.dataset.mod); } });
+  $('sd-go').onclick = playSelected;
+  $('sd-fav').onclick = () => toggleFavorite();
+  $('dp-tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.tab !== dpTab) { synth.keyClick(); setDpTab(b.dataset.tab); } });
 
   // mods
-  $('m-speed').oninput = e => setMod({ speed: mods.SPEEDS[+e.target.value] });
-  $('m-mirror').onchange = e => setMod({ mirror: e.target.checked });
-  $('m-hidden').onchange = e => setMod({ hidden: e.target.checked });
-  $('m-sudden').onchange = e => setMod({ sudden: e.target.checked });
-  $('m-demo').onchange = e => setMod({ demo: e.target.checked });
-  $('m-judge').oninput = e => setMod({ judge: mods.JUDGES[+e.target.value] });
-  $('btn-mods-reset').onclick = () => { settings.mods = mods.normalize(null); save(); updateModsUI(); toast('Mods reset'); };
-  $('btn-mods-back').onclick = closeMods;
   $('btn-glyphs').onclick = openGlyphs;
   $('btn-float-reset').onclick = () => { resetFloatBoxes(); synth.keyClick(); };
   $('btn-glyphs-back').onclick = () => openSettings(settingsFrom);
@@ -2736,9 +2760,6 @@ function wire() {
     glyphsLast = Array.prototype.indexOf.call($('gl-body').querySelectorAll('.gl-cell'), c);
     $('gl-hint').textContent = c.dataset.info;
     marquee($('gl-hint'));
-  });
-  $('mods').addEventListener('focusin', e => {
-    if (MOD_HINTS[e.target.id]) setModHint(e.target.id);
   });
 
   // my songs
@@ -2789,7 +2810,12 @@ function wire() {
   $('pf-privacy').onclick = () => window.open('https://github.com/GIider/ringbeat/blob/main/docs/PRIVACY.md', '_blank', 'noopener,noreferrer');
 
   // one song
-  $('sm-play').onclick = () => { const e = curEntry(); if (e) openSongScreen(e, () => openSongMenu(e.uid), 'My song', () => openSongMenu(e.uid), e.uid); };
+  $('sm-play').onclick = () => {
+    const e = curEntry();
+    if (!e) return;
+    selectedId = e.id; settings.lastSongId = e.id; save();
+    startRun({ entry: e, ret: () => openSongMenu(e.uid), retLabel: 'My song' });
+  };
   $('sm-preview').onclick = () => { const e = curEntry(); if (e) togglePreview(e); };
   $('sm-edit').onclick = () => { const s = curSong(); if (s) openComposer(s.rtttl, s.uid); };
   $('sm-dup').onclick = () => {
@@ -2827,7 +2853,7 @@ function wire() {
     if (!e) return;
     stopPreview();
     const toComposer = () => { setState('composer', 'composer'); setCompMenu(false); };
-    openSongScreen(e, toComposer, 'Composer', () => { setState('composer', 'composer'); setCompMenu(true); });
+    startRun({ entry: e, ret: toComposer, retLabel: 'Composer' });
   };
   $('comp-preview').onclick = () => { const e = compEntry(); if (e) togglePreview(e); };
   $('comp-save').onclick = saveComposer;
@@ -2860,7 +2886,7 @@ function wire() {
     const e = customEntry(area.value);
     if (!e) return;
     const toText = () => { setState('custom', 'custom'); updateCustomStatus(); };
-    openSongScreen(e, toText, 'RTTTL text', toText);
+    startRun({ entry: e, ret: toText, retLabel: 'RTTTL text' });
   };
   $('btn-custom-preview').onclick = () => { const e = customEntry(area.value); if (e) togglePreview(e); };
   $('btn-custom-compose').onclick = () => { if (customEntry(area.value)) openComposer(area.value.trim(), txtUid); };
@@ -2905,16 +2931,15 @@ function wire() {
   $('calib-done').onclick = leaveCalibration;
   $('calib-again').onclick = startCalibration;
 
-  // phone keys + soft-key labels (pointerdown, and never steal focus from the list)
-  for (const k of document.querySelectorAll('#phone .k')) {
-    k.addEventListener('pointerdown', e => { e.preventDefault(); if (k.dataset.key === 'softR') softRightDown(); else phoneKey(k.dataset.key); });
-    k.addEventListener('click', e => { if (e.detail === 0) phoneKey(k.dataset.key); }); // keyboard-less AT activation
-  }
+  // soft-key labels (pointerdown, and never steal focus from the list)
+  // the phone's two soft keys under the LCD do what the labels say: Select (left) and Back (right)
+  document.querySelector('.navkey.l').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
+  document.querySelector('.navkey.r').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   $('soft-left').addEventListener('pointerdown', e => { e.preventDefault(); phoneKey('softL'); });
   $('soft-right').addEventListener('pointerdown', e => { e.preventDefault(); softRightDown(); });
   $('boot-version').textContent = 'v' + VERSION;
-  $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the *#06# panel also shows the build number
-  $('boot-version').addEventListener('click', e => e.stopPropagation()); // don't also start the game
+  $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the IMEI panel also shows the build number
+  $('boot-version').addEventListener('click', e => { e.stopPropagation(); tapVersion(); }); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
   window.addEventListener('resize', () => { if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'title') titleFx(true); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
@@ -2975,14 +3000,9 @@ function onKey(e) {
   const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text');
   if (!typing && !e.repeat) {
     if (!$('gag').hidden && gagTimer) hideGag(); // any key dismisses the IMEI panel
-    eggToken(e.code, e.key.length === 1 ? e.key : '');
+    eggToken(e.code);
     if (e.code === 'KeyC' && wipe.active) hideGag();
     else if (e.code === 'KeyC' && gagStates() && !gagHold) beginHold(startWipe);
-  }
-  if (dialing()) {
-    e.preventDefault();
-    if (e.code === 'Escape' || e.code === 'Backspace') hideGag();
-    return;
   }
   if (state === 'welcome') {
     if (e.code !== 'Tab' && !e.repeat && !e.code.startsWith('Shift')) { e.preventDefault(); skipWelcome(); }
@@ -3069,6 +3089,12 @@ function onKey(e) {
     if (e.code === 'KeyD' || e.code === 'KeyF') setView('sort', SORTS, e.code === 'KeyF' ? 1 : -1);
     return;
   }
+  if (state === 'select' && !typing && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'KeyT'].includes(e.code)) {
+    e.preventDefault();
+    synth.keyClick();
+    if (e.code === 'KeyT') toggleDpTab(); else cycleMod(MOD_CHIPS[+e.code.slice(5) - 1]);
+    return;
+  }
   if (state === 'select' && !typing && tag !== 'SELECT' && e.code === 'KeyV' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     if (e.repeat) return;
@@ -3097,7 +3123,7 @@ function onKey(e) {
   }
 }
 
-// ---- phone layout: body[data-mode], compact mode, LCD font/pixel scale and the key legend ----
+// ---- phone layout: body[data-mode], the LCD frame, LCD font/pixel scale and the key legend ----
 let mode = '';
 function setMode() {
   const over = (game.active || demoRun) && (state === 'paused' || (state === 'settings' && settingsFrom === 'paused'));
@@ -3108,22 +3134,25 @@ function setMode() {
 }
 function layout(animate = false) {
   const vw = window.innerWidth, vh = window.innerHeight, body = document.body, ph = $('phone');
-  const small = vw < 600 || vh < 520; // too small for the phone: compact is forced, so the setting has nothing to choose
-  const compact = settings.compactView || small;
+  const small = vw < 600 || vh < 520; // too small for the frame: fullscreen is forced, so the setting has nothing to choose
+  const framed = !small && !settings.compactView; // otherwise the LCD sits in the phone body
   $('pref-compact').closest('label').hidden = small;
-  if (phoneMode() === compact) { body.classList.toggle('compact', compact); refreshChrome(); selectHints(); } // labels differ per mode
-  let x, y, w, h;
-  if (compact) { x = 0; y = 0; w = vw; h = vh; }
-  else {
-    // Whole phone when it fits; on short screens grow it so the LCD stays roomy and let the keypad run off the bottom
-    // (the navigation keys, ~68% down, stay on screen).
-    h = Math.min(1100, Math.max(vh * 0.96, Math.min((vh * 0.98 - 6) / 0.685, 940)));
-    w = h / 2; x = (vw - w) / 2; y = Math.max(vh * 0.02, (vh - h) / 2);
+  const bz = framed ? 20 : 0, tp = framed ? 44 : 0, peek = 64; // peek: how much of the body (and its soft keys) shows below the LCD
+  let x = 0, y = 0, w = vw, h = vh, lh = vh, bb = 0;
+  if (framed) {
+    const lw = Math.min(1100, vw - 40 - 2 * bz, (vh - 16 - tp - peek) / 0.98);
+    lh = lw * 0.98; w = lw + 2 * bz; x = (vw - w) / 2; y = 16;
+    bb = peek + 300; h = tp + lh + bb; // the body runs on past the bottom edge of the window
   }
+  ph.classList.toggle('framed', framed);
+  ph.style.setProperty('--bz', bz + 'px');
+  ph.style.setProperty('--tp', tp + 'px');
+  ph.style.setProperty('--bb', bb + 'px');
+  ph.style.setProperty('--lh', lh + 'px');
   ph.classList.toggle('no-anim', !animate);
   Object.assign(ph.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
   // Pixel text stays on whole device pixels: 2 or 3 CSS px per font pixel. The play canvas uses the same grid.
-  const lcdW = compact ? vw : w * 0.745, fs = lcdW >= 470 ? 30 : 20;
+  const lcdW = w - 2 * bz, fs = lcdW >= 470 ? 30 : 20;
   const dpr = window.devicePixelRatio || 1, u = Math.max(1, Math.round(fs / 10 * dpr)) / dpr; // whole device pixels per LCD pixel, even at DPR 1.25 / 2.625
   ph.style.setProperty('--fs', u * 10 + 'px');
   ph.style.setProperty('--u', u + 'px');
@@ -3134,11 +3163,13 @@ function layout(animate = false) {
   }
   if (state === 'menu') paintMenuIcon();
   const lg = $('legend');
-  body.classList.toggle('legend-on', !compact && x >= 286);
+  body.classList.toggle('legend-on', framed && x >= 286);
   lg.style.left = Math.max(16, x - 270) + 'px';
-  body.classList.toggle('selkeys-on', !compact && vw - (x + w) >= 286);
+  body.classList.toggle('selkeys-on', framed && vw - (x + w) >= 286);
   $('sel-keys').style.left = x + w + 16 + 'px';
   if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
+  if (state === 'select' && dpEntry) fitRows($('dp-panel'));
+  if (state === 'results') setResultsPage(resultsPage); // wide <-> narrow: panels or pages
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
 }
 
@@ -3147,22 +3178,6 @@ function phoneIdle() {
   netSignal.repaint();
   setSprite($('st-battery'), battery(4), 2);
 }
-// Live phone displays while a song runs: progress, time, signal (recent hit quality) and battery (time left).
-const phoneCache = { key: '' };
-function updatePhones(g, t) {
-  const len = g.chart.length, p = Math.max(0, Math.min(1, t / len));
-  const n = Math.min(recentN, recent.length) || 1;
-  let q = 0; for (let i = 0; i < n; i++) q += recent[i];
-  const sig = recentN ? Math.round(5 * q / n) : 5;
-  const bat = Math.max(0, Math.ceil(4 * (1 - p) - 1e-6));
-  const pct = Math.floor(p * 100);
-  const key = pct + '|' + sig + '|' + bat;
-  if (key === phoneCache.key) return;
-  phoneCache.key = key;
-  setSprite($('st-signal'), signal(sig), 2);
-  setSprite($('st-battery'), battery(bat), 2);
-}
-
 // ---- dev-only screenshot states: ?demo=title|menu|select|info|mods|play|pause|results|fc|settings|stats|grades|inbox|profile|message ----
 let demoRun = null, demoLabels = [];
 const demoKind = new URLSearchParams(location.search).get('demo');
@@ -3194,13 +3209,9 @@ function demo(kind) {
   else if (kind === 'inbox') openInbox();
   else if (kind === 'profile') openProfile();
   else if (kind === 'message') showMessage(0);
-  else if (kind === 'info') openSongScreen(selectedEntry(), openSelect, 'Select', openSelect);
-  else if (kind === 'mods') {
-    settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); // in memory only, never saved
-    openSongScreen(selectedEntry(), openSelect, 'Select', openSelect);
-    openMods();
-    requestAnimationFrame(() => requestAnimationFrame(() => $('m-mirror').focus())); // show() focuses the first row on a rAF
-  } else if (kind === 'settings') openSettings();
+  else if (kind === 'info') { /* the picker already shows the details */ }
+  else if (kind === 'mods') { settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); refreshModsButton(); } // in memory only, never saved
+  else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
     run = { entry: selectedEntry(), diff: selectedEntry().chart };
@@ -3278,7 +3289,7 @@ function frame() {
       const d = demoLabels[i];
       if (d) { l.t = now - d.age; l.lane = d.lane; l.text = tr(DEMO_JUDGE_TEXT[d.j]); } else l.t = -10;
     });
-    renderer.draw(demoRun.g, demoRun.T); updatePhones(demoRun.g, demoRun.T); return;
+    renderer.draw(demoRun.g, demoRun.T); return;
   }
   if (!game.active) {
     perf.begin('drawIdle');
@@ -3305,7 +3316,6 @@ function frame() {
   perf.begin('draw');
   renderer.draw(game, t);
   perf.end('draw');
-  updatePhones(game, t);
 }
 
 // Bot-measured difficulty (optional: falls back to the density heuristic if missing). Loaded after first paint so a slow

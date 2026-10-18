@@ -9,15 +9,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fixture } from './lib/screenshot-fixture.mjs';
 
-// desktop = full phone artwork; compact (<600px wide) = bare LCD, as on a real phone
+// desktop / narrow = the LCD in its slim phone-top frame (narrow is too narrow for the key legends beside it); mobile (<600px wide) = bare fullscreen LCD
 const views = {
   desktop: { width: 1280, height: 1100 },
-  narrow: { width: 1000, height: 1100 }, // same phone, but too narrow for the key legends beside it
-  compact: { width: 480, height: 800 },
+  narrow: { width: 1000, height: 1100 }, // same frame, but too narrow for the key legends beside it
+  mobile: { width: 480, height: 800 },
 };
 // [demo state, view] pairs used by the README
 const shots = [
-  ['title', 'narrow'], ['menu', 'narrow'], ['select', 'desktop'], ['mods', 'narrow'], ['play', 'narrow'], ['play', 'compact'],
+  ['title', 'narrow'], ['menu', 'narrow'], ['select', 'desktop'], ['results', 'narrow'], ['play', 'narrow'], ['play', 'mobile'],
   ['inbox', 'narrow'], ['profile', 'narrow'], ['settings', 'narrow'], ['grades', 'narrow'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.

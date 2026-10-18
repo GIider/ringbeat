@@ -84,7 +84,7 @@ export function createNetDebug({ max = 10, doc = globalThis.document, out = glob
       el = doc.createElement('pre');
       el.className = 'net-debug';
       doc.body.appendChild(el);
-      unfloat = floatBox(el, 'net', { defaults: () => (doc.body.classList.contains('compact') ? { bottom: 4, right: 4 } : { bottom: 4, left: 4 }) });
+      unfloat = floatBox(el, 'net', { defaults: () => ({ bottom: 4, left: 4 }) });
     }
     el.textContent = `cloud: ${totals.requests} requests · ↑${size(totals.up)} ↓${size(totals.wire)} wire / ${size(totals.down)}\n` + lines.map(l => l.text).join('\n');
   }

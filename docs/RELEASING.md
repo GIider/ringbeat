@@ -53,7 +53,7 @@ Patch releases need nothing: every commit to `main` bumps the patch.
    - `BUILD.commit`: the first 7 characters of `GITHUB_SHA`, else `git rev-parse --short=7 HEAD`, else `dev`.
    - `BUILD.date`: today.
 
-The source `src/version.js` is never modified. The title screen shows the version and `commit · date`; the `*#06#`
+The source `src/version.js` is never modified. The title screen shows the version and `commit · date`; the IMEI
 panel (see [SPEC.md › Extras](SPEC.md#extras)) also shows `Build <number>`.
 
 ## CI
@@ -92,8 +92,8 @@ The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name
 
 `npm run screenshots` (`scripts/screenshots.mjs`) takes ten shots from `?demo=` states (see
 [DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)), all as the same signed-in demo player:
-- `title`, `menu`, `select` (with seeded grades and FC/AP badges), `mods` (1.2× speed, mirror lanes, hidden notes and sudden death on; held in memory, never saved), `play`, `inbox`, `profile`, `settings` (Sound tab) and `grades` (Stats, Grades page) at desktop size (1280×1100 / 1000×1100).
-- `play` at compact size (480×800).
+- `title`, `menu`, `select` (with seeded grades and FC/AP badges), `results`, `play`, `inbox`, `profile`, `settings` (Sound tab) and `grades` (Stats, Grades page) at desktop size (1280×1100 / 1000×1100).
+- `play` at mobile size (480×800).
 
 The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in, lifetime stats and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.
 All of them use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.

@@ -11,7 +11,7 @@ const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', imp
 const engines = { chromium, firefox, webkit };
 const LANGS = (process.env.AUDIT_LANGS || 'en,de').split(',');
 const LOCALES = { en: 'en-US', de: 'de-DE' };
-// compact phones below 470px LCD use the 20px font, 480+ the 30px one; 900x1100 is the desktop phone frame, 1024x600 a small desktop window
+// LCDs below 470px use the 20px font, 480+ the 30px one; 900x1100 is the framed desktop view (wide picker), 1024x600 a small desktop window
 const VIEWPORTS = [[320, 640], [360, 740], [480, 800], [900, 1100], [1024, 600]];
 const DEMOS = ['menu', 'select', 'info', 'pause', 'results', 'fc', 'settings', 'stats', 'message'];
 const JOBS = Number(process.env.AUDIT_JOBS) || 4;
@@ -22,7 +22,7 @@ const click = async (page, sel) => { await page.evaluate(async sel => { document
 const SEED_SONG = [{ uid: 'audit1', name: 'My Extremely Long Custom Song', rtttl: 'My Extremely Long Custom Song:d=4,o=5,b=140:c,d,e,f,g,a,b,c6,c6,b,a,g,f,e,d,c' }];
 
 // Clipped on purpose: screen-reader text, song titles (ellipsis, and the cursor row scrolls), the star bar's mask pieces.
-const BY_DESIGN = '.sr, .song-row .t, .stars-bar *';
+const BY_DESIGN = '.sr, .song-row .t, .stars-bar *, .sel-tabs *'; // .sel-tabs scrolls sideways
 
 // Runs in the page: every clipped or protruding element of the visible screen, the status bar and the soft keys.
 function scan(BY_DESIGN) {
@@ -86,8 +86,12 @@ async function auditCombo(browser, lang, w, h) {
       await visit(page, ctx, 'glyphs');
     }
     if (kind === 'info') {
-      await click(page, '#btn-mods');
-      await visit(page, ctx, 'mods');
+      if (await page.$eval('#select', e => e.clientWidth < 800)) { // narrow LCD: the details are a view of their own
+        await click(page, '.song-row.cur');
+        await visit(page, ctx, 'select/details');
+      }
+      await click(page, '#sd-chips button:nth-child(4)'); // a chip explains its mod underneath
+      await visit(page, ctx, 'select/mod hint');
     }
     if (kind === 'stats') {
       for (let i = 1; i < 6; i++) { await page.keyboard.press('ArrowRight'); await visit(page, ctx, 'stats/page ' + (i + 1)); }
