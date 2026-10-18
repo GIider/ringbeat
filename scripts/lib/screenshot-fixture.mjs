@@ -38,5 +38,5 @@ export const fixture = {
   },
   // Read everything except the two newest messages, so the inbox shows two unread envelopes.
   // a loadout that is on, so the picker's modifier chips show something
-  'ringbeat.v1': { tutorialDone: true, msgSeen: MESSAGES.slice(2).map(m => m.version), mods: { speed: 1.1, hidden: true } },
+  'ringbeat.v1': { tutorialDone: true, invert: true, msgSeen: MESSAGES.slice(2).map(m => m.version), mods: { speed: 1.1, hidden: true } },
 };

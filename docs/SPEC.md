@@ -121,6 +121,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Language (English / Deutsch; follows the browser until set)
   - Volume
   - Scroll time
+  - Notes scroll upward (`settings.invert`, synced): the receptors sit under the HUD and the notes rise from the bottom; presentation only, so scoring and replays are identical (`Renderer.invert`, `createTitle(..., invert)`)
   - Backing pulse (off by default)
   - Auto-play rolls
   - Song preview

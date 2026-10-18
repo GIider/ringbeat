@@ -6,7 +6,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 tests='tests/*.test.mjs'
 if git diff --cached --name-only | .githooks/docs-only; then tests='tests/docs.test.mjs'; fi
 echo "pre-commit: running unit tests ($tests)..."
-node --test $tests >/dev/null 2>&1 || {
+env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE -u GIT_PREFIX node --test $tests >/dev/null 2>&1 || {
   echo "pre-commit: unit tests failed (run: node --test $tests), commit aborted." >&2
   exit 1
 }

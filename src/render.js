@@ -17,7 +17,7 @@ const RAIL_L = 64, RAIL_R = 84, RAIL_LANE_MIN = 24; // wide LCDs: stat rails lef
 const NOTE_H = 7;
 const HIDE_FRAC = 0.35;  // Hidden mod: share of the approach time (nearest the hit line) where notes are not drawn
 const HEAD = 1;           // rows above the cap line that text sprites keep (raised umlaut dots)
-const LABEL_H = CAP + 2;   // key-label row under each receptor
+const LABEL_H = CAP + 2;   // key-label row beside each receptor (under it; above it when inverted)
 
 // 1-bit icons for the rails (rows of '#' / '.')
 const ICON_NOTE = ['...########', '...########', '...##....##', '...##....##', '...##....##', '...##....##', '.####..####', '#####.#####', '.###...###.'];
@@ -68,6 +68,7 @@ export class Renderer {
     this.title = '';
     this.modLabel = '';        // active mod chips, shown on the HUD while no FC/AP tag is up
     this.hidden = false;       // Hidden mod: notes vanish before they reach the hit line
+    this._invert = false;      // notes travel bottom to top towards receptors near the top (a presentation setting, not a mod)
     this.w = 0; this.h = 0;
     this.reduced = typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
@@ -139,6 +140,14 @@ export class Renderer {
     if (this.w > 0) this._layout();
   }
 
+  get invert() { return this._invert; }
+  set invert(v) {
+    v = !!v;
+    if (v === this._invert) return;
+    this._invert = v;
+    if (this.w > 0) this._layout();
+  }
+
   setPixelScale(u) {
     if (u === this.u) return;
     this.u = u;
@@ -191,9 +200,21 @@ export class Renderer {
     const avail = H - this.top - 4 - LABEL_H - 3;
     const pps0 = avail / this._scrollTime;
     this.recH = Math.max(11, Math.min(17, Math.round(2 * WINDOWS.good * pps0) | 1));
-    this.recY = H - 4 - LABEL_H - this.recH;
-    this.hitY = this.recY + (this.recH >> 1);     // centre row of the box
-    this.pps = (this.hitY - this.top) / this._scrollTime;
+    if (this._invert) { // receptors right under the HUD with the label row above them; notes rise from the bottom edge
+      this.dir = -1;
+      this.labelY = this.top + 2;
+      this.recY = this.labelY + LABEL_H;
+      this.hitY = this.recY + (this.recH >> 1);
+      this.fieldLo = this.recY + this.recH; this.fieldHi = H - 3;
+      this.pps = (H - 4 - this.hitY) / this._scrollTime;
+    } else {
+      this.dir = 1;
+      this.recY = H - 4 - LABEL_H - this.recH;
+      this.labelY = this.recY + this.recH + 2;
+      this.hitY = this.recY + (this.recH >> 1);     // centre row of the box
+      this.fieldLo = this.top; this.fieldHi = this.recY;
+      this.pps = (this.hitY - this.top) / this._scrollTime;
+    }
     this.perfH = Math.max(1, Math.round(WINDOWS.perfect * this.pps));
     this._titleLines = null;
     this._staticDirty = true;
@@ -288,7 +309,7 @@ export class Renderer {
     // dotted lane separators
     for (let i = 0; i <= n; i++) {
       const x = x0 + i * lw;
-      for (let y = this.top + (i & 1); y < recY; y += 2) c.fillRect(x, y, 1, 1);
+      for (let y = this.fieldLo + (i & 1); y < this.fieldHi; y += 2) c.fillRect(x, y, 1, 1);
     }
     // receptors: hollow box the note slots into; dotted lines mark the perfect band, ticks mark the exact centre
     for (let i = 0; i < n; i++) {
@@ -316,7 +337,7 @@ export class Renderer {
 
   _keyBox(c, i, down) {
     const bw = this.laneW - 5, bx = this.x0 + i * this.laneW + ((this.laneW - bw) >> 1) - 1, w = bw + 2;
-    const ly = this.recY + this.recH + 2;
+    const ly = this.labelY;
     const lab = this.keyLabels[i];
     if (down) {
       c.fillStyle = INK;
@@ -332,7 +353,8 @@ export class Renderer {
   draw(game, t) {
     const c = this.c, W = this.w, H = this.h, n = this.lanes;
     const lw = this.laneW, x0 = this.x0, hitY = this.hitY;
-    const pps = this.pps, ph = this.perfH;
+    const pps = this.pps, ph = this.perfH, dir = this.dir;
+    const Y = dt => Math.round(hitY - dir * dt * pps); // screen row of an event dt seconds from now
     const now = performance.now() / 1000;
 
     this._idleDone = false;
@@ -360,8 +382,8 @@ export class Renderer {
       for (let k = Math.ceil(fb + t / bl); ; k++) {
         const bt = (k - fb) * bl;
         if (bt > tEnd) break;
-        const y = Math.round(hitY - (bt - t) * pps);
-        if (y < this.top || y >= this.recY) continue;
+        const y = Y(bt - t);
+        if (y < this.fieldLo || y >= this.fieldHi) continue;
         const step = (k & 3) === 0 ? 2 : 4;
         for (let x = x0 + 1; x < x0 + span; x += step) c.fillRect(x, y, 1, 1);
       }
@@ -382,7 +404,7 @@ export class Renderer {
 
     // Notes: sorted by time, so only walk the visible slice.
     const notes = game.chart.notes;
-    const below = (H - hitY) / pps + 0.1;
+    const below = (dir > 0 ? H - hitY : hitY - this.top) / pps + 0.1; // how long a passed note stays on screen
     while (this.vi < notes.length && notes[this.vi].time + notes[this.vi].duration < t - below) this.vi++;
     const bw = lw - 5, hx = Math.floor((lw - bw) / 2);
     const hideAt = this.hidden ? this.scrollTime * HIDE_FRAC : 0;
@@ -394,12 +416,12 @@ export class Renderer {
       const missed = nt.judgement === 'miss' || nt.broken;
       const x = x0 + nt.lane * lw + hx;
       if (nt.isRoll) { // rolls: a dotted rail with a thin bar per tick (the head is the first tick)
-        const yTop = Math.round(hitY - (nt.time + nt.duration - t) * pps), yBot = Math.round(hitY - (nt.time - t) * pps);
+        const yA = Y(nt.time + nt.duration - t), yB = Y(nt.time - t), yTop = Math.min(yA, yB), yBot = Math.max(yA, yB);
         const rx = x + (bw >> 1);
         c.fillStyle = INK;
         for (let y = Math.max(this.top, yTop); y < Math.min(H, yBot); y += 2) c.fillRect(rx, y, 1, 1);
         for (let k = 0; k < nt.ticks.length; k++) {
-          const yk = Math.round(hitY - (nt.time + nt.ticks[k] - t) * pps);
+          const yk = Y(nt.time + nt.ticks[k] - t);
           if (yk < this.top || yk > H - 2) continue;
           if (k === 0 && !nt.hit) { // head: a full-height note with an "R" notch
             c.fillRect(x, yk - 3, bw, NOTE_H);
@@ -410,14 +432,14 @@ export class Renderer {
         }
         continue;
       }
-      const yHead = nt.holding ? hitY : Math.round(hitY - (nt.time - t) * pps);
+      const yHead = nt.holding ? hitY : Y(nt.time - t);
       if (nt.slide !== undefined && !missed) { // slide: dotted line to the next note of the chain
         let nx = null;
         for (let j = i + 1; j < notes.length && j <= i + 4; j++) {
           if (notes[j].slide === nt.slide && notes[j].slideIdx === nt.slideIdx + 1) { nx = notes[j]; break; }
         }
         if (nx) {
-          const x1 = x + (bw >> 1), y1 = yHead, x2 = x0 + nx.lane * lw + hx + (bw >> 1), y2 = Math.round(hitY - (nx.time - t) * pps);
+          const x1 = x + (bw >> 1), y1 = yHead, x2 = x0 + nx.lane * lw + hx + (bw >> 1), y2 = Y(nx.time - t);
           const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
           c.fillStyle = INK;
           for (let k = 0; k <= steps; k += 2) {
@@ -427,13 +449,14 @@ export class Renderer {
         }
       }
       if (nt.isHold) {
-        const yTop = Math.max(this.top, Math.round(hitY - (nt.time + nt.duration - t) * pps));
-        const hgt = yHead - yTop;
+        const yEnd = Y(nt.time + nt.duration - t); // the tail trails away from the head, clipped at the far edge
+        const yTop = dir > 0 ? Math.max(this.top, yEnd) : yHead, yStop = dir > 0 ? yHead : Math.min(H, yEnd);
+        const hgt = yStop - yTop;
         if (hgt > 0) {
           const tw = Math.max(3, (bw >> 1) | 1), tx = x + ((bw - tw) >> 1);
           if (missed) { // ghost: just the two edges, dotted
             c.fillStyle = INK;
-            for (let y = yTop; y < yHead; y += 2) { c.fillRect(tx, y, 1, 1); c.fillRect(tx + tw - 1, y, 1, 1); }
+            for (let y = yTop; y < yStop; y += 2) { c.fillRect(tx, y, 1, 1); c.fillRect(tx + tw - 1, y, 1, 1); }
           } else {
             c.fillStyle = (!nt.holding && this.checker) ? this.checker : INK;
             c.fillRect(tx, yTop, tw, hgt);
@@ -446,8 +469,9 @@ export class Renderer {
       if (!missed && !nt.holding) { // approach cue: a lead line 0.3s out, a second one 0.15s out
         const dt = nt.time - t;
         if (dt < 0.3 && dt > -WINDOWS.good) {
-          c.fillRect(x + 1, y - 2, bw - 2, 1);
-          if (dt < 0.15) c.fillRect(x + 1, y + NOTE_H + 1, bw - 2, 1);
+          const ahead = dir > 0 ? y - 2 : y + NOTE_H + 1, behind = dir > 0 ? y + NOTE_H + 1 : y - 2; // lead line on the side it comes from
+          c.fillRect(x + 1, ahead, bw - 2, 1);
+          if (dt < 0.15) c.fillRect(x + 1, behind, bw - 2, 1);
         }
       }
       if (missed) { // hollow ghost
@@ -518,8 +542,8 @@ export class Renderer {
       if (age > 0.45 || age < 0) continue;
       // Typewriter reveal on the first steps
       const txt = fx && age < 0.1 ? l.text.slice(0, 2 + Math.floor(age / 0.025)) : l.text;
-      // Sits in the key-label row under the receptor (covering the key letter briefly), clear of incoming notes
-      this._chip(c, txt, l.j, x0 + l.lane * lw + (lw >> 1), this.recY + this.recH + 1);
+      // Sits in the key-label row beside the receptor (covering the key letter briefly), clear of incoming notes
+      this._chip(c, txt, l.j, x0 + l.lane * lw + (lw >> 1), this.labelY - 1);
     }
 
     if (sx) c.translate(-sx, 0);

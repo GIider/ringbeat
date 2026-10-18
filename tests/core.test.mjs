@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { MESSAGES } from '../src/changelog.js';
-import { computeVersion } from '../scripts/version-lib.mjs';
+import { computeVersion, cleanGitEnv } from '../scripts/version-lib.mjs';
 import { sanitizeBindings, DEFAULT_BINDINGS } from '../src/gamepad.js';
 
 const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k), m }; };
@@ -503,7 +503,7 @@ test('composer: stepPitch crosses octaves and clamps; controller add', () => {
 
 test('computeVersion: minor from the newest changelog entry, patch = commits since it was added', () => {
   const dir = mkdtempSync(join(tmpdir(), 'rb-ver-'));
-  const sh = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'ignore' });
+  const sh = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, env: cleanGitEnv(), stdio: 'ignore' }); // the pre-commit hook runs the tests with GIT_DIR set
   const entry = v => writeFileSync(join(dir, 'src/changelog.js'), `export const MESSAGES = [\n  {\n    version: '${v}', date: 'x',\n  },\n];\n`);
   mkdirSync(join(dir, 'src'));
   sh('init', '-q');
