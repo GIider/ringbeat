@@ -3245,6 +3245,9 @@ function onKey(e) {
   }
   if (state === 'results' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); navigate(e.code === 'BracketRight' ? 'right' : 'left'); return;
+  if (state === 'results' && !typing && !e.repeat && e.code === 'KeyT' && boardTabs()) {
+    e.preventDefault(); synth.keyClick(); setResultsBoard(resultsBoard === 'world' ? 'local' : 'world'); return;
+  }
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
