@@ -17,6 +17,7 @@ async function openMenu(page, query = '') {
   await page.goto(`http://127.0.0.1:${port}/${query}`);
   await page.waitForFunction(() => window.__ringbeat?.state === 'title');
   await page.evaluate(() => { window.__ringbeat.settings.tutorialDone = true; });
+  await page.waitForSelector('#title:not(.wait)', { timeout: 10000 });
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__ringbeat.state === 'menu' && document.activeElement === document.getElementById('mm-go'));
 }

@@ -48,6 +48,7 @@ function fromRaw(raw) {
   tutorialDone: raw.tutorialDone === true || (typeof raw.lastSongId === 'string' && raw.lastSongId !== ''),
   tutorialLessons: Math.floor(num(raw.tutorialLessons, 0, 99, 0)), // tutorial lessons played so far (replays can jump to any of them)
   welcomeSeen: raw.welcomeSeen === true, // the sign-in intro played to its end once (this device only); later runs may be skipped
+  titleSeen: raw.titleSeen === true, // the title intro played to the "Press any key" prompt once (this device only); later runs may be skipped
   loginAsked: raw.loginAsked === true, // the post-tutorial "play online?" prompt was shown (this device only)
   customRtttl: typeof raw.customRtttl === 'string' ? raw.customRtttl.slice(0, 4000)
     : typeof raw.lastSong === 'string' ? raw.lastSong.slice(0, 4000) : '', // migrate v1 "lastSong"
