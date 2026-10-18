@@ -472,11 +472,11 @@ td + td { text-align: right; font-weight: 700; }
 /* ---------- tutorial ---------- */
 #tut-body p, #tp-body p { margin: 4px 0; }
 #tut-body b, #tp-body b { font-weight: 700; }
-/* the card is a flex column so the lane diagram(s) soak up the spare height and dominate the lesson */
+/* big diagram with the text right under it; the spare height becomes a gap above the buttons */
 #tutorial:not([hidden]) { display: flex; flex-direction: column; }
-#tut-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-.tut-demo { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; align-items: center; gap: 12px; margin: 6px 0; color: var(--ink); }
-.tut-demo svg { flex: 1 1 0; min-width: 0; max-width: 260px; max-height: 100%; height: auto; border: 1px solid var(--ink-dim); }
+#tutorial > .menu { margin-top: auto; padding-top: 12px; }
+.tut-demo { display: flex; justify-content: center; gap: 12px; margin: 6px 0; color: var(--ink); }
+.tut-demo svg { flex: 1 1 0; min-width: 0; max-width: 320px; height: auto; border: 1px solid var(--ink-dim); }
 /* progress row sits above the title and uses fixed-size boxes, so nothing shifts between lessons */
 .tut-progress { display: flex; gap: calc(var(--u) * 3); height: calc(var(--u) * 5); margin: 2px 0 6px; }
 .tut-progress i { width: calc(var(--u) * 5); height: calc(var(--u) * 5); border: var(--u) solid var(--ink); box-sizing: border-box; }
