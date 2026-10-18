@@ -25,7 +25,7 @@ The screenshots show a signed-in demo player ("Nova") with fixed scores and stat
 | Pause | Song details (mobile) | Playing (mobile) |
 | --- | --- | --- |
 | ![Pause](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/pause-desktop.png) | ![Song details (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/info-mobile.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
-| Playing on a wide LCD, paused: the pause menu is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. |
+| Playing on a wide LCD, paused: the pause menu is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. Shown with Settings → Gameplay → *Notes scroll upward* turned on. |
 
 | Messages (mobile) |
 | --- |

@@ -57,6 +57,8 @@ try {
    for (const kind of kinds) {
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(`${kind}: ${e.message}`));
+    // The mobile "playing" shot shows the Notes scroll upward setting turned on; every other shot plays the normal way.
+    if (kind === 'play') await page.addInitScript(() => { const v = JSON.parse(localStorage.getItem('ringbeat.v1')); v.invert = true; localStorage.setItem('ringbeat.v1', JSON.stringify(v)); });
     await page.goto(`http://127.0.0.1:${port}/index.html?demo=${kind}`);
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 300)))));
