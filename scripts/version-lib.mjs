@@ -6,7 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
-const git = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+// Git hooks export GIT_DIR / GIT_INDEX_FILE; without stripping them this would read (or write) the hook's repo instead of `cwd`.
+export const cleanGitEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+const git = (cwd, ...args) => execFileSync('git', args, { cwd, env: cleanGitEnv(), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
 
 export function computeVersion(root = ROOT, changelogPath = 'src/changelog.js') {
   const src = execFileSync('node', ['-e', `import(${JSON.stringify(pathToFileURL(resolve(root, changelogPath)).href)}).then(m => console.log(m.MESSAGES[0].version))`]).toString().trim();

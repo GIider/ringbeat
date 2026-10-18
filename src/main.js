@@ -63,6 +63,7 @@ synth.voice = settings.voice;
 const game = new Game(synth);
 const renderer = new Renderer($('stage'));
 renderer.scrollTime = settings.scrollTime;
+renderer.invert = settings.invert;
 // Juice: layered sound + vibration on top of the renderer's visual effects. All gated by settings.juice.
 let prevCombo = 0;
 const buzz = ms => {
@@ -2739,7 +2740,7 @@ function titleFx(on) {
       if (Math.floor(box.clientHeight / cell) - (Math.ceil((lcd - text) / cell) + 1) >= TITLE_EXTENT.rows && Math.floor(box.clientWidth / cell) >= TITLE_EXTENT.cols) m = k; else break;
     }
     const cell = CELL * m, { w, h } = measureGrid(fx, cell);
-    const sim = createTitle(w, h, Math.ceil((lcd - text) / cell) + 1); // the DOM text under the scene is kept clear
+    const sim = createTitle(w, h, Math.ceil((lcd - text) / cell) + 1, settings.invert); // the DOM text under the scene is kept clear
     if (!still.matches) { titleStop = runWelcome(fx, sim); return; }
     sim.jump(TITLE_REST);
     const ctx = fx.getContext('2d');
@@ -2780,6 +2781,9 @@ function wire() {
   po.checked = settings.perfOverlay; nt.checked = settings.netTracker;
   po.onchange = () => setPerf(po.checked);
   nt.onchange = () => { settings.netTracker = nt.checked; netDebug.enable(nt.checked); save(); };
+  const inv = $('pref-invert');
+  inv.checked = settings.invert;
+  inv.onchange = () => { settings.invert = inv.checked; renderer.invert = inv.checked; save(); };
   $('pref-compact').checked = settings.compactView;
   $('pref-compact').onchange = e => { settings.compactView = e.target.checked; save(); layout(true); };
   $('pref-modhints').checked = settings.modHints;
@@ -2823,6 +2827,8 @@ function wire() {
     bk.checked = settings.backing; pv.checked = settings.preview; $('pref-gags').checked = settings.idleGags;
     ra.checked = settings.rollAudio; jc.checked = settings.juice; hp.checked = settings.haptics;
     cp.checked = settings.comboPopup; renderer.comboPopup = settings.comboPopup;
+    inv.checked = settings.invert; renderer.invert = settings.invert;
+    if (titleOn) titleFx(true);
     renderer.scrollTime = settings.scrollTime; game.backing = settings.backing; game.rollAudio = settings.rollAudio; synth.voice = settings.voice;
     po.checked = settings.perfOverlay; nt.checked = settings.netTracker;
     if (settings.perfOverlay !== perf.enabled) setPerf(settings.perfOverlay, false);

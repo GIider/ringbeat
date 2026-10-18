@@ -164,6 +164,7 @@ export const de = {
   'Chart': 'Verlauf',
   'Score chart: accuracy over the song, with the note density': 'Verlauf: Genauigkeit über den Song, mit der Notendichte',
   'Compact view': 'Vollbildschirm',
+  'Notes scroll upward': 'Noten laufen nach oben',
   'Style': 'Stil',
   'Visuals': 'Optik',
   'Input': 'Eingabe',

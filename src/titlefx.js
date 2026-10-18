@@ -44,7 +44,8 @@ export function dropDy(age, rest) {
 
 const ringing = p => p >= 0 && p < 120 && p % 24 < 16; // p = ticks into the loop: two-thirds ring, a third of calm
 
-export function createTitle(w, h, reserve) {
+// `invert`: the Scroll direction setting; the notes rise onto a hit line near the top of the LCD instead of falling onto one near the bottom.
+export function createTitle(w, h, reserve, invert = false) {
   const L = layoutTitle(w, h, reserve);
   const s = { tick: 0, done: false, L };
   s.step = () => { s.tick++; };
@@ -70,11 +71,12 @@ export function createTitle(w, h, reserve) {
     stamp(put, PHONE, x0, y0);
     if (t - T.DROP < FALL - 1) for (const x of [4, 12, 19]) for (let y = y0 - 8; y < y0 - 2; y += 2) put(x0 + x, y); // speed lines
     // the LCD: a four-lane highway, a note per lane falling onto the hit line, which flashes as it lands
-    const sx = x0 + SCREEN.x, sy = y0 + SCREEN.y, hit = SCREEN.h - 3;
+    const sx = x0 + SCREEN.x, sy = y0 + SCREEN.y, hit = invert ? 2 : SCREEN.h - 3;
     for (let x = 0; x < SCREEN.w; x += 2) put(sx + x, sy + hit);
     for (let lane = 0; lane < 4; lane++) {
-      const x = sx + 1 + lane * 3, k = (t + lane * 5) % SCREEN.h;
-      if (k >= SCREEN.h - 1) continue; // passed the line
+      const x = sx + 1 + lane * 3, f = (t + lane * 5) % SCREEN.h;
+      if (f >= SCREEN.h - 1) continue; // passed the line
+      const k = invert ? SCREEN.h - 1 - f : f;
       for (let dx = 0; dx < 2; dx++) for (let dy2 = 0; dy2 < 2; dy2++) put(x + dx, sy + k + dy2 - 1);
       if (k === hit) { put(x - 1, sy + hit - 1); put(x + 2, sy + hit - 1); put(x - 1, sy + hit + 1); put(x + 2, sy + hit + 1); }
     }
