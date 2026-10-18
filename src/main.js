@@ -2021,6 +2021,7 @@ function paintWorld(songId, diff, token = worldToken) {
     for (const r of worldLines(top, near)) add(r, r.gap ? 'gap' : '');
     say(ol.children.length ? '' : tr('No world ranks yet.'));
     marqueeAll(ol.querySelectorAll('.ln'));
+    fitRows($('r-boardbox')); // the rows arrive after the screen was laid out: re-check whether they need to scroll
     if (worldRefresh) worldRefresh();
   };
   if (near.length) paint([]); else say(tr('Loading…'));
