@@ -57,6 +57,7 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
     unflag: runId => post('/admin/unflag', { runId }),
     purgeExpired: () => post('/admin/purge', { what: 'expired' }),
     purgeStuck: () => post('/admin/purge', { what: 'stuck' }),
+    purgeOutdated: () => post('/admin/purge', { what: 'outdated' }),
     rebuild: () => post('/admin/rebuild', {}),
     verify: () => post('/admin/verify', {}),
   };

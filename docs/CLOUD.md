@@ -154,9 +154,9 @@ these routes answer 404.
 - `POST /admin/run/delete {runId}`, `POST /admin/player/delete {userId}`: delete a run, or a player with everything of theirs
   (the same cascade as `DELETE /me`).
 - `POST /admin/unflag {runId}`: approve a flagged run.
-- `GET /admin/stats`, `POST /admin/purge {what: "expired"|"stuck"}`, `POST /admin/rebuild`: row counts (`pending` = waiting runs that can be
+- `GET /admin/stats`, `POST /admin/purge {what: "expired"|"stuck"|"outdated"}`, `POST /admin/rebuild`: row counts (`pending` = waiting runs that can be
   re-played, `stuck` = waiting runs that never can: no replay, or another `RULES`), delete expired sessions and sign-in
-  rows, or permanently delete the stuck runs (history without a replay included), force a leaderboard snapshot rebuild.
+  rows, permanently delete the stuck runs (history without a replay included), or permanently delete every *outdated* run (`outdated` = played under another `RULES`, or before replays: on no board and in no rank; the stats count them; the admin app's *Clear outdated runs* asks twice), force a leaderboard snapshot rebuild.
 - `GET /admin/log`: the newest 50 entries of `admin_log`; every change above (and `hide`) writes one.
 
 The game's **Admin** app (dev mode `?dev`, or a signed-in account whose profile carries `dev: true`, set by hand with `UPDATE users SET dev = 1 WHERE id = ?`) drives these routes. The flag only shows the app; the token is the gate. The token is typed in and kept in memory only.

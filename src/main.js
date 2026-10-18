@@ -1155,8 +1155,8 @@ async function adminShow(view) {
         break;
       case 'maint': {
         const st = await admin.stats();
-        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}<br>${esc(tr('{n} runs unverifiable', { n: st.stuck }))}</p>` +
-          btn('purge', tr('Purge expired')) + btn('purgestuck', tr('Clear unverifiable runs')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
+        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}<br>${esc(tr('{n} runs unverifiable', { n: st.stuck }))}<br>${esc(tr('{n} runs outdated', { n: st.outdated }))}</p>` +
+          btn('purge', tr('Purge expired')) + btn('purgestuck', tr('Clear unverifiable runs')) + btn('purgeoutdated', tr('Clear outdated runs')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
         break;
       }
       case 'log': {
@@ -1216,6 +1216,7 @@ function wireAdmin() {
       case 'hiderun': adminDo(() => admin.hideRun(view.r.id, !view.r.hidden), tr('Done'), { back: true }); break;
       case 'delrun': if (adminArmed(b, 'delrun')) adminDo(() => admin.deleteRun(view.r.id), tr('Run deleted'), { back: true }); break;
       case 'purge': adminDo(async () => tr('Removed {n}', { n: (await admin.purgeExpired()).removed })); break;
+      case 'purgeoutdated': if (adminArmed(b, 'purgeoutdated')) adminDo(async () => tr('Removed {n}', { n: (await admin.purgeOutdated()).removed })); break;
       case 'purgestuck': if (adminArmed(b, 'purgestuck')) adminDo(async () => tr('Removed {n}', { n: (await admin.purgeStuck()).removed })); break;
       case 'rebuild': adminDo(() => admin.rebuild(), tr('Boards rebuilt')); break;
       case 'verify': adminDo(async () => tr('Verified {n}', { n: (await admin.verify()).verified })); break;

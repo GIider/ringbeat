@@ -592,6 +592,8 @@ export const de = {
   'Wrong token or not found': 'Falsches Token oder nicht gefunden',
   '{n} runs unverifiable': '{n} Läufe nicht prüfbar',
   'Clear unverifiable runs': 'Nicht prüfbare Läufe löschen',
+  'Clear outdated runs': 'Veraltete Läufe löschen',
+  '{n} runs outdated': '{n} Läufe veraltet',
   '{n} runs pending, {m} expired rows': '{n} Läufe offen, {m} abgelaufene Zeilen',
   // ---- world boards page (boards.html) ----
   'RINGBEAT / WORLD BOARDS': 'RINGBEAT / WELT-BESTENLISTEN',

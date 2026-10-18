@@ -5,7 +5,7 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
-    version: '2.6', date: '2026-10-18', title: 'Chords',
+    version: '3.0', date: '2026-10-18', title: 'Chords',
     body: 'Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
       'New: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
       'Wide screens count your doubles and triples while you play. The Next song button is gone from the results.\n' +
