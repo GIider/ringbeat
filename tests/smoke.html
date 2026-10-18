@@ -366,7 +366,7 @@ f.addEventListener('load', async () => {
     log(inside(tnr, trr) && tnr.right <= cnt.left + 0.5 && tn.scrollWidth > tn.clientWidth, 'long Top title is ellipsised before the count');
     // many played songs: the Top page lists them all, starts at #1, and scrolls with Up/Down
     {
-      hookOf().entries().slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, s.chart, { score: 100, grade: 'C' }); });
+      hookOf().entries().slice(0, 40).forEach((s, i) => { for (let k = 0; k <= i; k++) rb.scores.record(s.id, { score: 100, grade: 'C' }); });
       key('ArrowLeft'); await settle(); key('ArrowRight'); await settle();
       const pg = $('stat-page'), rows = () => [...pg.querySelectorAll('.st-row')];
       const seen = r => { const b = pg.getBoundingClientRect(), x = r.getBoundingClientRect(); return x.top >= b.top - 1 && x.bottom <= b.bottom + 1; };

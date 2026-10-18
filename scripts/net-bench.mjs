@@ -77,7 +77,7 @@ async function live() {
   }
 
   const first = Object.keys(JSON.parse(decode(probe)).boards)[0];
-  const others = [['GET /board/:song/:diff', first && `/board/${encodeURIComponent(first.split('|')[0])}/${first.split('|')[1]}`], ['GET /me/export (signed out)', '/me/export']];
+  const others = [['GET /board/:song', first && `/board/${encodeURIComponent(first)}`], ['GET /me/export (signed out)', '/me/export']];
   const rest = [];
   for (const [name, path] of others.filter(o => o[1])) {
     const runs = [];

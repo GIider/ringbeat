@@ -5,7 +5,6 @@
 // (setRemote, combineStats).
 
 export const STATS_KEY = 'ringbeat.stats.v1';
-export const DIFFS = ['normal', 'hard'];
 export const GRADES = ['S', 'A', 'B', 'C', 'D'];
 export const MAX_DAYS = 4000; // play days kept as a list (about 11 years of daily play)
 
@@ -29,7 +28,6 @@ function blank() {
   return {
     playtime: 0, runs: 0, finished: 0, failed: 0, quits: 0, restarts: 0, score: 0, bestCombo: 0,
     notes: { perfect: 0, great: 0, good: 0, miss: 0 }, ghosts: 0, fcRuns: 0, apRuns: 0, moddedRuns: 0, customRuns: 0,
-    byDiff: Object.fromEntries(DIFFS.map(d => [d, { runs: 0, playtime: 0 }])),
     firstPlayed: 0, lastPlayed: 0, lastDay: '', daysPlayed: 0, streak: 0, bestStreak: 0, backfilled: false,
     // The play days themselves, so devices can pool them; daysBase counts older days known only by number.
     days: [], daysBase: 0,
@@ -41,10 +39,6 @@ export function clean(raw) {
   if (!raw || typeof raw !== 'object') return s;
   for (const k of Object.keys(s)) if (typeof s[k] === 'number') s[k] = n0(raw[k]);
   for (const k of Object.keys(s.notes)) s.notes[k] = n0(raw.notes && raw.notes[k]);
-  for (const d of DIFFS) {
-    const b = raw.byDiff && raw.byDiff[d];
-    s.byDiff[d] = { runs: n0(b && b.runs), playtime: n0(b && b.playtime) };
-  }
   s.lastDay = typeof raw.lastDay === 'string' && DAY.test(raw.lastDay) ? raw.lastDay : '';
   s.backfilled = raw.backfilled === true;
   if (Array.isArray(raw.days)) {
@@ -73,7 +67,6 @@ export function combineStats(list) {
   if (list.length === 1) return list[0];
   const s = {
     notes: { perfect: 0, great: 0, good: 0, miss: 0 },
-    byDiff: Object.fromEntries(DIFFS.map(d => [d, { runs: 0, playtime: 0 }])),
     bestCombo: 0, firstPlayed: 0, lastPlayed: 0, lastDay: '', daysPlayed: 0, streak: 0, bestStreak: 0,
     backfilled: false, days: [],
   };
@@ -82,10 +75,6 @@ export function combineStats(list) {
   for (const d of list) {
     for (const k of SUMS) s[k] += d[k] || 0;
     for (const k of Object.keys(s.notes)) s.notes[k] += (d.notes && d.notes[k]) || 0;
-    for (const k of DIFFS) {
-      s.byDiff[k].runs += (d.byDiff && d.byDiff[k] && d.byDiff[k].runs) || 0;
-      s.byDiff[k].playtime += (d.byDiff && d.byDiff[k] && d.byDiff[k].playtime) || 0;
-    }
     s.bestCombo = Math.max(s.bestCombo, d.bestCombo || 0);
     s.bestStreak = Math.max(s.bestStreak, d.bestStreak || 0);
     if (d.firstPlayed) s.firstPlayed = s.firstPlayed ? Math.min(s.firstPlayed, d.firstPlayed) : d.firstPlayed;
@@ -138,20 +127,18 @@ export function createStats(storage = browserStorage(), now = () => Date.now()) 
     // Other devices' stats from the last sync (raw records; cleaned here).
     setRemote(list) { remote = (Array.isArray(list) ? list : []).map(clean); },
     // Seconds of song time actually played (pauses excluded), committed in chunks by the caller.
-    addPlaytime(sec, diff) {
+    addPlaytime(sec) {
       if (!isNum(sec) || sec <= 0) return;
       const d = load();
       d.playtime += sec;
-      if (d.byDiff[diff]) d.byDiff[diff].playtime += sec;
       persist();
     },
     // A run that reached the results screen (or ended by Sudden death).
-    recordRun({ diff, result, custom = false, modded = false }) {
+    recordRun({ result, custom = false, modded = false }) {
       if (!result || !isNum(result.score)) return;
       const d = load();
       touchDay();
       d.runs++;
-      if (d.byDiff[diff]) d.byDiff[diff].runs++;
       if (result.failed) d.failed++; else d.finished++;
       d.score += Math.max(0, Math.round(result.score));
       d.bestCombo = Math.max(d.bestCombo, n0(result.maxCombo));
@@ -178,7 +165,6 @@ export function createStats(storage = browserStorage(), now = () => Date.now()) 
       const d = data, days = new Set();
       for (const e of entries) {
         d.runs += e.plays; d.finished += e.plays;
-        if (d.byDiff[e.diff]) d.byDiff[e.diff].runs += e.plays;
         if (e.fc) d.fcRuns++;
         if (e.ap) d.apRuns++;
         for (const r of e.top) {
@@ -213,12 +199,11 @@ export function currentStreak(s, now = Date.now()) {
   return s.lastDay === today || nextDay(s.lastDay) === today ? s.streak : 0;
 }
 
-// Best grade per song, for one difficulty or across all of them ('all'). entries: scores.all().
+// Best grade per song. entries: scores.all().
 // -> { S, A, B, C, D, fc, ap, played }
-export function gradeTally(entries, diff = 'all') {
+export function gradeTally(entries) {
   const songs = new Map();
   for (const e of entries) {
-    if (diff !== 'all' && e.diff !== diff) continue;
     const g = e.best && GRADES.indexOf(e.best.grade);
     const s = songs.get(e.id) || { g: Infinity, fc: false, ap: false };
     if (g >= 0) s.g = Math.min(s.g, g);
@@ -234,7 +219,7 @@ export function gradeTally(entries, diff = 'all') {
   return t;
 }
 
-// Most-played songs (plays summed across difficulties), most first, ties by id -> [{ id, plays }].
+// Most-played songs (plays of each song), most first, ties by id -> [{ id, plays }].
 export function topSongs(entries, limit = 5) {
   const plays = new Map();
   for (const e of entries) plays.set(e.id, (plays.get(e.id) || 0) + e.plays);
@@ -242,7 +227,7 @@ export function topSongs(entries, limit = 5) {
     .sort((a, b) => b.plays - a.plays || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, limit);
 }
 
-// The most-played song across difficulties -> { id, plays } or null.
+// The most-played song -> { id, plays } or null.
 export function favourite(entries) {
   return topSongs(entries, 1)[0] || null;
 }
@@ -255,7 +240,7 @@ export function formatDuration(sec) {
   return `${Math.floor(s / 3600)}h ${pad2(Math.floor(s / 60) % 60)}m`;
 }
 
-// The online overview from the player's ranks, [{ songId, diff, score, rank, total }] (cloud.myRanks): how many boards
+// The online overview from the player's ranks, [{ songId, score, rank, total }] (cloud.myRanks): how many boards
 // they are on, how many they lead / have in the top 10, and the average of rank / total (a percentile: lower is better).
 export function rankSummary(rows) {
   let first = 0, top10 = 0, sum = 0;

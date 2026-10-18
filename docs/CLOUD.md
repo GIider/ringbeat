@@ -12,7 +12,7 @@ the server, and runs the server could re-play itself rank on public **leaderboar
   `CLOUDFLARE_API_TOKEN` secret set, so there is no manual deploy step ([Setup and deploy](#setup-and-deploy) step 9).
 - Signed out, nothing changes: `localStorage` is the only store and the game sends no request at all. The leaderboard
   snapshot is first requested once the player is signed in. The stand-alone World boards page (`boards.html`) is the
-  exception: it is public, needs no sign-in, and reads `GET /boards` and `GET /board/:song/:diff` when opened.
+  exception: it is public, needs no sign-in, and reads `GET /boards` and `GET /board/:song` when opened.
 - Signed in, `localStorage` is still the source of truth, and the network is never in the way: no sync starts
   while a song plays, nothing on screen waits for one, and a failed one backs off. When requests go out:
   [Requests](#requests).
@@ -68,7 +68,7 @@ The merge is commutative and idempotent. A device sends its copy and the Worker 
 another device wrote in between, the Worker merges with the newer copy and tries again. The answer carries the
 merged document only when it differs from what the device sent.
 
-**Runs.** A finished run (not demo, tutorial or failed) that is a new best for its song and difficulty goes
+**Runs.** A finished run (not demo, tutorial or failed) that is a new best for its song goes
 into an outbox (`ringbeat.cloud.v1`); a better run replaces waiting ones on the same board. Other runs never leave
 the device: they can't change the player's place on any board, and the scores and stats they changed travel in the
 device slot anyway.
@@ -77,9 +77,9 @@ A replay over the API's 250 000-character limit is dropped when the run is queue
 The runs in a request only get the room the rest of its body leaves; a run that doesn't fit next to a big document
 goes in the next request. If the API still refuses a batch (400/413), its runs lose their replays, then themselves,
 so one bad run can't block the queue.
-- A run carries song id, difficulty, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
+- A run carries song id, score, grade, accuracy, max combo, FC/AP, mods, multiplier, game version and
   time.
-- Its id is `device:song:difficulty:time`; the server stores each id once.
+- Its id is `device:song:time`; the server stores each id once.
 - Song ids are stable: library ids for built-in songs, `custom:<hash of the RTTTL>` for custom ones.
 - Runs played since leaderboards also carry their **replay** (below), which the API re-plays. A new best goes up
   from the results screen right away, and its world rank comes back in the same answer. Other runs wait for the
@@ -89,7 +89,7 @@ so one bad run can't block the queue.
 
 ## Leaderboards
 
-A leaderboard ranks each player's best run on one song and difficulty. **The score on a board is always the
+A leaderboard ranks each player's best run on one song. **The score on a board is always the
 server's own.** The game uploads the run's inputs, and the Worker re-plays them through the same game code to get
 the score. Whatever score the client claims is ignored.
 
@@ -208,8 +208,7 @@ How it stays small:
 - **Never in the way.** A sync that comes due during a song (or a pause) waits until the song is over. Requests
   time out after 8 s, are skipped when the browser is offline, and back off after a failure (1, 2, 4 … 30 minutes;
   5 after a 429).
-- **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 10 of every song
-  and difficulty. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
+- **One snapshot for every board.** `GET /boards` reads one stored row (`board_tops`) with the top 10 of every song. The cron rebuilds it only when it is marked dirty: a run ranked, or a name, opt-out or hide
   changed. A run that ranks in the top 10 is written into the snapshot by the sync that ranked it, so other players see it within about 30 seconds (names, opt-outs and hides wait for the cron's rebuild, every 5 minutes); the player's own rank is fresh on the results screen.
 - **No preflights for public reads.** `GET /boards` sends no credentials, so the browser needs no CORS preflight.
   Signed-in requests go to one URL, so one preflight is cached for all of them.
@@ -229,10 +228,13 @@ the device keeps its own data.
 | `GET /me/export` | Everything stored about the caller as one JSON file (profile, identities, shared document, device slots, runs with replays; no token hashes). Also answers a banned player |
 | `DELETE /me` | Deletes the profile and everything stored with it |
 | `POST /sync` `{deviceId, sharedRev?, shared?, stampAt?, profile?, device?, devicesSince?, runs?, wantRanks?}` | The game's one sync request; every part optional (see below) |
-| `GET /boards` | **No sign-in needed.** The top 10 of every song and difficulty: `{rules, built, boards: {"song\|diff": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |
-| `GET /board/:song/:diff?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
-| `GET /board/:song/:diff/me` | The caller and the two players above and below (`me: true` on the caller's row) |
+| `GET /boards` | **No sign-in needed.** The top 10 of every song: `{rules, built, boards: {"song": [{rank, total, name, score, grade, accuracy, maxCombo, fc, ap, mods, playedAt}]}}`. Cached 10 s, revalidated with an `ETag` |
+| `GET /board/:song?limit=` | **No sign-in needed.** Best ranked run per player, up to 100: `{rules, runs: [...]}` as above. Cached 30 s |
+| `GET /board/:song/me` | The caller and the two players above and below (`me: true` on the caller's row) |
 | `/admin/*` (`flagged`, `hide`, `verify`, `players`, `runs`, `ban`, `run/delete`, `player/delete`, `unflag`, `stats`, `purge`, `rebuild`, `log`) | Moderation, with `ADMIN_TOKEN` (see [Leaderboards](#leaderboards)) |
+
+Songs used to have a Normal and a Hard board. Older clients still send `diff` with a run and ask for
+`/board/:song/:diff`: the API ignores the field and the extra path segment (migration `0007` dropped the `runs.diff` column).
 
 `POST /sync`, part by part. The answer always has `{at, rules}`:
 - `shared` (the device's copy) and/or `sharedRev` (the revision it last saw): the Worker merges and stores as above.
@@ -245,10 +247,10 @@ the device keeps its own data.
 - `devicesSince`: the answer has `deviceIds` (all slots), `devices` (the docs of other devices' slots written
   after that time) and the `profile`, so a rename on another device shows here.
 - `runs`: up to 50. Invalid ones are dropped, repeats ignored. The answer has `runs: [{clientRunId, verified,
-  score?}]`, and `ranks: {"song|diff": {rank, total, near, top}}` wherever a run just ranked. `near` is the player and the
+  score?}]`, and `ranks: {"song": {rank, total, near, top}}` wherever a run just ranked. `near` is the player and the
   two players above and below ([{rank, name, score, grade, me?}]), already read to find the rank. `top` is the world top 10 of that board right now, in the
   snapshot's row shape.
-- `wantRanks: true`: the answer has `myRanks: [{songId, diff, score, rank, total}]`, the caller's rank on every board
+- `wantRanks: true`: the answer has `myRanks: [{songId, score, rank, total}]`, the caller's rank on every board
   they have a verified run on, best percentile first (at most 500). Only those boards are read (`runs_user`, then
   `runs_rank`), not the whole table.
 
@@ -337,7 +339,7 @@ no GitHub involved (`&name=` picks the display name) and flags that account as a
 deployed API has no such door.
 
 **Bot-filled boards.** `npm run seed` (`scripts/seed-local.mjs`) creates 40 bot players (`bot-*`, a few with the
-developer flag) with skills from the bot ladder in `src/bot.js`, and they play every built-in song on both difficulties
+developer flag) with skills from the bot ladder in `src/bot.js`, and they play every built-in song
 with the game's own frame loop. The Worker's `verifyRun` then re-plays every log, so the stored numbers are the
 server's, exactly as for a real run. The mix is meant for testing (`scripts/lib/seedplan.mjs`):
 - Skills are a pyramid: sloppy bots are common, the perfect ones (L8) are a single bot.

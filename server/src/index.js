@@ -21,7 +21,6 @@ const MAX_BODY = 300_000;     // request body, characters
 const MAX_DOC = 256_000;      // stored document, characters
 const MAX_DEVICES = 20;
 const MAX_RUNS = 50;          // per POST /runs
-const DIFFS = ['normal', 'hard'];
 const DEVICE = /^[a-z0-9]{8,32}$/;
 const DEFAULT_NAME = /^Player-[A-Z2-9]{4}$/;
 const MAX_REPLAY = 250_000;   // characters of an encoded input log (replay.js MAX_EVENTS * 12)
@@ -29,7 +28,7 @@ const MAX_RTTTL = 8000;      // mysongs.js MAX_RTTTL
 const VERIFY_PER_REQUEST = 4; // re-plays per request (CPU budget); the rest wait for the cron
 const VERIFY_PER_CRON = 20;
 const BOARD_MAX = 100;
-const BOARD_TOP = 10;         // runs per song and difficulty in the GET /boards snapshot and in a sync's ranks
+const BOARD_TOP = 10;         // runs per song in the GET /boards snapshot and in a sync's ranks
 const BUILTIN = new Map(SONGS.map(s => [s.id, s.rtttl]));
 
 export default {
@@ -140,14 +139,14 @@ async function respond(req, env, now) {
         headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30', ETag: etag, ...timing },
       });
     }
-    const boardRoute = /^\/board\/([^/]+)\/([a-z]+)(\/me)?$/.exec(url.pathname);
+    const boardRoute = /^\/board\/([^/]+)(?:\/(?!me$)[a-z]+)?(\/me)?$/.exec(url.pathname);
     let boardSong = '';
     if (boardRoute && req.method === 'GET') {
       try { boardSong = decodeURIComponent(boardRoute[1]); } catch { return fail(400, 'bad song'); }
-      if (!DIFFS.includes(boardRoute[2]) || boardSong.length > 200) return fail(400, 'bad song');
-      if (!boardRoute[3]) {
+      if (boardSong.length > 200) return fail(400, 'bad song');
+      if (!boardRoute[2]) {
         const limit = Math.max(1, Math.min(BOARD_MAX, parseInt(url.searchParams.get('limit'), 10) || 50));
-        const runs = await board(env, boardSong, boardRoute[2], { limit });
+        const runs = await board(env, boardSong, { limit });
         return json({ rules: RULES, runs }, 200, { 'Cache-Control': 'public, max-age=30' });
       }
     }
@@ -157,7 +156,7 @@ async function respond(req, env, now) {
       const given = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
       if (!env.ADMIN_TOKEN || await sha256(given) !== await sha256(env.ADMIN_TOKEN)) return fail(404, 'not found');
       if (route === 'GET /admin/flagged') {
-        const { results } = await env.DB.prepare(`SELECT r.id, r.user_id, u.display_name AS name, r.song_id, r.diff,
+        const { results } = await env.DB.prepare(`SELECT r.id, r.user_id, u.display_name AS name, r.song_id,
           r.score, r.flags, r.played_at FROM runs r JOIN users u ON u.id = r.user_id
           WHERE r.flags != '' AND r.verified = 1 AND r.hidden = 0 ORDER BY r.id DESC LIMIT 100`).all();
         return json({ runs: results });
@@ -194,9 +193,9 @@ async function respond(req, env, now) {
       return json(null);
     }
     if (route === 'GET /me') return json({ profile: await profile(env, uid) });
-    if (boardRoute && boardRoute[3] && req.method === 'GET') {
+    if (boardRoute && boardRoute[2] && req.method === 'GET') {
       // The caller and the players around them; included even when not public, so they still see their own rank.
-      const runs = await board(env, boardSong, boardRoute[2], { me: uid });
+      const runs = await board(env, boardSong, { me: uid });
       return json({ rules: RULES, runs });
     }
     if (route === 'DELETE /me') {
@@ -252,13 +251,13 @@ async function respond(req, env, now) {
         out.runs = verdicts(runs);
         // The caller's world rank wherever a run just ranked: the results screen needs no second request.
         out.ranks = {};
-        for (const key of new Set(runs.filter(r => r.verified === 1).map(r => r.songId + '|' + r.diff))) {
-          const [songId, diff] = [key.slice(0, key.lastIndexOf('|')), key.slice(key.lastIndexOf('|') + 1)];
-          const rows = await board(env, songId, diff, { me: uid });
+        for (const key of new Set(runs.filter(r => r.verified === 1).map(r => r.songId))) {
+          const songId = key;
+          const rows = await board(env, songId, { me: uid });
           const me = rows.find(r => r.me);
-          const top = await board(env, songId, diff, { limit: BOARD_TOP }); // the world top now, for the results screen
+          const top = await board(env, songId, { limit: BOARD_TOP }); // the world top now, for the results screen
           // The players around them come along (already read for the rank): the results screen's World page.
-          if (me && me.rank <= BOARD_TOP) await patchTop(env, songId, diff, now, top); // the snapshot shows it now, not at the next cron
+          if (me && me.rank <= BOARD_TOP) await patchTop(env, songId, now, top); // the snapshot shows it now, not at the next cron
           if (me) out.ranks[key] = { rank: me.rank, total: me.total, top,
             near: rows.map(r => ({ rank: r.rank, name: r.name, score: r.score, grade: r.grade, accuracy: r.accuracy,
               maxCombo: r.maxCombo, fc: r.fc, ap: r.ap, mods: r.mods, ...(r.dev && { dev: true }), ...(r.me && { me: true }) })) };
@@ -338,10 +337,10 @@ async function storeRuns(env, session, raw, budget, now) {
     if (r.replay && r.rules === String(RULES) && budget-- > 0) Object.assign(r, verifyRun(r));
   }
   if (!runs.length) return runs;
-  await env.DB.batch(runs.map(r => env.DB.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade,
+  await env.DB.batch(runs.map(r => env.DB.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, score, grade,
     accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (user_id, client_run_id) DO NOTHING`).bind(uid, r.clientRunId, r.songId, r.diff, r.score, r.grade, r.accuracy,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, client_run_id) DO NOTHING`).bind(uid, r.clientRunId, r.songId, r.score, r.grade, r.accuracy,
     r.maxCombo, r.fc, r.ap, r.mods, r.mult, r.gameVersion, r.playedAt, now, r.replay, r.verified, r.rules, r.loadout,
     r.rtttl, r.flags)).concat(runs.some(r => r.verified === 1) ? [boardsChanged(env)] : []));
   return runs;
@@ -377,7 +376,7 @@ async function adminRoute(env, route, url, body, now, json, fail) {
     return json({ players: results });
   }
   if (route === 'GET /admin/runs') {
-    const { results } = await env.DB.prepare(`SELECT id, song_id, diff, score, flags, hidden, verified, played_at
+    const { results } = await env.DB.prepare(`SELECT id, song_id, score, flags, hidden, verified, played_at
       FROM runs WHERE user_id = ? ORDER BY played_at DESC, id DESC LIMIT ? OFFSET ?`).bind(id(q.get('user')), ADMIN_PAGE, offset).all();
     return json({ runs: results });
   }
@@ -458,33 +457,33 @@ async function adminRoute(env, route, url, body, now, json, fail) {
 
 // Writes one board's top runs into the GET /boards snapshot at once (one atomic statement, so concurrent syncs can't
 // lose each other's edit). A key the JSON path can't hold is left to the cron's rebuild.
-async function patchTop(env, songId, diff, now, top) {
-  const key = songId + '|' + diff;
+async function patchTop(env, songId, now, top) {
+  const key = songId;
   if (/["\\]/.test(key)) return;
-  top ||= await board(env, songId, diff, { limit: BOARD_TOP });
+  top ||= await board(env, songId, { limit: BOARD_TOP });
   await env.DB.prepare(`UPDATE board_tops SET doc = json_set(doc, ?1, json(?2)), built = ?3 WHERE id = 1 AND rules = ?4`)
     .bind(`$."${key}"`, JSON.stringify(top), now, String(RULES)).run();
 }
 
 // Rebuilds the GET /boards snapshot when something changed (or `force`): the top BOARD_TOP public runs of every song
-// and difficulty under the current RULES. -> the stored row { rules, doc, built }.
+// under the current RULES. -> the stored row { rules, doc, built }.
 export async function rebuildBoards(env, now, { force = false } = {}) {
   const row = await env.DB.prepare('SELECT rules, doc, built, dirty FROM board_tops WHERE id = 1').first();
   if (row && !force && !row.dirty && row.rules === String(RULES)) return row;
   const { results } = await env.DB.prepare(`WITH best AS (
-      SELECT r.song_id, r.diff, r.user_id, r.score, r.grade, r.accuracy, r.max_combo, r.fc, r.ap, r.mods, r.played_at,
-        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.diff, r.user_id ORDER BY r.score DESC, r.played_at) AS n
+      SELECT r.song_id, r.user_id, r.score, r.grade, r.accuracy, r.max_combo, r.fc, r.ap, r.mods, r.played_at,
+        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.user_id ORDER BY r.score DESC, r.played_at) AS n
       FROM runs r JOIN users u ON u.id = r.user_id
       WHERE r.rules = ?1 AND r.verified = 1 AND r.hidden = 0 AND u.hidden = 0 AND u.public = 1
     ), ranked AS (
       SELECT b.*, u.display_name AS name, u.dev,
-        ROW_NUMBER() OVER (PARTITION BY b.song_id, b.diff ORDER BY b.score DESC, b.played_at) AS rank,
-        COUNT(*) OVER (PARTITION BY b.song_id, b.diff) AS total
+        ROW_NUMBER() OVER (PARTITION BY b.song_id ORDER BY b.score DESC, b.played_at) AS rank,
+        COUNT(*) OVER (PARTITION BY b.song_id) AS total
       FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
-    ) SELECT * FROM ranked WHERE rank <= ?2 ORDER BY song_id, diff, rank`).bind(String(RULES), BOARD_TOP).all();
+    ) SELECT * FROM ranked WHERE rank <= ?2 ORDER BY song_id, rank`).bind(String(RULES), BOARD_TOP).all();
   const boards = {};
   for (const r of results) {
-    (boards[r.song_id + '|' + r.diff] ||= []).push({ rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade,
+    (boards[r.song_id] ||= []).push({ rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade,
       accuracy: r.accuracy, maxCombo: r.max_combo, fc: !!r.fc, ap: !!r.ap, mods: JSON.parse(r.mods), playedAt: r.played_at,
       ...(r.dev && { dev: true }) });
   }
@@ -535,10 +534,10 @@ function cleanRun(r) {
   if (!r || typeof r !== 'object') return null;
   const str = (v, max) => (typeof v === 'string' && v.length > 0 && v.length <= max ? v : null);
   const clientRunId = str(r.clientRunId, 260), songId = str(r.songId, 200);
-  if (!clientRunId || !songId || !DIFFS.includes(r.diff) || !isNum(r.score) || r.score < 0 || r.score > 1e9) return null;
+  if (!clientRunId || !songId || !isNum(r.score) || r.score < 0 || r.score > 1e9) return null;
   const replayLog = str(r.replay, MAX_REPLAY);
   return {
-    clientRunId, songId, diff: r.diff, score: Math.round(r.score),
+    clientRunId, songId, score: Math.round(r.score),
     grade: typeof r.grade === 'string' ? r.grade.slice(0, 2) : 'D',
     accuracy: isNum(r.accuracy) ? Math.max(0, Math.min(100, r.accuracy)) : 0, // percent
     maxCombo: isNum(r.maxCombo) ? Math.max(0, Math.round(r.maxCombo)) : 0,
@@ -557,7 +556,7 @@ function cleanRun(r) {
 }
 
 // Re-play a run under this Worker's RULES: { verified: 1, and the server's score, grade, accuracy, max combo, FC/AP,
-// mods, multiplier, flags } or { verified: -1 } when it can't count. `run` has songId, diff, replay, loadout, rtttl.
+// mods, multiplier, flags } or { verified: -1 } when it can't count. `run` has songId, replay, loadout, rtttl.
 export function verifyRun(run) {
   const bad = { verified: -1 };
   const rtttl = run.songId.startsWith('custom:')
@@ -567,7 +566,7 @@ export function verifyRun(run) {
   let m, chart;
   try {
     m = mods.normalize(JSON.parse(run.loadout));
-    chart = mods.applyChart(generateChart(parseRTTTL(rtttl), { difficulty: run.diff }), m);
+    chart = mods.applyChart(generateChart(parseRTTTL(rtttl)), m);
   } catch { return bad; }
   if (m.demo || !chart.notes.length) return bad;
   const log = decodeLog(run.replay, chart.lanes);
@@ -615,9 +614,9 @@ const STUCK = '(replay IS NULL OR rules IS NOT ?1)';
 // waiting run of theirs (equal claims: the lower id stays). -> how many.
 export async function prunePending(env) {
   const r = await env.DB.prepare(`DELETE FROM runs WHERE verified = 0 AND replay IS NOT NULL AND rules = ?1 AND (
-      EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id AND b.diff = runs.diff
+      EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id
         AND b.rules = runs.rules AND b.verified = 1 AND b.hidden = 0 AND b.score >= runs.score)
-      OR EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id AND b.diff = runs.diff
+      OR EXISTS (SELECT 1 FROM runs b WHERE b.user_id = runs.user_id AND b.song_id = runs.song_id
         AND b.rules = runs.rules AND b.verified = 0 AND b.replay IS NOT NULL
         AND (b.score > runs.score OR (b.score = runs.score AND b.id < runs.id))))`).bind(String(RULES)).run();
   return r.meta.changes;
@@ -625,11 +624,11 @@ export async function prunePending(env) {
 
 // Re-play runs waiting for it (over a request's budget, or posted before a deploy): the cron and POST /admin/verify.
 export async function verifyPending(env, limit = VERIFY_PER_CRON) {
-  const { results } = await env.DB.prepare(`SELECT id, song_id, diff, replay, loadout, rtttl FROM runs
+  const { results } = await env.DB.prepare(`SELECT id, song_id, replay, loadout, rtttl FROM runs
     WHERE verified = 0 AND replay IS NOT NULL AND rules = ? ORDER BY score DESC LIMIT ?`).bind(String(RULES), limit).all();
   if (!results.length) return 0;
   await env.DB.batch(results.map(row => {
-    const v = verifyRun({ songId: row.song_id, diff: row.diff, replay: row.replay, loadout: row.loadout, rtttl: row.rtttl });
+    const v = verifyRun({ songId: row.song_id, replay: row.replay, loadout: row.loadout, rtttl: row.rtttl });
     return v.verified === 1
       ? env.DB.prepare(`UPDATE runs SET verified = 1, score = ?, grade = ?, accuracy = ?, max_combo = ?, fc = ?, ap = ?,
           mods = ?, mult = ?, flags = ? WHERE id = ?`).bind(v.score, v.grade, v.accuracy, v.maxCombo, v.fc, v.ap, v.mods,
@@ -641,22 +640,22 @@ export async function verifyPending(env, limit = VERIFY_PER_CRON) {
 
 // Best verified run per player under the current RULES, ranked (ties: the earlier run first). `me` = a user id: only
 // that player and the two above and below, with that player included even when not public.
-async function board(env, songId, diff, { limit = 50, me = '' }) {
+async function board(env, songId, { limit = 50, me = '' }) {
   const ranked = `WITH best AS (
       SELECT r.user_id, r.score, r.grade, r.accuracy, r.max_combo, r.fc, r.ap, r.mods, r.played_at,
         ROW_NUMBER() OVER (PARTITION BY r.user_id ORDER BY r.score DESC, r.played_at) AS n
       FROM runs r JOIN users u ON u.id = r.user_id
-      WHERE r.song_id = ?1 AND r.diff = ?2 AND r.rules = ?3 AND r.verified = 1 AND r.hidden = 0
-        AND u.hidden = 0 AND (u.public = 1 OR u.id = ?4)
+      WHERE r.song_id = ?1 AND r.rules = ?2 AND r.verified = 1 AND r.hidden = 0
+        AND u.hidden = 0 AND (u.public = 1 OR u.id = ?3)
     ), ranked AS (
       SELECT b.*, u.display_name AS name, u.dev, ROW_NUMBER() OVER (ORDER BY b.score DESC, b.played_at) AS rank,
         COUNT(*) OVER () AS total
       FROM best b JOIN users u ON u.id = b.user_id WHERE b.n = 1
     )`;
   const q = me
-    ? env.DB.prepare(`${ranked} SELECT * FROM ranked WHERE abs(rank - (SELECT rank FROM ranked WHERE user_id = ?4)) <= 2
-        ORDER BY rank`).bind(songId, diff, String(RULES), me)
-    : env.DB.prepare(`${ranked} SELECT * FROM ranked ORDER BY rank LIMIT ?5`).bind(songId, diff, String(RULES), '', limit);
+    ? env.DB.prepare(`${ranked} SELECT * FROM ranked WHERE abs(rank - (SELECT rank FROM ranked WHERE user_id = ?3)) <= 2
+        ORDER BY rank`).bind(songId, String(RULES), me)
+    : env.DB.prepare(`${ranked} SELECT * FROM ranked ORDER BY rank LIMIT ?4`).bind(songId, String(RULES), '', limit);
   const { results } = await q.all();
   return results.map(r => ({
     rank: r.rank, total: r.total, name: r.name, score: r.score, grade: r.grade, accuracy: r.accuracy,
@@ -670,21 +669,21 @@ async function board(env, songId, diff, { limit = 50, me = '' }) {
 // boards the caller has a verified run on are ranked (runs_user, then runs_rank), not the whole table.
 async function ranks(env, me) {
   const { results } = await env.DB.prepare(`WITH mine AS (
-      SELECT DISTINCT song_id, diff FROM runs WHERE user_id = ?2 AND rules = ?1 AND verified = 1 AND hidden = 0
+      SELECT DISTINCT song_id FROM runs WHERE user_id = ?2 AND rules = ?1 AND verified = 1 AND hidden = 0
     ), best AS (
-      SELECT r.user_id, r.song_id, r.diff, r.score, r.played_at,
-        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.diff, r.user_id ORDER BY r.score DESC, r.played_at) AS n
-      FROM mine m JOIN runs r ON r.song_id = m.song_id AND r.diff = m.diff
+      SELECT r.user_id, r.song_id, r.score, r.played_at,
+        ROW_NUMBER() OVER (PARTITION BY r.song_id, r.user_id ORDER BY r.score DESC, r.played_at) AS n
+      FROM mine m JOIN runs r ON r.song_id = m.song_id
       JOIN users u ON u.id = r.user_id
       WHERE r.rules = ?1 AND r.verified = 1 AND r.hidden = 0 AND u.hidden = 0 AND (u.public = 1 OR u.id = ?2)
     ), ranked AS (
-      SELECT user_id, song_id, diff, score,
-        ROW_NUMBER() OVER (PARTITION BY song_id, diff ORDER BY score DESC, played_at) AS rank,
-        COUNT(*) OVER (PARTITION BY song_id, diff) AS total
+      SELECT user_id, song_id, score,
+        ROW_NUMBER() OVER (PARTITION BY song_id ORDER BY score DESC, played_at) AS rank,
+        COUNT(*) OVER (PARTITION BY song_id) AS total
       FROM best WHERE n = 1
-    ) SELECT song_id, diff, score, rank, total FROM ranked WHERE user_id = ?2
+    ) SELECT song_id, score, rank, total FROM ranked WHERE user_id = ?2
       ORDER BY CAST(rank AS REAL) / total, song_id LIMIT 500`).bind(String(RULES), me).all();
-  return results.map(r => ({ songId: r.song_id, diff: r.diff, score: r.score, rank: r.rank, total: r.total }));
+  return results.map(r => ({ songId: r.song_id, score: r.score, rank: r.rank, total: r.total }));
 }
 
 // A provider's display name -> a valid player name (accents dropped, other characters removed, long names cut at a
@@ -762,9 +761,9 @@ async function exportUser(env, uid, now) {
     identities: await all('SELECT provider, subject, created FROM identities WHERE user_id = ?'),
     shared: shared && { rev: shared.rev, updated: shared.updated, doc: parse(shared.doc) },
     devices: (await all('SELECT device_id, doc, updated FROM device_slots WHERE user_id = ?')).map(d => ({ deviceId: d.device_id, updated: d.updated, doc: parse(d.doc) })),
-    runs: (await all(`SELECT client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at,
+    runs: (await all(`SELECT client_run_id, song_id, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at,
       received_at, verified, hidden, flags, rules, loadout, rtttl, replay FROM runs WHERE user_id = ? ORDER BY played_at`)).map(r => ({
-      clientRunId: r.client_run_id, songId: r.song_id, diff: r.diff, score: r.score, grade: r.grade, accuracy: r.accuracy, maxCombo: r.max_combo,
+      clientRunId: r.client_run_id, songId: r.song_id, score: r.score, grade: r.grade, accuracy: r.accuracy, maxCombo: r.max_combo,
       fc: !!r.fc, ap: !!r.ap, mods: r.mods, mult: r.mult, gameVersion: r.game_version, playedAt: r.played_at, receivedAt: r.received_at,
       verified: r.verified, hidden: !!r.hidden, flags: r.flags, rules: r.rules, loadout: r.loadout, rtttl: r.rtttl, replay: r.replay,
     })),

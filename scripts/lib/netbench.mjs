@@ -11,13 +11,13 @@ const NAMES = ['Nova', 'Pixel', 'Beep', 'Snake', 'Ringo', 'Buzz', 'Chirp', 'Tona
 const GRADES = ['S', 'A', 'B', 'C'];
 const MODS = [[], [], [], [], ['hidden'], ['fast'], ['hidden', 'fast']];
 
-// `boards` boards x `top` rows, in the shape rebuildBoards (server/src/index.js) stores: { 'songId|diff': [row] }. Seeded.
+// `boards` boards x `top` rows, in the shape rebuildBoards (server/src/index.js) stores: { songId: [row] }. Seeded.
 export function synthBoards({ boards = 367, top = 10, seed = 1 } = {}) {
   const rnd = mulberry32(seed), out = {};
   for (let b = 0; b < boards; b++) {
     const total = top + Math.floor(rnd() * 40);
     let score = 700_000 + Math.floor(rnd() * 300_000);
-    out[`song-${String(b >> 1).padStart(3, '0')}-some-title|${b % 2 ? 'hard' : 'normal'}`] = Array.from({ length: top }, (_, i) => {
+    out[`song-${String(b).padStart(3, '0')}-some-title`] = Array.from({ length: top }, (_, i) => {
       score -= Math.floor(rnd() * 20_000);
       const ap = i === 0 && rnd() < 0.1, fc = ap || rnd() < 0.3;
       return {

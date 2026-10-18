@@ -181,7 +181,6 @@ export const de = {
   '{n} notes': ['{n} Note', '{n} Noten'],
   '{v} of 5 stars': '{v} von 5 Sternen',
   'Normal': 'Normal',
-  'Hard': 'Schwer',
   'No plays yet': 'Noch nicht gespielt',
   'Playfield': 'Spielfeld',
 

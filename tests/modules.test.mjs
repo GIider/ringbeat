@@ -183,7 +183,7 @@ test('composer: repeated key within the window cycles the octave 4..7 and wraps'
 });
 
 // ---- bot ----
-const chartFrom = (rtttl, difficulty = 'hard') => generateChart(parseRTTTL(rtttl), { difficulty });
+const chartFrom = rtttl => generateChart(parseRTTTL(rtttl));
 const mkChart = notes => ({ lanes: 4, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [], notes: notes.map((n, i) => ({ id: i, duration: 0.1, midi: 60, ...n })), length: 40 });
 const presses = (ev) => ev.filter(e => e.type === 'press');
 
@@ -255,7 +255,7 @@ test('bot: runBot always returns a result and leaves the input chart untouched',
 });
 
 // ---- listview / library ----
-const E = (id, title, bpm, length, n, category = 'pop') => ({ id, title, bpm, length, category, chart: 'normal', stars: { normal: n, hard: n } });
+const E = (id, title, bpm, length, n, category = 'pop') => ({ id, title, bpm, length, category, stars: n });
 test('listview: bpm and length sorts, stable ties, custom last', () => {
   const es = [E('a', 'A', 150, 30, 2), E('custom:x', 'Z', 60, 5, 1), E('b', 'B', 90, 60, 3), E('c', 'C', 90, 20, 3)];
   assert.deepEqual(applyView(es, { sort: 'bpm' }, null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
@@ -282,9 +282,9 @@ test('listview: nextOf / prevOf wrap, ratingOf prefers the measured rating', () 
   assert.equal(prevOf(l, 'a'), 'c');
   assert.equal(nextOf(l, 'a'), 'b');
   assert.equal(prevOf(l, 'c'), 'b');
-  assert.equal(ratingOf({ chart: 'normal', rating: { normal: 4.5 }, stars: { normal: 1 } }), 4.5);
-  assert.equal(ratingOf({ chart: 'hard', rating: { normal: 4.5 }, stars: { hard: 2 } }), 2.8);
-  assert.equal(ratingOf({ chart: 'hard', stars: {} }), 0);
+  assert.equal(ratingOf({ rating: 4.5, stars: 1 }), 4.5);
+  assert.equal(ratingOf({ stars: 2 }), 2.8);
+  assert.equal(ratingOf({}), 0);
 });
 
 test('library: formatLength, starsFor and hashString', () => {

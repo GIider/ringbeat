@@ -477,7 +477,7 @@ function categoryTabs() {
   const count = t => t.id === 'all' ? all.length
     : t.id === 'favorites' ? all.filter(e => isFavorite(e.id) || favKeep.has(e.id)).length
     : t.id === 'recent' ? all.filter(e => settings.recent.includes(e.id)).length
-    : t.id === 'unplayed' ? all.filter(e => e.id === unplayedKeep || !scores.get(e.id, e.chart)).length
+    : t.id === 'unplayed' ? all.filter(e => e.id === unplayedKeep || !scores.get(e.id)).length
     : all.filter(e => e.category === t.id).length;
   // Smart views (Recent, Unplayed) come right after All and only show up while they have songs.
   const tabs = [{ id: 'all', label: 'All' }, { id: 'recent', label: 'Recent' }, { id: 'unplayed', label: 'Unplayed' }, ...CATEGORIES];
@@ -750,7 +750,7 @@ function renderList() {
     b.className = 'song-row';
     b.dataset.id = e.id;
     b.setAttribute('role', 'option');
-    const rec = scores.get(e.id, e.chart);
+    const rec = scores.get(e.id);
     const best = rec && rec.best;
     const fav = isFavorite(e.id);
     if (fav) b.classList.add('fav');
@@ -806,11 +806,11 @@ function renderDetail() {
   selectHints();
   const e = selectedEntry();
   if (!e) return;
-  const rec = scores.get(e.id, e.chart);
+  const rec = scores.get(e.id);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>` +
     (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
-    `<div title="${esc(tn(e.notes[e.chart], '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
+    `<div title="${esc(tn(e.notes, '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   if (e.tag) marquee($('sel-info').children[1]); // a long author / source scrolls like a long title
   renderPane();
 }
@@ -968,8 +968,8 @@ const fmtNum = n => fmt(Math.round(n));
 const statRow = (label, value) => `<tr><td>${label}</td><td>${value}</td></tr>`;
 // Highscore entries for songs that still exist (a deleted custom song no longer counts).
 function knownScores() {
-  const chart = new Map(entries().map(e => [e.id, e.chart]));
-  return scores.all().filter(e => chart.get(e.id) === e.diff); // drops scores on a chart the song no longer plays
+  const ids = new Set(entries().map(e => e.id));
+  return scores.all().filter(e => ids.has(e.id));
 }
 function openStats() {
   statPage = 0;
@@ -1007,8 +1007,8 @@ function scrollStats(dir) {
 function onlineStatsHTML() {
   if (!cloud.available()) return `<p class="hint center">${tr('Online features are unavailable.')}</p>`;
   if (!cloud.signedIn()) return `<p class="hint center">${tr('Sign in on the profile screen for world ranks.')}</p>`;
-  const mr = cloud.myRanks(), chart = new Map(entries().map(e => [e.id, e.chart]));
-  const rows = mr.rows.filter(r => chart.get(r.songId) === r.diff);
+  const mr = cloud.myRanks(), ids = new Set(entries().map(e => e.id));
+  const rows = mr.rows.filter(r => ids.has(r.songId));
   if (!rows.length) return `<p class="hint center">${tr(mr.loading || !mr.at ? 'Loading…' : 'No world ranks yet.')}</p>`;
   const sum = rankSummary(rows);
   return `<div class="st-big">${tr('Top {n}%', { n: Math.max(1, sum.avgPct) })}</div><div class="hint center">${tr('average world rank')}</div>` +
@@ -1334,7 +1334,7 @@ let runTime = 0, lastSongT = null;
 // Demo mod: autoplay run, nothing it does is recorded and the player's own input is ignored.
 const isDemo = () => !!(run && run.modsUsed && run.modsUsed.demo);
 function commitTime() {
-  if (runTime > 0 && run && run.entry && !run.tutorial && !isDemo()) stats.addPlaytime(runTime, run.diff);
+  if (runTime > 0 && run && run.entry && !run.tutorial && !isDemo()) stats.addPlaytime(runTime);
   runTime = 0;
   lastSongT = null;
 }
@@ -1395,7 +1395,7 @@ function openMySongs(msg = '') {
   for (const e of customs) {
     const b = document.createElement('button');
     b.dataset.uid = e.uid;
-    b.textContent = `${e.title} · ${tn(e.notes[e.chart], '{n} note', '{n} notes')} · ${formatLength(e.length)}`;
+    b.textContent = `${e.title} · ${tn(e.notes, '{n} note', '{n} notes')} · ${formatLength(e.length)}`;
     list.append(b);
   }
   $('ms-msg').textContent = tm(msg) || (customs.length ? '' : tr('No songs yet. Make one with New song.'));
@@ -1408,7 +1408,7 @@ function openMySongs(msg = '') {
 }
 // Song menu header: tempo / notes / length plus the rating (`~` = not measured on this device).
 function renderSongMeta(e) {
-  $('sm-meta').textContent = `${e.bpm} BPM · ${tn(e.notes[e.chart], '{n} note', '{n} notes')} · ${formatLength(e.length)} · ${estMark(e)}${starsValue(ratingOf(e))} ★`;
+  $('sm-meta').textContent = `${e.bpm} BPM · ${tn(e.notes, '{n} note', '{n} notes')} · ${formatLength(e.length)} · ${estMark(e)}${starsValue(ratingOf(e))} ★`;
   $('sm-calc').textContent = curSong() && curSong().rating && !curSong().rating.imported ? tr('Recalculate difficulty') : tr('Calculate difficulty');
 }
 // Measures the open song with the bot ladder (bot.js) on its chart, showing a progress bar; stores the result.
@@ -1427,12 +1427,12 @@ async function calcDifficulty() {
   bar.hidden = false; setBar(0); msg.textContent = tr('Calculating difficulty… (press again to stop)'); calcRunning = true;
   let m = null;
   try {
-    m = await measureChartAsync(generateChart(e.song, { difficulty: e.chart }), {}, setBar, cancelled);
+    m = await measureChartAsync(generateChart(e.song), {}, setBar, cancelled);
   } catch { m = null; }
   if (my === calcToken) calcRunning = false;
   if (cancelled() || !m) return; // whoever cancelled has already updated the screen
   setBar(1);
-  const rec = ratingFromMeasured({ normal: m, hard: m }); // the stored record keeps both slots; only the song's chart is shown
+  const rec = ratingFromMeasured(m);
   if (!rec || !mysongs.setRating(uid, rec)) { bar.hidden = true; msg.textContent = tr("Couldn't store the rating"); return; }
   refreshCustoms();
   const fresh = curEntry();
@@ -1502,7 +1502,7 @@ function renderDpPanel() {
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
   box.textContent = '';
-  if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
+  if (dpTab === 'world') paintDpWorld(e, box); else { paintDpLocal(e, box); fitRows(box); marqueeRows(box); }
 }
 // The board panel shrinks to the room the pane has left (CSS: flex 0 1 auto).
 // Rows that don't all fit scroll up and down like a marquee instead of being cut off.
@@ -1520,8 +1520,8 @@ function vScroll(box, inner) {
     inner.classList.add('vscroll');
   }
 }
-function paintDpLocal(e, d, box) {
-  const rec = scores.get(e.id, d);
+function paintDpLocal(e, box) {
+  const rec = scores.get(e.id);
   const ol = document.createElement('ol');
   ol.className = 'top';
   for (const [i, r] of (rec ? rec.top : []).entries()) {
@@ -1533,15 +1533,15 @@ function paintDpLocal(e, d, box) {
   if (!ol.children.length) box.innerHTML = `<div class="hint">${esc(tr('No plays yet'))}</div>`; else box.appendChild(ol);
 }
 // The world top runs from the leaderboard snapshot (refreshed after 30 seconds) and the players around the player's rank.
-async function paintDpWorld(e, d, box) {
+async function paintDpWorld(e, box) {
   const msg = text => { box.innerHTML = `<div class="hint">${esc(text)}</div>`; };
-  const near = cloud.rankNear(e.id, d) || [];
+  const near = cloud.rankNear(e.id) || [];
   if (!near.length) msg(tr('Loading…'));
   const show = b => {
     if (dpEntry !== e || dpTab !== 'world') return;
     paintDpWorldLines(b, near, box, msg);
   };
-  show(await cloud.board(e.id, d, show));
+  show(await cloud.board(e.id, show));
 }
 function paintDpWorldLines(b, near, box, msg) {
   const lines = b && b.rules === RULES ? worldLines(b.runs, near) : [];
@@ -1564,7 +1564,7 @@ function renderPane() {
   hideModHint(); // the cursor moved on: the bubble belonged to the last song's chips
   const e = selectedEntry();
   if (!e) return;
-  const rec = scores.get(e.id, e.chart), best = rec && rec.best;
+  const rec = scores.get(e.id), best = rec && rec.best;
   $('sd-title').textContent = e.title;
   marquee($('sd-title'));
   $('sd-stars').innerHTML = `${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>`;
@@ -1577,7 +1577,7 @@ function renderPane() {
   if (!$('sd-fav').firstChild) { $('sd-fav').dataset.on = String(fav); $('sd-fav').innerHTML = spriteHTML(HEART, 3); }
   $('sd-fav').classList.toggle('on', fav);
   $('sd-fav').setAttribute('aria-pressed', String(fav));
-  $('sd-go').disabled = !(e.notes[e.chart] || 0);
+  $('sd-go').disabled = !(e.notes || 0);
   refreshModsButton();
   clearTimeout(paneTimer);
   paneTimer = setTimeout(() => {
@@ -1700,7 +1700,7 @@ function updateCustomStatus() {
   } else {
     st.className = 'status ok';
     const w = e.song.warnings;
-    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${tn(e.notes[e.chart], '{n} note', '{n} notes')}` +
+    st.textContent = `✓ ${e.title} · ${e.bpm} BPM · ${tn(e.notes, '{n} note', '{n} notes')}` +
       (w.length ? ` · ⚠ ${w.slice(0, 3).map(tm).join('; ')}${w.length > 3 ? ' ' + tr('(+{n} more)', { n: w.length - 3 }) : ''}` : '');
   }
   for (const id of ['btn-custom-save', 'btn-custom-play', 'btn-custom-preview', 'btn-custom-compose']) $(id).disabled = !e;
@@ -1825,7 +1825,7 @@ function setMod(patch) {
 }
 
 // ---- play / pause / results ----
-let run = null; // { entry, diff, ret, retLabel, tutorial, modsUsed }
+let run = null; // { entry, ret, retLabel, tutorial, modsUsed }
 
 function laneLabels(lanes) {
   if (lastDevice === 'pad') {
@@ -1837,10 +1837,9 @@ function laneLabels(lanes) {
 }
 
 function startRun(r) {
-  if (r.entry) r.diff = r.entry.chart; // a song plays one chart
   run = r;
   if (!r.tutorial && r.entry) {
-    if (r.entry.id !== unplayedKeep) unplayedKeep = settings.view.category === 'unplayed' && !scores.get(r.entry.id, r.diff) ? r.entry.id : null; settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
+    if (r.entry.id !== unplayedKeep) unplayedKeep = settings.view.category === 'unplayed' && !scores.get(r.entry.id) ? r.entry.id : null; settings.recent = [r.entry.id, ...settings.recent.filter(x => x !== r.entry.id)].slice(0, RECENT_MAX); save(); }
   runTime = 0; lastSongT = null;
   for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr(r.retLabel || 'Tones');
   stopPreview();
@@ -1849,7 +1848,7 @@ function startRun(r) {
     if (r.tutorial) {
       chart = buildStageChart(STAGES[r.tutorial.stage]);
     } else {
-      chart = perf.time('chartgen', () => generateChart(r.entry.song, { difficulty: r.diff }));
+      chart = perf.time('chartgen', () => generateChart(r.entry.song));
     }
     // Mods apply to normal runs only (not the tutorial). Snapshot them so results match what was played.
     r.modsUsed = !r.tutorial && mods.isActive(settings.mods) ? mods.normalize(settings.mods) : null;
@@ -2011,7 +2010,7 @@ game.onFinish = r => {
   }
   commitTime();
   const demo = isDemo();
-  if (run && run.entry && !demo) { stats.recordRun({ diff: run.diff, result: r, custom: run.entry.category === 'custom', modded: !!used }); cloud.schedule(); }
+  if (run && run.entry && !demo) { stats.recordRun({ result: r, custom: run.entry.category === 'custom', modded: !!used }); cloud.schedule(); }
   screens.results.dataset.title = r.failed ? 'Failed' : 'Results';
   $('r-heading').textContent = tr(screens.results.dataset.title);
   $('r-song').textContent = run ? [run.entry.title, `${run.entry.bpm} BPM`, formatLength(run.entry.length)].join(' · ') + (used ? ` · ${r.mods.join(' ')} ${mods.multText(r.mult)}` : '') : '';
@@ -2040,23 +2039,23 @@ game.onFinish = r => {
   resultsTimeline = r.timeline || null;
   if (demo) {
     // demo runs are never saved and show no best/rank line, but the board shows what the player has seen of this song
-    if (run && run.entry) resultsSong = { id: run.entry.id, diff: run.diff };
+    if (run && run.entry) resultsSong = { id: run.entry.id };
   } else if (r.failed) {
     best.hidden = false; best.textContent = tr('Sudden death: run not saved'); best.style.color = 'var(--dim)';
   } else if (run) {
     r.date = Date.now();
-    const rec = scores.record(run.entry.id, run.diff, r);
+    const rec = scores.record(run.entry.id, r);
     // Only a new best goes up: a lower run can't change the player's place on any board.
-    const runId = rec.isNewBest ? cloud.queueRun(run.entry.id, run.diff, r, r.mods || [], {
+    const runId = rec.isNewBest ? cloud.queueRun(run.entry.id, r, r.mods || [], {
       replay: game.log ? encodeLog(game.log) : undefined, rules: RULES, loadout: run.modsUsed, // no log: ?demo=results
       rtttl: run.entry.id.startsWith('custom:') ? run.entry.rtttl : undefined,
     }) : null;
-    resultsSong = { id: run.entry.id, diff: run.diff };
-    showWorldRank(run.entry.id, run.diff, runId, rec.isNewBest, r.score);
+    resultsSong = { id: run.entry.id };
+    showWorldRank(run.entry.id, runId, rec.isNewBest, r.score);
     best.style.color = '';
     if (rec.isNewBest) { best.hidden = false; best.textContent = tr('★ NEW BEST ★'); }
     else if (rec.rank) { best.hidden = false; best.textContent = tr('Rank #{n}', { n: rec.rank }); }
-    topRuns = { runs: scores.get(run.entry.id, run.diff)?.top || [], rank: rec.rank };
+    topRuns = { runs: scores.get(run.entry.id)?.top || [], rank: rec.rank };
   }
   renderBoard();
   renderHistogram(r.deltas);
@@ -2074,7 +2073,7 @@ let worldToken = 0;
 let worldRefresh = null; // repaints the "World #n of m" line when a newer snapshot lands (set for runs that are not a new best)
 // The World page: the top ten (from the answer that ranked the run, else the leaderboard snapshot), then the players around the player's rank (they came
 // back with the sync that ranked the run). Nothing here makes a request of its own.
-function paintWorld(songId, diff, token = worldToken) {
+function paintWorld(songId, token = worldToken) {
   if (resultsBoard !== 'world') return;
   const ol = $('r-top'), msg = $('r-top-empty');
   ol.textContent = '';
@@ -2087,7 +2086,7 @@ function paintWorld(songId, diff, token = worldToken) {
     li.innerHTML = r.gap ? '<span class="rk">…</span>' : boardRow(r, r.rank, nameHTML(r));
     ol.appendChild(li);
   };
-  const near = cloud.rankNear(songId, diff) || [];
+  const near = cloud.rankNear(songId) || [];
   const paint = top => {
     if (token !== worldToken || resultsBoard !== 'world') return;
     ol.textContent = '';
@@ -2098,18 +2097,18 @@ function paintWorld(songId, diff, token = worldToken) {
     if (worldRefresh) worldRefresh();
   };
   if (near.length) paint([]); else say(tr('Loading…'));
-  const fresh = cloud.rankTop(songId, diff);
+  const fresh = cloud.rankTop(songId);
   if (fresh) paint(fresh);
-  else cloud.board(songId, diff, b => paint((b && b.runs) || [])).then(b => paint((b && b.runs) || []));
+  else cloud.board(songId, b => paint((b && b.runs) || [])).then(b => paint((b && b.runs) || []));
 }
-async function showWorldRank(songId, diff, runId, isNewBest, score) {
+async function showWorldRank(songId, runId, isNewBest, score) {
   const el = $('r-world'), token = worldToken;
   if (!cloud.available()) return;
   el.hidden = false;
-  paintWorld(songId, diff, token);
+  paintWorld(songId, token);
   if (!cloud.signedIn()) { el.textContent = tr('Sign in for world ranks'); return; }
   const known = () => {
-    const k = cloud.rank(songId, diff);
+    const k = cloud.rank(songId);
     return k && tr('World #{n} of {total}', { n: k.rank, total: k.total });
   };
   if (!runId || !isNewBest) {
@@ -2125,12 +2124,12 @@ async function showWorldRank(songId, diff, runId, isNewBest, score) {
   }
   worldRefresh = null;
   // The snapshot already says where this score lands: show that (dimmed) while the server's answer is on its way.
-  const guess = cloud.guessRank(songId, diff, score);
+  const guess = cloud.guessRank(songId, score);
   el.textContent = guess ? tr('World #{n} of {total}', { n: guess.rank, total: guess.total }) : tr('World rank…');
   el.style.opacity = guess ? '.6' : '';
   const verdict = (await cloud.submit())[runId];
   if (token !== worldToken) return;
-  paintWorld(songId, diff, token);
+  paintWorld(songId, token);
   el.style.opacity = '';
   el.textContent = !verdict ? tr('World rank: no connection')
     : cloud.serverRules() !== RULES ? tr('Not ranked: update the game')
@@ -2147,7 +2146,7 @@ function renderBoard() {
   if (!tabs) resultsBoard = 'local';
   $('r-board-tabs').hidden = !tabs;
   for (const b of $('r-board-tabs').querySelectorAll('button')) { const on = b.dataset.board === resultsBoard; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
-  if (resultsBoard === 'world') paintWorld(resultsSong && resultsSong.id, resultsSong && resultsSong.diff);
+  if (resultsBoard === 'world') paintWorld(resultsSong && resultsSong.id);
   else renderTopRuns();
   marqueeAll($('r-top').querySelectorAll('.ln'));
   fitRows($('r-boardbox'));
@@ -2296,7 +2295,7 @@ function tutorialSkip() {
 function tutorialGo() {
   const t = run && run.tutorial;
   if (t && t.done) finishTutorial();
-  else if (t && t.stage >= 0) startRun({ entry: null, diff: 'normal', tutorial: { stage: t.stage } });
+  else if (t && t.stage >= 0) startRun({ entry: null, tutorial: { stage: t.stage } });
 }
 
 // ---- calibration screen ----
@@ -3155,9 +3154,9 @@ function wire() {
     history.replaceState(null, '', location.pathname + location.search);
     const dest = takeLoginDest();
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { loginDest = dest; cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
+    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { loginDest = dest; cloud.sync('signed in'); cloud.board(''); } return ok; }, () => { toast('Sign-in failed'); return false; });
   } else if (!demoKind) cloud.sync('start'); // ?demo= pages never touch the network
-  if (!demoKind) cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
+  if (!demoKind) cloud.board(''); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 
   // Initial selection: share link > last played > first song
   const shared = decodeShare(location.hash);
@@ -3245,9 +3244,9 @@ function onKey(e) {
   }
   if (state === 'results' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); navigate(e.code === 'BracketRight' ? 'right' : 'left'); return;
+  }
   if (state === 'results' && !typing && !e.repeat && e.code === 'KeyT' && boardTabs()) {
     e.preventDefault(); synth.keyClick(); setResultsBoard(resultsBoard === 'world' ? 'local' : 'world'); return;
-  }
   }
   if (state === 'select' && !typing && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
     e.preventDefault(); cycleCategory(e.code === 'BracketRight' ? 1 : -1); return;
@@ -3401,7 +3400,7 @@ const DEMO_RUNS = [
 function seedDemoScores() {
   const list = visible(), from = Math.max(0, list.findIndex(e => e.id === selectedId) - 5); // the rows around the cursor
   list.slice(from, from + DEMO_RUNS.length).forEach((e, i) => {
-    if (DEMO_RUNS[i]) scores.record(e.id, e.chart, { ...DEMO_RUNS[i], date: Date.UTC(2026, 9, 10) + i * 36e5 });
+    if (DEMO_RUNS[i]) scores.record(e.id, { ...DEMO_RUNS[i], date: Date.UTC(2026, 9, 10) + i * 36e5 });
   });
 }
 function demo(kind) {
@@ -3418,12 +3417,12 @@ function demo(kind) {
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';
-    run = { entry: selectedEntry(), diff: selectedEntry().chart };
+    run = { entry: selectedEntry() };
     game.onFinish({ score: 48210, maxCombo: 61, counts: { perfect: 52, great: 7, good: 2, miss: 1 }, accuracy: 94.6, grade: 'A', ghosts: demoFc ? 0 : 3,
       fc: demoFc, ap: false, deltas: [-0.03, -0.01, 0, 0.01, 0.02, 0, -0.02, 0.01, 0.005, 0.04, -0.05, 0.01], timeline: demoTimeline(selectedEntry()) });
   } else if (kind === 'play' || kind === 'pause') {
     const e = selectedEntry();
-    const chart = generateChart(e.song, { difficulty: e.chart });
+    const chart = generateChart(e.song);
     const ctx = { currentTime: 0, suspend() {}, resume() {} };
     const g = new Game({ ctx, getLatency: () => 0, stopAll() {}, tick() {}, playNote: () => ({ release() {} }), playMiss() {} });
     g.fx = game.fx;
@@ -3444,7 +3443,7 @@ function demo(kind) {
     const recent = new Map(); // newest judgement per lane that is still on screen
     for (const x of judged) if (T - x.t < 0.45) recent.set(x.lane, { ...x, age: T - x.t });
     demoLabels = [...recent.values()];
-    run = { entry: e, diff: e.chart };
+    run = { entry: e };
     renderer.title = e.title;
     renderer.setLanes(chart.lanes, laneLabels(chart.lanes));
     screens.nowplaying.dataset.title = e.title;
@@ -3456,7 +3455,7 @@ function demo(kind) {
 
 // A fixed, plausible run over the entry's own chart (fixture for ?demo=results: strong start, a rough patch in the middle).
 function demoTimeline(e) {
-  const chart = generateChart(e.song, { difficulty: e.chart });
+  const chart = generateChart(e.song);
   const events = chart.notes.map((n, i) => {
     const p = n.time / chart.length, rough = p > 0.45 && p < 0.6;
     const k = (i * 7 + 3) % 10;

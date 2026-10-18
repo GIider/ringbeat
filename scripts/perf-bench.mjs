@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { SONGS } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
-import { DIFFICULTIES, buildLibrary } from '../src/library.js';
+import { buildLibrary } from '../src/library.js';
 import { scaleChart } from '../src/mods.js';
 import { applyView, SORTS } from '../src/listview.js';
 import { encodeSong, decodeSong } from '../src/share.js';
@@ -30,7 +30,7 @@ const filter = arg('filter'), jsonOut = arg('json'), basePath = arg('baseline'),
 
 // ---- fixtures ----
 const parsed = SONGS.map(s => parseRTTTL(s.rtttl));
-const charts = parsed.map(p => generateChart(p, { difficulty: 'normal' }));
+const charts = parsed.map(p => generateChart(p));
 const longest = charts.reduce((a, c) => (c.notes.length > a.notes.length ? c : a));
 const lib = buildLibrary();
 const scores = createScores({ getItem: () => null, setItem() {}, removeItem() {} });
@@ -153,7 +153,7 @@ const chipTexts = { perfect: 'PERFECT', great: 'GREAT', good: 'GOOD', miss: 'MIS
 const seeded = seed => () => ((seed = Math.imul(seed ^ (seed >>> 15), 2246822507) + 374761393 | 0) >>> 0) / 4294967296;
 // 1000 imported songs-worth of scores for the stats recompute.
 const statEntries = Array.from({ length: 400 }, (_, i) => ({
-  id: 's' + i, diff: i & 1 ? 'hard' : 'normal', plays: 3 + (i % 7), fc: i % 5 === 0, ap: i % 11 === 0,
+  id: 's' + i, plays: 3 + (i % 7), fc: i % 5 === 0, ap: i % 11 === 0,
   best: { score: 100000 + i, grade: 'SABCD'[i % 5] },
   top: Array.from({ length: 5 }, (_, k) => ({ score: 90000 + i * k, maxCombo: 50 + k, date: 1.7e12 + i * 8.64e7, grade: 'SABCD'[(i + k) % 5] })),
 }));
@@ -192,7 +192,7 @@ const schedGame = new Game(schedSynth);
 // ---- cases ----
 const cases = [
   ['rtttl.parse (all songs)', () => { for (const s of SONGS) parseRTTTL(s.rtttl); }],
-  ...DIFFICULTIES.map(d => [`chart.generate ${d} (all songs)`, () => { for (const p of parsed) generateChart(p, { difficulty: d }); }]),
+  ['chart.generate (all songs)', () => { for (const p of parsed) generateChart(p); }],
   ['library.build', () => buildLibrary()],
   ['library.build x2 (boot + rebuild)', () => { buildLibrary(); buildLibrary(); }],
   ['mods.scale (all)', () => { for (const c of charts) scaleChart(c, 0.75); }],
@@ -231,7 +231,7 @@ const cases = [
     for (const n of ended) if (typeof n.onended === 'function') n.onended();
     ended = [];
   }],
-  ['chart.generate custom max-length song (3 diffs)', () => { for (const d of DIFFICULTIES) generateChart(bigEntry.song, { difficulty: d }); }],
+  ['chart.generate custom max-length song', () => { generateChart(bigEntry.song); }],
   ['library.customEntry max-length (import)', () => { customEntry(bigRtttl); }],
 
   // -- hit indicators (chips, punch, debris, shimmer, shake, milestone) --
@@ -276,15 +276,15 @@ const cases = [
     pad.onButton = () => { sink++; };
     for (f = 0; f < 60; f++) pad.poll();
   }],
-  ['stats.gradeTally+topSongs+favourite (400 songs)', () => { gradeTally(statEntries, 'all'); gradeTally(statEntries, 'hard'); topSongs(statEntries); favourite(statEntries); }],
+  ['stats.gradeTally+topSongs+favourite (400 songs)', () => { gradeTally(statEntries); topSongs(statEntries); favourite(statEntries); }],
   ['stats.recordRun x5 (persist)', () => {
     const st = createStats({ getItem: () => null, setItem() {}, removeItem() {} });
-    for (let i = 0; i < 5; i++) st.recordRun({ diff: 'normal', result: { score: 1000, maxCombo: 60, counts: { perfect: 90, great: 5, good: 3, miss: 2 }, fc: false, ap: false } });
+    for (let i = 0; i < 5; i++) st.recordRun({ result: { score: 1000, maxCombo: 60, counts: { perfect: 90, great: 5, good: 3, miss: 2 }, fc: false, ap: false } });
   }],
   ['listview.applyView (500-song library, all sorts + cats)', () => { for (const s of SORTS) for (const c of ['all', 'pop', 'folk']) applyView(bigLib, { sort: s.id, category: c }, scores); }],
   ['scores.record x5 (persist to storage)', () => {
     const sc = createScores({ getItem: () => null, setItem() {}, removeItem() {} });
-    for (let i = 0; i < 5; i++) sc.record('s', 'normal', { score: 1000 * i, maxCombo: 50, accuracy: 90, grade: 'A', counts: { perfect: 1, great: 1, good: 1, miss: 0 }, deltas: [] });
+    for (let i = 0; i < 5; i++) sc.record('s', { score: 1000 * i, maxCombo: 50, accuracy: 90, grade: 'A', counts: { perfect: 1, great: 1, good: 1, miss: 0 }, deltas: [] });
   }],
 ];
 
@@ -293,7 +293,7 @@ const frameCases = [
   ['frames.update (longest song, 60 Hz)', 'update', longest],
   ['frames.draw (longest song, 60 Hz)', 'draw', longest],
   ['frames.press (judge + synth call)', 'press', longest],
-  ['frames.draw (max-length custom song)', 'draw', bigEntry && generateChart(bigEntry.song, { difficulty: 'hard' })],
+  ['frames.draw (max-length custom song)', 'draw', bigEntry && generateChart(bigEntry.song)],
 ];
 
 // ---- harness ----

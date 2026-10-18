@@ -93,7 +93,7 @@ async function auditCombo(browser, lang, w, h) {
   await fxContext.route(url => url.href.startsWith(API_BASE + '/'), route => route.fulfill({ status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: '{"error":"sign in"}' }));
   // ...with the long-named custom song and a few big play counts, so the Top list has rows to cut
   const run = { score: 91250, grade: 'S', accuracy: 97.2, maxCombo: 74, fc: true, ap: false, date: 1 };
-  const fx = { ...fixture, 'ringbeat.songs.v1': SEED_SONG, 'ringbeat.scores.v1': { 'custom:audit1': { normal: { top: [run], plays: 1234567 } }, nokia: { normal: { top: [run], plays: 987654 } } } };
+  const fx = { ...fixture, 'ringbeat.songs.v1': SEED_SONG, 'ringbeat.scores.v1': { 'custom:audit1': { top: [run], plays: 1234567 }, nokia: { top: [run], plays: 987654 } } };
   await fxContext.addInitScript(fx => { for (const [k, v] of Object.entries(fx)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); }, fx);
   for (const kind of DEMOS) {
     const page = kind === 'stats' ? await (async () => { const pg = await fxContext.newPage(); await pg.goto(`http://127.0.0.1:${port}/index.html?demo=stats`); await pg.waitForSelector('.statusbar'); await pg.evaluate(() => document.fonts.ready); return pg; })() : await open(`index.html?demo=${kind}`);

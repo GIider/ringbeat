@@ -7,9 +7,9 @@ import { parseRTTTL } from '../../src/rtttl.js';
 import { SONGS } from '../../src/songs.js';
 import * as mods from '../../src/mods.js';
 
-export function played(songId, diff, skill, loadout = null, seed = 1, rtttl = SONGS.find(s => s.id === songId)?.rtttl, playedAt = seed) {
+export function played(songId, skill, loadout = null, seed = 1, rtttl = SONGS.find(s => s.id === songId)?.rtttl, playedAt = seed) {
   const m = mods.normalize(loadout);
-  const chart = mods.applyChart(generateChart(parseRTTTL(rtttl), { difficulty: diff }), m);
+  const chart = mods.applyChart(generateChart(parseRTTTL(rtttl)), m);
   const g = headlessGame();
   let res = null;
   g.onFinish = r => { res = r; };
@@ -23,7 +23,7 @@ export function played(songId, diff, skill, loadout = null, seed = 1, rtttl = SO
   const mult = mods.isActive(m) ? mods.multiplier(m) : 1;
   return {
     result: { ...res, score: Math.round(res.score * mult), mult },
-    run: { songId, diff, score: Math.round(res.score * mult), grade: res.grade, accuracy: res.accuracy, maxCombo: res.maxCombo,
+    run: { songId, score: Math.round(res.score * mult), grade: res.grade, accuracy: res.accuracy, maxCombo: res.maxCombo,
       fc: res.fc, ap: res.ap, mods: mods.tags(m), mult, playedAt, replay: encodeLog(g.log), rules: RULES, loadout: m },
   };
 }

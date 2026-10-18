@@ -9,26 +9,6 @@
   "opsPerSec": 751.9939,
   "allocBytes": 17969.48
  },
- "chart.generate normal (all songs)": {
-  "iters": 146,
-  "mean": 1.3743,
-  "p50": 1.1389,
-  "p95": 3.513,
-  "p99": 4.331,
-  "max": 4.4813,
-  "opsPerSec": 727.6593,
-  "allocBytes": 75894.24
- },
- "chart.generate hard (all songs)": {
-  "iters": 122,
-  "mean": 1.6395,
-  "p50": 1.6189,
-  "p95": 1.7203,
-  "p99": 1.7653,
-  "max": 1.7653,
-  "opsPerSec": 609.9562,
-  "allocBytes": 73505.32
- },
  "library.build": {
   "iters": 12288,
   "mean": 0.0163,
@@ -216,16 +196,6 @@
   "max": 0.3395,
   "opsPerSec": 276137.4816,
   "allocBytes": 62336
- },
- "chart.generate custom max-length song (3 diffs)": {
-  "iters": 433,
-  "mean": 0.4619,
-  "p50": 0.3821,
-  "p95": 1.1145,
-  "p99": 1.1892,
-  "max": 1.5672,
-  "opsPerSec": 2164.798,
-  "allocBytes": 73774.12
  },
  "library.customEntry max-length (import)": {
   "iters": 14514,
@@ -519,5 +489,25 @@
   "p99": 0.0224,
   "max": 1.0945,
   "opsPerSec": 64608.3345
+ },
+ "chart.generate (all songs)": {
+  "iters": 122,
+  "mean": 1.6395,
+  "p50": 1.6189,
+  "p95": 1.7203,
+  "p99": 1.7653,
+  "max": 1.7653,
+  "opsPerSec": 609.9562,
+  "allocBytes": 73505.32
+ },
+ "chart.generate custom max-length song": {
+  "iters": 433,
+  "mean": 0.4619,
+  "p50": 0.3821,
+  "p95": 1.1145,
+  "p99": 1.1892,
+  "max": 1.5672,
+  "opsPerSec": 2164.798,
+  "allocBytes": 73774.12
  }
 }

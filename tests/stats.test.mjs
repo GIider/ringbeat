@@ -20,13 +20,13 @@ test('stats: runs, notes, score, combo, aborts and playtime persist', () => {
   const st = mem();
   let t = noon(2026, 10, 16);
   const s = createStats(st, () => t);
-  s.recordRun({ diff: 'normal', result: result() });
-  s.recordRun({ diff: 'hard', result: result({ score: 500, maxCombo: 40, fc: true, ap: true }), custom: true, modded: true });
-  s.recordRun({ diff: 'hard', result: result({ failed: true, fc: true }) });
+  s.recordRun({ result: result() });
+  s.recordRun({ result: result({ score: 500, maxCombo: 40, fc: true, ap: true }), custom: true, modded: true });
+  s.recordRun({ result: result({ failed: true, fc: true }) });
   s.recordAbort('quit');
   s.recordAbort('restart');
-  s.addPlaytime(90.5, 'hard');
-  s.addPlaytime(-3, 'hard'); // ignored
+  s.addPlaytime(90.5);
+  s.addPlaytime(-3); // ignored
   const d = createStats(st, () => t).get();
   assert.equal(d.runs, 3);
   assert.equal(d.finished, 2);
@@ -42,8 +42,7 @@ test('stats: runs, notes, score, combo, aborts and playtime persist', () => {
   assert.equal(d.customRuns, 1);
   assert.equal(d.moddedRuns, 1);
   assert.equal(d.playtime, 90.5);
-  assert.deepEqual(d.byDiff.hard, { runs: 2, playtime: 90.5 });
-  assert.equal(d.byDiff.normal.runs, 1);
+  assert.equal(d.byDiff, undefined);
   assert.equal(d.firstPlayed, t);
   assert.equal(d.daysPlayed, 1);
 });
@@ -52,23 +51,22 @@ test('stats: get() is a copy; corrupt or blocked storage falls back to zeros', (
   const s = createStats(mem());
   s.get().notes.perfect = 99;
   assert.equal(s.get().notes.perfect, 0);
-  for (const bad of ['{', 'null', '"x"', '{"runs":-4,"notes":{"perfect":"lots"},"byDiff":7}']) {
+  for (const bad of ['{', 'null', '"x"', '{"runs":-4,"notes":{"perfect":"lots"}}']) {
     const st = mem(); st.setItem(STATS_KEY, bad);
     const d = createStats(st).get();
     assert.equal(d.runs, 0, bad);
     assert.equal(d.notes.perfect, 0, bad);
-    assert.deepEqual(d.byDiff.normal, { runs: 0, playtime: 0 }, bad);
   }
   const blocked = { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); }, removeItem() { throw new Error('no'); } };
   const b = createStats(blocked);
-  b.recordRun({ diff: 'normal', result: result() });
+  b.recordRun({ result: result() });
   assert.equal(b.get().runs, 1); // still counts for the session
 });
 
 test('stats: play-day streak counts consecutive local days', () => {
   let t = noon(2026, 10, 1);
   const s = createStats(mem(), () => t);
-  const play = () => s.recordRun({ diff: 'normal', result: result() });
+  const play = () => s.recordRun({ result: result() });
   play(); play(); // same day twice
   assert.equal(s.get().streak, 1);
   t += DAY; play();
@@ -89,14 +87,13 @@ test('stats: play-day streak counts consecutive local days', () => {
 
 test('stats: backfill from highscores runs once, only without a stats record', () => {
   const st = mem(), sc = createScores(mem());
-  sc.record('a', 'normal', { score: 900, grade: 'A', accuracy: 91, maxCombo: 50, fc: true, ap: false, date: noon(2026, 9, 1) });
-  sc.record('a', 'normal', { score: 400, grade: 'C', accuracy: 70, maxCombo: 12, fc: false, ap: false, date: noon(2026, 9, 3) });
-  sc.record('b', 'hard', { score: 1200, grade: 'S', accuracy: 100, maxCombo: 80, fc: true, ap: true, date: noon(2026, 9, 3) });
+  sc.record('a', { score: 900, grade: 'A', accuracy: 91, maxCombo: 50, fc: true, ap: false, date: noon(2026, 9, 1) });
+  sc.record('a', { score: 400, grade: 'C', accuracy: 70, maxCombo: 12, fc: false, ap: false, date: noon(2026, 9, 3) });
+  sc.record('b', { score: 1200, grade: 'S', accuracy: 100, maxCombo: 80, fc: true, ap: true, date: noon(2026, 9, 3) });
   const s = createStats(st);
   assert.equal(s.backfill(sc.all()), true);
   const d = s.get();
   assert.equal(d.runs, 3);
-  assert.equal(d.byDiff.normal.runs, 2);
   assert.equal(d.score, 2500);
   assert.equal(d.bestCombo, 80);
   assert.equal(d.fcRuns, 2);
@@ -120,18 +117,16 @@ test('stats: backfill from highscores runs once, only without a stats record', (
 
 test('gradeTally / favourite / formatDuration', () => {
   const sc = createScores(mem());
-  const rec = (id, diff, grade, extra = {}) => sc.record(id, diff, { score: 100, grade, accuracy: 90, maxCombo: 1, fc: false, ap: false, ...extra });
-  rec('a', 'normal', 'S', { fc: true, ap: true });
-  rec('a', 'hard', 'C');
-  rec('b', 'hard', 'B', { fc: true });
-  rec('b', 'hard', 'A', { score: 200 }); // better run: becomes the best
-  rec('c', 'normal', 'D');
+  const rec = (id, grade, extra = {}) => sc.record(id, { score: 100, grade, accuracy: 90, maxCombo: 1, fc: false, ap: false, ...extra });
+  rec('a', 'S', { fc: true, ap: true });
+  rec('b', 'B', { fc: true });
+  rec('b', 'A', { score: 200 }); // better run: becomes the best
+  rec('c', 'D');
   const all = gradeTally(sc.all());
   assert.deepEqual(all, { S: 1, A: 1, B: 0, C: 0, D: 1, fc: 2, ap: 1, played: 3 });
-  assert.deepEqual(gradeTally(sc.all(), 'hard'), { S: 0, A: 1, B: 0, C: 1, D: 0, fc: 1, ap: 0, played: 2 });
-  assert.deepEqual(gradeTally([], 'normal'), { S: 0, A: 0, B: 0, C: 0, D: 0, fc: 0, ap: 0, played: 0 });
-  rec('b', 'normal', 'D');
-  assert.deepEqual(favourite(sc.all()), { id: 'b', plays: 3 }, 'plays summed across difficulties');
+  assert.deepEqual(gradeTally([]), { S: 0, A: 0, B: 0, C: 0, D: 0, fc: 0, ap: 0, played: 0 });
+  rec('b', 'D');
+  assert.deepEqual(favourite(sc.all()), { id: 'b', plays: 3 });
   assert.equal(favourite([]), null);
   assert.equal(formatDuration(0), '0s');
   assert.equal(formatDuration(45.9), '45s');
@@ -181,9 +176,9 @@ test('menu icons: every item animates, frames are equal-size 1-bit sprites', () 
   assert.notDeepEqual(menuFrame('messages', 1, { unread: true }), menuFrame('messages', 1), 'unread envelope looks different');
 });
 
-test('topSongs: sums plays across difficulties, orders by plays then id, limits, skips 0 plays', () => {
-  const e = (id, diff, plays) => ({ id, diff, plays });
-  const list = [e('b', 'normal', 2), e('b', 'hard', 3), e('a', 'normal', 5), e('c', 'normal', 1), e('z', 'normal', 0)];
+test('topSongs: orders by plays then id, limits, skips 0 plays', () => {
+  const e = (id, plays) => ({ id, plays });
+  const list = [e('b', 5), e('a', 5), e('c', 1), e('z', 0)];
   assert.deepEqual(topSongs(list), [{ id: 'a', plays: 5 }, { id: 'b', plays: 5 }, { id: 'c', plays: 1 }]);
   assert.deepEqual(topSongs(list, 1), [{ id: 'a', plays: 5 }]);
   assert.deepEqual(topSongs([]), []);

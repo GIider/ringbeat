@@ -23,11 +23,10 @@ src/
   -- songs and charts --
   rtttl.js        parser: text -> { name, bpm, notes[], warnings[] }
   songs.js        built-in catalogue: CATEGORIES, SONGS, FULL_SONGS (see SONGS.md)
-  chart.js        song -> chart: difficulty filter, lane assignment (quantile / contour), holds, short holds, rolls,
+  chart.js        song -> chart: lane assignment (quantile / contour), holds, short holds, rolls,
                   doubles, triples; filtered-out notes become auto-played `backing`
-  library.js      library entries: BPM, length, stars, note counts, measured ratings, the single chart per song (`chart`; the Normal/Hard collapse)
-                  (COLLAPSE_MAX, `only`), custom entries, hashString
-  difficulty.json bot-measured ratings per song and difficulty, written by `npm run bench`; fetched after first paint,
+  library.js      library entries: BPM, length, stars, note counts, measured ratings, custom entries, hashString
+  difficulty.json bot-measured ratings per song, written by `npm run bench`; fetched after first paint,
                   missing entries fall back to density stars
   bot.js          headless bot players (8-level LADDER + weakness SPECIALISTS) running the real Game;
                   measureChart / measureChartAsync -> rating, tags; planBot; CALC_VERSION
@@ -36,7 +35,7 @@ src/
   boards.js       the World boards page (boards.html): list, detail pane, keyboard; a DOM module like main.js
   charts.js       the chart explorer page (charts.html): filters, sortable table; reads the game modules live, nothing baked in
   chartstats.js   per-chart statistics for the explorer (counts by note kind, density, rating): pure
-  boardsview.js   pure data and list logic of that page: GET /boards (ETag) and /board/:song/:diff, filter / sort, view memory
+  boardsview.js   pure data and list logic of that page: GET /boards (ETag) and /board/:song, filter / sort, view memory
   rowfmt.js       leaderboard row fragments shared by the game and the boards page (esc, name, FC/AP badges, star bar)
   listview.js     pure song-list sorts (rating, title, BPM, duration) and category filter
   tutorial.js     the tutorial's hand-made lesson charts (STAGES at 100 BPM), lesson diagrams
