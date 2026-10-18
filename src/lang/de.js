@@ -29,6 +29,8 @@ export const de = {
   'Pause': 'Pause',
   'COMBO': 'COMBO',
   'ACC': 'GEN.',
+  'DBL': 'DPL',
+  'TRI': 'TRP',
   'Menu': 'Menü',
   'Clear': 'Löschen',
   'Del': 'Entf',
@@ -303,7 +305,6 @@ export const de = {
   'Skip tutorial': 'Tutorial überspringen',
   'Back to lesson': 'Zurück zur Lektion',
   'Retry': 'Nochmal',
-  'Next song': 'Nächster Song',
   'Max combo': 'Max. Combo',
   'Ghost hits': 'Fehltipps',
   'Early ◄ timing ► Late': 'Früh ◄ Timing ► Spät',
@@ -336,8 +337,8 @@ export const de = {
   'Long notes have a tail. HOLD the lane until the tail reaches the line, then release.': 'Lange Noten haben einen Schweif. HALTE die Bahn, bis der Schweif die Linie erreicht, dann lass los.',
   'Roll notes': 'Wirbelnoten',
   'A ROLL is a bar of fast ticks. Mash the lane while it passes the line.': 'Ein WIRBEL ist ein Balken schneller Schläge. Hämmer auf die Bahn, solange er die Linie passiert.',
-  'Slides and doubles': 'Slides und Doppelnoten',
-  'Notes joined by a dotted line are a SLIDE: hit the first on time, then sweep along.\nNotes joined by a bridge fall together: hit both lanes at once.': 'Noten mit gepunkteter Linie sind ein SLIDE: Triff die erste pünktlich, dann wische weiter.\nNoten mit einer Brücke fallen zusammen: Drück beide Bahnen gleichzeitig.',
+  'Doubles and triples': 'Doppel- und Dreifachnoten',
+  'Notes joined by a bridge fall together: hit all their lanes at once.': 'Noten mit einer Brücke fallen zusammen: Drück alle ihre Spuren gleichzeitig.',
   'Calibrate': 'Kalibrieren',
   'Chain hits to build a combo: every 10 raises your multiplier, up to x1.5 at 50. A miss resets it.': 'Reihe Treffer aneinander: alle 10 steigt dein Multiplikator, bis x1.5 bei 50. Ein Fehler setzt ihn zurück.',
 
@@ -426,6 +427,15 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Chords': 'Akkorde',
+  ['Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
+    'New: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
+    'Wide screens count your doubles and triples while you play. The Next song button is gone from the results.\n' +
+    'Ratings were measured again. Scores from before this update no longer rank on the world boards.']:
+    'Slides gibt es nicht mehr: diese Noten sind jetzt normale Noten, und mehr Songs haben Doppelnoten.\n' +
+    'Neu: Dreifachnoten. Drei Noten mit einer Brücke fallen zusammen, drück also alle drei Spuren gleichzeitig. Die zusätzlichen Noten von Doppel- und Dreifachnoten sind stumm, ein perfekter Lauf klingt genau wie der Song.\n' +
+    'Breite Bildschirme zählen deine Doppel- und Dreifachnoten beim Spielen. Die Taste Nächster Song im Ergebnis ist weg.\n' +
+    'Die Wertungen wurden neu gemessen. Punkte von vor diesem Update zählen nicht mehr in den Weltranglisten.',
   'New look': 'Neuer Look',
   ['One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
     'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +
@@ -582,6 +592,8 @@ export const de = {
   'Wrong token or not found': 'Falsches Token oder nicht gefunden',
   '{n} runs unverifiable': '{n} Läufe nicht prüfbar',
   'Clear unverifiable runs': 'Nicht prüfbare Läufe löschen',
+  'Clear outdated runs': 'Veraltete Läufe löschen',
+  '{n} runs outdated': '{n} Läufe veraltet',
   '{n} runs pending, {m} expired rows': '{n} Läufe offen, {m} abgelaufene Zeilen',
   // ---- world boards page (boards.html) ----
   'RINGBEAT / WORLD BOARDS': 'RINGBEAT / WELT-BESTENLISTEN',

@@ -1155,8 +1155,8 @@ async function adminShow(view) {
         break;
       case 'maint': {
         const st = await admin.stats();
-        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}<br>${esc(tr('{n} runs unverifiable', { n: st.stuck }))}</p>` +
-          btn('purge', tr('Purge expired')) + btn('purgestuck', tr('Clear unverifiable runs')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
+        html = `<p class="hint">${esc(Object.entries(st.counts).map(([k, n]) => `${k} ${n}`).join(' · '))}<br>${esc(tr('{n} runs pending, {m} expired rows', { n: st.pending, m: st.expired }))}<br>${esc(tr('{n} runs unverifiable', { n: st.stuck }))}<br>${esc(tr('{n} runs outdated', { n: st.outdated }))}</p>` +
+          btn('purge', tr('Purge expired')) + btn('purgestuck', tr('Clear unverifiable runs')) + btn('purgeoutdated', tr('Clear outdated runs')) + btn('rebuild', tr('Rebuild boards')) + btn('verify', tr('Verify pending runs'));
         break;
       }
       case 'log': {
@@ -1216,6 +1216,7 @@ function wireAdmin() {
       case 'hiderun': adminDo(() => admin.hideRun(view.r.id, !view.r.hidden), tr('Done'), { back: true }); break;
       case 'delrun': if (adminArmed(b, 'delrun')) adminDo(() => admin.deleteRun(view.r.id), tr('Run deleted'), { back: true }); break;
       case 'purge': adminDo(async () => tr('Removed {n}', { n: (await admin.purgeExpired()).removed })); break;
+      case 'purgeoutdated': if (adminArmed(b, 'purgeoutdated')) adminDo(async () => tr('Removed {n}', { n: (await admin.purgeOutdated()).removed })); break;
       case 'purgestuck': if (adminArmed(b, 'purgestuck')) adminDo(async () => tr('Removed {n}', { n: (await admin.purgeStuck()).removed })); break;
       case 'rebuild': adminDo(() => admin.rebuild(), tr('Boards rebuilt')); break;
       case 'verify': adminDo(async () => tr('Verified {n}', { n: (await admin.verify()).verified })); break;
@@ -2190,15 +2191,6 @@ function stepResultsPage(step) {
   synth.keyClick();
 }
 
-function nextSong() {
-  const list = visible().length ? visible() : entries();
-  const i = Math.max(0, list.findIndex(e => e.id === (run ? run.entry.id : selectedId)));
-  const e = list[(i + 1) % list.length];
-  selectedId = e.id;
-  settings.lastSongId = e.id; save();
-  startRun({ entry: e, ret: run && run.ret, retLabel: run && run.retLabel });
-}
-
 // ---- tutorial ----
 // Input hint for the device in use only; refreshed in place when the device changes.
 function controlsHint() {
@@ -2231,7 +2223,18 @@ function askLogin(then) {
   afterLogin = then;
   setState('loginprompt', 'loginprompt');
 }
-function loginPromptYes() { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); }
+// Sign-in leaves the page, so where the player was heading survives in sessionStorage: 'select' (Tones, from the prompt
+// after the tutorial) or 'profile' (the Profile screen's button). The intro that follows the redirect ends there.
+const LOGIN_DEST = 'ringbeat.afterLogin';
+function signInTo(dest) {
+  try { sessionStorage.setItem(LOGIN_DEST, dest); } catch { /* the menu is the fallback */ }
+  location.href = cloud.signInUrl(location.origin + location.pathname + location.search);
+}
+function takeLoginDest() {
+  try { const d = sessionStorage.getItem(LOGIN_DEST); sessionStorage.removeItem(LOGIN_DEST); return d; } catch { return null; }
+}
+let loginDest = null;
+function loginPromptYes() { signInTo('select'); }
 // Lesson card: diagram + text, waits for the player to confirm before the round starts.
 function openLesson(i) {
   const st = STAGES[i];
@@ -2687,6 +2690,7 @@ function welcomeEnd(to, gesture) {
   statusIcons(true);
   if (to === 'title') setState('title', 'title');
   else if (to === 'none') return; // somebody else already navigated away
+  else if (loginDest) { const d = loginDest; loginDest = null; if (d === 'profile') openProfile(); else openSelect(); }
   else if (gesture) startFromTitle(); else openMenu('tones');
 }
 // Skipping needs a finished sign-in and an earlier full viewing on this device.
@@ -2967,7 +2971,7 @@ function wire() {
   $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = tn(mysongs.count(), 'Exported {n} song', 'Exported {n} songs'); };
 
   // profile
-  $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
+  $('pf-signin').onclick = () => signInTo('profile');
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
   $('pf-public').onclick = () => {
     const off = (cloud.profile() || {}).public === false;
@@ -3105,7 +3109,6 @@ function wire() {
   // swipe through the tutorial lessons (swipe left = next)
   onSwipe($('tutorial'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('btn-retry').onclick = restartRun;
-  $('btn-next').onclick = nextSong;
   $('btn-menu').onclick = leaveToSelect;
 
   // calibration
@@ -3150,8 +3153,9 @@ function wire() {
   if (/^#login(-error)?=/.test(location.hash)) {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
+    const dest = takeLoginDest();
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
+    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { loginDest = dest; cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
   } else if (!demoKind) cloud.sync('start'); // ?demo= pages never touch the network
   if (!demoKind) cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 

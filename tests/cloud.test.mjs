@@ -1191,6 +1191,13 @@ test('admin: pending counts only re-playable runs; stuck ones (no replay / other
   assert.deepEqual([st.pending, st.stuck], [0, 0]);
   assert.deepEqual(db.prepare('SELECT client_run_id AS id FROM runs ORDER BY client_run_id').all().map(r => r.id), ['bad', 'ok', 'wait']);
   assert.ok((await admin.log()).some(l => l.action === 'purge unverifiable' && l.detail === '2'));
+  // Outdated: a verified run from older rules is on no board, so it can go; current-rules runs stay.
+  copy('verified-old', "rules = '0'");
+  assert.equal((await admin.stats()).outdated, 1);
+  assert.equal((await admin.purgeOutdated()).removed, 1);
+  assert.equal((await admin.stats()).outdated, 0);
+  assert.deepEqual(db.prepare('SELECT client_run_id AS id FROM runs ORDER BY client_run_id').all().map(r => r.id), ['bad', 'ok', 'wait']);
+  assert.ok((await admin.log()).some(l => l.action === 'purge outdated' && l.detail === '1'));
   // The dev request log sees admin calls, never the token.
   const purge = seen.find(e => e.path === '/admin/purge');
   assert.equal(purge.why, 'admin');

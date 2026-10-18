@@ -25,8 +25,8 @@ Parser: `src/rtttl.js` (`parseRTTTL` → `{ name, bpm, notes[], warnings[] }`). 
 `src/chart.js` turns the parsed notes into a chart per variant (Hard, or Normal for songs that play it):
 1. Lane assignment follows the melody's contour.
 2. Long notes become holds, and dotted-plus-short pairs become short holds.
-3. Legato same-pitch runs become rolls, and stepwise runs become slides.
-4. On Hard, big leaps get double notes.
+3. Legato same-pitch runs become rolls.
+4. On Hard, big leaps get double notes, and some strong notes get triples.
 
 Notes that don't make the chart are played automatically as `backing`. The exact rules and thresholds are in
 [SPEC.md › Gameplay](SPEC.md#gameplay). Nothing is hand-authored per song.
@@ -65,7 +65,7 @@ A song's rating (1–10, shown as 1–5 stars) is measured, not guessed. `src/bo
 - `rating = 1 + 9 × 1.8 × (position / ladder size)`, capped at 10. The 1.8 stretch makes the catalogue's hardest charts
   reach the top. Stars = `rating / 1.4`, rounded and clamped to 1–5.
 - **Tags** name up to two weaknesses that cost a mid-skill bot at least 5 % accuracy. The candidates are `holds`, `rolls`,
-  `slides`, `doubles`, `speed`, `stamina`, `left lane` and `right lane`, and each is only tested when the chart has that
+  `doubles` (also covers triples), `speed`, `stamina`, `left lane` and `right lane`, and each is only tested when the chart has that
   feature.
 - The rating also decides which chart a song plays: when Normal and Hard barely differ the song plays one of them,
   and every other song plays Hard (see [SPEC.md › Gameplay](SPEC.md#gameplay)).

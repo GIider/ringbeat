@@ -51,12 +51,15 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - 249 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
+  - A public **chart explorer** (`charts.html`) lists every song's chart with its note counts by kind (taps, holds, rolls,
+    doubles, triples), density and rating, with filters and sortable columns. It builds everything in the browser from
+    the game's own code, so it is always current. `npm start` serves it at <http://localhost:8000/charts.html>.
 - **Scoring:**
   - Local highscores (top 10 per song).
   - Optional online profile with world leaderboards (see [Online](#online-optional)).
   - Full combo / all perfect indicators.
   - Timing histogram.
-  - Holds, rolls, slides and double notes, all derived from the melody.
+  - Holds, rolls, and double and triple notes, all derived from the melody.
 - **Modifiers:** speed, mirror, hidden, sudden death, judging, demo autoplay.
 - **Menus and extras:**
   - 3310-style main menu (Tones, My songs, Stats, Messages, Profile, Settings) with animated icons.

@@ -6,7 +6,7 @@ import { Game } from './game.js';
 // Bump when a change to scoring or charts (game.js, chart.js, rtttl.js, mods.js, songs.js, this file) changes what a
 // replay scores. Leaderboards only rank runs played under the Worker's RULES. tests/replay.test.mjs fails when those
 // files change, as a reminder: bump RULES, or only update the hash there when nothing that scores changed.
-export const RULES = 1;
+export const RULES = 2;
 export const MAX_EVENTS = 20000;
 
 // A Game without audio, DOM or timers. The clock starts at 0, so with leadIn 0 song time = audio time.

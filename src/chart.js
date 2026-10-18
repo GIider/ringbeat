@@ -7,9 +7,9 @@ const HOLD_TAIL_GAP = 0.05;         // keep a hold's tail this far from the next
 const MIN_HOLD_SEC = 0.15;          // a hold shortened below this becomes a tap
 export const SHORT_HOLD_SEC = 0.2;  // dotted-then-short notes at least this long become short holds
 const LEAP_SEMITONES = 7;           // double notes: a leap at least this big (Hard only)
+const TRIPLE_GAP_SEC = 0.25;        // the other lanes must be free this long around a triple
+const TRIPLE_SPACING_SEC = 4;       // at most one triple per this many seconds
 const DOUBLE_GAP_SEC = 0.1;         // keep the partner lane free this long around a double
-export const SLIDE_MIN_NOTES = 3;  // stepwise runs (1-2 semitones, one direction) this long become slides
-const SLIDE_MAX_GAP = 0.5;          // seconds between consecutive slide notes (start to start)
 export const ROLL_MIN_NOTES = 4;    // a run of this many same-pitch notes...
 export const ROLL_MAX_SPACING = 0.26; // ...each starting within this many seconds of the last becomes a roll
 export const ROLL_TAIL_SEC = 0.05;  // presses are accepted this long after the last tick
@@ -55,10 +55,12 @@ export function assignLanesContour(midis, lanes) {
   });
 }
 
-// How many notes the two charts do not share (time, lane, type and duration all equal counts as shared).
+// How many notes the two charts do not share (time, lane, type and duration all equal counts as shared). Triples
+// are left out: every Hard chart has some, and they alone should not make a song play at two difficulties.
 export function chartDistance(a, b) {
   const key = n => `${n.time.toFixed(3)}|${n.lane}|${n.type || ''}|${n.duration.toFixed(3)}`;
-  const A = new Set(a.notes.map(key)), B = new Set(b.notes.map(key));
+  const keys = c => new Set(c.notes.filter(n => n.chordLanes?.length !== 2).map(key));
+  const A = keys(a), B = keys(b);
   let common = 0;
   for (const k of A) if (B.has(k)) common++;
   return (A.size - common) + (B.size - common);
@@ -147,35 +149,6 @@ export function generateChart(song, opts = {}) {
   const midis = kept.map(n => n.midi);
   const laneList = LANE_MODE === 'contour' ? assignLanesContour(midis, lanes) : assignLanesQuantile(midis, lanes);
 
-  // Slides: stepwise runs of tap notes are re-laned to sweep one lane per note (up = right), at most one
-  // note per lane. Follow-up notes get a wider hit window in the game; `slide` is the chain id, `slideIdx` the position.
-  const slideOf = new Array(kept.length).fill(null);
-  {
-    const plain = i => !kept[i].ticks && kept[i].duration < HOLD_MIN_SEC && !(diff.shortHolds && kept[i].dottedShort);
-    let id = 0;
-    for (let i = 0; i < kept.length - 1;) {
-      if (!plain(i)) { i++; continue; }
-      let j = i, dir = 0;
-      while (j + 1 < kept.length && j + 1 - i < lanes && plain(j + 1)) {
-        const step = kept[j + 1].midi - kept[j].midi, a = kept[j], b = kept[j + 1];
-        if (Math.abs(step) < 1 || Math.abs(step) > 2 || b.time - a.time > SLIDE_MAX_GAP || b.time - (a.time + a.duration) > 0.1) break;
-        if (dir && Math.sign(step) !== dir) break;
-        dir = Math.sign(step);
-        j++;
-      }
-      const len = j - i + 1;
-      if (len < SLIDE_MIN_NOTES) { i++; continue; }
-      const want = laneList[i];
-      const first = dir > 0 ? Math.max(0, Math.min(want, lanes - len)) : Math.min(lanes - 1, Math.max(want, len - 1));
-      for (let k = 0; k < len; k++) {
-        laneList[i + k] = first + dir * k;
-        slideOf[i + k] = { slide: id, slideIdx: k };
-      }
-      id++;
-      i = j + 1;
-    }
-  }
-
   const nextInLane = new Array(lanes).fill(null);
   const out = new Array(kept.length);
   for (let i = kept.length - 1; i >= 0; i--) { // backwards so we know the next note in each lane
@@ -189,11 +162,10 @@ export function generateChart(song, opts = {}) {
     }
     nextInLane[lane] = n.time;
     out[i] = { id: i, time: n.time, duration, lane, midi: n.midi, isHold, hit: false, judged: false };
-    if (slideOf[i]) Object.assign(out[i], slideOf[i]);
     if (n.ticks) Object.assign(out[i], { isRoll: true, ticks: n.ticks, goal: n.goal, rollHits: 0 });
   }
 
-  // Double notes (Hard): after a leap, the landing note gets an octave-below partner in the neighbouring lane.
+  // Double notes (Hard): after a leap, the landing note gets a silent partner in the neighbouring lane.
   if (diff.doubles) {
     const byLane = Array.from({ length: lanes }, () => []);
     out.forEach(n => byLane[n.lane].push(n));
@@ -201,19 +173,44 @@ export function generateChart(song, opts = {}) {
     let lastDouble = -2;
     for (let i = 1; i < kept.length; i++) {
       const n = out[i], prev = kept[i - 1];
-      if (n.isRoll || out[i - 1].isRoll || n.slide !== undefined || out[i - 1].slide !== undefined || Math.abs(n.midi - prev.midi) < LEAP_SEMITONES || i - 1 === lastDouble) continue;
+      if (n.isRoll || out[i - 1].isRoll || Math.abs(n.midi - prev.midi) < LEAP_SEMITONES || i - 1 === lastDouble) continue;
       if (n.time - (prev.time + prev.duration) > 0.05) continue; // only legato leaps
       const free = l => l >= 0 && l < lanes && !byLane[l].some(m =>
         m.time < n.time + DOUBLE_GAP_SEC && m.time + (m.isHold || m.isRoll ? m.duration : 0) > n.time - DOUBLE_GAP_SEC);
       const lane = [n.lane - 1, n.lane + 1].find(free);
       if (lane === undefined) continue;
-      const partner = { id: 0, time: n.time, duration: Math.min(n.duration, 0.5), lane, midi: n.midi - 12,
+      const partner = { id: 0, time: n.time, duration: Math.min(n.duration, 0.5), lane, midi: n.midi, silent: true,
         isHold: false, hit: false, judged: false };
-      n.chordLane = lane; // renderer draws a bridge; each note is still judged on its own
-      partner.chordLane = n.lane;
+      n.chordLanes = [lane]; // renderer draws a bridge; each note is still judged on its own
+      partner.chordLanes = [n.lane];
       byLane[lane].push(partner);
       extra.push(partner);
       lastDouble = i;
+    }
+    // Triples: a strong note (downbeat or long tap) with two more free lanes gets two silent partners, at most one
+    // per TRIPLE_SPACING_SEC. Everything is a plain tap judged on its own, like a double.
+    let lastTriple = -Infinity;
+    for (const n of out) {
+      if (n.isRoll || n.isHold || n.chordLanes || n.time - lastTriple < TRIPLE_SPACING_SEC) continue;
+      const beats = n.time / beatLen + firstBeat; // position on the song's beat grid
+      if (!(Math.abs(beats / 4 - Math.round(beats / 4)) * 4 < 0.05 || n.duration >= HOLD_MIN_SEC)) continue;
+      const free = [];
+      for (let l = 0; l < lanes; l++) {
+        if (l !== n.lane && !byLane[l].some(m => { const tail = m.isHold || m.isRoll ? m.duration : 0;
+          return m.time < n.time + TRIPLE_GAP_SEC + tail && m.time + tail > n.time - TRIPLE_GAP_SEC; })) free.push(l);
+      }
+      if (free.length < 2) continue;
+      free.sort((x, y) => Math.abs(x - n.lane) - Math.abs(y - n.lane) || x - y); // the two nearest lanes
+      const set = free.slice(0, 2).sort((x, y) => x - y);
+      const all = [n.lane, ...set].sort((x, y) => x - y);
+      n.chordLanes = set;
+      set.forEach(l => {
+        const partner = { id: 0, time: n.time, duration: Math.min(n.duration, 0.5), lane: l, midi: n.midi, silent: true,
+          isHold: false, hit: false, judged: false, chordLanes: all.filter(x => x !== l) };
+        byLane[l].push(partner);
+        extra.push(partner);
+      });
+      lastTriple = n.time;
     }
     if (extra.length) {
       out.push(...extra);

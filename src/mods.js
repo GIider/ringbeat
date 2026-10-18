@@ -83,10 +83,10 @@ export function applyChart(chart, mods) {
     c = {
       ...c,
       notes: c.notes.map(n => ({ ...n, lane: last - n.lane,
-        ...(n.chordLane !== undefined && { chordLane: last - n.chordLane }) })),
+        ...(n.chordLanes && { chordLanes: n.chordLanes.map(l => last - l).sort((a, b) => a - b) }) })),
     };
-    // Doubles stay consistent: both notes of a pair point at each other, and the renderer draws the bridge
-    // from whichever one now has its partner on the right.
+    // Chords stay consistent: every note lists the other lanes of its chord, and the renderer draws the bridge
+    // from each note to the next lane on its right.
   }
   return c;
 }

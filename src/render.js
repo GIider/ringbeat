@@ -433,21 +433,6 @@ export class Renderer {
         continue;
       }
       const yHead = nt.holding ? hitY : Y(nt.time - t);
-      if (nt.slide !== undefined && !missed) { // slide: dotted line to the next note of the chain
-        let nx = null;
-        for (let j = i + 1; j < notes.length && j <= i + 4; j++) {
-          if (notes[j].slide === nt.slide && notes[j].slideIdx === nt.slideIdx + 1) { nx = notes[j]; break; }
-        }
-        if (nx) {
-          const x1 = x + (bw >> 1), y1 = yHead, x2 = x0 + nx.lane * lw + hx + (bw >> 1), y2 = Y(nx.time - t);
-          const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
-          c.fillStyle = INK;
-          for (let k = 0; k <= steps; k += 2) {
-            const px = Math.round(x1 + (x2 - x1) * k / steps), py = Math.round(y1 + (y2 - y1) * k / steps);
-            if (py >= this.top && py <= H - 2) c.fillRect(px, py, 1, 1);
-          }
-        }
-      }
       if (nt.isHold) {
         const yEnd = Y(nt.time + nt.duration - t); // the tail trails away from the head, clipped at the far edge
         const yTop = dir > 0 ? Math.max(this.top, yEnd) : yHead, yStop = dir > 0 ? yHead : Math.min(H, yEnd);
@@ -485,7 +470,8 @@ export class Renderer {
         c.fillStyle = PAPER;
         if (nt.isHold) c.fillRect(cx, cy, 1, 1); // hold heads have a centre dot
         c.fillStyle = INK;
-        if (nt.chordLane === nt.lane + 1) c.fillRect(x + bw, cy, lw - bw, 1); // double: bridge to the right lane
+        const nr = nt.chordLanes?.find(l => l > nt.lane); // chord: bridge to the next chord lane on the right
+        if (nr !== undefined) c.fillRect(x + bw, cy, (nr - nt.lane) * lw - bw, 1);
       }
     }
 
@@ -596,6 +582,13 @@ export class Renderer {
     for (const j of ['perfect', 'great', 'good', 'miss']) {
       this._text(c, tr(JUDGE_TEXT[j]), rl, y, INK, false);
       this._text(c, String(game.counts[j]), rx, y, INK, false, 1, 'right');
+      y += 10;
+    }
+    for (const [k, label] of [['doubles', tr('DBL')], ['triples', tr('TRI')]]) { // chords cleared / in the chart, only when the chart has any
+      const ch = game.chords[k];
+      if (!ch.total) continue;
+      this._text(c, label, rl, y, INK, false);
+      this._text(c, ch.done + '/' + ch.total, rx, y, INK, false, 1, 'right');
       y += 10;
     }
     // accuracy meter: ten segments, bottom up

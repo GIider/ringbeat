@@ -6,8 +6,7 @@ const BPM = 100;
 const LANE_MIDI = [60, 64, 67, 72]; // C E G C — a major arpeggio, one pitch per lane
 
 // notes: [beat, lane, durationInBeats, extras?]; holds are >= 1 beat (0.6 s at 100 BPM, above HOLD_MIN_SEC)
-// extras: { roll: n } mash roll of n ticks (an eighth apart), { slide: id, idx } member of a slide chain (follow-ups are forgiving),
-//         { double: lane } adds a partner tap in that lane at the same time.
+// extras: { roll: n } mash roll of n ticks (an eighth apart), { chord: [lane, ...] } adds partner taps in those lanes at the same time.
 export const STAGES = [
   {
     id: 'tap', title: 'Tap notes', demo: ['tap'],
@@ -26,12 +25,11 @@ export const STAGES = [
     notes: [[0, 1, 0, { roll: 8 }], [5, 2, 0, { roll: 8 }], [10, 0, 0, { roll: 10 }]],
   },
   {
-    id: 'chain', title: 'Slides and doubles', demo: ['slide', 'double'],
-    text: 'Notes joined by a dotted line are a SLIDE: hit the first on time, then sweep along.\nNotes joined by a bridge fall together: hit both lanes at once.',
+    id: 'chain', title: 'Doubles and triples', demo: ['double', 'triple'],
+    text: 'Notes joined by a bridge fall together: hit all their lanes at once.',
     notes: [
-      [0, 0, 0.5, { slide: 1, idx: 0 }], [0.5, 1, 0.5, { slide: 1, idx: 1 }], [1, 2, 0.5, { slide: 1, idx: 2 }], [1.5, 3, 0.5, { slide: 1, idx: 3 }],
-      [3.5, 3, 0.5, { slide: 2, idx: 0 }], [4, 2, 0.5, { slide: 2, idx: 1 }], [4.5, 1, 0.5, { slide: 2, idx: 2 }],
-      [6.5, 1, 0.5, { double: 0 }], [8, 2, 0.5, { double: 1 }], [9.5, 3, 0.5, { double: 2 }],
+      [0, 1, 0.5, { chord: [0] }], [1.5, 2, 0.5, { chord: [1] }], [3, 3, 0.5, { chord: [2] }],
+      [5, 1, 0.5, { chord: [0, 2] }], [7, 2, 0.5, { chord: [1, 3] }],
     ],
   },
 ];
@@ -44,9 +42,8 @@ const DEMOS = {
   hold: () => `<rect x="${LANE_X[1] - 2}" y="4" width="4" height="22" opacity=".5"/>` + note(1, 26),
   roll: () => `<rect x="${LANE_X[2] - 6}" y="6" width="12" height="22" fill="none" stroke="currentColor" stroke-width="1.5"/>` +
     [9, 13, 17, 21, 25].map(y => `<rect x="${LANE_X[2] - 3}" y="${y}" width="6" height="2"/>`).join(''),
-  slide: () => `<polyline points="${[[0, 26], [1, 20], [2, 14], [3, 8]].map(([l, y]) => `${LANE_X[l]},${y + 2.5}`).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>` +
-    note(0, 26) + note(1, 20) + note(2, 14) + note(3, 8),
   double: () => `<rect x="${LANE_X[1]}" y="14" width="${LANE_X[2] - LANE_X[1]}" height="2" opacity=".6"/>` + note(1, 12) + note(2, 12),
+  triple: () => `<rect x="${LANE_X[0]}" y="14" width="${LANE_X[2] - LANE_X[0]}" height="2" opacity=".6"/>` + note(0, 12) + note(1, 12) + note(2, 12),
 };
 export function stageDemoHTML(stage) {
   if (!stage.demo) return '';
@@ -65,7 +62,6 @@ export function buildStageChart(stage) {
       time: beat * beatLen, duration: dur * beatLen,
       isHold: dur >= 1, hit: false, judged: false,
     };
-    if (x.slide !== undefined) { n.slide = x.slide; n.slideIdx = x.idx; }
     if (x.roll) {
       n.isRoll = true; n.isHold = false;
       n.ticks = Array.from({ length: x.roll }, (_, k) => k * 0.5 * beatLen);
@@ -75,9 +71,10 @@ export function buildStageChart(stage) {
       n.rollHits = 0;
     }
     notes.push(n);
-    if (x.double !== undefined) {
-      n.chordLane = x.double;
-      notes.push({ ...n, id: 0, lane: x.double, midi: LANE_MIDI[x.double], chordLane: lane });
+    if (x.chord) {
+      const all = [lane, ...x.chord].sort((p, q) => p - q);
+      n.chordLanes = all.filter(l => l !== lane);
+      for (const l of x.chord) notes.push({ ...n, id: 0, lane: l, midi: LANE_MIDI[l], chordLanes: all.filter(m => m !== l) });
     }
   }
   notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
