@@ -30,8 +30,9 @@ export class Input {
     this.enabled = false;
     this.onPress = () => {};
     this.onRelease = () => {};
+    this.onSlide = () => {}; // a held pointer moved into another lane (chord notes only; see Game.slide)
     this.heldKeys = new Set();
-    this.pointers = new Map(); // pointerId -> lane
+    this.pointers = new Map(); // pointerId -> { lane: origin lane, cur: lane under the finger now, seen: lanes already entered }
 
     window.addEventListener('keydown', e => {
       if (!this.enabled || e.repeat) return;
@@ -51,13 +52,26 @@ export class Input {
       if (!this.enabled) return;
       e.preventDefault();
       const lane = this.laneAt(e.clientX);
-      this.pointers.set(e.pointerId, lane);
+      this.pointers.set(e.pointerId, { lane, cur: lane, seen: new Set([lane]) });
       try { canvas.setPointerCapture(e.pointerId); } catch {}
       this.onPress(lane, this._time(e));
     });
+    canvas.addEventListener('pointermove', e => {
+      const p = this.pointers.get(e.pointerId);
+      if (!p || !this.enabled) return;
+      const to = this.laneAt(e.clientX);
+      if (to === p.cur) return;
+      const step = to > p.cur ? 1 : -1;
+      for (let l = p.cur + step; ; l += step) { // lanes skipped between two move events were crossed too
+        if (!p.seen.has(l)) { p.seen.add(l); this.onSlide(l, this._time(e)); }
+        if (l === to) break;
+      }
+      p.cur = to;
+    });
     const up = e => {
-      if (!this.pointers.has(e.pointerId)) return;
-      const lane = this.pointers.get(e.pointerId);
+      const p = this.pointers.get(e.pointerId);
+      if (!p) return;
+      const lane = p.lane;
       this.pointers.delete(e.pointerId);
       this.onRelease(lane, this._time(e));
     };

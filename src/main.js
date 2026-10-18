@@ -96,6 +96,7 @@ game.fx = {
 const input = new Input({ getCtx: () => synth.ctx, canvas: $('stage'), laneAt: x => renderer.laneAt(x) });
 input.onPress = (lane, t) => { setDevice('kbd'); if (!isDemo()) game.press(lane, t); };
 input.onRelease = (lane, t) => { if (!isDemo()) game.release(lane, t); };
+input.onSlide = (lane, t) => { if (!isDemo()) game.slide(lane, t); };
 const calibration = new Calibration(synth);
 const scores = createScores();
 const stats = createStats();
@@ -2291,9 +2292,14 @@ function controlsHint() {
   return tr('Keys: {keys}', { keys: KEY_LABELS[4].map(k => `<b>${k}</b>`).join(' ') });
 }
 const controlsHTML = () => `<p id="tut-controls">${controlsHint()}</p>`;
+// Chain lesson, touch only: one finger can cover several lanes by sliding across them.
+const slideHint = () => lastDevice === 'touch' ? tr('Short on fingers? Press the first lane and slide across the others.') : '';
+const slideHTML = () => `<p id="tut-slide"${slideHint() ? '' : ' hidden'}>${esc(slideHint())}</p>`;
 function refreshTutorialCard() {
-  const el = $('tut-controls');
-  if (state === 'tutorial' && el && run && run.tutorial && !run.tutorial.done) el.innerHTML = controlsHint();
+  if (state !== 'tutorial' || !run || !run.tutorial || run.tutorial.done) return;
+  const el = $('tut-controls'), sl = $('tut-slide');
+  if (el) el.innerHTML = controlsHint();
+  if (sl) { sl.textContent = slideHint(); sl.hidden = !sl.textContent; }
 }
 // One fixed-size box per lesson (not glyphs, whose widths differ), so the row never shifts between cards.
 function tutProgress(done, current) {
@@ -2332,7 +2338,7 @@ function openLesson(i) {
   const st = STAGES[i];
   $('tut-title').textContent = tr(st.title);
   $('tut-body').innerHTML = stageDemoHTML(st) + tr(st.text).split('\n').map(p => `<p>${esc(p)}</p>`).join('') +
-    (i === 0 ? controlsHTML() : '');
+    (i === 0 ? controlsHTML() : '') + (st.id === 'chain' ? slideHTML() : '');
   $('btn-tut-go').textContent = tr('Start lesson');
   $('btn-tut-skip').textContent = tr('Skip tutorial');
   $('btn-tut-skip').hidden = i === 0 && !settings.tutorialDone; // the first-visit prompt already offered "No thanks"
