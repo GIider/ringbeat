@@ -5,6 +5,7 @@ import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
 import { Game, WINDOWS } from '../src/game.js';
 import { createScores } from '../src/scores.js';
+import { RULES } from '../src/replay.js';
 import * as M from '../src/mods.js';
 const { scaleChart } = M;
 
@@ -114,7 +115,7 @@ test('game: default run is unchanged (no windowScale / suddenDeath)', () => {
 
 test('scores: runs load; mods and mult are kept and ranked by score', () => {
   const storage = mem();
-  storage.setItem('ringbeat.scores.v1', JSON.stringify({ s: { top: [{ score: 100, grade: 'B', accuracy: 80, maxCombo: 3, fc: false, ap: false, date: 1 }] } }));
+  storage.setItem('ringbeat.scores.v1', JSON.stringify({ s: { top: [{ score: 100, grade: 'B', accuracy: 80, maxCombo: 3, fc: false, ap: false, date: 1, rules: RULES }] } }));
   const sc = createScores(storage);
   assert.equal(sc.get('s').best.mods, undefined);
   sc.record('s', { score: 500, grade: 'A', accuracy: 92, maxCombo: 9, mods: ['1.2x', 'HD'], mult: 1.32 });

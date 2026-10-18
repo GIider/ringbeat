@@ -189,7 +189,7 @@ defaults.
 | Key | Module | Holds |
 |---|---|---|
 | `ringbeat.v1` | `settings.js` | Settings: voice, language, volume, scroll time, toggles, calibration, list view, last song, tutorial progress, pad bindings, mods, read messages |
-| `ringbeat.scores.v1` | `scores.js` | Highscores: top 10 runs and play count per song id × chart |
+| `ringbeat.scores.v1` | `scores.js` | Highscores: top 10 runs (each stamped with its `RULES`; other versions are dropped on load) and play count per song id × chart |
 | `ringbeat.stats.v1` | `stats.js` | Lifetime stats |
 | `ringbeat.songs.v1` | `mysongs.js` | My songs (up to 30 added by hand; a cloud merge may bring more) |
 | `ringbeat.songs.gone.v1` | `mysongs.js` | Deleted songs' uids and when, so deletes reach other devices |

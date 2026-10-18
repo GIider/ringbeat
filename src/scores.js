@@ -1,6 +1,8 @@
 // Local highscores: top runs per song, persisted in localStorage.
 // Storage is injectable (getItem/setItem/removeItem) so the logic is testable and survives blocked storage.
 
+import { RULES } from './replay.js';
+
 export const SCORES_KEY = 'ringbeat.scores.v1';
 export const TOP_N = 10;
 
@@ -23,6 +25,8 @@ function cleanRun(r) {
     maxCombo: isNum(r.maxCombo) ? r.maxCombo : 0,
     fc: !!r.fc, ap: !!r.ap,
     date: isNum(r.date) ? r.date : 0,
+    // The RULES version the run was played under; runs from another version no longer count (see cleanScores).
+    ...(Number.isInteger(r.rules) && { rules: r.rules }),
     // Mods the run was played with (display only) and the multiplier already folded into `score`.
     ...(Array.isArray(r.mods) && r.mods.length && { mods: r.mods.filter(t => typeof t === 'string').slice(0, 6).map(t => t.slice(0, 5)) }),
     ...(isNum(r.mult) && r.mult !== 1 && { mult: r.mult }),
@@ -51,21 +55,26 @@ export function combineScores(list) {
 }
 
 // Raw stored scores (any shape) -> {songId: {top, plays, fc, ap}}. Entries without a `top` list (the old
-// per-difficulty shape) are dropped.
+// per-difficulty shape) are dropped. Runs stamped with another RULES version (or unstamped) are dropped too, but
+// plays and fc/ap never reset: an entry whose runs all went stays with an empty `top`.
 export function cleanScores(raw) {
   const data = {};
   if (!raw || typeof raw !== 'object') return data;
   for (const [id, e] of Object.entries(raw)) {
-    const top = Array.isArray(e && e.top) ? e.top.map(cleanRun).filter(Boolean).slice(0, TOP_N) : [];
-    if (!top.length) continue;
+    if (!Array.isArray(e && e.top)) continue;
+    const runs = e.top.map(cleanRun).filter(Boolean).slice(0, TOP_N);
+    if (!runs.length && !isNum(e.plays) && e.fc !== true && e.ap !== true) continue; // nothing to keep
+    const top = runs.filter(r => r.rules === RULES);
     // fc/ap are sticky per song (survive runs falling out of the top 5); migrate from top runs.
     data[id] = {
-      top, plays: isNum(e.plays) ? e.plays : top.length,
-      fc: e.fc === true || top.some(r => r.fc), ap: e.ap === true || top.some(r => r.ap),
+      top, plays: isNum(e.plays) ? e.plays : runs.length,
+      fc: e.fc === true || runs.some(r => r.fc), ap: e.ap === true || runs.some(r => r.ap),
     };
   }
   return data;
 }
+
+const runCount = d => Object.values(d).reduce((n, e) => n + e.top.length, 0);
 
 // With cloud sync, this store holds this device's own runs; get() / all() / record() see them combined with the
 // other devices' (setRemote, combineScores).
@@ -73,7 +82,14 @@ export function createScores(storage = browserStorage()) {
   let data = null, remote = [], view = null;
   const load = () => {
     if (data) return data;
-    try { data = cleanScores(JSON.parse(storage.getItem(SCORES_KEY))); } catch { data = {}; } // corrupt -> start clean
+    let dropped = false;
+    try {
+      const raw = JSON.parse(storage.getItem(SCORES_KEY));
+      data = cleanScores(raw);
+      // Stale runs (other RULES) are removed from storage, not just hidden.
+      dropped = raw && typeof raw === 'object' && Object.values(raw).reduce((n, e) => n + (Array.isArray(e && e.top) ? e.top.length : 0), 0) !== runCount(data);
+    } catch { data = {}; } // corrupt -> start clean
+    if (dropped) persist();
     return data;
   };
   const shown = () => (remote.length ? (view ||= combineScores([load(), ...remote])) : load());
@@ -95,7 +111,7 @@ export function createScores(storage = browserStorage()) {
     setRemote(list) { remote = (Array.isArray(list) ? list : []).map(cleanScores); view = null; },
     // Records a finished run. -> { rank (1-based or null if outside top N), isNewBest }
     record(songId, result) {
-      const run = cleanRun({ ...result, date: result.date ?? Date.now() });
+      const run = cleanRun({ ...result, date: result.date ?? Date.now(), rules: RULES });
       if (!run) return { rank: null, isNewBest: false };
       const d = load();
       const e = (d[songId] ||= { top: [], plays: 0, fc: false, ap: false });

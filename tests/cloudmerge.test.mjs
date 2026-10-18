@@ -5,6 +5,7 @@ import { mergeShared, sameShared, cleanShared, blankShared, SYNCED_SETTINGS } fr
 import { createScores, combineScores } from '../src/scores.js';
 import { createStats, combineStats, clean as cleanStats, dayKey } from '../src/stats.js';
 import { createMySongs } from '../src/mysongs.js';
+import { RULES } from '../src/replay.js';
 
 const mem = () => {
   const m = new Map();
@@ -69,7 +70,7 @@ test('cleanShared: garbage becomes a blank document', () => {
   }
 });
 
-const run = (score, date, extra = {}) => ({ score, date, grade: 'A', accuracy: 0.9, maxCombo: 10, fc: false, ap: false, ...extra });
+const run = (score, date, extra = {}) => ({ score, date, grade: 'A', accuracy: 0.9, maxCombo: 10, fc: false, ap: false, rules: RULES, ...extra });
 
 test('combineScores: top runs pooled once, plays summed, FC/AP sticky', () => {
   const a = { s1: { top: [run(500, 1), run(300, 2)], plays: 4, fc: true, ap: false } };
@@ -92,6 +93,36 @@ test('scores store: remote devices show in get/all; record ranks against everyth
   assert.deepEqual(s.own().s1.top.map(x => x.score), [850, 300]);
   s.setRemote([]);
   assert.equal(s.get('s1').best.score, 850);
+});
+
+test('scores store: a RULES bump drops stale runs everywhere but keeps plays and fc/ap', () => {
+  const st = mem();
+  const old = (score, date) => run(score, date, { rules: RULES - 1, fc: true });
+  const legacy = { score: 700, date: 3, grade: 'A' }; // unstamped
+  st.setItem('ringbeat.scores.v1', JSON.stringify({
+    a: { top: [old(900, 1), legacy], plays: 5, fc: true, ap: false },
+    b: { top: [old(800, 2), run(100, 4)], plays: 2 },
+  }));
+  const s = createScores(st);
+  assert.deepEqual(s.get('a'), { best: undefined, top: [], plays: 5, fc: true, ap: false });
+  assert.deepEqual(s.get('b').top.map(x => x.score), [100]);
+  assert.equal(s.get('b').fc, true); // sticky from the dropped run
+  // persisted, not just hidden
+  const stored = JSON.parse(st.getItem('ringbeat.scores.v1'));
+  assert.deepEqual(stored.a.top, []);
+  assert.equal(stored.a.plays, 5);
+  assert.deepEqual(stored.b.top.map(x => x.score), [100]);
+  // new runs are stamped and survive a reload
+  s.record('a', { score: 50, grade: 'B' });
+  assert.equal(createScores(st).get('a').best.rules, RULES);
+  assert.equal(createScores(st).get('a').plays, 6);
+  // synced copies are filtered the same way
+  s.setRemote([{ c: { top: [old(999, 7), run(60, 8)], plays: 4, fc: true } }, { a: { top: [old(990, 9)], plays: 3 } }]);
+  assert.deepEqual(s.get('c').top.map(x => x.score), [60]);
+  assert.equal(s.get('c').plays, 4);
+  assert.deepEqual(s.get('a').top.map(x => x.score), [50]);
+  assert.equal(s.get('a').plays, 9);
+  assert.deepEqual(Object.keys(s.own()).sort(), ['a', 'b']);
 });
 
 test('stats: play days are kept as a list; old records keep their count as a base', () => {

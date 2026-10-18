@@ -198,6 +198,9 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - Stored locally (`ringbeat.scores.v1`) per song id and chart: the top 10 runs and a play count.
 - A run stores score, grade, accuracy, max combo, fc, ap and date, plus the `mods` tags and `mult` for modded runs.
   Runs are ranked by score; on a tie, the newer run ranks below the older one.
+- Each run also stores the `RULES` version it was played under. Runs from another version (and old unstamped runs) are
+  dropped automatically on load, also from synced copies, and the cleanup is saved. The play count and the FC/AP
+  flags never reset.
 - Custom songs are keyed by a hash of their RTTTL text, so scores follow the melody.
 - Failed (Sudden death) runs and Demo runs are never recorded. Highscores can be reset in Settings (two-step confirm;
   this also clears stats).
