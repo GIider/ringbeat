@@ -37,7 +37,7 @@ import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
-import { SORT_ICONS, ICON_FIND, SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
+import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { createTitle, REST as TITLE_REST, TITLE_EXTENT } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
@@ -286,7 +286,6 @@ function konamiReward() {
   setTimeout(() => lcd.classList.remove('flash'), 140);
   setTimeout(() => lcd.classList.add('flash'), 280);
   setTimeout(() => lcd.classList.remove('flash'), 420);
-  toast('Cheat activated');
   chirp([72, 76, 79, 84]);
   cameo.parade();
 }
@@ -2764,15 +2763,18 @@ function wire() {
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
   const voiceLabel = () => { $('set-voice').textContent = tr('Tone: {voice}', { voice: voiceName() }); };
+  const paintTitleLang = () => { $('title-lang').innerHTML = spriteHTML(ICON_GLOBE, 2) + `<span>${esc(getLang().toUpperCase())}</span>`; $('title-lang').title = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
   const langLabel = () => { $('set-lang').textContent = tr('Language: {lang}', { lang: LANGS[getLang()] }); };
   // Everything that was drawn from text is redrawn; screens opened later render fresh.
   const relocalize = () => {
     applyStatic();
-    voiceLabel(); langLabel();
+    voiceLabel(); langLabel(); paintTitleLang();
     renderBindings(); refreshModsButton(); refreshChrome(); selectHints();
     for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr((run && run.retLabel) || 'Tones');
   };
   relocalize();
+  // Language toggle on the title screen: the globe plus the current code; a tap cycles the language like Settings › Language
+  $('title-lang').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); $('set-lang').click(); });
   // Settings that arrived from another device: the controls, the live objects and the language follow.
   settingsArrived = () => {
     sc.value = settings.scrollTime; $('scroll-val').textContent = sc.value + 's';
@@ -3027,7 +3029,7 @@ function wire() {
   $('sel-sort').onclick = () => { synth.keyClick(); openHub('sort'); };
   onSwipe($('message'), dir => navigate(dir === 'left' ? 'right' : 'left'));
   $('welcome').addEventListener('click', skipWelcome);
-  $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a, .boot-version')) startFromTitle(); });
+  $('title').addEventListener('click', e => { if (state === 'title' && !e.target.closest('a, .boot-version, .title-lang')) startFromTitle(); });
   $('btn-resume').onclick = resumeGame;
   $('btn-restart').onclick = restartRun;
   $('btn-quit').onclick = leaveToSelect;

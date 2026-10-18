@@ -287,7 +287,7 @@ Decorative and harmless: none of these touch scores, stats or the selection.
 - **Idle cameos** (setting *Idle animations*): every 45–150 s on the title, menu or song select, a small gag plays on the
   LCD. The gags are Snake, Space Impact, a fake SMS envelope, a signal wobble and a once-only low battery. They chirp
   only if audio is already running.
-- **Konami code** (keyboard, or d-pad + B A on a gamepad) on title / menu / song select: "Cheat activated", a flash and a
+- **Konami code** (keyboard, or d-pad + B A on a gamepad) on title / menu / song select: a flash, the IMEI panel and a
   snake parade.
 - **IMEI panel** (↓ ↑ ↓ ↑ A on keyboard or gamepad on title / menu / song select, or five quick taps on the title screen's version label): a fake, Luhn-valid IMEI, the version and build, and a credit link.
 - **Holding C** for 1.2 s on title / menu / song select: "Clearing memory…", then "Just kidding."

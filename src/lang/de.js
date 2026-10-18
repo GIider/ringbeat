@@ -402,7 +402,6 @@ export const de = {
   'Clearing memory...': 'Speicher wird gelöscht...',
   'Memory cleared': 'Speicher gelöscht',
   'Just kidding.': 'War nur Spaß.',
-  'Cheat activated': 'Cheat aktiviert',
 
   // ---- key legend & phone keys ----
   'Playing': 'Spielen',
