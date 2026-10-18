@@ -373,6 +373,7 @@ export const de = {
   'Glyphs & icons': 'Zeichen & Symbole',
   'Glyphs': 'Zeichen',
   'Icons': 'Symbole',
+  'Favorite icons': 'Favoriten-Symbole',
   'Large icons': 'Große Symbole',
   'Pop-ups': 'Pop-ups',
   'Menu icons': 'Menüsymbole',

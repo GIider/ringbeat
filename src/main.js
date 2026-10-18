@@ -1781,7 +1781,7 @@ function buildGlyphs() {
   // the Messages icon has a second look while mail waits: the sealed envelope with sparkles
   menu.push(cell(`menu messages (unread) ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame('messages', 0, { unread: true }), 2), ICON_W * 2, 'data-menu="messages" data-unread="1"'));
   const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
-  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), [...sprites(SPRITES, 'icon'), ...sprites(SPRITES_FAV, 'favorite')]) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
+  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), sprites(SPRITES, 'icon')) + sect(tr('Favorite icons'), sprites(SPRITES_FAV, 'favorite')) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
   glyphsBuilt = true;
 }
 // A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
