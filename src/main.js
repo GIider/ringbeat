@@ -2570,7 +2570,22 @@ function navigate(dir) {
     stepResultsPage(dir === 'left' ? -1 : 1);
     return;
   }
+  if (state === 'settings' && settingsAll() && (dir === 'up' || dir === 'down') && settingsVertical(dir === 'down' ? 1 : -1)) return;
   if (!nav.adjust(document.activeElement, dir)) nav.move(root, dir);
+}
+// All settings on screen in columns: up / down walk one column top to bottom, then continue at the other column (the generic spatial
+// move would hop sideways to whatever sits closest in height). -> false when focus isn't in a panel.
+function settingsVertical(step) {
+  const cur = document.activeElement;
+  if (!cur || !cur.closest || !cur.closest('.set-panel')) return false;
+  const items = nav.focusables(screens.settings).filter(el => el.closest('.set-panel'));
+  const colOf = el => Math.round(el.closest('.set-panel').getBoundingClientRect().left);
+  const cols = [...new Set(items.map(colOf))].sort((a, b) => a - b).map(x => items.filter(el => colOf(el) === x).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top));
+  const ci = cols.findIndex(c => c.includes(cur)), i = ci < 0 ? -1 : cols[ci].indexOf(cur);
+  let target = ci >= 0 ? cols[ci][i + step] : null;
+  if (!target && ci >= 0 && cols[ci + step]) target = step > 0 ? cols[ci + step][0] : cols[ci + step][cols[ci + step].length - 1];
+  if (target) target.focus();
+  return true; // at the very first / last item nothing moves
 }
 
 // ---- phone keys & soft keys ----
