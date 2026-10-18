@@ -59,9 +59,13 @@ export function tn(n, one, other, params) {
 }
 
 // Locale-aware number: fmt(1234.5) -> "1,234.5" / "1.234,5"; digits fixes the decimals.
+// Formatters are memoised: constructing an Intl.NumberFormat costs far more than formatting with one.
+const nfCache = new Map();
 export function fmt(n, digits) {
-  const o = digits === undefined ? {} : { minimumFractionDigits: digits, maximumFractionDigits: digits };
-  return new Intl.NumberFormat(lang, o).format(n);
+  const k = lang + '|' + digits;
+  let nf = nfCache.get(k);
+  if (!nf) nfCache.set(k, nf = new Intl.NumberFormat(lang, digits === undefined ? {} : { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+  return nf.format(n);
 }
 
 // Static markup: data-i18n="English text" on an element translates its text; data-i18n-attr="aria-label,title"

@@ -121,6 +121,7 @@ Measured 2026-10-18:
 - `library.build` had slipped from 0.016 ms to 8.4 ms: the parsed-song memo in `library.js` was cleared once it passed 256 entries, and the library grew past that (278 built-ins), so every rebuild started cold. The cap now sits above the built-in count (`tests/modules.test.mjs` guards it).
 - Song select re-laid-out every row on each sort / category change. Rows now use `content-visibility: auto` and the list is parsed from one HTML string: cycling the sort went from 19.5 to 10.7 ms of JS per press, opening the list from 9.7 to 5.1 ms.
 - Real play was never the problem: 60 fps, no long frames, `draw` p99 under 1 ms.
+- Song select still re-created every row on each sort / category change. Row elements are now kept per song and only re-ordered (re-parsed when what they show changes). Measured on a 2.4x slower laptop (i7-7700HQ): cycling the sort 20 to 6 ms of JS per press, frame p95 51 to 22 ms; cycling the category 8 to 5 ms; opening the list 7 to 4 ms.
 
 ## Baselines
 

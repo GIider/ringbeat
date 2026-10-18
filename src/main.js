@@ -734,29 +734,44 @@ function toggleFavorite(id = selectedId) {
   requestAnimationFrame(() => requestAnimationFrame(() => favFx(id, on ? 'add' : 'break')));
 }
 
+const rowCache = new Map(), tpl = document.createElement('template');
 function renderList() {
   const list = viewList = visible();
   renderCategories();
   const box = $('song-list');
-  box.textContent = '';
+  box.replaceChildren();
   if (!list.length) {
     const p = document.createElement('p');
     p.className = 'hint empty';
     p.textContent = tr('No songs match this filter.');
     box.appendChild(p);
   }
-  // One parse of one string: the list has hundreds of rows and is rebuilt on every sort / category change.
+  // Row elements are kept per song and only re-ordered: parsing and creating hundreds of rows dominated every sort / category change.
+  // The key covers everything a row shows; rows whose key changed (or are new) are parsed together, in one string.
+  const misses = [];
   let html = '';
   for (const e of list) {
     const rec = scores.get(e.id);
     const best = rec && rec.best;
     const fav = isFavorite(e.id);
+    const badge = best ? badgeHTML(rec) : '';
+    const key = `${fav}|${e.category}|${e.title}|${best ? best.grade : ''}|${badge}`;
+    const hit = rowCache.get(e.id);
+    if (hit && hit.key === key) continue;
+    misses.push([e.id, key]);
     html += `<button class="song-row${fav ? ' fav' : ''}" data-id="${esc(e.id)}" role="option">` +
       spriteHTML(categorySprite(e.category, fav), 'u', 'cat') +
       `<span class="t">${esc(e.title)}</span>` +
-      `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span></button>`;
+      `<span class="b">${best ? `${esc(best.grade)}${badge}` : ''}</span></button>`;
   }
-  if (html) box.insertAdjacentHTML('beforeend', html);
+  if (html) {
+    tpl.innerHTML = html;
+    const made = tpl.content.children;
+    for (let i = 0; i < misses.length; i++) rowCache.set(misses[i][0], { key: misses[i][1], el: made[i] });
+  }
+  const els = list.map(e => rowCache.get(e.id).el);
+  if (rowCache.size > 2000) for (const id of rowCache.keys()) if (!entryById(id)) rowCache.delete(id);
+  box.append(...els);
   renderAz();
   markSelected();
   queueThumb();
