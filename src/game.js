@@ -4,7 +4,6 @@ export const WINDOWS = { perfect: 0.045, great: 0.09, good: 0.135 }; // seconds,
 export const HOLD_RELEASE_FORGIVE = 0.15; // releasing this close to the tail end still completes the hold
 export const HOLD_BONUS = 100;
 export const POINTS = { perfect: 300, great: 200, good: 100 };
-export const SLIDE_WINDOW = 0.18;   // slide follow-up notes (not the first) accept presses this far off
 export const COMBO_MULT_CAP = 50;   // combo at which the multiplier stops growing (x1.5)
 export const ROLL_TICK_POINTS = 10;  // per press inside a roll, times the multiplier
 export const ROLL_GRADES = [[0.8, 'perfect'], [0.6, 'great'], [0.4, 'good']]; // share of the roll's goal -> judgement
@@ -32,11 +31,9 @@ export class Game {
 
   // Hit windows for this run (mods can widen or narrow them). All judging reads these, not the exported base values.
   _setWindows(k) {
-    this.win = { perfect: WINDOWS.perfect * k, great: WINDOWS.great * k, good: WINDOWS.good * k, slide: SLIDE_WINDOW * k };
-    this.reach = Math.max(this.win.good, this.win.slide); // how far ahead of a press a note can still be matched
+    this.win = { perfect: WINDOWS.perfect * k, great: WINDOWS.great * k, good: WINDOWS.good * k };
+    this.reach = this.win.good; // how far ahead of a press a note can still be matched
   }
-  // Hit window of a note: slide follow-ups (idx > 0) are more forgiving than everything else.
-  _windowOf(n) { return n.slideIdx > 0 ? this.win.slide : this.win.good; }
 
   start(chart, { leadIn = 2, backing = true, rollAudio = false, calibration = 0, windowScale = 1, suddenDeath = false } = {}) {
     this.stop();
@@ -64,6 +61,20 @@ export class Game {
     this.score = 0; this.combo = 0; this.maxCombo = 0;
     this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
     this.judgedCount = 0;
+    // Chord counters (HUD): chords whose notes were all hit / chords in the chart. Doubles are chords of 2 notes, triples of 3.
+    this.chords = { doubles: { done: 0, total: 0 }, triples: { done: 0, total: 0 } };
+    this.chordOf = new Map();
+    const groups = new Map();
+    for (const n of chart.notes) {
+      if (!n.chordLanes) continue;
+      const key = n.time + '|' + n.chordLanes.length;
+      let cg = groups.get(key);
+      if (!cg) {
+        cg = { kind: n.chordLanes.length === 2 ? 'triples' : 'doubles', size: n.chordLanes.length + 1, judged: 0, ok: true };
+        groups.set(key, cg); this.chords[cg.kind].total++;
+      }
+      this.chordOf.set(n, cg);
+    }
     this.strays = 0;          // presses that matched no note before the last note was played (break FC)
     this.notesLeft = chart.notes.length; // notes not yet judged (a dropped hold does not add to this)
     this.accSum = 0;
@@ -146,7 +157,7 @@ export class Game {
         continue;
       }
       const d = Math.abs(t - n.time);
-      if (d < bestAbs && d <= this._windowOf(n)) { best = n; bestAbs = d; }
+      if (d < bestAbs && d <= this.win.good) { best = n; bestAbs = d; }
     }
     if (roll && rollAbs <= bestAbs) { this._rollHit(roll); return; }
     if (!best) { // ghost tap: no score effect, but breaks FC until the last note is played
@@ -161,7 +172,7 @@ export class Game {
       }
       return;
     }
-    const j = bestAbs <= this.win.perfect ? 'perfect' : bestAbs <= this.win.great ? 'great' : 'good'; // slides: wide hits are Good
+    const j = bestAbs <= this.win.perfect ? 'perfect' : bestAbs <= this.win.great ? 'great' : 'good';
     this._judge(best, j);
     this.deltas.push(t - best.time);
     best.hit = true;
@@ -172,7 +183,7 @@ export class Game {
       // Sustain until release() or the note's natural end.
       const remaining = Math.max(0.05, best.time + best.duration - t);
       best.voice = this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: remaining, releasable: true });
-    } else {
+    } else if (!best.silent) { // chord partners stay silent: a perfect run sounds exactly like the song
       this.synth.playNote({ midi: best.midi, when: ctx.currentTime, duration: best.duration });
     }
   }
@@ -204,7 +215,7 @@ export class Game {
           if (t <= n.time + n.duration) break;
           this._finishRoll(n);
           if (this.state !== 'running') return;
-        } else if (n.time + this._windowOf(n) < t) { this._miss(n, true); if (this.state !== 'running') return; }
+        } else if (n.time + this.win.good < t) { this._miss(n, true); if (this.state !== 'running') return; }
         else break;
         i++;
       }
@@ -241,11 +252,21 @@ export class Game {
     else this._miss(n, true);
   }
 
+  // A chord counts once all its notes are judged and none missed.
+  _chordNote(n, hit) {
+    const cg = this.chordOf.get(n);
+    if (!cg) return;
+    cg.judged++;
+    if (!hit) cg.ok = false;
+    if (cg.judged === cg.size && cg.ok) this.chords[cg.kind].done++;
+  }
+
   _judge(n, j) {
     n.judged = true; n.judgement = j;
     this.notesLeft--;
     this.counts[j]++;
     this.judgedCount++;
+    this._chordNote(n, true);
     this.accSum += ACCURACY_WEIGHT[j];
     this.events.push([n.time, ACCURACY_WEIGHT[j]]);
     this.score += Math.round(POINTS[j] * this.multiplier);
@@ -255,7 +276,8 @@ export class Game {
   }
 
   _miss(n, headMissed) {
-    if (headMissed) { n.judged = true; n.judgement = 'miss'; this.notesLeft--; }
+    if (headMissed) { n.judged = true; n.judgement = 'miss'; this.notesLeft--; this._chordNote(n, false); }
+    else this.chordOf.get(n) && (this.chordOf.get(n).ok = false); // a dropped hold spoils its chord
     this.counts.miss++;
     this.judgedCount++;
     this.events.push([n.time, 0]);

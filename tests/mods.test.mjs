@@ -55,9 +55,11 @@ test('mods: mirror is an involution, keeps doubles paired, and does not mutate',
   assert.ok(m.notes.every((n, i) => n.lane === c.lanes - 1 - c.notes[i].lane && n.time === c.notes[i].time));
   assert.deepEqual(M.applyChart(m, { mirror: true }).notes.map(n => n.lane), c.notes.map(n => n.lane));
   for (const n of m.notes) {
-    if (n.chordLane === undefined) continue;
-    const partner = m.notes.find(p => p !== n && p.time === n.time && p.lane === n.chordLane);
-    assert.ok(partner && partner.chordLane === n.lane);
+    if (!n.chordLanes) continue;
+    for (const l of n.chordLanes) {
+      const partner = m.notes.find(p => p !== n && p.time === n.time && p.lane === l);
+      assert.ok(partner && partner.chordLanes.includes(n.lane));
+    }
   }
 });
 

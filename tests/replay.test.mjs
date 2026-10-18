@@ -80,7 +80,7 @@ test('replay: the log has the inputs plus only the updates that counted', () => 
 
 // Scoring inputs: a change to any of these files might change what a stored replay scores. When this fails, decide:
 // did scoring or charting change? Then bump RULES in src/replay.js. Either way, paste the new hash below.
-const RULES_HASH = '1:1334900e7bb8791c';
+const RULES_HASH = '2:487a1f9b2c7a8f7b';
 test('replay: RULES is bumped when the scoring files change', () => {
   const h = createHash('sha256');
   for (const f of ['game.js', 'chart.js', 'rtttl.js', 'mods.js', 'songs.js']) {

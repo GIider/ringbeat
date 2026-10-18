@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { API_BASE } from '../src/cloud.js';
 import { SONGS } from '../src/songs.js';
+import { RULES } from '../src/replay.js';
 
 const port = 20000 + Math.floor(Math.random() * 10000);
 const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: ['ignore', 'pipe', 'inherit'] });
@@ -136,8 +137,8 @@ async function boardsSmoke(context, name) {
   const json = (route, body) => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   await context.route(url => url.href.startsWith(API_BASE + '/board'), route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/boards') return json(route, { rules: 1, built: Date.now() - 5000, boards: { [first + '|normal']: [run(1, 'Ann', 900, { fc: true })] } });
-    return json(route, { rules: 1, runs: [run(1, 'Ann', 900, { fc: true }), run(2, 'Bo', 800)] });
+    if (path === '/boards') return json(route, { rules: RULES, built: Date.now() - 5000, boards: { [first + '|normal']: [run(1, 'Ann', 900, { fc: true })], [first + '|hard']: [run(1, 'Ann', 900, { fc: true })] } });
+    return json(route, { rules: RULES, runs: [run(1, 'Ann', 900, { fc: true }), run(2, 'Bo', 800)] });
   });
   const page = await context.newPage();
   const errors = [];

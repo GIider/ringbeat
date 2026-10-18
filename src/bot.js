@@ -17,7 +17,7 @@ export function mulberry32(seed) {
 const gauss = rnd => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
 
 const BASE = { sigma: 0, bias: 0, minGap: 0, laneMiss: null, densityPenalty: 0, holdSigma: 0, holdDrop: 0, chordMiss: 0,
-  stray: 0, fatigue: 0, rollGap: null, slideMult: 1 };
+  stray: 0, fatigue: 0, rollGap: null };
 
 // Skill ladder: timing jitter (ms) and the fastest repeat rate the player's fingers/reactions sustain (ms between presses).
 const geo = (a, b, i, n) => Math.round(a * Math.pow(b / a, i / (n - 1)));
@@ -34,7 +34,6 @@ export const SPECIALISTS = [
   { ...MID, name: 'speed', tag: 'speed', minGap: 190, densityPenalty: 0.5 },
   { ...MID, name: 'doubles', tag: 'doubles', chordMiss: 0.5 },
   { ...MID, name: 'rolls', tag: 'rolls', rollGap: 190 },
-  { ...MID, name: 'slides', tag: 'slides', slideMult: 3 },
   { ...MID, name: 'stamina', tag: 'stamina', fatigue: 0.6 },
   { ...MID, name: 'leftLane', tag: 'left lane', laneMiss: { first: 0.4 } },
   { ...MID, name: 'rightLane', tag: 'right lane', laneMiss: { last: 0.4 } },
@@ -71,7 +70,6 @@ export function planBot(chart, profile, seed = 1) {
     }
     if (miss && rnd() < miss) continue;
     let sigma = p.sigma * (1 + p.fatigue * n.time / 60);
-    if (n.slideIdx > 0) sigma *= p.slideMult;
     if (p.densityPenalty) {
       let cnt = 0;
       for (let j = i; j >= 0 && times[j] > n.time - 1; j--) cnt++;
@@ -166,7 +164,7 @@ function* measureSteps(chart, { runs = 30, seed = 1 } = {}) {
   const laneShare = l => chart.notes.filter(x => x.lane === l).length / n;
   const has = {
     holds: chart.notes.some(x => x.isHold), rolls: chart.notes.some(x => x.isRoll),
-    slides: chart.notes.some(x => x.slideIdx > 0), doubles: chart.notes.some(x => x.chordLane !== undefined),
+    doubles: chart.notes.some(x => x.chordLanes),
     speed: chart.length > 0 && n / chart.length >= 2.5, stamina: chart.length >= 60,
     'left lane': laneShare(0) >= 0.4, 'right lane': laneShare(chart.lanes - 1) >= 0.4,
   };

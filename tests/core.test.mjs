@@ -28,14 +28,14 @@ test('library: songs whose Normal and Hard charts barely differ get one difficul
   setMeasured(JSON.parse(readFileSync(new URL('../src/difficulty.json', import.meta.url))));
   const lib = buildLibrary(), by = id => lib.find(e => e.id === id);
   setMeasured({});
-  assert.equal(by('ode').only, 'normal');     // identical charts, Hard rating below 5
-  assert.equal(by('zelda').only, 'hard');     // identical charts, Hard rating 6.4
-  assert.equal(by('tetris').only, 'hard');    // two notes apart, Hard rating 8.1
-  assert.equal(by('ode').chart, 'normal');
+  assert.equal(by('turkish').only, 'normal'); // identical charts, Hard rating below 5
+  assert.equal(by('zelda').only, 'hard');     // identical charts, Hard rating 6.6
+  assert.equal(by('ode').only, 'hard');       // identical charts, Hard rating 5.7
+  assert.equal(by('tetris').only, undefined); // four notes apart: keeps both charts
+  assert.equal(by('turkish').chart, 'normal');
   assert.equal(by('zelda').chart, 'hard');
-  assert.equal(by('tetris').chart, 'hard');
-  assert.equal(by('ode').notes.hard, by('ode').notes.normal);
-  assert.equal(by('ode').rating.hard, by('ode').rating.normal);
+  assert.equal(by('turkish').notes.hard, by('turkish').notes.normal);
+  assert.equal(by('turkish').rating.hard, by('turkish').rating.normal);
   for (const e of lib) {
     const d = chartDistance(generateChart(e.song, { difficulty: 'normal' }), generateChart(e.song, { difficulty: 'hard' }));
     assert.equal(!!e.only, d <= COLLAPSE_MAX, e.id);
@@ -233,7 +233,7 @@ test('tutorial: stages build valid, non-overlapping charts', () => {
     }
   }
   assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n.isHold)));
-  for (const kind of ['isRoll', 'chordLane', 'slide']) {
+  for (const kind of ['isRoll', 'chordLanes']) {
     assert.ok(STAGES.some(s => buildStageChart(s).notes.some(n => n[kind])), `a stage teaches ${kind}`);
   }
 });
@@ -308,7 +308,7 @@ test('bot: specialists only tag features the chart contains', () => {
     notes: Array.from({ length: 30 }, (_, i) => ({ id: i, time: i * 0.6, duration: 0.2, lane: i % 4, midi: 60 + (i % 4),
       isHold: false, hit: false, judged: false })) };
   const m = measureChart(plain, { runs: 5 });
-  for (const t of ['holds', 'rolls', 'slides', 'doubles', 'stamina']) assert.ok(!m.tags.includes(t), t);
+  for (const t of ['holds', 'rolls', 'doubles', 'stamina']) assert.ok(!m.tags.includes(t), t);
   assert.ok(Number.isFinite(m.nps) && Number.isFinite(m.acc));
 });
 
@@ -425,7 +425,9 @@ test('chart: every pitched note is either playable or backing', () => {
   const total = song.notes.filter(n => !n.isRest).length;
   for (const d of DIFFICULTIES) {
     const c = generateChart(song, { difficulty: d });
-    assert.equal(c.notes.length + c.backing.length, total, d);
+    const chords = c.notes.filter(n => n.chordLanes);
+    const partners = chords.length - new Set(chords.map(n => n.time)).size; // each chord adds all but one of its notes
+    assert.equal(c.notes.length - partners + c.backing.length, total, d);
   }
 });
 
@@ -562,12 +564,12 @@ test('chart: dotted-then-short notes become short holds on normal/hard', () => {
 
 test('chart: doubles only on hard, in a free neighbouring lane, same time', () => {
   const r = 't:d=8,o=5,b=120:c,c6,d,d6,e,e6,f,f6,g,g6,a,a6,b,b6,c,c6,d,d6';
-  assert.ok(!chartOf(r, 'normal').notes.some(n => n.chordLane !== undefined));
+  assert.ok(!chartOf(r, 'normal').notes.some(n => n.chordLanes));
   const c = chartOf(r, 'hard');
-  const pairs = c.notes.filter(n => n.chordLane !== undefined);
+  const pairs = c.notes.filter(n => n.chordLanes?.length === 1);
   assert.ok(pairs.length >= 2);
   for (const n of pairs) {
-    const mate = c.notes.find(m => m !== n && m.time === n.time && m.lane === n.chordLane);
+    const mate = c.notes.find(m => m !== n && m.time === n.time && m.lane === n.chordLanes[0]);
     assert.ok(mate, 'partner exists at the same time');
     assert.equal(Math.abs(mate.lane - n.lane), 1);
   }
@@ -631,42 +633,97 @@ test('speed: rolls scale with the chart', () => {
   assert.ok(Math.abs(half.duration - r.duration * 2) < 1e-9);
 });
 
-// ---- slides ----
-test('chart: stepwise runs become slides, one lane per note, in one direction', () => {
+// ---- slides are gone, triples ----
+test('chart: stepwise runs stay plain notes (no slide fields, ordinary windows)', () => {
   const c = chartOf('t:d=8,o=5,b=100:c,d,e,g,a,g,e,c', 'normal');
-  const sl = c.notes.filter(n => n.slide !== undefined);
-  assert.ok(sl.length >= 3);
-  const chains = new Map();
-  for (const n of sl) (chains.get(n.slide) || chains.set(n.slide, []).get(n.slide)).push(n);
-  for (const ch of chains.values()) {
-    assert.ok(ch.length >= 3 && ch.length <= 4);
-    ch.forEach((n, k) => assert.equal(n.slideIdx, k));
-    const step = Math.sign(ch[1].lane - ch[0].lane);
-    assert.notEqual(step, 0);
-    ch.forEach((n, k) => k && assert.equal(n.lane - ch[k - 1].lane, step));
-    const dir = Math.sign(ch[1].midi - ch[0].midi);
-    assert.equal(step, dir);
-  }
-  // leaps and repeats are not slides
-  assert.equal(chartOf('t:d=8,o=5,b=100:c,g,c6,g,c,g,c6,g', 'normal').notes.filter(n => n.slide !== undefined).length, 0);
+  assert.ok(c.notes.every(n => n.slide === undefined && n.slideIdx === undefined));
 });
 
-test('game: slide follow-ups accept wide presses as Good; the first note and ordinary notes do not', () => {
-  const play = (idx, off) => {
+test('chart: triples only on hard, on strong free-lane notes, >= 4 s apart, partners at the same time', () => {
+  const song = SONGS.find(s => s.id === 'entertainer-full').rtttl;
+  assert.ok(!chartOf(song, 'normal').notes.some(n => n.chordLanes?.length === 2));
+  const c = chartOf(song, 'hard');
+  const heads = c.notes.filter(n => n.chordLanes?.length === 2 && !c.notes.some(m => m.time === n.time && m.lane < n.lane && m.chordLanes?.length === 2));
+  assert.ok(heads.length >= 1, 'the chart has a triple');
+  for (const n of c.notes.filter(x => x.chordLanes?.length === 2)) {
+    const group = c.notes.filter(m => m.time === n.time && m.chordLanes?.length === 2);
+    assert.equal(group.length, 3, 'three notes at the same time');
+    assert.equal(new Set(group.map(m => m.lane)).size, 3, 'in three different lanes');
+    for (const m of group) assert.deepEqual(m.chordLanes, group.map(x => x.lane).filter(l => l !== m.lane).sort((a, b) => a - b));
+  }
+  const times = [...new Set(c.notes.filter(n => n.chordLanes?.length === 2).map(n => n.time))].sort((a, b) => a - b);
+  times.forEach((t, i) => i && assert.ok(t - times[i - 1] >= 4 - 1e-9));
+  c.notes.forEach((n, i) => assert.equal(n.id, i));
+});
+
+test('game: notes of a chord are judged separately and only the hit window applies', () => {
+  const play = off => {
     const g = new Game(stubSynth());
     const chart = { lanes: 4, length: 3, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
-      notes: [{ id: 0, time: 1, duration: 0.2, lane: 0, midi: 60, isHold: false, slide: 0, slideIdx: idx }] };
+      notes: [0, 1, 2].map(l => ({ id: l, time: 1, duration: 0.2, lane: l, midi: 60 + l, isHold: false, hit: false, judged: false,
+        chordLanes: [0, 1, 2].filter(x => x !== l) })) };
     g.start(chart, { leadIn: 0, backing: false });
     try {
-      g.update(1 + off); g.press(0, g.songStart + 1 + off);
-      return chart.notes[0].judgement;
+      g.press(0, g.songStart + 1 + off); g.press(1, g.songStart + 1 + off);
+      return chart.notes.map(n => n.judgement);
     } finally { g.stop(); }
   };
-  assert.equal(play(0, 0.16), 'miss', 'first note: outside the normal window');
-  assert.equal(play(1, 0.16), 'good', 'follow-up: forgiven');
-  assert.equal(play(1, -0.16), 'good');
-  assert.equal(play(1, 0.2), 'miss');
-  assert.equal(play(1, 0.01), 'perfect');
+  assert.deepEqual(play(0.01), ['perfect', 'perfect', null], 'the unpressed lane stays open');
+  assert.deepEqual(play(0.16), [null, null, null], 'outside the Good window nothing is hit');
+});
+
+test('game: chord partners are silent, so a perfect run sounds like the song', () => {
+  const synth = stubSynth(), played = [];
+  synth.playNote = o => { played.push(o.midi); return { release() {} }; };
+  const g = new Game(synth);
+  const chart = { lanes: 4, length: 3, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: [{ lane: 0, midi: 60, chordLanes: [1, 2] }, { lane: 1, midi: 60, silent: true, chordLanes: [0, 2] },
+      { lane: 2, midi: 60, silent: true, chordLanes: [0, 1] }].map((n, id) => ({ id, time: 1, duration: 0.2, isHold: false, hit: false, judged: false, ...n })) };
+  g.start(chart, { leadIn: 0, backing: false });
+  try { for (const l of [0, 1, 2]) g.press(l, g.songStart + 1); } finally { g.stop(); }
+  assert.deepEqual(chart.notes.map(n => n.judgement), ['perfect', 'perfect', 'perfect']);
+  assert.deepEqual(played, [60], 'only the melody note sounds');
+});
+
+test('game: chord counters count a chord only when all its notes were hit', () => {
+  const g = new Game(stubSynth());
+  const mk = (id, time, lane, chordLanes) => ({ id, time, duration: 0.2, lane, midi: 60, isHold: false, hit: false, judged: false, chordLanes });
+  const chart = { lanes: 4, length: 5, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: [mk(0, 1, 0, [1]), mk(1, 1, 1, [0]), mk(2, 2, 0, [1, 2]), mk(3, 2, 1, [0, 2]), mk(4, 2, 2, [0, 1]), mk(5, 3, 0, [1]), mk(6, 3, 1, [0])] };
+  g.start(chart, { leadIn: 0, backing: false });
+  try {
+    assert.deepEqual(g.chords, { doubles: { done: 0, total: 2 }, triples: { done: 0, total: 1 } });
+    g.press(0, g.songStart + 1); g.press(1, g.songStart + 1);              // double cleared
+    for (const l of [0, 1, 2]) g.press(l, g.songStart + 2);                // triple cleared
+    g.press(0, g.songStart + 3);                                           // second double: one note left to miss
+    g.update(3.5);
+    assert.deepEqual(g.chords, { doubles: { done: 1, total: 2 }, triples: { done: 1, total: 1 } });
+  } finally { g.stop(); }
+});
+
+test('chartStats: counts per note kind add up for the chart the song plays', async () => {
+  const { chartStats, peakPerSecond } = await import('../src/chartstats.js');
+  assert.equal(peakPerSecond([0, 0.5, 0.9, 1.5, 3]), 3);
+  const lib = buildLibrary();
+  assert.equal(lib.length, SONGS.length);
+  for (const e of lib.filter(x => ['entertainer-full', 'ode'].includes(x.id))) {
+    const st = chartStats(e), c = generateChart(e.song, { difficulty: e.chart });
+    assert.equal(st.notes, c.notes.length);
+    assert.equal(st.taps + st.holds + st.rolls, st.notes);
+    assert.equal(st.lanes.reduce((x, y) => x + y, 0), st.notes);
+    assert.equal(st.doubles * 2 + st.triples * 3, c.notes.filter(n => n.chordLanes).length);
+  }
+  assert.ok(chartStats(lib.find(x => x.id === 'entertainer-full')).triples > 0);
+});
+
+test('chart: every extra chord note is silent and no hard chart invents pitches', () => {
+  for (const id of ['entertainer-full', 'canon-full']) {
+    const song = parseRTTTL(SONGS.find(s => s.id === id).rtttl);
+    const c = generateChart(song, { difficulty: 'hard' });
+    const sounding = c.notes.filter(n => !n.silent);
+    assert.ok(c.notes.some(n => n.silent), id);
+    assert.equal(sounding.length + c.backing.length, song.notes.filter(n => !n.isRest).length, id);
+  }
 });
 
 test('tutorial: roll notes carry a finite tickDur (auto-play rolls must not sustain forever)', () => {

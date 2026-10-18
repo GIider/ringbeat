@@ -75,7 +75,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   2. A `FULL COMBO` / `ALL PERFECT` tag while the streak is alive (after at least 5 judged notes), or the active mod
      chips, plus the combo with its multiplier (`x1.2`).
   - Wide LCDs (800 px and up) replace the combo on row 2 with rails: left, BPM and time left under note / clock icons;
-    right, the combo (centred over its label), the judgement counts and an *ACC* meter (ten segments, empty until the
+    right, the combo (centred over its label), the judgement counts, *DBL* and *TRI* counters (chords cleared / in the chart, only for charts that have them; a chord counts when none of its notes is missed) and an *ACC* meter (ten segments, empty until the
     first note is judged). The progress bar sits between the score and the accuracy on row 1.
 - **Pause:** a modal over the dimmed playfield (*Resume*, *Restart*, *Settings*, *Tones*).
 - **Feedback:** judgement chips appear per lane, and a milestone banner every 50 combo. With *Hit effects* on, you also
@@ -141,8 +141,9 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Hard keeps every note except ones closer than 90 ms to the previous one; those go to the auto-played backing.
   - A song whose Normal and Hard charts differ by at most 2 notes (`COLLAPSE_MAX`, `src/library.js`) plays
     one chart (`entry.only`): Hard if its Hard rating is at least 5.0 (2.5 stars), else Normal. Every other song plays
-    Hard. The result is `entry.chart`, which scores, runs and boards are keyed by. This applies to custom songs too;
-    their rating, calculated or estimated, decides.
+    Hard. Triple notes don't count towards that difference, since every Hard chart has some. The result is
+    `entry.chart`, which scores, runs and boards are keyed by. This applies to custom songs too; their rating,
+    calculated or estimated, decides.
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
   The following are also derived from the RTTTL text, with no authoring needed:
   - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
@@ -155,12 +156,11 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
     - There is one judgement at the end, by presses ÷ goal, where goal = `max(3, min(ticks, round((span + 0.1 s) × 9)))`:
       ≥ 80 % is Perfect, ≥ 60 % Great, ≥ 40 % Good, else Miss.
     - Presses inside a roll are never strays. With *Auto-play rolls* on, the first press plays the written notes.
-  - **Slides:** a run of ≥ 3 tap notes moving 1–2 semitones per step in one direction (legato, ≤ 0.5 s apart) is
-    re-laned to sweep one lane per note (up = right, at most one note per lane, so ≤ 4) and joined by a dotted line.
-    The first note is judged normally. The follow-ups accept presses up to ±180 ms off, and anything outside the Good
-    window is judged Good. Each note still scores and combos on its own.
-  - **Double notes** (Hard): a legato leap of ≥ 7 semitones adds an octave-below partner tap in the neighbouring lane at
+  - **Double notes** (Hard): a legato leap of ≥ 7 semitones adds a silent partner tap in the neighbouring lane at
     the same time (a bridge joins the two heads). Both notes are judged separately.
+  - **Triple notes** (Hard): a plain tap on a bar downbeat or ≥ 0.45 s long, with two other lanes free for 250 ms either
+    side, gets two silent partner taps in the two nearest free lanes, at most one triple
+    per 4 s. A bridge joins the three heads. All three notes are judged separately.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.
 - **Score:** Perfect 300 / Great 200 / Good 100, times a combo multiplier of +0.1 per 10 combo, up to ×1.5 at 50 combo
   (a miss resets it). A completed hold adds 100 × the multiplier.
@@ -253,7 +253,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 | Mirror | on/off | lanes flipped left↔right | ×1.00 |
 | Hidden | on/off | notes are not drawn in the last 35 % of the approach (held notes stay visible) | ×1.10 |
 | Sudden death | on/off | the first miss, dropped hold or stray press ends the run (*Failed*, not saved) | ×1.20 |
-| Judging | Lenient / Normal / Strict | hit windows ×1.4 / ×1 / ×0.7 (slide windows and roll reach too) | ×0.80 / ×1 / ×1.15 |
+| Judging | Lenient / Normal / Strict | hit windows ×1.4 / ×1 / ×0.7 (roll reach too) | ×0.80 / ×1 / ×1.15 |
 | Demo (autoplay) | on/off | a bot plays the run perfectly; your input is ignored; nothing is saved or counted in stats | ×0 |
 
 - The multiplier is the product of the active mods, capped at 2.0 (no floor) (except Demo, which forces 0), and is folded
@@ -270,7 +270,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
   1. Tap notes (with the timing judgements)
   2. Hold notes
   3. Roll notes
-  4. Slides and doubles
+  4. Doubles and triples
 - **Lesson cards:** each lesson opens with a card that waits for the player to confirm. The card shows a small lane
   diagram, a sentence, and (first card only) the controls for the input device in use; the hint updates live if the
   device changes. A strip of boxes shows lesson progress.
@@ -292,6 +292,19 @@ Decorative and harmless: none of these touch scores, stats or the selection.
   snake parade.
 - **IMEI panel** (↓ ↑ ↓ ↑ A on keyboard or gamepad on title / menu / song select, or five quick taps on the title screen's version label): a fake, Luhn-valid IMEI, the version and build, and a credit link.
 - **Holding C** for 1.2 s on title / menu / song select: "Clearing memory…", then "Just kidding."
+
+## Chart explorer
+
+The stand-alone page `charts.html` (public, no sign-in, no link from the game yet) lists every built-in song's chart.
+It imports the game's own modules (`src/library.js`, `src/chart.js`) and `difficulty.json` in the browser, so nothing is
+baked in at build time and it can't drift from the charting code. `src/chartstats.js` computes each row.
+
+- **Columns:** rating (`*` = estimated), BPM, length, notes, taps, holds, rolls, doubles, triples, backing notes, notes per
+  second and the most notes in any one second. Click a header to sort; click a row for its weakness tags, short holds,
+  roll ticks and a notes-per-lane chart.
+- **Filters:** search (title, tag), category, weakness tag, ranges for rating, notes and length, minimum notes per
+  second, a minimum count for each note kind, "only with …" boxes per kind, "no doubles or triples" and "measured
+  rating only". A summary line totals each kind for the songs left.
 
 ## Controls
 
