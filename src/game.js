@@ -2,7 +2,8 @@
 
 export const WINDOWS = { perfect: 0.045, great: 0.09, good: 0.135 }; // seconds, |delta| from target
 export const HOLD_RELEASE_FORGIVE = 0.15; // releasing this close to the tail end still completes the hold
-export const HOLD_BONUS = 100;
+export const HOLD_BONUS = { perfect: 200, great: 150, good: 100 }; // completion bonus by how close the release is to the tail end
+export const HOLD_TICK_POINTS = 10; // per beat while a hold is held, times the multiplier
 export const POINTS = { perfect: 300, great: 200, good: 100 };
 export const COMBO_MULT_CAP = 50;   // combo at which the multiplier stops growing (x1.5)
 export const ROLL_TICK_POINTS = 10;  // per press inside a roll, times the multiplier
@@ -143,6 +144,7 @@ export class Game {
     this.fx.press(lane);
     const t = audioTime - this.songStart - this.calibration;
     this.now = t;
+    this._holdTicks(t);
     this.log.push([t, lane]);
     const list = this.byLane[lane];
     let i = this.lanePtr[lane];
@@ -195,15 +197,19 @@ export class Game {
     const t = audioTime - this.songStart - this.calibration;
     this.now = t;
     this.log.push([t, lane + 8]);
+    this._holdTicks(t);
     if (n.voice) n.voice.release(this.synth.ctx.currentTime);
-    if (t >= n.time + n.duration - HOLD_RELEASE_FORGIVE) this._completeHold(n);
-    else this._breakHold(n);
+    const off = Math.abs(t - (n.time + n.duration));
+    if (t >= n.time + n.duration - HOLD_RELEASE_FORGIVE) {
+      this._completeHold(n, off <= this.win.perfect ? 'perfect' : off <= this.win.great ? 'great' : 'good');
+    } else this._breakHold(n);
   }
 
   // Per-frame: auto-misses, hold completion, end of song. `t` = songTime().
   update(t) {
     if (this.state !== 'running') return;
     this.now = t;
+    this._holdTicks(t);
     const mark = this.judgedCount + this.score; // both only grow: a change means this update counted
     for (let lane = 0; lane < this.byLane.length; lane++) {
       const list = this.byLane[lane];
@@ -298,10 +304,22 @@ export class Game {
     this.onFinish(this.results());
   }
 
-  _completeHold(n) {
+  // One tick per beat while a hold is held, paid up to `t` so frame spacing never changes the total.
+  _holdTicks(t) {
+    const beat = 60 / (this.chart.bpm || 120);
+    for (const n of this.holds) {
+      if (!n) continue;
+      const due = Math.floor((Math.min(t, n.time + n.duration) - n.time) / beat);
+      for (; (n.ticksPaid ?? 0) < due; n.ticksPaid = (n.ticksPaid ?? 0) + 1) {
+        this.score += Math.round(HOLD_TICK_POINTS * this.multiplier);
+      }
+    }
+  }
+
+  _completeHold(n, tier = 'perfect') {
     n.holding = false; n.done = true;
     this.holds[n.lane] = null;
-    this.score += Math.round(HOLD_BONUS * this.multiplier);
+    this.score += Math.round(HOLD_BONUS[tier] * this.multiplier);
   }
 
   _breakHold(n) {

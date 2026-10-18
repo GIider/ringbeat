@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, gradeFor, HOLD_BONUS, HOLD_RELEASE_FORGIVE, COMBO_MULT_CAP, POINTS } from '../src/game.js';
+import { Game, gradeFor, HOLD_BONUS, HOLD_TICK_POINTS, HOLD_RELEASE_FORGIVE, COMBO_MULT_CAP, POINTS } from '../src/game.js';
 
 function stubSynth() {
   const calls = { stopAll: 0, resume: 0, suspend: 0, miss: 0, released: 0, ticks: [], notes: [] };
@@ -46,8 +46,8 @@ test('game: hold released near the tail completes with the bonus', () => {
     assert.equal(g.holds[0].id, 0);
     const before = g.score;
     g.release(0, g.songStart + 2 - HOLD_RELEASE_FORGIVE + 0.01);
-    assert.equal(g.score - before, 100, 'documented bonus');
-    assert.equal(HOLD_BONUS, 100);
+    assert.equal(g.score - before, HOLD_TICK_POINTS + HOLD_BONUS.good, 'one beat tick plus the good-tier bonus');
+    assert.deepEqual(HOLD_BONUS, { perfect: 200, great: 150, good: 100 });
     assert.equal(g.holds[0], null);
     assert.equal(g.counts.miss, 0);
   } finally { g.stop(); }
@@ -85,9 +85,35 @@ test('game: a hold still held at its end completes in update()', () => {
     g.press(0, g.songStart + 1);
     const before = g.score;
     g.update(2.01);
-    assert.equal(g.score - before, HOLD_BONUS);
+    assert.equal(g.score - before, 2 * HOLD_TICK_POINTS + HOLD_BONUS.perfect);
     assert.equal(g.holds[0], null);
   } finally { g.stop(); }
+});
+
+test('game: release bonus is graded by distance to the tail', () => {
+  for (const [off, tier] of [[0, 'perfect'], [-0.08, 'great'], [-0.14, 'good']]) {
+    const { g } = run([note(0, 0, 1, { isHold: true, duration: 1 })]);
+    try {
+      g.press(0, g.songStart + 1);
+      g.release(0, g.songStart + 2 + off);
+      const ticks = Math.floor((1 + off) / 0.5);
+      assert.equal(g.score - POINTS.perfect, ticks * HOLD_TICK_POINTS + HOLD_BONUS[tier], tier);
+    } finally { g.stop(); }
+  }
+});
+
+test('game: hold ticks are paid once per beat regardless of update spacing and survive a drop', () => {
+  const a = run([note(0, 0, 1, { isHold: true, duration: 2 })]), b = run([note(0, 0, 1, { isHold: true, duration: 2 })]);
+  try {
+    a.g.press(0, a.g.songStart + 1); b.g.press(0, b.g.songStart + 1);
+    for (let t = 1; t <= 2.6; t += 0.01) a.g.update(t);
+    b.g.update(2.6);
+    assert.equal(a.g.score, b.g.score);
+    assert.equal(a.g.score, POINTS.perfect + 3 * HOLD_TICK_POINTS); // beats at 1.5, 2.0, 2.5 (combo 1: x1)
+    a.g.release(0, a.g.songStart + 2.6);
+    assert.equal(a.g.counts.miss, 1);
+    assert.equal(a.g.score, POINTS.perfect + 3 * HOLD_TICK_POINTS, 'a dropped hold keeps the ticks it earned');
+  } finally { a.g.stop(); b.g.stop(); }
 });
 
 test('game: hold bonus is scaled by the multiplier', () => {
@@ -97,7 +123,7 @@ test('game: hold bonus is scaled by the multiplier', () => {
     g.combo = 20; // multiplier 1.2
     const before = g.score;
     g.release(0, g.songStart + 2);
-    assert.equal(g.score - before, Math.round(HOLD_BONUS * 1.2));
+    assert.equal(g.score - before, Math.round(2 * HOLD_TICK_POINTS * 1.2) + Math.round(HOLD_BONUS.perfect * 1.2));
   } finally { g.stop(); }
 });
 
