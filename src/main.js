@@ -1767,7 +1767,9 @@ function cycleMod(which) {
   else if (which === 'visuals') setMod({ hidden: !m.hidden });
   else if (which === 'input') setMod({ judge: mods.JUDGES[(mods.JUDGES.indexOf(m.judge) + 1) % mods.JUDGES.length] });
   else setMod(m.demo ? { demo: false } : m.sudden ? { sudden: false, demo: true } : { sudden: true });
-  showModHint(which);
+  const n = mods.normalize(settings.mods), d = mods.normalize({});
+  const off = which === 'speed' ? n.speed === d.speed : which === 'style' ? !n.mirror : which === 'visuals' ? !n.hidden : which === 'input' ? n.judge === d.judge : !n.demo && !n.sudden;
+  if (off) hideModHint(); else showModHint(which); // switching a modifier off takes its bubble away at once
 }
 // Settings › Developer › Glyphs & icons: every font glyph and sprite, built once on first open.
 let glyphsBuilt = false, glyphsLast = 0; // the focused cell is kept for the session
@@ -2633,7 +2635,7 @@ function confirmScreen(root) {
 function softLeft() {
   switch (state) {
     case 'title': startFromTitle(); break;
-    case 'select': nav.confirm(activeScreen()); break; // the Menu key picks the song
+    case 'select': if (selDetail) playSelected(); else nav.confirm(activeScreen()); break; // the Menu key picks the song (on the narrow details view always: a focused heart or chip must not swallow it)
     case 'message': stepMessage(1); break;
     case 'stats': navigate('right'); break;
     case 'composer': if (csMenu) nav.confirm(activeScreen()); else setCompMenu(true); break;
