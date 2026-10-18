@@ -3566,7 +3566,7 @@ phoneIdle();
 setMode();
 layout(); // place the phone before the first paint, without the slide
 // Row heights change once the pixel font arrives: re-centre the cursor row then.
-if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); });
+if (document.fonts) document.fonts.ready.then(() => { layout(); focusCurrentRow(); if (state === 'menu') fitMenuTitle(); });
 if (demoKind) demo(demoKind);
 try { // the overlay used to be remembered outside the settings: adopt that once
   if (localStorage.getItem('ringbeat.perf')) { settings.perfOverlay = true; save(); }
