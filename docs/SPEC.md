@@ -51,7 +51,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Rating* (easiest first, the default),
     *Title*, *BPM*, *Duration* (grouped in 10 s steps) and *Favorites* (favorites first).
 - **Favorites:** a *Favorites* category chip (after the others) appears once a song is favorited. `V`, or clicking / tapping the icon of the selected row (or the space beside it, so a fingertip does not start the song), toggles a song's favorite (saved in the settings; custom
-  songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
+  songs too). Favorites show their category icon with a star badge (`ICONS_FAV`).
 - **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved (not
   necessarily in the best run).
 - **Footer (narrow LCDs):** stars + rating, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide

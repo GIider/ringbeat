@@ -37,7 +37,7 @@ import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
-import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
+import { SORT_ICONS, ICON_FIND, ICON_GLOBE, SPRITES, ICONS, ICONS_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { createTitle, REST as TITLE_REST, TITLE_EXTENT } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
@@ -660,7 +660,7 @@ function openHub(kind = 'cat') {
       b.className = cur ? 'hub-card cur' : 'hub-card';
       b.dataset.sort = s.id;
       if (cur) b.dataset.default = '';
-      b.innerHTML = `${spriteHTML(SORT_ICONS[s.id], 2, 'cat')}<span class="t">${esc(tr(s.label))}</span>`;
+      b.innerHTML = `${spriteHTML(SORT_ICONS[s.id], 'u', 'cat')}<span class="t">${esc(tr(s.label))}</span>`;
       grid.appendChild(b);
     }
     setState('hub', 'hub');
@@ -672,8 +672,8 @@ function openHub(kind = 'cat') {
     b.className = cur ? 'hub-card cur' : 'hub-card';
     b.dataset.cat = t.id;
     if (cur) b.dataset.default = '';
-    const icon = t.id === 'favorites' ? spriteHTML(categorySprite('custom', true), 2, 'cat')
-      : CATEGORIES.some(c => c.id === t.id) || t.id === 'custom' ? spriteHTML(categorySprite(t.id, false), 2, 'cat') : '';
+    const icon = t.id === 'favorites' ? spriteHTML(categorySprite('custom', true), 'u', 'cat')
+      : CATEGORIES.some(c => c.id === t.id) || t.id === 'custom' ? spriteHTML(categorySprite(t.id, false), 'u', 'cat') : '';
     b.innerHTML = `${icon}<span class="t">${esc(tr(t.label))}</span><span class="n">${t.count}</span>`;
     grid.appendChild(b);
   }
@@ -754,7 +754,7 @@ function renderList() {
     const fav = isFavorite(e.id);
     if (fav) b.classList.add('fav');
     b.innerHTML =
-      spriteHTML(categorySprite(e.category, fav), 2, 'cat') +
+      spriteHTML(categorySprite(e.category, fav), 'u', 'cat') +
       `<span class="t">${esc(e.title)}</span>` +
       `<span class="b">${best ? `${esc(best.grade)}${badgeHTML(rec)}` : ''}</span>`;
     box.appendChild(b);
@@ -1789,7 +1789,7 @@ function buildGlyphs() {
   // the Messages icon has a second look while mail waits: the sealed envelope with sparkles
   menu.push(cell(`menu messages (unread) ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame('messages', 0, { unread: true }), 2), ICON_W * 2, 'data-menu="messages" data-unread="1"'));
   const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
-  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), sprites(SPRITES, 'icon')) + sect(tr('Favorite icons'), sprites(SPRITES_FAV, 'favorite')) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
+  $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), sprites(SPRITES, 'icon')) + sect(tr('Category icons'), sprites(ICONS, 'category')) + sect(tr('Favorite icons'), sprites(ICONS_FAV, 'favorite')) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
   glyphsBuilt = true;
 }
 // A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
