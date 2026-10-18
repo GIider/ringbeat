@@ -524,7 +524,7 @@ function renderPosition() {
   cat.textContent = pos;
   queueHeadFit();
 }
-// Header row: sort chip, position text, Find. When the sort name (and then "Find") would crowd the middle text, show icons instead.
+// Header row: sort chip (icon + name), position text, Find. When the name (and then "Find") would crowd the middle text, only the icons show.
 let headFitQueued = false;
 const queueHeadFit = () => {
   if (headFitQueued) return;
@@ -537,7 +537,7 @@ function fitHead() {
   const icon = rows => spriteHTML(rows, 2);
   const crowded = () => cat.scrollWidth > cat.clientWidth + 1 || cat.clientWidth < 8;
   // full words first, then icons one chip at a time (all in one task, so nothing flickers)
-  sortEl.textContent = name; findEl.textContent = find;
+  sortEl.innerHTML = icon(SORT_ICONS[sort.id]) + esc(name); findEl.textContent = find;
   sortEl.setAttribute('aria-label', name); findEl.setAttribute('aria-label', find);
   sortEl.title = name;
   if (crowded()) sortEl.innerHTML = icon(SORT_ICONS[sort.id]);
@@ -656,7 +656,7 @@ function openHub(kind = 'cat') {
       b.className = cur ? 'hub-card cur' : 'hub-card';
       b.dataset.sort = s.id;
       if (cur) b.dataset.default = '';
-      b.innerHTML = `<span class="t">${esc(tr(s.label))}</span>`;
+      b.innerHTML = `${spriteHTML(SORT_ICONS[s.id], 2, 'cat')}<span class="t">${esc(tr(s.label))}</span>`;
       grid.appendChild(b);
     }
     setState('hub', 'hub');
@@ -1440,18 +1440,13 @@ function renderDpPanel() {
   box.textContent = '';
   if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
 }
-// The board takes the room the pane has left (under the "Your Best" row when that shows). Rows that don't all fit
-// scroll up and down like a marquee instead of being cut off.
+// The board panel shrinks to the room the pane has left (CSS: flex 0 1 auto), so "Your Best" below it always stays whole.
+// Rows that don't all fit scroll up and down like a marquee instead of being cut off.
 function fitRows(box) {
   const ol = box.querySelector('ol');
   if (!ol) return;
   ol.classList.remove('vscroll');
-  box.style.maxHeight = '';
-  const pane = $('sel-detail'), best = $('sd-best');
-  const avail = Math.floor(pane.getBoundingClientRect().bottom - (best.hidden ? 0 : best.offsetHeight + 8) - 8 - box.getBoundingClientRect().top);
-  if (avail <= 0) return;
-  box.style.maxHeight = avail + 'px';
-  const over = ol.offsetHeight - avail;
+  const over = ol.offsetHeight - box.clientHeight;
   if (over > 1) {
     ol.style.setProperty('--dy', -over + 'px');
     ol.style.setProperty('--dur', Math.max(3, over / 30).toFixed(1) + 's');

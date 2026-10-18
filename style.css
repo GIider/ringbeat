@@ -243,7 +243,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .sel-head { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .sel-head { justify-content: space-between; }
 .sel-head .sel-cat { flex: 1 1 auto; min-width: 0; }
-.sel-head .chip { flex: none; background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-head .chip { display: inline-flex; align-items: center; gap: 6px; flex: none; background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusbar .arrow { flex: none; font: inherit; color: inherit; background: none; border: 0; padding: 0 4px; cursor: pointer; }
 .sel-sub .chip { background: none; border: 0; padding: 4px 6px; cursor: pointer; color: inherit; text-decoration: underline dotted; }
 .seg { display: flex; gap: 2px; }
@@ -264,7 +264,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .dp-line, .ln { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dp-line { flex: 1; }
 .dp-panel { min-height: 3.2em; }
-.sel-detail .dp-panel { flex: none; min-height: 0; overflow: hidden; }
+.sel-detail .dp-panel { flex: 0 1 auto; min-height: 0; overflow: hidden; }
 .top.vscroll { animation: vmq var(--dur, 4s) ease-in-out infinite alternate; }
 @keyframes vmq { 0%, 15% { transform: translateY(0); } 85%, 100% { transform: translateY(var(--dy)); } }
 .sel-detail .top { margin: 0; }
@@ -337,7 +337,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .sd-chips button.on { background: var(--ink); color: var(--lcd); }
 .sd-chips button.cur { box-shadow: inset 0 0 0 calc(var(--u) * 2) var(--lcd), 0 0 0 var(--u) var(--ink); }
 .sd-chips button.on span { color: inherit; }
-.sd-best { margin: 4px 0; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 16%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-best { flex: none; margin: 4px 0; padding: 2px 4px; background: color-mix(in srgb, var(--ink) 16%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sel-tabs { display: flex; flex: 1; min-width: 0; gap: 4px; overflow-x: auto; scrollbar-width: none; white-space: nowrap; scroll-behavior: smooth; }
 /* half-width spacers so the current tab can always sit in the middle while the others scroll around it */
 .sel-tabs::before, .sel-tabs::after { content: ""; flex: 0 0 50%; }
