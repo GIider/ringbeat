@@ -1557,9 +1557,10 @@ function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
 // One-row text (leaderboard lines): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
 const oneRow = html => `<span class="ln"><span class="mq">${html}</span></span>`;
 const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln, .dp-line'));
-// One leaderboard row (picker, results): #rank, score, name, FC / mod pills. `name` is empty for the player's own local runs.
-const boardRow = (r, rank, name = '') =>
-  `<span class="rk">#${rank}</span><span class="sc">${r.score}</span><span class="ln nm"><span class="mq">${name}</span></span>` +
+// One leaderboard row (picker, results): #rank, score, name, FC / mod pills. `name` is omitted for the player's own local runs (no name column).
+const boardRow = (r, rank, name = null) =>
+  `<span class="rk">#${rank}</span><span class="sc">${r.score}</span>` +
+  (name === null ? '' : `<span class="ln nm"><span class="mq">${name}</span></span>`) +
   `<span class="ln pl"><span class="mq">${badgeHTML(r, true)}</span></span>`;
 const SEL_WIDE_PX = 800; // LCD width from which the details sit beside the list (keep in step with the @container rule in style.css)
 const lcdWidth = () => document.querySelector('.screens').clientWidth; // the screens' own width is 0 while they are hidden
