@@ -353,3 +353,13 @@ export function setSprite(el, rows, px = 2) {
   el.style.height = rows.length * px + 'px';
   el.style.webkitMaskImage = el.style.maskImage = `url("${u}")`;
 }
+
+// Sort-order icons (7 px wide), shown instead of the name when the header has no room for it; ICON_FIND does the same for "Find".
+export const SORT_ICONS = {
+  'diff-asc': ['...#...', '...#...', '#######', '.#####.', '..###..', '.##.##.', '.#...#.'], // star: rating
+  title: ['.#.###.', '#.#..#.', '###.#..', '#.##...', '#.####.'].map(r => r.slice(0, 7)),     // A Z
+  bpm: ['...#...', '..###..', '..#.#..', '.#.#.#.', '.#.#.#.', '#..#..#', '#######'],      // metronome
+  length: ['#######', '.#...#.', '..#.#..', '...#...', '..#.#..', '.#...#.', '#######'],     // hourglass: duration
+  fav: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'],                   // heart
+};
+export const ICON_FIND = ['.###...', '#...#..', '#...#..', '#...#..', '.###...', '....##.', '.....##'];

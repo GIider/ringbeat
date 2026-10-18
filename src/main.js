@@ -36,7 +36,7 @@ import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
 import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
-import { SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
+import { SORT_ICONS, ICON_FIND, SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
 import { createTitle, REST as TITLE_REST } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
@@ -522,7 +522,26 @@ function renderPosition() {
   sec = sectionRange(sec, settings.view.sort, r => fmt(r, 1)); // the band as a range, stars in the same format as the stars value
     const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
   cat.textContent = pos;
-  $('sel-sort').textContent = tr(SORTS.find(x => x.id === settings.view.sort).label);
+  queueHeadFit();
+}
+// Header row: sort chip, position text, Find. When the sort name (and then "Find") would crowd the middle text, show icons instead.
+let headFitQueued = false;
+const queueHeadFit = () => {
+  if (headFitQueued) return;
+  headFitQueued = true;
+  requestAnimationFrame(() => { headFitQueued = false; if (!screens.select.hidden) fitHead(); });
+};
+function fitHead() {
+  const sortEl = $('sel-sort'), findEl = $('sel-find'), cat = $('sel-cat');
+  const sort = SORTS.find(x => x.id === settings.view.sort), name = tr(sort.label), find = tr('Find');
+  const icon = rows => spriteHTML(rows, 2);
+  const crowded = () => cat.scrollWidth > cat.clientWidth + 1 || cat.clientWidth < 8;
+  // full words first, then icons one chip at a time (all in one task, so nothing flickers)
+  sortEl.textContent = name; findEl.textContent = find;
+  sortEl.setAttribute('aria-label', name); findEl.setAttribute('aria-label', find);
+  sortEl.title = name;
+  if (crowded()) sortEl.innerHTML = icon(SORT_ICONS[sort.id]);
+  if (crowded()) findEl.innerHTML = icon(ICON_FIND);
 }
 // Move the cursor to list index `i` (clamped) and keep it in view.
 function jumpTo(i) {
@@ -2947,7 +2966,7 @@ function wire() {
   $('boot-build').textContent = buildLine(BUILD, false); // commit · date; the IMEI panel also shows the build number
   $('boot-version').addEventListener('click', e => { e.stopPropagation(); tapVersion(); }); // don't also start the game
   document.addEventListener('focusin', e => light(e.target));
-  window.addEventListener('resize', () => { if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'title') titleFx(true); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
+  window.addEventListener('resize', () => { queueHeadFit();  if (state === 'welcome') welcomeEnd('menu'); layout(); if (state === 'title') titleFx(true); if (state === 'menu') fitMenuTitle(); marquee($('st-title')); const t = document.querySelector('.song-row.cur .t'); if (t) marquee(t); if (state === 'inbox') marqueeAll($('inbox-list').querySelectorAll('.t')); });
 
   window.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') useMouse(); else setDevice('touch'); });
   window.addEventListener('keydown', onKey);
@@ -3175,6 +3194,7 @@ function layout(animate = false) {
   $('sel-keys').style.left = x + w + 16 + 'px';
   if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
   if (state === 'select' && dpEntry) fitRows($('dp-panel'));
+  queueHeadFit();
   if (state === 'results') setResultsPage(resultsPage); // wide <-> narrow: panels or pages
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
 }
