@@ -572,6 +572,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .brow .sc { flex: none; min-width: 3.6em; }
 .brow .nm { flex: 1; min-width: 0; }
 .brow .pl { flex: none; width: 3.2em; } /* FC / mods: just wide enough for one pill, longer ones run as a marquee */
+.brow .sc + .pl { flex: 1; width: auto; } /* local rows have no name column: the pills take the freed width */
 .top li.brow.gap .rk { width: auto; }
 .top li.cur { background: color-mix(in srgb, var(--ink) 16%, transparent); box-shadow: inset 3px 0 0 var(--ink); font-weight: 700; }
 .top .badge { margin: 0 0 0 3px; padding: 0 2px; font-size: calc(var(--fs) * .6); vertical-align: middle; }
