@@ -31,7 +31,7 @@ import { GLYPHS, FAMILY } from './pixelfont.js';
 import { MENU_IDS, menuFrame, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
-import { createAdmin, PAGE as ADMIN_PAGE, playerLine, runLine, logLine } from './admin.js';
+import { createAdmin, PAGE as ADMIN_PAGE, STATUSES, cycle, countsLine, playerLine, runLine, logLine } from './admin.js';
 import { RULES, encodeLog } from './replay.js';
 import * as comp from './composer.js';
 import { Pad, BTN, buttonName, DEFAULT_BINDINGS, cloneBindings } from './gamepad.js';
@@ -1101,7 +1101,8 @@ function fitStatScroll() {
 // ---- admin (?dev or a dev-flag account): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
 // The token is kept in memory only. Views form a stack; Back pops it and reloads the view underneath. ----
 const admin = createAdmin({ apiBase, debug: netDebug });
-let adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
+const adStatusName = () => ({ '': tr('all'), valid: tr('valid'), verified: tr('verified'), pending: tr('pending'), rejected: tr('rejected'), flagged: tr('flagged'), hidden: tr('hidden'), outdated: tr('outdated') });
+let adVersions = [], adStack = [], adRows = [], adMsg = '', adArm = '', adArmAt = 0;
 function openAdmin() {
   adStack = []; adMsg = ''; adArm = '';
   setState('admin', 'admin');
@@ -1139,8 +1140,15 @@ async function adminShow(view) {
         def = adRows.length ? 'player' : '';
         break;
       case 'player':
-        adRows = await admin.runs(view.p.id, view.offset);
-        html = `<p class="hint">${esc(playerLine(view.p))}</p>` +
+        {
+          const r = await admin.runs(view.p.id, view);
+          adRows = r.runs; adVersions = r.versions;
+          const n = view.status ? r.counts[view.status] : r.counts.total;
+          html = `<p class="hint">${esc(playerLine(view.p))}<br>${esc(countsLine(r.counts) || tr('No runs'))}</p>` +
+            btn('status', tr('Show: {s} ({n})', { s: adStatusName()[view.status || ''], n })) +
+            (adVersions.length > 1 ? btn('version', tr('Version: {v}', { v: view.version || tr('all') })) : '');
+        }
+        html +=
           btn('ban', view.p.banned ? tr('Whitelist (unban)') : tr('Blacklist (ban)')) +
           btn('hideplayer', view.p.hidden && !view.p.banned ? tr('Show on boards') : tr('Hide from boards')) +
           btn('delplayer', tr('Delete player')) + rows(adRows, 'run', runLine) + pages();
@@ -1205,6 +1213,8 @@ function wireAdmin() {
       case 'lock': admin.lock(); openMenu('admin'); break;
       case 'players': go({ v: 'players', q: '', offset: 0 }); break;
       case 'flagged': case 'maint': case 'log': go({ v: b.dataset.act }); break;
+      case 'status': reload({ status: cycle(STATUSES, view.status || ''), offset: 0 }); break;
+      case 'version': reload({ version: cycle(['', ...adVersions], view.version || ''), offset: 0 }); break;
       case 'search': reload({ q: $('ad-q').value.trim(), offset: 0 }); break;
       case 'prev': case 'next': reload({ offset: Math.max(0, (view.offset || 0) + (b.dataset.act === 'next' ? ADMIN_PAGE : -ADMIN_PAGE)) }); break;
       case 'player': go({ v: 'player', p: row, offset: 0 }); break;

@@ -150,7 +150,7 @@ these routes answer 404.
 - `GET /admin/flagged`: the newest flagged runs.
 - `POST /admin/hide {runId}` or `{userId}`: takes a run or a player off every board. Add `hidden: false` to undo.
 - `POST /admin/verify`: re-plays waiting runs now.
-- `GET /admin/players?q=&offset=` and `GET /admin/runs?user=&offset=`: search players by name (or id) and list a player's runs, 20 per page.
+- `GET /admin/players?q=&offset=` and `GET /admin/runs?user=&status=&version=&offset=`: search players by name (or id) and list a player's runs, 20 per page. `status` is one of `valid` (verified, not hidden, current `RULES`), `verified`, `pending`, `rejected`, `flagged`, `hidden`, `outdated`; `version` is a `game_version`. The answer also has `counts` (the player's whole history per status, plus `total`) and `versions` (seen, newest first); the admin app's player view shows them as a *Show* and a *Version* button.
 - `POST /admin/ban {userId, banned}`: the blacklist. A banned player is hidden from every board, loses their sessions, and
   sign-in and sync answer `403 banned`. `banned: false` is the whitelist (it also unhides).
 - `POST /admin/run/delete {runId}`, `POST /admin/player/delete {userId}`: delete a run, or a player with everything of theirs
