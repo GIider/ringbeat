@@ -832,9 +832,14 @@ function focusCurrentRow() {
   });
 }
 // Keep the cursor row inside the list viewport (centred when it had to jump), without scrolling the page.
+// Small moves scroll just enough to keep one row of context past the cursor, smoothly; far jumps (page, group, random) centre the row at once.
 function revealRow(row) {
   const list = $('song-list'), lr = list.getBoundingClientRect(), rr = row.getBoundingClientRect();
-  if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
+  const pad = Math.min(rr.height, lr.height / 4);
+  const delta = rr.top < lr.top + pad ? rr.top - (lr.top + pad) : rr.bottom > lr.bottom - pad ? rr.bottom - (lr.bottom - pad) : 0;
+  if (!delta) return;
+  if (Math.abs(delta) > lr.height * 0.6) list.scrollTop += rr.top + rr.height / 2 - (lr.top + lr.height / 2);
+  else list.scrollTo({ top: list.scrollTop + delta, behavior: still.matches ? 'auto' : 'smooth' });
 }
 function openSelect() {
   selDetail = false;
@@ -1383,10 +1388,10 @@ function cap(s) { return tr(s[0].toUpperCase() + s.slice(1)); }
 // One-row text (leaderboard lines): `html` sits in a marquee box, so a long line scrolls instead of wrapping.
 const oneRow = html => `<span class="ln"><span class="mq">${html}</span></span>`;
 const marqueeRows = root => marqueeAll(root.querySelectorAll('.ln, .dp-line'));
-// One leaderboard row (picker, results): #rank, score, name, FC / mod pills, accuracy, grade. `name` is empty for the player's own local runs.
+// One leaderboard row (picker, results): #rank, score, name, FC / mod pills. `name` is empty for the player's own local runs.
 const boardRow = (r, rank, name = '') =>
   `<span class="rk">#${rank}</span><span class="sc">${r.score}</span><span class="ln nm"><span class="mq">${name}</span></span>` +
-  `<span class="ln pl"><span class="mq">${badgeHTML(r, true)}</span></span><span class="ac">${fmt(r.accuracy, 1)}%</span><span class="gr">${esc(r.grade)}</span>`;
+  `<span class="ln pl"><span class="mq">${badgeHTML(r, true)}</span></span>`;
 const SEL_WIDE_PX = 800; // LCD width from which the details sit beside the list (keep in step with the @container rule in style.css)
 const lcdWidth = () => document.querySelector('.screens').clientWidth; // the screens' own width is 0 while they are hidden
 const selWide = () => lcdWidth() >= SEL_WIDE_PX;
@@ -1412,6 +1417,7 @@ function renderDpPanel() {
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
   $('sd-best').hidden = dpTab !== 'world'; // locally the top run is the best run
+  if (!$('sd-best').hidden) marqueeAll($('sd-best').querySelectorAll('.ln')); // a narrow pane scrolls the row instead of cutting it off
   box.textContent = '';
   if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
 }
@@ -1484,7 +1490,7 @@ function renderPane() {
   const rows = [[tr('BPM'), e.bpm], [tr('Length'), formatLength(e.length)], [tr('Plays'), rec ? rec.plays : 0], [tr('Grade'), best ? `<span class="badge">${esc(best.grade)}</span>${badgeHTML(rec)}` : '-']];
   $('sd-stats').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${typeof v === 'string' && v.startsWith('<') ? v : esc(String(v))}</dd>`).join('');
   const wr = cloud.signedIn() ? cloud.rank(e.id, e.chart) : null; // the player's place on the world board, when known
-  $('sd-best').innerHTML = `<b>${esc(tr('Your Best'))}${wr ? ' #' + wr.rank : ''}</b> ${best ? `${best.score} ${badgeHTML(best, true)} ${fmt(best.accuracy, 1)}% ${esc(best.grade)}` : esc(tr('No plays yet'))}`;
+  $('sd-best').innerHTML = `<span class="ln"><span class="mq"><b>${esc(tr('Your Best'))}${wr ? ' #' + wr.rank : ''}</b> ${best ? `${best.score}${badgeHTML(best, true)}` : esc(tr('No plays yet'))}</span></span>`;
   const fav = isFavorite(e.id);
   if ($('sd-fav').dataset.on !== String(fav) || !$('sd-fav').firstChild) { $('sd-fav').dataset.on = String(fav); $('sd-fav').innerHTML = spriteHTML(HEART, 3); }
   $('sd-fav').classList.toggle('on', fav);

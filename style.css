@@ -569,15 +569,13 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   font: 11px/1.3 ui-monospace, monospace; color: #9cf; background: rgba(0, 0, 0, .7); pointer-events: none;
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .top li.gap { list-style: none; }
-/* leaderboard rows: #rank, score, name (marquee), pills, accuracy, grade */
+/* leaderboard rows: #rank, score, name (marquee), pills */
 .top:has(.brow) { padding-left: 0; list-style: none; }
 .top li.brow { display: flex; align-items: center; gap: .3em; list-style: none; text-align: left; }
 .brow .rk { flex: none; width: 2.2em; font-weight: 700; }
 .brow .sc { flex: none; min-width: 3.6em; }
 .brow .nm { flex: 1; min-width: 0; }
 .brow .pl { flex: none; width: 3.2em; } /* FC / mods: just wide enough for one pill, longer ones run as a marquee */
-.brow .ac { flex: none; min-width: 3.7em; text-align: right; }
-.brow .gr { flex: none; width: 1.3em; text-align: center; font-weight: 700; }
 .top li.brow.gap .rk { width: auto; }
 .top li.cur { background: color-mix(in srgb, var(--ink) 16%, transparent); box-shadow: inset 3px 0 0 var(--ink); font-weight: 700; }
 .top .badge { margin: 0 0 0 3px; padding: 0 2px; font-size: calc(var(--fs) * .6); vertical-align: middle; }
