@@ -1751,6 +1751,8 @@ function buildGlyphs() {
   // Pop-ups: focusing one replays its animation (heart pops, broken heart shakes), as the favorite effect does.
   const pops = Object.entries(POPUPS).map(([k, r]) => cell(`popup ${k} ${r[0].length}×${r.length}`, `<span class="gl-pop">${spriteHTML(r, 3)}</span>`, r[0].length * 3, ` data-pop="${k === 'heart' ? 'add' : 'break'}"`));
   const menu = MENU_IDS.map(id => cell(`menu ${id} ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame(id, 0), 2), ICON_W * 2, `data-menu="${id}"`));
+  // the Messages icon has a second look while mail waits: the sealed envelope with sparkles
+  menu.push(cell(`menu messages (unread) ${ICON_W}×${ICON_H}`, spriteHTML(menuFrame('messages', 0, { unread: true }), 2), ICON_W * 2, 'data-menu="messages" data-unread="1"'));
   const sect = (title, cells) => `<div class="sub">${esc(title)}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
   $('gl-body').innerHTML = `<div class="gl-grid" data-rows>${glyphs.join('')}</div>` + sect(tr('Icons'), [...sprites(SPRITES, 'icon'), ...sprites(SPRITES_FAV, 'favorite')]) + sect(tr('Large icons'), sprites(SPRITES, 'icon', true)) + sect(tr('Pop-ups'), pops) + sect(tr('Menu icons'), menu);
   glyphsBuilt = true;
@@ -1759,7 +1761,7 @@ function buildGlyphs() {
 let glyphAnim = null;
 const popPlay = playHeart; // the Glyphs viewer shows the same animations as the heart button
 function glyphAnimate(cell) {
-  if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0), 2); glyphAnim = null; }
+  if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0, glyphAnim.opts), 2); glyphAnim = null; }
   if (cell && cell.dataset.pop && !still.matches) {
     popPlay(cell.querySelector('.gl-pop'), cell.dataset.pop);
     return;
@@ -1768,8 +1770,9 @@ function glyphAnimate(cell) {
   if (!id || still.matches) return;
   const el = cell.querySelector('.spr');
   let n = 0;
-  glyphAnim = { id, el, timer: setInterval(() => setSprite(el, menuFrame(id, ++n), 2), MENU_FRAME_MS) };
-  setSprite(el, menuFrame(id, 0), 2);
+  const opts = { unread: !!cell.dataset.unread };
+  glyphAnim = { id, el, opts, timer: setInterval(() => setSprite(el, menuFrame(id, ++n, opts), 2), MENU_FRAME_MS) };
+  setSprite(el, menuFrame(id, 0, opts), 2);
 }
 function openGlyphs() {
   if (!glyphsBuilt) buildGlyphs();
