@@ -129,8 +129,9 @@ function mysongs(g, f) {
   if (f < 8) { // writing: the pencil scribbles beside the newest note
     const [x, y] = TUNE[shown - 1];
     stamp(g, PENCIL, x + 6 + (f % 2), y - 9 + (f % 2), true);
-  } else { // done: it lifts away
-    stamp(g, PENCIL, 51 + (f - 8), 36 - (f - 8) * 3, true);
+  } else { // done: it lifts off up and to the right from where it stopped
+    const [x, y] = TUNE[3], k = f - 7;
+    stamp(g, PENCIL, x + 7 + k * 2, y - 9 - k * 5, true);
   }
 }
 
@@ -155,32 +156,34 @@ function stats(g, f) {
 
 // ---- Messages: the envelope opens and a letter peeks out; unread: it jitters with a badge ----
 const EX = 12, EY = 20, EW = 38, EH = 23;
-const PEEK = [0, 0, 3, 6, 9, 11, 12, 12, 11, 8, 4, 1]; // rows of letter above the envelope
+const FLAP = [13, 6, -3, -9, -9, -9, -9, -9, -9, -9, -3, 6]; // where the flap's tip is (below the top edge = shut)
+const PEEK = [0, 0, 0, 0, 4, 8, 11, 12, 11, 8, 4, 0]; // rows of letter above the envelope
 const JITTER = [0, 1, -1, 1, -1, 0, 0, 0, 0, 0, 0, 0];
 const SPARKS = [[4, 12, 0], [56, 4, 3], [60, 34, 6], [30, 6, 9], [6, 40, 4]]; // x, y, phase: twinkling out of step
-function envelope(g, x, y, open) {
+const flap = (g, x, y, tip) => { line(g, x, y, x + 18, y + tip); line(g, x + EW - 1, y, x + EW - 19, y + tip); };
+// The envelope body; `tip` > 0 draws the flap folded down over its front.
+function envelope(g, x, y, tip = 13) {
   fill(g, x, y, EW, EH, false);
   rect(g, x, y, EW, EH);
-  if (open) { line(g, x, y + EH - 1, x + 15, y + 11); line(g, x + EW - 1, y + EH - 1, x + EW - 16, y + 11); }
-  else { line(g, x, y, x + 18, y + 13); line(g, x + EW - 1, y, x + EW - 19, y + 13); }
+  if (tip > 0) flap(g, x, y, tip);
 }
 function messages(g, f, { unread = false } = {}) {
   if (unread) {
     const x = EX + JITTER[f];
-    envelope(g, x, EY, false);
+    envelope(g, x, EY);
     disc(g, x + EW, EY, 6); // the "new" badge with a ! knocked out of it
     vline(g, x + EW, EY - 3, EY + 1, false); px(g, x + EW, EY + 3, false);
     for (const [sx, sy, ph] of SPARKS) { const k = (f + ph) % 12; if (k < 4) spark(g, sx, sy, k === 1 || k === 2); }
     return;
   }
-  const r = PEEK[f];
-  if (r) { // open flap behind, then the letter rising out
-    line(g, EX, EY, EX + 18, EY - 9); line(g, EX + EW - 1, EY, EX + EW - 19, EY - 9);
+  const r = PEEK[f], tip = FLAP[f];
+  if (tip <= 0) flap(g, EX, EY, tip); // an open flap stands up behind the letter
+  if (r) { // the letter rising out
     const lx = EX + 7, lw = EW - 14, ly = EY - r;
     fill(g, lx, ly, lw, r + 2, false); rect(g, lx, ly, lw, r + 6);
     [[3, 16], [6, 19], [9, 11]].forEach(([dy, len]) => { if (dy < r) hline(g, lx + 3, lx + 3 + len, ly + dy); });
   }
-  envelope(g, EX, EY, r > 0);
+  envelope(g, EX, EY, tip);
 }
 
 // ---- Profile: two players trade places, the one in front wears the crown ----
@@ -223,7 +226,7 @@ function profile(g, f) {
   }
 }
 
-// ---- Settings: two gears meshing, a wrench working on them ----
+// ---- Settings: two gears meshing ----
 // A gear: a toothed rim, a hub and four spokes, turned by `ang` radians.
 function gear(g, cx, cy, rOut, rIn, hole, teeth, ang) {
   for (let y = -rOut - 1; y <= rOut + 1; y++) for (let x = -rOut - 1; x <= rOut + 1; x++) {
@@ -233,24 +236,10 @@ function gear(g, cx, cy, rOut, rIn, hole, teeth, ang) {
     if (rim || tooth || hub || spoke) px(g, cx + x, cy + y);
   }
 }
-// An open-end wrench lying on the diagonal: a thick handle, a round head with its jaw open to the upper right.
-function wrench(g, ox, oy) {
-  for (let d = -1; d <= 1; d++) line(g, ox + 1 + d, oy + 19, ox + 12 + d, oy + 8);
-  line(g, ox, oy + 18, ox + 1, oy + 19);
-  const cx = ox + 14, cy = oy + 6;
-  for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) {
-    if (x * x + y * y > 30) continue;
-    const along = (x - y) / Math.SQRT2, across = Math.abs(x + y) / Math.SQRT2;
-    if (along > -1 && across < 2.2) continue; // the jaw
-    px(g, cx + x, cy + y);
-  }
-}
-const NUDGE = [0, 0, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0];
 function settings(g, f) {
   const step = f / FRAME_COUNT; // each gear turns exactly one tooth per loop, the pair stays meshed
-  gear(g, 22, 25, 16, 12.5, 3, 10, step * 2 * Math.PI / 10);
-  gear(g, 41, 12, 10, 7, 2, 6, -step * 2 * Math.PI / 6 + Math.PI / 6);
-  wrench(g, 40 - NUDGE[f], 25 + NUDGE[f]);
+  gear(g, 26, 28, 16, 12.5, 3, 10, step * 2 * Math.PI / 10);
+  gear(g, 45, 15, 10, 7, 2, 6, -step * 2 * Math.PI / 6 + Math.PI / 6);
 }
 
 // ---- Admin (dev only): a shield with a keyhole, a glint sweeping across ----
@@ -286,6 +275,18 @@ export function menuFrame(id, n = 0, opts = {}) {
     const g = grid(ICON_W, ICON_H);
     SYMBOLS[id](g, f, opts);
     cache.set(key, out = rows(g));
+  }
+  return out;
+}
+// All frames of an icon side by side in one sprite (cached): the menu shows one by moving the mask, so stepping the
+// animation never swaps the image (a newly swapped image can flash blank while the browser decodes it).
+const sheets = new Map();
+export function menuSheet(id, opts = {}) {
+  const key = id + (opts.unread ? '/u' : '');
+  let out = sheets.get(key);
+  if (!out) {
+    const fr = menuFrames(id, opts);
+    sheets.set(key, out = fr[0].map((_, y) => fr.map(f => f[y]).join('')));
   }
   return out;
 }

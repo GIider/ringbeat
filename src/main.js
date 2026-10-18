@@ -28,7 +28,7 @@ import { createScores } from './scores.js';
 import { createStats, gradeTally, favourite, topSongs, rankSummary, formatDuration, currentStreak, dayKey, GRADES } from './stats.js';
 import { MESSAGES, SENDER, unread, markRead } from './changelog.js';
 import { GLYPHS, FAMILY } from './pixelfont.js';
-import { MENU_IDS, menuFrame, menuFrames, menuPeek, menuTile, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
+import { MENU_IDS, menuFrame, menuSheet, menuPeek, menuTile, FRAME_COUNT, PERSON_ART, ENVELOPE_SMALL_OPEN, ICON_W, ICON_H } from './menuicons.js';
 import { createMySongs, splitRtttl, rtttlProblem, MAX_SONGS } from './mysongs.js';
 import { createCloud, API_BASE } from './cloud.js';
 import { createAdmin, PAGE as ADMIN_PAGE, STATUSES, cycle, countsLine, playerLine, runLine, logLine } from './admin.js';
@@ -921,9 +921,18 @@ function sizeMenu() {
   box.style.setProperty('--slot', Math.round(h * 0.3 / unit) * unit + 'px'); // one carousel slot, in whole LCD pixels
 }
 const menuUnread = id => id === 'messages' && unreadCount() > 0;
+// The hero's mask is the item's whole frame strip; a tick only moves it along (no image swap, so nothing can flash blank).
 function paintMenuIcon() {
-  const it = MENU[menuIdx];
-  setSprite($('mm-icon'), menuFrame(it.id, menuTick, { unread: menuUnread(it.id) }), iconPx);
+  const it = MENU[menuIdx], el = $('mm-icon'), url = spriteURL(menuSheet(it.id, { unread: menuUnread(it.id) }));
+  if (el._spr !== url) {
+    el._spr = url;
+    el.style.width = ICON_W * iconPx + 'px';
+    el.style.height = ICON_H * iconPx + 'px';
+    el.style.webkitMaskImage = el.style.maskImage = `url("${url}")`;
+    el.style.webkitMaskSize = el.style.maskSize = `${ICON_W * FRAME_COUNT * iconPx}px ${ICON_H * iconPx}px`;
+  }
+  const f = ((menuTick % FRAME_COUNT) + FRAME_COUNT) % FRAME_COUNT;
+  el.style.webkitMaskPosition = el.style.maskPosition = `${-f * ICON_W * iconPx}px 0`;
 }
 const menuAt = step => MENU[(menuIdx + step + MENU.length) % MENU.length];
 function paintPeeks() {
@@ -965,16 +974,21 @@ function renderMenu(dir = 0) {
     for (const [el, cls] of fx) el.classList.add(cls);
   }
 }
-// Builds every item's frames, peek and tile sprite once, while the player is still looking at the first one.
-let menuWarm = false;
+// Builds and decodes every item's frame strip, peek and tile once, while the player is still looking at the first item,
+// so scrolling to one shows it at once instead of blank until the browser has decoded the new image.
+let menuWarm = null;
 function warmMenu() {
   if (menuWarm) return;
-  menuWarm = true;
+  menuWarm = [];
   const idle = window.requestIdleCallback || (cb => setTimeout(cb, 200));
   idle(() => {
     for (const { id } of MENU) {
-      for (const rows of menuFrames(id)) spriteURL(rows);
-      spriteURL(menuPeek(id)); spriteURL(menuTile(id));
+      for (const rows of [menuSheet(id), menuSheet(id, { unread: true }), menuPeek(id), menuPeek(id, true), menuTile(id)]) {
+        const img = new Image();
+        img.src = spriteURL(rows);
+        if (img.decode) img.decode().catch(() => {});
+        menuWarm.push(img); // kept so the decoded images stay cached
+      }
     }
   });
 }
