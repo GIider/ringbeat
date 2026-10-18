@@ -1269,6 +1269,22 @@ function scrollMessage(dir) {
 
 // ---- profile: the player card and the optional online profile ----
 let pfMsg = '', pfDeleteArmed = 0;
+// "Export my data" asks the server for everything it holds: one export per minute (the time is kept across reloads).
+const EXPORT_COOLDOWN_MS = 60e3, EXPORT_KEY = 'ringbeat.exportAt';
+let exportAt = 0, exportTick = 0;
+try { exportAt = Number(localStorage.getItem(EXPORT_KEY)) || 0; } catch { /* storage blocked */ }
+function paintExport() {
+  const left = Math.ceil((exportAt + EXPORT_COOLDOWN_MS - Date.now()) / 1000), b = $('pf-export');
+  if (left > 0) {
+    b.disabled = true;
+    b.textContent = tr('Export my data ({s} s)', { s: left });
+    if (!exportTick) exportTick = setInterval(paintExport, 1000);
+  } else {
+    b.disabled = false;
+    b.textContent = tr('Export my data');
+    clearInterval(exportTick); exportTick = 0;
+  }
+}
 function openProfile() {
   pfMsg = '';
   $('pf-name-input').value = (cloud.profile() || {}).name || '';
@@ -1277,6 +1293,7 @@ function openProfile() {
   setState('profile', 'profile');
 }
 function renderProfile() {
+  paintExport();
   const s = stats.get(), on = cloud.signedIn(), p = cloud.profile();
   const pname = on && p ? p.name : tr('Player 1');
   $('pf-name').innerHTML = DEV || cloud.isDev() ? nameHTML({ name: pname, dev: true }) : esc(pname);
@@ -2759,6 +2776,23 @@ function wire() {
   $('pref-compact').onchange = e => { settings.compactView = e.target.checked; save(); layout(true); };
   $('pref-modhints').checked = settings.modHints;
   $('pref-modhints').onchange = e => { settings.modHints = e.target.checked; save(); if (!e.target.checked) hideModHint(); };
+  // Developer: wipe everything this device stores (settings, scores, stats, songs, the cloud sign-in). Three presses, each one more sure.
+  {
+    const asks = [() => tr('Delete save'), () => tr('ARE YOU REALLY SURE???'), () => tr('ARE YOU REALLY, REALLY SURE???')];
+    let stage = 0, timer = 0;
+    const label = () => { $('btn-delete-save').textContent = asks[stage](); };
+    $('btn-delete-save').onclick = () => {
+      clearTimeout(timer);
+      if (++stage < asks.length) { label(); timer = setTimeout(() => { stage = 0; label(); }, 4000); return; }
+      try {
+        for (const k of Object.keys(localStorage).filter(k => k.startsWith('ringbeat.'))) localStorage.removeItem(k);
+        Storage.prototype.setItem = () => {}; // nothing may write the save back while the page unloads
+      } catch { /* storage blocked: nothing to delete */ }
+      location.reload();
+    };
+    $('btn-delete-save').addEventListener('blur', () => { clearTimeout(timer); stage = 0; label(); }); // looking away cancels
+    label();
+  }
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];
@@ -2768,7 +2802,7 @@ function wire() {
   // Everything that was drawn from text is redrawn; screens opened later render fresh.
   const relocalize = () => {
     applyStatic();
-    voiceLabel(); langLabel(); paintTitleLang();
+    voiceLabel(); langLabel(); paintTitleLang(); paintExport();
     renderBindings(); refreshModsButton(); refreshChrome(); selectHints();
     for (const id of ['btn-quit', 'btn-menu']) $(id).textContent = tr((run && run.retLabel) || 'Tones');
   };
@@ -2925,9 +2959,14 @@ function wire() {
   };
   // Signed out, the Sign-in button takes over; the hint under the list says what signing in does.
   $('pf-signout').onclick = async () => { await profileAction(() => cloud.signOut(), ''); focusDefault(screens.profile); };
-  $('pf-export').onclick = () => profileAction(async () => {
-    download('ringbeat-export.json', JSON.stringify(await cloud.exportData(), null, 2), 'application/json');
-  }, tr('Data exported'));
+  $('pf-export').onclick = () => {
+    exportAt = Date.now();
+    try { localStorage.setItem(EXPORT_KEY, String(exportAt)); } catch { /* storage blocked */ }
+    paintExport();
+    profileAction(async () => {
+      download('ringbeat-export.json', JSON.stringify(await cloud.exportData(), null, 2), 'application/json');
+    }, tr('Data exported'));
+  };
   $('pf-delete').onclick = () => {
     if (Date.now() - pfDeleteArmed > 4000) {
       pfDeleteArmed = Date.now(); pfMsg = tr('Deletes the online profile and its data. This device keeps its own. Press again to delete.'); renderProfile();
