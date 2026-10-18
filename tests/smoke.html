@@ -80,7 +80,9 @@ f.addEventListener('load', async () => {
     await settle();
     log(vis('gag') && vis('gag-art') && $('gag-art').offsetWidth === 96 && /^00-/.test($('gag-text').textContent), 'D-pad/A code shows the IMEI panel with the avatar');
     key('KeyX'); await settle();
-    log(!vis('gag') && !vis('gag-art') && vis('select'), 'any key dismisses the IMEI panel');
+    log(vis('gag') && $('soft-left').textContent === 'Select' && $('soft-right').textContent === 'Back', 'the IMEI panel stays open on other keys, with Select / Back');
+    key('Escape'); await settle();
+    log(!vis('gag') && !vis('gag-art') && vis('select') && $('soft-left').textContent === 'Select', 'Back closes the IMEI panel');
     const catOf = () => $('sel-tabs').querySelector('.sel').textContent + ' ' + $('sel-cat').textContent.replace(/^\d+\//, ''); // current category tab + total, without the cursor position
     const cat0 = catOf();
     key('ArrowRight'); await settle();
