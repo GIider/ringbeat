@@ -429,11 +429,11 @@ export const de = {
   // ---- inbox messages (changelog) ----
   'Chords': 'Akkorde',
   ['Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
-    'New on Hard: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
+    'New: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +
     'Wide screens count your doubles and triples while you play. The Next song button is gone from the results.\n' +
     'Ratings were measured again. Scores from before this update no longer rank on the world boards.']:
     'Slides gibt es nicht mehr: diese Noten sind jetzt normale Noten, und mehr Songs haben Doppelnoten.\n' +
-    'Neu auf Hard: Dreifachnoten. Drei Noten mit einer Brücke fallen zusammen, drück also alle drei Spuren gleichzeitig. Die zusätzlichen Noten von Doppel- und Dreifachnoten sind stumm, ein perfekter Lauf klingt genau wie der Song.\n' +
+    'Neu: Dreifachnoten. Drei Noten mit einer Brücke fallen zusammen, drück also alle drei Spuren gleichzeitig. Die zusätzlichen Noten von Doppel- und Dreifachnoten sind stumm, ein perfekter Lauf klingt genau wie der Song.\n' +
     'Breite Bildschirme zählen deine Doppel- und Dreifachnoten beim Spielen. Die Taste Nächster Song im Ergebnis ist weg.\n' +
     'Die Wertungen wurden neu gemessen. Punkte von vor diesem Update zählen nicht mehr in den Weltranglisten.',
   'New look': 'Neuer Look',

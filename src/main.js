@@ -2222,7 +2222,18 @@ function askLogin(then) {
   afterLogin = then;
   setState('loginprompt', 'loginprompt');
 }
-function loginPromptYes() { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); }
+// Sign-in leaves the page, so where the player was heading survives in sessionStorage: 'select' (Tones, from the prompt
+// after the tutorial) or 'profile' (the Profile screen's button). The intro that follows the redirect ends there.
+const LOGIN_DEST = 'ringbeat.afterLogin';
+function signInTo(dest) {
+  try { sessionStorage.setItem(LOGIN_DEST, dest); } catch { /* the menu is the fallback */ }
+  location.href = cloud.signInUrl(location.origin + location.pathname + location.search);
+}
+function takeLoginDest() {
+  try { const d = sessionStorage.getItem(LOGIN_DEST); sessionStorage.removeItem(LOGIN_DEST); return d; } catch { return null; }
+}
+let loginDest = null;
+function loginPromptYes() { signInTo('select'); }
 // Lesson card: diagram + text, waits for the player to confirm before the round starts.
 function openLesson(i) {
   const st = STAGES[i];
@@ -2678,6 +2689,7 @@ function welcomeEnd(to, gesture) {
   statusIcons(true);
   if (to === 'title') setState('title', 'title');
   else if (to === 'none') return; // somebody else already navigated away
+  else if (loginDest) { const d = loginDest; loginDest = null; if (d === 'profile') openProfile(); else openSelect(); }
   else if (gesture) startFromTitle(); else openMenu('tones');
 }
 // Skipping needs a finished sign-in and an earlier full viewing on this device.
@@ -2958,7 +2970,7 @@ function wire() {
   $('ms-export').onclick = () => { download('ringbeat-songs.json', mysongs.exportJSON(), 'application/json'); $('ms-msg').textContent = tn(mysongs.count(), 'Exported {n} song', 'Exported {n} songs'); };
 
   // profile
-  $('pf-signin').onclick = () => { location.href = cloud.signInUrl(location.origin + location.pathname + location.search); };
+  $('pf-signin').onclick = () => signInTo('profile');
   $('pf-rename').onclick = () => { const name = $('pf-name-input').value; profileAction(() => cloud.rename(name), tr('Name saved')); };
   $('pf-public').onclick = () => {
     const off = (cloud.profile() || {}).public === false;
@@ -3140,8 +3152,9 @@ function wire() {
   if (/^#login(-error)?=/.test(location.hash)) {
     const hash = location.hash;
     history.replaceState(null, '', location.pathname + location.search);
+    const dest = takeLoginDest();
     if (hash.startsWith('#login-error=')) toast('Sign-in failed');
-    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
+    else loginExchange = cloud.takeLoginHash(hash).then(ok => { if (ok) { loginDest = dest; cloud.sync('signed in'); cloud.board('', 'normal'); } return ok; }, () => { toast('Sign-in failed'); return false; });
   } else if (!demoKind) cloud.sync('start'); // ?demo= pages never touch the network
   if (!demoKind) cloud.board('', 'normal'); // signed in only: warms the world snapshot if it is stale, so the first picker and results are instant
 
