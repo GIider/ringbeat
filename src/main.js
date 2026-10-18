@@ -1990,7 +1990,8 @@ game.onFinish = r => {
   resultsBoard = boardTabs() ? 'world' : 'local'; // signed in: the world board first, the toggle switches to the local one
   resultsTimeline = r.timeline || null;
   if (demo) {
-    // demo runs are never saved and show no best/rank line
+    // demo runs are never saved and show no best/rank line, but the board shows what the player has seen of this song
+    if (run && run.entry) resultsSong = { id: run.entry.id, diff: run.diff };
   } else if (r.failed) {
     best.hidden = false; best.textContent = tr('Sudden death: run not saved'); best.style.color = 'var(--dim)';
   } else if (run) {
@@ -3267,7 +3268,7 @@ function phoneIdle() {
   netSignal.repaint();
   setSprite($('st-battery'), battery(4), 2);
 }
-// ---- dev-only screenshot states: ?demo=title|menu|select|info|mods|play|pause|results|fc|settings|stats|grades|inbox|profile|message ----
+// ---- dev-only screenshot states: ?demo=title|menu|select|info|play|pause|results|fc|settings|stats|inbox|profile|message ----
 let demoRun = null, demoLabels = [];
 const demoKind = new URLSearchParams(location.search).get('demo');
 const DEMO_SEED = 11;
@@ -3294,12 +3295,10 @@ function demo(kind) {
   openSelect();
     if (kind === 'menu') openMenu('settings');
   else if (kind === 'stats') openStats();
-  else if (kind === 'grades') { seedDemoScores(); openStats(); setStatPage(3); } // the grade tally comes from the scores
   else if (kind === 'inbox') openInbox();
   else if (kind === 'profile') openProfile();
   else if (kind === 'message') showMessage(0);
   else if (kind === 'info') { if (!selWide()) setSelDetail(true); } // narrow LCDs: the details view (wide ones show the details beside the list)
-  else if (kind === 'mods') { settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); refreshModsButton(); } // in memory only, never saved
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {
     const demoFc = kind === 'fc';

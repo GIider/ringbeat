@@ -3,7 +3,7 @@
 // Usage: npm run screenshots   (needs `npx playwright install chromium` once)
 import { chromium } from 'playwright';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
-import { mkdirSync, existsSync, mkdtempSync, copyFileSync, rmSync } from 'node:fs';
+import { mkdirSync, existsSync, mkdtempSync, copyFileSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,7 @@ const views = {
 };
 // [demo state, view] pairs used by the README
 const shots = [
-  ['title', 'narrow'], ['menu', 'narrow'], ['select', 'desktop'], ['results', 'narrow'], ['stats', 'narrow'], ['play', 'narrow'],
+  ['title', 'narrow'], ['menu', 'narrow'], ['select', 'desktop'], ['results', 'narrow'], ['stats', 'narrow'],
   ['pause', 'narrow'], ['info', 'mobile'], ['play', 'mobile'], ['inbox', 'narrow'], ['profile', 'narrow'], ['settings', 'narrow'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.
@@ -71,6 +71,9 @@ try {
    }
    await ctx.close();
   }
+  // shots that are no longer taken (the published branch is seeded with the old ones) go
+  const keep = new Set(shots.map(([kind, view]) => `${kind}-${view === 'narrow' ? 'desktop' : view}.png`));
+  for (const f of readdirSync(outDir)) if (f.endsWith('.png') && !keep.has(f)) { rmSync(outDir + f); console.log('removed ' + f); }
   if (errors.length) console.log('page errors:', errors.join(' | '));
   code = errors.length ? 1 : 0;
 } catch (e) {
