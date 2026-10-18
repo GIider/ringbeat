@@ -1255,9 +1255,9 @@ function showMessage(i, quiet = false) {
   $('sms-from').textContent = SENDER;
   $('sms-date').textContent = `v${m.version} · ${m.date}`;
   $('sms-body').innerHTML = `<b>${esc(tr(m.title))}</b>\n${esc(tr(m.body))}`;
-  $('sms-body').scrollTop = 0;
   screens.message.dataset.softLeft = i + 1 < MESSAGES.length ? 'Next' : '';
   setState('message', 'message');
+  $('sms-body').scrollTop = 0; // after setState: a hidden screen ignores scrollTop
   if (!quiet && !smsToned) { smsToned = true; smsTone(); }
 }
 // Flip to a neighbouring message (+1 = older) without the animation.
