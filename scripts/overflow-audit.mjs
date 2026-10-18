@@ -105,6 +105,9 @@ async function auditCombo(browser, lang, w, h) {
       }
       await click(page, '#btn-glyphs');
       await visit(page, ctx, 'glyphs');
+      await click(page, '#btn-glyphs-back');
+      await click(page, '#btn-sounds');
+      await visit(page, ctx, 'sounds');
     }
     if (kind === 'info') {
       if (await page.$eval('#select', e => e.clientWidth < 800)) { // narrow LCD: the details are a view of their own

@@ -7,6 +7,7 @@
 import { generateChart } from './chart.js';
 import * as mods from './mods.js';
 import { Synth, VOICES } from './synth.js';
+import { SFX_REGISTRY, SFX_CATEGORIES, playSfx } from './sfx-registry.js';
 import { Game } from './game.js';
 import { planBot, LADDER } from './bot.js';
 import { createAutoplay } from './autoplay.js';
@@ -110,7 +111,7 @@ const screens = {
   title: $('title'), welcome: $('welcome'), menu: $('menu'), stats: $('stats'), inbox: $('inbox'), message: $('message'),
   profile: $('profile'), admin: $('admin'), select: $('select'), custom: $('custom'),
   hub: $('hub'), mysongs: $('mysongs'), songmenu: $('songmenu'), composer: $('composer'),
-  settings: $('settings'), glyphs: $('glyphs'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
+  settings: $('settings'), glyphs: $('glyphs'), sounds: $('sounds'), tutorial: $('tutorial'), tutprompt: $('tutprompt'), loginprompt: $('loginprompt'), results: $('results'), paused: $('pause'),
   calibration: $('calib'), nowplaying: $('nowplaying'),
 };
 const inPlay = () => state === 'countin' || state === 'playing' || state === 'resuming';
@@ -1912,6 +1913,22 @@ function openGlyphs() {
   cells.forEach((c, i) => { c.toggleAttribute('data-default', i === glyphsLast); });
   setState('glyphs', 'glyphs');
 }
+// Settings › Developer › Sound library: every SFX of the synth (src/sfx-registry.js), built once on first open.
+let soundsBuilt = false, soundsLast = 0; // the focused cell is kept for the session
+function buildSounds() {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  $('snd-body').innerHTML = SFX_CATEGORIES.map(cat => {
+    const cells = SFX_REGISTRY.filter(e => e.category === cat).map(e => `<button type="button" class="gl-cell snd-cell" data-sfx="${esc(e.id)}" data-info="${esc(e.label)}" aria-label="${esc(e.label)}">${esc(e.label)}</button>`);
+    return `<div class="sub">${esc(tr(cat))}</div><div class="gl-grid" data-rows>${cells.join('')}</div>`;
+  }).join('');
+  soundsBuilt = true;
+}
+function openSounds() {
+  if (!soundsBuilt) buildSounds();
+  $('snd-hint').textContent = '';
+  $('snd-body').querySelectorAll('.gl-cell').forEach((c, i) => { c.toggleAttribute('data-default', i === soundsLast); });
+  setState('sounds', 'sounds');
+}
 function setMod(patch) {
   settings.mods = mods.normalize({ ...settings.mods, ...patch });
   save();
@@ -2623,6 +2640,7 @@ function back() {
     case 'tutorial': finishTutorial(); break;
     case 'tutprompt': skipTutPrompt(); break;
     case 'loginprompt': afterLogin(); break;
+    case 'sounds': synth.stopAll(); openSettings(settingsFrom, 'btn-sounds'); break;
     case 'settings': closeSettings(); break;
     case 'glyphs': openSettings(settingsFrom, 'btn-glyphs'); break;
     case 'mysongs': openMenu('mysongs'); break;
@@ -3055,6 +3073,19 @@ function wire() {
   $('btn-glyphs').onclick = openGlyphs;
   $('btn-float-reset').onclick = () => { resetFloatBoxes(); synth.keyClick(); };
   $('btn-glyphs-back').onclick = () => openSettings(settingsFrom, 'btn-glyphs');
+  $('btn-sounds').onclick = openSounds;
+  $('btn-sounds-back').onclick = () => back();
+  $('snd-body').addEventListener('click', e => {
+    const c = e.target.closest('.snd-cell');
+    if (c) playSfx(synth, SFX_REGISTRY.find(x => x.id === c.dataset.sfx));
+  });
+  $('sounds').addEventListener('focusin', e => {
+    const c = e.target.closest('.gl-cell');
+    if (!c) return;
+    soundsLast = Array.prototype.indexOf.call($('snd-body').querySelectorAll('.gl-cell'), c);
+    $('snd-hint').textContent = c.dataset.info;
+    marquee($('snd-hint'));
+  });
   $('glyphs').addEventListener('focusout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('.gl-cell')) glyphAnimate(null); });
   $('glyphs').addEventListener('focusin', e => {
     const c = e.target.closest('.gl-cell');

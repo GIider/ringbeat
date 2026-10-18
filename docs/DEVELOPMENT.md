@@ -65,6 +65,7 @@ audio/canvas:
 | File | Covers |
 |---|---|
 | `assets.test.mjs` | Glyph table and bold cut, glyphs for every song title, committed TTFs match the glyph table, sprites, cover art |
+| `sfx-registry.test.mjs` | Sound library registry: every public `Synth` SFX is registered and plays |
 | `audiostate.test.mjs` | AudioContext resume / interruption handling, Game pause and resume |
 | `boardsview.test.mjs` | The World boards page: song list filter / sort, custom songs, ETag revalidation, bad answers, remembered view |
 | `calibration.test.mjs` | Latency calibration ticks, median, outliers |
@@ -124,7 +125,9 @@ Documentation means `docs/`, `*.md` in the root and `LICENSE`, the same rule as 
 | `#login=<code>` | The API's hand-back after GitHub sign-in (see [CLOUD.md](CLOUD.md#sign-in-flow)); `localStorage['ringbeat.api']` points the game at a local API |
 | `globalThis.__i18nMissing` | Set of strings that had no translation in the current language |
 
-The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Drag either overlay to move it, pull its bottom-right corner to resize it, double-click to reset (position is kept per device); **Reset overlay positions** resets both. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite, pop-up icon and menu icon (focusing a menu icon or pop-up replays its animation).
+The profiler overlay (also F3; see [PERFORMANCE.md](PERFORMANCE.md#in-the-browser)) and the request log below are switched on in **Settings › Developer**. Drag either overlay to move it, pull its bottom-right corner to resize it, double-click to reset (position is kept per device); **Reset overlay positions** resets both. Both are synced settings (`perfOverlay`, `netTracker`), so they follow the player account. **Glyphs & icons** opens a gallery of every font glyph (with its codepoint and size) and every sprite, pop-up icon and menu icon (focusing a menu icon or pop-up replays its animation). **Sound library** lists every sound effect of the synth, grouped by category with one cell per variant (menu blip index, instrument voice, grade stinger…); activating a cell plays it and cuts the previous preview.
+
+**New sound effects must be registered in `src/sfx-registry.js`.** Add an entry per audible variant to `SFX_REGISTRY` (or list a non-sound `Synth` method in `SFX_EXCLUDED`); `tests/sfx-registry.test.mjs` fails when a public `Synth` method is in neither.
 
 **New symbols, animations, glyphs and icons must be viewable in that gallery.** When you add one (a font glyph, a sprite in `src/pixelart.js`, a pop-up, a menu icon or an animated frame set), register it where the gallery reads from (`GLYPHS`, `SPRITES` / `ICONS` / `ICONS_FAV`, `POPUPS`, `MENU_IDS`) or add a section in `buildGlyphs()` (`src/main.js`), make it replay its animation on focus, and extend the rectangular-art check in `tests/assets.test.mjs`.
 

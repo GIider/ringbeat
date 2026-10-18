@@ -376,6 +376,8 @@ export const de = {
   'Reset overlay positions': 'Overlays zurücksetzen',
   'Glyphs & icons': 'Zeichen & Symbole',
   'Glyphs': 'Zeichen',
+  'Sound library': 'Klangbibliothek',
+  'Sounds': 'Klänge',
   'Icons': 'Symbole',
   'Category icons': 'Kategorie-Symbole',
   'Favorite icons': 'Favoriten-Symbole',
