@@ -1535,6 +1535,7 @@ function paintDpWorldLines(b, near, box, msg) {
 }
 // The pane follows the cursor: text at once, the cover and the leaderboard once the cursor rests (no work while scrolling).
 function renderPane() {
+  hideModHint(); // the cursor moved on: the bubble belonged to the last song's chips
   const e = selectedEntry();
   if (!e) return;
   const rec = scores.get(e.id, e.chart), best = rec && rec.best;
@@ -1722,10 +1723,18 @@ function showModHint(which) {
   const m = mods.normalize(settings.mods);
   const id = which === 'mode' ? (m.demo ? 'm-demo' : 'm-sudden') : MOD_HINT_ID[which];
   const pre = which === 'input' ? tr(JUDGE_LABELS[m.judge]) + ': ' : which === 'mode' && !m.demo && !m.sudden ? tr('Normal') + ': ' : '';
-  $('sd-hint').textContent = which === 'mode' && !m.demo && !m.sudden ? tr('Normal') : pre + tr(MOD_HINTS[id]);
-  marquee($('sd-hint'));
-  fitRows($('dp-panel')); // the hint takes room from the board
+  if (!settings.modHints) return;
+  const hint = $('sd-hint');
+  hint.textContent = which === 'mode' && !m.demo && !m.sudden ? tr('Normal') : pre + tr(MOD_HINTS[id]);
+  // A bubble over the board that fades out by itself: nothing on the screen moves.
+  hint.classList.remove('show');
+  void hint.offsetWidth; // restart the fade
+  hint.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(hideModHint, 4600);
 }
+let hintTimer = 0;
+function hideModHint() { clearTimeout(hintTimer); $('sd-hint').classList.remove('show'); }
 function cycleMod(which) {
   const m = mods.normalize(settings.mods);
   modChip = Math.max(0, MOD_CHIPS.indexOf(which));
@@ -2749,6 +2758,8 @@ function wire() {
   nt.onchange = () => { settings.netTracker = nt.checked; netDebug.enable(nt.checked); save(); };
   $('pref-compact').checked = settings.compactView;
   $('pref-compact').onchange = e => { settings.compactView = e.target.checked; save(); layout(true); };
+  $('pref-modhints').checked = settings.modHints;
+  $('pref-modhints').onchange = e => { settings.modHints = e.target.checked; save(); if (!e.target.checked) hideModHint(); };
   $('pref-gags').onchange = e => { settings.idleGags = e.target.checked; save(); cameo.sync(); };
   pv.onchange = () => { settings.preview = pv.checked; save(); if (!pv.checked) stopPreview(); };
   const voiceName = () => ({ buzzer: tr('Buzzer'), smooth: tr('Smooth'), pulse: tr('Pulse'), triangle: tr('Triangle'), arp: tr('Arpeggio'), bell: tr('Bell'), organ: tr('Organ'), pluck: tr('Pluck'), saw: tr('Sawtooth'), gameboy: tr('Game Boy') })[settings.voice];

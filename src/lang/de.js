@@ -156,6 +156,7 @@ export const de = {
   'Length': 'Länge',
   'Modifiers': 'Modifikatoren',
   'Mode': 'Modus',
+  'Modifier hints': 'Modifikator-Hinweise',
   'Chart': 'Verlauf',
   'Score chart: accuracy over the song, with the note density': 'Verlauf: Genauigkeit über den Song, mit der Notendichte',
   'Compact view': 'Vollbildschirm',

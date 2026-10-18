@@ -323,8 +323,13 @@ textarea::placeholder { color: var(--ink-dim); }
 #select.detail .sel-left { display: none; }
 #select.detail .sel-detail { display: flex; flex: 1; width: auto; border-left: 0; }
 .sd-stars { flex: none; }
-.sd-hint { margin: 0 0 2px; white-space: normal; }
-.sd-hint:empty { display: none; }
+.sd-mods { position: relative; }
+/* the modifier explanation: a bubble over the board that fades by itself (JS removes .show after the fade) */
+.sd-hint { position: absolute; left: 0; right: 0; top: 100%; z-index: 6; margin: 2px 0 0; padding: 3px 8px; background: var(--ink); color: var(--lcd); border-radius: 3px;
+  white-space: normal; text-align: left; pointer-events: none; opacity: 0; }
+.sd-hint.show { animation: hint-fade 4.5s ease-out forwards; }
+@keyframes hint-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sd-hint.show { animation: none; opacity: 1; } }
 .sd-stats { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 0 12px; margin: 4px 0; align-items: center; }
 .sd-stats dt { color: var(--ink-dim); }
 .sd-stats dd { margin: 0; font-weight: 700; }

@@ -27,6 +27,7 @@ function fromRaw(raw) {
   rollAudio: raw.rollAudio === true, // first press of a roll plays the song's real notes (scoring still follows mashing)
   preview: raw.preview !== false,
   compactView: raw.compactView === true, // no phone frame: the LCD fills the window (per device)
+  modHints: raw.modHints !== false, // the bubble that explains a modifier when it is cycled in the song picker
   idleGags: raw.idleGags !== false,
   juice: raw.juice !== false,       // extra hit/miss/combo feedback (visual + sound)
   haptics: raw.haptics !== false,   // vibration on supporting devices (needs juice)
