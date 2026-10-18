@@ -227,19 +227,31 @@ function profile(g, f) {
 }
 
 // ---- Settings: two gears meshing ----
-// A gear: a toothed rim, a hub and four spokes, turned by `ang` radians.
-function gear(g, cx, cy, rOut, rIn, hole, teeth, ang) {
-  for (let y = -rOut - 1; y <= rOut + 1; y++) for (let x = -rOut - 1; x <= rOut + 1; x++) {
-    const r = Math.hypot(x, y), a = Math.atan2(y, x) - ang;
-    const rim = r <= rIn && r > rIn - 3, tooth = r <= rOut && r > rIn - 1 && Math.cos(a * teeth) > 0.2;
-    const hub = r > hole && r <= (rIn > 9 ? hole + 2.5 : rIn), spoke = rIn > 9 && r <= rIn && r > hole && Math.abs(Math.sin(a * 2)) < 0.2; // small gears are solid
-    if (rim || tooth || hub || spoke) px(g, cx + x, cy + y);
+// Real gear geometry: both share one tooth size (MODULE), so a gear's pitch radius is MODULE * teeth / 2 and the centres
+// sit exactly the two pitch radii apart. They turn at speeds inverse to their tooth counts, each by TURN teeth per loop,
+// so the teeth roll into each other's gaps. TURN = 2 is 60 degrees of the big gear: its six spokes repeat, so the loop is
+// seamless.
+const MODULE = 2.4, BIG_N = 12, SMALL_N = 6, TURN = 2;
+const pitchR = n => MODULE * n / 2;
+// One gear centred on (cx, cy) (any real point), turned so a tooth points at angle `ang`. Teeth taper towards the tip;
+// a big gear gets a rim, six spokes and a hub, a small one is solid around its axle.
+function gear(g, cx, cy, n, ang) {
+  const rp = pitchR(n), tip = rp + MODULE * 0.85, root = rp - MODULE, big = n > 8, hole = big ? 3 : 2;
+  for (let y = Math.floor(cy - tip - 1); y <= Math.ceil(cy + tip + 1); y++) for (let x = Math.floor(cx - tip - 1); x <= Math.ceil(cx + tip + 1); x++) {
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx) - ang;
+    if (r > tip || r <= hole) continue;
+    const tooth = r > root - 0.5 && Math.cos(a * n) > 0.15 + 0.3 * Math.max(0, (r - rp) / (tip - rp)); // narrower at the tip
+    const body = big ? (r <= root && r > root - 2.6) || r <= hole + 2.6 || (r <= root && Math.abs(Math.sin(3 * a)) * r < 1.3) : r <= root;
+    if (tooth || body) px(g, x, y);
   }
 }
+const MESH = -0.62; // direction from the big gear's centre to the small one's (up and to the right)
+const BIG = [27.5, 27.5], SMALL = [BIG[0] + Math.cos(MESH) * (pitchR(BIG_N) + pitchR(SMALL_N)), BIG[1] + Math.sin(MESH) * (pitchR(BIG_N) + pitchR(SMALL_N))];
 function settings(g, f) {
-  const step = f / FRAME_COUNT; // each gear turns exactly one tooth per loop, the pair stays meshed
-  gear(g, 26, 28, 16, 12.5, 3, 10, step * 2 * Math.PI / 10);
-  gear(g, 45, 15, 10, 7, 2, 6, -step * 2 * Math.PI / 6 + Math.PI / 6);
+  const t = f / FRAME_COUNT;
+  // at t = 0 the big gear has a tooth on the line between the centres and the small one has a gap facing it
+  gear(g, BIG[0], BIG[1], BIG_N, MESH + t * TURN * 2 * Math.PI / BIG_N);
+  gear(g, SMALL[0], SMALL[1], SMALL_N, MESH + Math.PI + Math.PI / SMALL_N - t * TURN * 2 * Math.PI / SMALL_N);
 }
 
 // ---- Admin (dev only): a shield with a keyhole, a glint sweeping across ----

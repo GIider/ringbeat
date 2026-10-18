@@ -992,7 +992,10 @@ function warmMenu() {
     }
   });
 }
+const MENU_FX = [['mm-body', 'from-below'], ['mm-body', 'from-above'], ['mm-icon', 'pop'], ['mm-title', 'type'], ['mm-num', 'flip'], ['mm-bg', 'swap']];
 function openMenu(id) {
+  // A screen shown again replays the CSS animations its elements still carry, so coming back must not slide or pop.
+  for (const [el, cls] of MENU_FX) $(el).classList.remove(cls);
   if (id) menuIdx = Math.max(0, MENU.findIndex(m => m.id === id));
   menuTick = 0; menuNext = performance.now() + MENU_FRAME_MS;
   setState('menu', 'menu');

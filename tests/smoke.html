@@ -136,6 +136,7 @@ f.addEventListener('load', async () => {
 
     key('Escape'); await settle();
     log(vis('menu') && $('mm-title').textContent === 'Tones', 'back from Tones -> menu');
+    log(!['from-below', 'from-above'].some(c => $('mm-body').classList.contains(c)) && !$('mm-icon').classList.contains('pop'), 'coming back to the menu does not replay the scroll animation');
     key('6'); await settle(); $('mm-go').click(); await settle();
     log(vis('settings') && d.querySelectorAll('#bind-grid button').length === 4, 'menu -> settings + 4 bindings');
     // no controller: no Controller tab (Effects -> General), and clicking it goes nowhere
