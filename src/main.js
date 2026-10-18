@@ -247,11 +247,13 @@ function hideGag() {
   if ($('gag')) $('gag').style.pointerEvents = '';
   wipe.cancel();
   if ($('gag')) $('gag').hidden = true;
+  document.body.classList.remove('gag-on');
   if ($('gag-link')) $('gag-link').hidden = true;
   if ($('gag-art')) $('gag-art').hidden = true;
 }
 function showGag(title, text, bar = -1, segments = 0) {
   $('gag').hidden = false;
+  document.body.classList.add('gag-on');
   $('gag-title').textContent = tm(title);
   $('gag-text').textContent = tm(text);
   const b = $('gag-bar');

@@ -541,7 +541,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .lcd.flash { filter: invert(1); }
 /* the sign-in intro paints the whole LCD, behind the status bar and the screens */
 .welcome-fx { position: absolute; left: 0; top: 0; z-index: -1; color: var(--ink); pointer-events: none; image-rendering: pixelated; }
-.gag { position: absolute; inset: 0; z-index: 4; background: var(--lcd); display: flex; flex-direction: column;
+.gag { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 10px; text-align: center; pointer-events: none; padding: 8px; }
 .gag-title { font-weight: 700; }
 /* wide LCDs: the IMEI / gag panels scale up with the screen */
@@ -660,3 +660,5 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   /* short menus and the lesson cards: the bigger step (5/3) so they don't sit in a corner of a big LCD */
   #tutorial, #mysongs, #songmenu, #calib { --u: var(--u3); --fs: var(--fs3); font-size: var(--fs); }
 }
+/* the gag / IMEI panel shows on the bare LCD (its own background), so what is under it is hidden instead of covered */
+body.gag-on .screens > :not(#gag), body.gag-on .lcd > canvas { visibility: hidden; }
