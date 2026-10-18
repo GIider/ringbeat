@@ -1007,13 +1007,8 @@ function onlineStatsHTML() {
     `<div class="st-top">${rows.slice(0, 5).map(r => `<div class="st-row"><b class="st-name">${esc(entryById(r.songId).title)}</b>` +
       `<span class="n">#${r.rank}/${r.total}</span></div>`).join('')}</div>`;
 }
-function renderStats() {
-  statsCountStop();
-  const s = stats.get(), list = knownScores(), page = STAT_PAGES[statPage], box = $('stat-page');
-  box.scrollTop = 0;
-  $('stat-tab').textContent = `${tr(page)} ${statPage + 1}/${STAT_PAGES.length}`;
-  screens.stats.dataset.softLeft = '';
-  if (state === 'stats') refreshChrome(screens.stats);
+// One stats page into `box`.
+function paintStatPage(page, box, s, list) {
   const empty = s.runs === 0 ? `<p class="hint center">${tr('Play a song to start counting.')}</p>` : '';
   if (page === 'Time') {
     box.innerHTML =
@@ -1024,17 +1019,17 @@ function renderStats() {
   } else if (page === 'Score') {
     const fav = favourite(list), fe = fav && entryById(fav.id);
     box.innerHTML =
-      `<div class="st-big" id="stat-score"></div><div class="hint center">${tr('lifetime score')}</div>` +
+      `<div class="st-big stat-score"></div><div class="hint center">${tr('lifetime score')}</div>` +
       `<table>${statRow(tr('Best combo'), fmtNum(s.bestCombo))}${statRow(tr('Avg / run'), s.runs ? fmtNum(s.score / s.runs) : '—')}` +
       `${statRow(tr('Modded runs'), fmtNum(s.moddedRuns))}${statRow(tr('My songs runs'), fmtNum(s.customRuns))}</table>` +
       (fe ? `<div class="st-fav"><span class="ic">♪</span><b class="st-name">${esc(fe.title)}</b><span class="n">${fav.plays}×</span></div>` : empty);
-    statsCountUp($('stat-score'), s.score);
+    statsCountUp(box.querySelector('.stat-score'), s.score);
     marquee(box.querySelector('.st-name'));
   } else if (page === 'Top') {
     const rows = topSongs(list, Infinity).map(t => ({ e: entryById(t.id), plays: t.plays })).filter(r => r.e);
     box.innerHTML = rows.length
-      ? `<div class="hint center">${tn(rows.length, '{n} song played', '{n} songs played')}</div><div class="st-top">${rows.map((r, i) =>
-        `<div class="st-row"><span class="rk">${i + 1}.</span><b class="st-name">${esc(r.e.title)}</b><span class="n">${r.plays}×</span></div>`).join('')}</div>`
+      ? `<div class="hint center">${tn(rows.length, '{n} song played', '{n} songs played')}</div><div class="st-scroll"><div class="st-top">${rows.map((r, i) =>
+        `<div class="st-row"><span class="rk">${i + 1}.</span><b class="st-name">${esc(r.e.title)}</b><span class="n">${r.plays}×</span></div>`).join('')}</div></div>`
       : empty || `<p class="hint center">${tr('No songs played yet.')}</p>`;
     marqueeAll(box.querySelectorAll('.st-name'));
   } else if (page === 'Grades') {
@@ -1057,6 +1052,37 @@ function renderStats() {
       `${statRow(tr('Accuracy'), acc)}${statRow(tr('Ghost taps'), fmtNum(s.ghosts))}` +
       `${statRow(tr('FC runs'), fmtNum(s.fcRuns))}${statRow(tr('AP runs'), fmtNum(s.apRuns))}</table>` + empty;
   }
+}
+// Wide LCD: every page is a panel of one screen (nothing to page through); narrower: one page at a time, ◄ ► between them.
+const statsAll = () => lcdWidth() >= SEL_WIDE_PX;
+function renderStats() {
+  statsCountStop();
+  const s = stats.get(), list = knownScores(), all = statsAll(), box = $('stat-page');
+  $('stat-all').hidden = !all;
+  box.hidden = all;
+  document.querySelector('#stats .st-tabs').hidden = all;
+  screens.stats.dataset.softLeft = all ? 'Select' : '';
+  if (state === 'stats') refreshChrome(screens.stats);
+  if (all) {
+    const grid = $('stat-all');
+    grid.textContent = '';
+    for (const page of STAT_PAGES) {
+      const panel = document.createElement('section'), body = document.createElement('div'), h = document.createElement('h3');
+      panel.className = 'stat-panel'; body.className = 'stat-page'; h.textContent = tr(page);
+      panel.append(h, body); grid.append(panel);
+      paintStatPage(page, body, s, list);
+    }
+    fitStatScroll();
+    return;
+  }
+  const page = STAT_PAGES[statPage];
+  box.scrollTop = 0;
+  $('stat-tab').textContent = `${tr(page)} ${statPage + 1}/${STAT_PAGES.length}`;
+  paintStatPage(page, box, s, list);
+}
+// The played-songs list in the wide grid has no room to scroll by hand: it runs up and down like a marquee when it is too long.
+function fitStatScroll() {
+  for (const box of document.querySelectorAll('#stat-all .st-scroll')) vScroll(box, box.firstElementChild);
 }
 
 // ---- admin (?dev or a dev-flag account): browse and moderate the online database with the admin token (docs/CLOUD.md › Moderation).
@@ -1454,13 +1480,16 @@ function renderDpPanel() {
 // Rows that don't all fit scroll up and down like a marquee instead of being cut off.
 function fitRows(box) {
   const ol = box.querySelector('ol');
-  if (!ol) return;
-  ol.classList.remove('vscroll');
-  const over = ol.offsetHeight - box.clientHeight;
+  if (ol) vScroll(box, ol);
+}
+// `inner` runs up and down inside `box` (marquee-style, CSS .vscroll) when it is taller than the box.
+function vScroll(box, inner) {
+  inner.classList.remove('vscroll');
+  const over = inner.offsetHeight - box.clientHeight;
   if (over > 1) {
-    ol.style.setProperty('--dy', -over + 'px');
-    ol.style.setProperty('--dur', Math.max(3, over / 30).toFixed(1) + 's');
-    ol.classList.add('vscroll');
+    inner.style.setProperty('--dy', -over + 'px');
+    inner.style.setProperty('--dur', Math.max(3, over / 30).toFixed(1) + 's');
+    inner.classList.add('vscroll');
   }
 }
 function paintDpLocal(e, d, box) {
@@ -2510,6 +2539,7 @@ function navigate(dir) {
   if (!root || state === 'title' || state === 'welcome') return;
   if (state === 'composer' && !csMenu) { compInput(dir); return; }
   if (state === 'menu') { menuStep(dir === 'up' || dir === 'left' ? -1 : 1); return; }
+  if (state === 'stats' && statsAll()) return; // everything is on screen
   if (state === 'stats' && (dir === 'left' || dir === 'right')) { setStatPage(statPage + (dir === 'left' ? -1 : 1)); return; }
   if (state === 'stats' && (dir === 'up' || dir === 'down')) { scrollStats(dir); return; }
   if (state === 'results' && (dir === 'up' || dir === 'down') && scrollResults(dir)) return;
@@ -3235,6 +3265,7 @@ function layout(animate = false) {
   if (!animate) requestAnimationFrame(() => ph.classList.remove('no-anim'));
   if (state === 'select' && dpEntry) fitRows($('dp-panel'));
   queueHeadFit();
+  if (state === 'stats') renderStats(); // wide <-> narrow: panels or pages
   if (state === 'results') setResultsPage(resultsPage); // wide <-> narrow: panels or pages
   if (state === 'select') setTimeout(focusCurrentRow, animate ? 600 : 0); // keep the cursor row in view after a resize
 }

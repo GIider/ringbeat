@@ -265,7 +265,7 @@ textarea::placeholder { color: var(--ink-dim); }
 .dp-line { flex: 1; }
 .dp-panel { min-height: 3.2em; }
 .sel-detail .dp-panel { flex: 0 1 auto; min-height: 0; overflow: hidden; }
-.top.vscroll { animation: vmq var(--dur, 4s) ease-in-out infinite alternate; }
+.vscroll { animation: vmq var(--dur, 4s) ease-in-out infinite alternate; }
 @keyframes vmq { 0%, 15% { transform: translateY(0); } 85%, 100% { transform: translateY(var(--dy)); } }
 .sel-detail .top { margin: 0; }
 .dp-seg { justify-content: center; margin: 2px 0; }
@@ -516,7 +516,7 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
   #phone { transition: none !important; }
   .blink, .ld-bars i { animation: none; }
   .scrolls { text-overflow: ellipsis; }
-  .scrolls .mq, .top.vscroll { animation: none; }
+  .scrolls .mq, .vscroll { animation: none; }
   .banner.celebrate, .banner.celebrate::before, .banner.celebrate::after { animation: none; }
   .grade.stamp, .menu > button:focus, .menu > .hl, #st-signal.blip { animation: none; }
   .st-title.hello, .mm-body.slide-up, .mm-body.slide-down, .gbar i, .mixbar { animation: none; }
@@ -620,3 +620,11 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 /* narrow details view: the sort / category rows belong to the list, and a vertical swipe changes the song */
 #select.detail .sel-head, #select.detail .sel-sub, #select.detail .sel-search { display: none; }
 #select.detail .sel-detail { touch-action: none; }
+
+/* stats on a wide LCD: all six pages as panels, nothing scrolls by hand */
+.stat-all { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stat-all[hidden] { display: none; }
+.stat-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; border: var(--u) solid var(--ink); border-radius: 4px; padding: 4px 8px; }
+.stat-panel h3 { margin: 0 0 2px; font-size: inherit; text-align: center; border-bottom: var(--u) dotted var(--ink); }
+.stat-all .stat-page { overflow: hidden; }
+.stat-all .st-scroll { flex: 1 1 0; min-height: 0; overflow: hidden; }
