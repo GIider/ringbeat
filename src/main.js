@@ -809,7 +809,7 @@ function renderDetail() {
   const rec = scores.get(e.id);
   $('sel-info').innerHTML =
     `<div>${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>` +
-    (rec ? ` · ${rec.best.score} ${esc(rec.best.grade)}${badgeHTML(rec)}` : ' · ' + esc(tr('New'))) + `</div>` +
+    (rec ? (rec.best ? ` · ${rec.best.score} ${esc(rec.best.grade)}` : '') + badgeHTML(rec) :' · ' + esc(tr('New'))) + `</div>` +
     `<div title="${esc(tn(e.notes, '{n} note', '{n} notes'))}">${e.bpm} BPM · ${formatLength(e.length)}${e.tag ? ' · ' + esc(e.tag) : ''}</div>`;
   if (e.tag) marquee($('sel-info').children[1]); // a long author / source scrolls like a long title
   renderPane();

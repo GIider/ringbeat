@@ -130,6 +130,8 @@ Runs without a replay, such as older clients, are kept with `verified = 0` as pl
   - if scoring or charts changed, bump `RULES`;
   - if not, only paste the new hash.
 - When `RULES` changes, the boards start empty for the new rules. Old runs stay stored with their replays.
+- Local highscores follow the same rule: each stored run carries its `RULES`, and a bump makes every device drop runs
+  from other versions (own and synced) on its next load. Play counts and FC/AP flags are kept. No migration needed.
 
 **CPU.** Chart plus replay of the longest song takes about 1.5 ms. The free plan allows 10 ms of CPU per request,
 so each request re-plays at most 4 runs (3 when it also merges the shared document). The others wait with
