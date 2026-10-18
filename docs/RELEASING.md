@@ -90,10 +90,10 @@ without adding them to `main`'s history:
 
 The README links to `raw.githubusercontent.com/GIider/ringbeat/screenshots/<name>.png`.
 
-`npm run screenshots` (`scripts/screenshots.mjs`) takes ten shots from `?demo=` states (see
+`npm run screenshots` (`scripts/screenshots.mjs`) takes twelve shots from `?demo=` states (see
 [DEVELOPMENT.md › Debug URLs and hooks](DEVELOPMENT.md#debug-urls-and-hooks)), all as the same signed-in demo player:
-- `title`, `menu`, `select` (with seeded grades and FC/AP badges), `results`, `play`, `inbox`, `profile`, `settings` (Sound tab) and `grades` (Stats, Grades page) at desktop size (1280×1100 / 1000×1100).
-- `play` at mobile size (480×800).
+- `title`, `menu`, `results`, `stats`, `play`, `pause`, `inbox`, `profile` and `settings` (Sound tab) at desktop size (1000×1100, the wide LCD), and `select` (with seeded grades and FC/AP badges, the details pane and the key legend beside the phone) at 1280×1100.
+- `info` (the song details view) and `play` at mobile size (480×800).
 
 The player is `scripts/lib/screenshot-fixture.mjs`: a fake cloud sign-in, lifetime stats and read messages, written into localStorage before the page loads. The API address points nowhere and `?demo=` pages skip the sync, so no shot touches the network.
 All of them use reduced motion, the en-US locale and the UTC timezone. Locally they go to the git-ignored `docs/screenshots/`.

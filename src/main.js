@@ -39,7 +39,7 @@ import { STAGES, buildStageChart, stageDemoHTML } from './tutorial.js';
 import * as nav from './nav.js';
 import { SORT_ICONS, ICON_FIND, SPRITES, SPRITES_FAV, POPUPS, HEART, HEART_HALVES, categorySprite, spriteHTML, setSprite, signal, battery, envelope } from './pixelart.js';
 import { createWelcome, measureGrid, CELL, runWelcome, HOLD_LIMIT, T as WT } from './welcome.js';
-import { createTitle, REST as TITLE_REST } from './titlefx.js';
+import { createTitle, REST as TITLE_REST, TITLE_EXTENT } from './titlefx.js';
 import { VERSION, BUILD, buildLine } from './version.js';
 import { perf } from './perf.js';
 import { createCameoLayer } from './cameolayer.js';
@@ -117,7 +117,6 @@ function show(name) {
   // Pause is a modal over the frozen playfield, not a screen of its own.
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name && !(name === 'paused' && k === 'nowplaying');
   document.body.classList.toggle('in-select', name === 'select');
-  if (name !== 'select') dismissFx();
   titleFx(name === 'title');
   if (name !== 'results') juiceResultsStop();
   if (name !== 'stats') statsCountStop();
@@ -321,43 +320,35 @@ function showToast(fill, ms) {
   toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
-// Favorite effect over the heart beside the song's name (the label is for screen readers only). Added: the heart grows and
-// floats away. Removed: the heart appears, then cracks into two halves and pixel shards.
-const SHARDS = [[-16, -12, -90], [14, -16, 120], [-20, 6, 60], [19, 10, -140], [-6, 20, 200], [8, 22, -70]]; // dx, dy, rot
-const FX_MS = { add: 950, break: 850 };
-const FX_CRACK_MS = 260; // the heart holds this long before it cracks (see .fx.break in style.css; favBreak's crackAt)
-function favFxHTML(kind) {
-  if (kind === 'add') return `<span class="fx add"><span class="fx-heart">${spriteHTML(HEART, 4)}</span></span>`;
-  const half = (r, side) => `<span class="fx-half ${side}">${spriteHTML(r, 4)}</span>`;
-  return `<span class="fx break"><span class="fx-whole">${spriteHTML(HEART, 4)}</span>${half(HEART_HALVES[0], 'l')}${half(HEART_HALVES[1], 'r')}` +
+// Heart control animations, played inside the element that holds the resting heart sprite (the song details' heart button and
+// the Glyphs viewer's cells; the element is position:relative). Added: the heart beats three times. Removed: it beats once,
+// then cracks into two halves and pixel shards. The timings match style.css (.beat, .fx.break).
+const SHARDS = [[-12, -9, -90], [11, -12, 120], [-15, 5, 60], [14, 8, -140], [-5, 15, 200], [6, 16, -70]]; // dx, dy, rot
+const HEART_MS = { add: 1000, break: 1150 };
+const HEART_CRACK_MS = 520; // the heart beats this long before it cracks (favBreak's crackAt)
+function heartCrackHTML() {
+  const half = (r, side) => `<span class="fx-half ${side}">${spriteHTML(r, 3)}</span>`;
+  return `<span class="fx break"><span class="fx-whole">${spriteHTML(HEART, 3)}</span>${half(HEART_HALVES[0], 'l')}${half(HEART_HALVES[1], 'r')}` +
     SHARDS.map(([x, y, r], i) => `<i class="fx-shard" style="--dx:${x}px;--dy:${y}px;--rot:${r}deg;--n:${i}"></i>`).join('') + '</span>';
 }
-let fxTimer = 0, fxId = '';
+function playHeart(el, kind) {
+  clearTimeout(el._heartT);
+  el.querySelector('.fx')?.remove();
+  el.classList.remove('beat', 'playing');
+  void el.offsetWidth; // restart the animation
+  if (kind === 'add') { el.classList.add('beat'); synth.favAdd(); }
+  else {
+    el.classList.add('playing'); // the resting heart hides under the overlay
+    el.insertAdjacentHTML('beforeend', heartCrackHTML());
+    synth.favBreak(HEART_CRACK_MS / 1000);
+  }
+  el._heartT = setTimeout(() => { el.classList.remove('beat', 'playing'); el.querySelector('.fx')?.remove(); }, HEART_MS[kind]);
+}
+// A favorite changed: animate the heart beside the song's name (when the details are on screen), else just the sound.
 function favFx(id, kind) {
-  const b = $('fav-fx');
-  b.innerHTML = favFxHTML(kind) + `<span class="sr">${esc(tr(kind === 'add' ? 'Favorite added' : 'Favorite removed'))}</span>`;
-  fxId = id;
-  b.hidden = false; // measured in placeFx
-  if (!placeFx()) return;
-  if (kind === 'add') synth.favAdd(); else synth.favBreak(FX_CRACK_MS / 1000);
-  clearTimeout(fxTimer);
-  fxTimer = setTimeout(dismissFx, FX_MS[kind]);
-}
-function dismissFx() {
-  clearTimeout(fxTimer);
-  fxId = '';
-  $('fav-fx').hidden = true;
-}
-// Centre the effect on the heart beside the song's name in the details pane; false (and dismissed) when that pane is not on screen (narrow list view).
-function placeFx() {
-  const b = $('fav-fx');
-  if (b.hidden) return false;
   const heart = $('sd-fav');
-  if (state !== 'select' || fxId !== selectedId || !heart.getClientRects().length) { dismissFx(); return false; }
-  const r = heart.getBoundingClientRect();
-  b.style.left = r.left + r.width / 2 + 'px';
-  b.style.top = r.top + r.height / 2 + 'px';
-  return true;
+  if (state === 'select' && id === selectedId && heart.getClientRects().length) playHeart(heart, kind);
+  else if (kind === 'add') synth.favAdd(); else synth.favBreak(0);
 }
 
 // ---- library & selection ----
@@ -525,7 +516,7 @@ function renderPosition() {
   cat.textContent = pos;
   queueHeadFit();
 }
-// Header row: sort chip (icon + name), position text, Find. When the name (and then "Find") would crowd the middle text, only the icons show.
+// Header row: sort chip (icon + name), position text, Find (icon + word). When the words would crowd the middle text, only the icons show.
 let headFitQueued = false;
 const queueHeadFit = () => {
   if (headFitQueued) return;
@@ -538,7 +529,7 @@ function fitHead() {
   const icon = rows => spriteHTML(rows, 2);
   const crowded = () => cat.scrollWidth > cat.clientWidth + 1 || cat.clientWidth < 8;
   // full words first, then icons one chip at a time (all in one task, so nothing flickers)
-  sortEl.innerHTML = icon(SORT_ICONS[sort.id]) + esc(name); findEl.textContent = find;
+  sortEl.innerHTML = icon(SORT_ICONS[sort.id]) + esc(name); findEl.innerHTML = icon(ICON_FIND) + esc(find);
   sortEl.setAttribute('aria-label', name); findEl.setAttribute('aria-label', find);
   sortEl.title = name;
   if (crowded()) sortEl.innerHTML = icon(SORT_ICONS[sort.id]);
@@ -578,7 +569,7 @@ function updateThumb() {
 }
 {
   const l = $('song-list');
-  l.addEventListener('scroll', () => { queueThumb(); placeFx(); }, { passive: true });
+  l.addEventListener('scroll', queueThumb, { passive: true });
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateThumb).observe(l);
 }
 // A-Z strip (touch, sorted by title): the letters present, drag along it to jump.
@@ -607,6 +598,7 @@ function renderAz() {
 }
 
 // ---- search (the "/" bar): live title / tag filter over the current category ----
+$('sel-search').firstElementChild.innerHTML = spriteHTML(ICON_FIND, 2); // the search bar wears the same icon as the Find chip
 const searchOpen = () => !$('sel-search').hidden;
 function applySearch() {
   const keep = selectedEntry();
@@ -758,7 +750,6 @@ function renderList() {
   renderAz();
   markSelected();
   queueThumb();
-  placeFx(); // the rows were rebuilt: re-pin the effect (or drop it when its song left the list)
 }
 // One delegated set of row handlers instead of three listeners per row (the list is rebuilt on every view change).
 {
@@ -980,6 +971,7 @@ function statsCountStop() { clearInterval(statTimer); statTimer = 0; }
 function statsCountUp(el, final) {
   statsCountStop();
   el.textContent = fmtNum(final);
+  marquee(el);
   if (!settings.juice || still.matches || final < 1) return;
   const STEPS = 12;
   let i = 0;
@@ -987,7 +979,7 @@ function statsCountUp(el, final) {
   statTimer = setInterval(() => {
     i++;
     el.textContent = fmtNum(i >= STEPS ? final : final * i / STEPS);
-    if (i >= STEPS) statsCountStop(); else synth.tickUp(i);
+    if (i >= STEPS) { statsCountStop(); marquee(el); } else synth.tickUp(i);
   }, 45);
 }
 function scrollStats(dir) {
@@ -1053,6 +1045,8 @@ function paintStatPage(page, box, s, list) {
       `${statRow(tr('FC runs'), fmtNum(s.fcRuns))}${statRow(tr('AP runs'), fmtNum(s.apRuns))}</table>` + empty;
   }
 }
+// The big figures run as a marquee when a panel is too narrow for them.
+const marqueeBig = box => marqueeAll(box.querySelectorAll('.st-big:not(.stat-score)'));
 // Wide LCD: every page is a panel of one screen (nothing to page through); narrower: one page at a time, ◄ ► between them.
 const statsAll = () => lcdWidth() >= SEL_WIDE_PX;
 function renderStats() {
@@ -1071,6 +1065,7 @@ function renderStats() {
       panel.className = 'stat-panel'; body.className = 'stat-page'; h.textContent = tr(page);
       panel.append(h, body); grid.append(panel);
       paintStatPage(page, body, s, list);
+      marqueeBig(body);
     }
     fitStatScroll();
     return;
@@ -1079,6 +1074,7 @@ function renderStats() {
   box.scrollTop = 0;
   $('stat-tab').textContent = `${tr(page)} ${statPage + 1}/${STAT_PAGES.length}`;
   paintStatPage(page, box, s, list);
+  marqueeBig(box);
 }
 // The played-songs list in the wide grid has no room to scroll by hand: it runs up and down like a marquee when it is too long.
 function fitStatScroll() {
@@ -1470,13 +1466,10 @@ function renderDpPanel() {
   if (!tabs) dpTab = 'local';
   bar.hidden = !tabs;
   for (const b of bar.querySelectorAll('button')) { const on = b.dataset.tab === dpTab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); }
-  const rec = scores.get(e.id, e.chart);
-  $('sd-best').hidden = dpTab !== 'world' || !(rec && rec.best); // locally the top run is the best run; nothing to show for an unplayed song
-  if (!$('sd-best').hidden) marqueeAll($('sd-best').querySelectorAll('.ln')); // a narrow pane scrolls the row instead of cutting it off
   box.textContent = '';
   if (dpTab === 'world') paintDpWorld(e, e.chart, box); else { paintDpLocal(e, e.chart, box); fitRows(box); marqueeRows(box); }
 }
-// The board panel shrinks to the room the pane has left (CSS: flex 0 1 auto), so "Your Best" below it always stays whole.
+// The board panel shrinks to the room the pane has left (CSS: flex 0 1 auto).
 // Rows that don't all fit scroll up and down like a marquee instead of being cut off.
 function fitRows(box) {
   const ol = box.querySelector('ol');
@@ -1541,11 +1534,11 @@ function renderPane() {
   $('sd-stars').innerHTML = `${starsText(ratingOf(e))}<b>${estMark(e)}${starsValue(ratingOf(e))}</b><span class="hint"> / 5</span>`;
   $('sd-tag').textContent = e.tag || tr(((CATEGORIES.find(c => c.id === e.category) || {}).label) || 'Custom');
   const rows = [[tr('BPM'), e.bpm], [tr('Length'), formatLength(e.length)], [tr('Plays'), rec ? rec.plays : 0], [tr('Grade'), best ? `<span class="badge">${esc(best.grade)}</span>${badgeHTML(rec)}` : '-']];
-  $('sd-stats').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${typeof v === 'string' && v.startsWith('<') ? v : esc(String(v))}</dd>`).join('');
-  const wr = cloud.signedIn() ? cloud.rank(e.id, e.chart) : null; // the player's place on the world board, when known
-  $('sd-best').innerHTML = `<span class="ln"><span class="mq"><b>${esc(tr('Your Best'))}${wr ? ' #' + wr.rank : ''}</b> ${best ? `${best.score}${badgeHTML(best, true)}` : esc(tr('No plays yet'))}</span></span>`;
+  $('sd-stats').innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd class="ln"><span class="mq">${typeof v === 'string' && v.startsWith('<') ? v : esc(String(v))}</span></dd>`).join('');
+  marqueeAll($('sd-stats').querySelectorAll('.ln')); // a narrow pane runs a long value instead of cutting it off
+  marquee($('sd-tag'));
   const fav = isFavorite(e.id);
-  if ($('sd-fav').dataset.on !== String(fav) || !$('sd-fav').firstChild) { $('sd-fav').dataset.on = String(fav); $('sd-fav').innerHTML = spriteHTML(HEART, 3); }
+  if (!$('sd-fav').firstChild) { $('sd-fav').dataset.on = String(fav); $('sd-fav').innerHTML = spriteHTML(HEART, 3); }
   $('sd-fav').classList.toggle('on', fav);
   $('sd-fav').setAttribute('aria-pressed', String(fav));
   $('sd-go').disabled = !(e.notes[e.chart] || 0);
@@ -1739,7 +1732,7 @@ let glyphsBuilt = false, glyphsLast = 0; // the focused cell is kept for the ses
 function buildGlyphs() {
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const cell = (info, art, w = 0, extra = '') => `<button type="button" class="gl-cell"${w > 52 ? ` style="grid-column:span ${Math.ceil((w + 8) / 68)}"` : ''}${extra} data-info="${esc(info)}" aria-label="${esc(info)}">${art}</button>`;
-  const TALL = ['phone', 'avatar'];
+  const TALL = ['phone', 'avatar', 'nokia'];
   const sprites = (obj, tag, tall = false) => Object.entries(obj).filter(([k]) => TALL.includes(k) === tall).map(([k, r]) => cell(`${tag} ${k} ${r[0].length}×${r.length}`, spriteHTML(r, 2), r[0].length * 2));
   const glyphs = Object.entries(GLYPHS).map(([ch, g]) => {
     const cp = 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
@@ -1754,15 +1747,8 @@ function buildGlyphs() {
   glyphsBuilt = true;
 }
 // A focused menu icon plays its menu animation (held still for reduced motion); it rests on frame 0 otherwise.
-let glyphAnim = null, popTimer = 0;
-function popPlay(el, kind) {
-  clearTimeout(popTimer);
-  el.querySelector('.fx')?.remove();
-  el.classList.add('playing'); // hides the resting sprite under the effect
-  el.insertAdjacentHTML('beforeend', favFxHTML(kind));
-  if (kind === 'add') synth.favAdd(); else synth.favBreak(FX_CRACK_MS / 1000);
-  popTimer = setTimeout(() => { el.classList.remove('playing'); el.querySelector('.fx')?.remove(); }, FX_MS[kind]);
-}
+let glyphAnim = null;
+const popPlay = playHeart; // the Glyphs viewer shows the same animations as the heart button
 function glyphAnimate(cell) {
   if (glyphAnim) { clearInterval(glyphAnim.timer); setSprite(glyphAnim.el, menuFrame(glyphAnim.id, 0), 2); glyphAnim = null; }
   if (cell && cell.dataset.pop && !still.matches) {
@@ -2679,9 +2665,15 @@ function titleFx(on) {
   if (!on) return;
   requestAnimationFrame(() => { // measured once the phone is laid out
     if (!titleOn || titleStop) return;
-    const { w, h } = measureGrid(fx);
-    const lcd = fx.parentElement.getBoundingClientRect().bottom, text = $('title').querySelector('.blink').getBoundingClientRect().top;
-    const sim = createTitle(w, h, Math.ceil((lcd - text) / CELL) + 1); // the DOM text under the scene is kept clear
+    // On a big LCD the scene is drawn with bigger cells (a whole multiple of the base cell) as long as the whole stack still fits.
+    const box = fx.parentElement, lcd = box.getBoundingClientRect().bottom, text = $('title').querySelector('.blink').getBoundingClientRect().top;
+    let m = 1;
+    for (let k = 2; k <= 6; k++) {
+      const cell = CELL * k;
+      if (Math.floor(box.clientHeight / cell) - (Math.ceil((lcd - text) / cell) + 1) >= TITLE_EXTENT.rows && Math.floor(box.clientWidth / cell) >= TITLE_EXTENT.cols) m = k; else break;
+    }
+    const cell = CELL * m, { w, h } = measureGrid(fx, cell);
+    const sim = createTitle(w, h, Math.ceil((lcd - text) / cell) + 1); // the DOM text under the scene is kept clear
     if (!still.matches) { titleStop = runWelcome(fx, sim); return; }
     sim.jump(TITLE_REST);
     const ctx = fx.getContext('2d');
@@ -3306,7 +3298,7 @@ function demo(kind) {
   else if (kind === 'inbox') openInbox();
   else if (kind === 'profile') openProfile();
   else if (kind === 'message') showMessage(0);
-  else if (kind === 'info') { /* the picker already shows the details */ }
+  else if (kind === 'info') { if (!selWide()) setSelDetail(true); } // narrow LCDs: the details view (wide ones show the details beside the list)
   else if (kind === 'mods') { settings.mods = mods.normalize({ speed: 1.2, mirror: true, hidden: true, sudden: true }); refreshModsButton(); } // in memory only, never saved
   else if (kind === 'settings') openSettings();
   else if (kind === 'results' || kind === 'fc') {

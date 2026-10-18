@@ -14,7 +14,6 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
                │                                                  │          ▲ │
                │                                                  │          │ └─ pause ─▶ resume (3-2-1) | restart
                │                                                  │          │           | settings | back to select
-               │                                                  └─ Customize ─▶ mods screen ─▶ back to select
                ├─ 2 My songs (composer / paste RTTTL / import-export / share)
                ├─ 3 Stats (Time / Score / Top / Grades / Notes / Online)
                ├─ 4 Messages ─▶ inbox ─▶ message
@@ -55,11 +54,11 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   songs too). Favorites show a solid variant of their category icon (`SPRITES_FAV`).
 - **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved (not
   necessarily in the best run).
-- **Footer:** stars + rating, note count, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide
+- **Footer (narrow LCDs):** stars + rating, best, BPM and length of the selected song. The navigation keys for the input device in use are listed in a panel beside the phone on wide
   screens (no hint line on the LCD).
 - **Selecting and playing:** focusing or tapping a row selects it, and an optional 10 s preview plays. Confirming,
-  double-clicking or re-tapping the selected row plays it on a wide LCD (800 px and up), where the details sit beside the list. On a narrow LCD the first confirm opens the details view (cover, stats, the four modifier chips, the local / global board, your best, *Play* and *Add to Favorites*) and *Play* starts the song.
-- **Details pane:** BPM, length, rating, local plays and grade; the Modifiers row has four chips (Speed, Style = mirror, Visuals = hidden, Input = judging) that cycle on a tap (`M` / gamepad X opens the full Mods screen via *Customize*); *Global* / *Local* boards (`T` / gamepad R3 switch).
+  double-clicking or re-tapping the selected row plays it on a wide LCD (800 px and up), where the details sit beside the list. On a narrow LCD the first confirm opens the details view (title, favorite heart, stars, stats, the modifier chips, the local / global board, your best) and the next confirm starts the song; a vertical swipe (or ↑ ↓) there steps to the next / previous song, and the sort and category rows are hidden.
+- **Details pane:** BPM, length, rating, local plays and grade; the Modifiers row has five chips (Speed, Style = mirror, Visuals = hidden, Input = judging, Mode = sudden death / demo) that cycle on a tap (`1`–`5`, or gamepad X on the chip under the R3-moved cursor) and explain the mod underneath; *Global* / *Local* boards (`T` to switch; rows scroll up and down like a marquee when they don't all fit). The Global board always includes the player's own row (the rows around their rank), so there is no separate best-score line.
 - **Rating:** `1 + 16.2 ×` the position on an eight-level simulated skill ladder where bots start full-combo-ing the
   chart at least half the time, capped at 10. Stars = rating ÷ 1.4. Unmeasured songs show an estimate. See
   [SONGS.md › Difficulty ratings](SONGS.md#difficulty-ratings).
@@ -69,15 +68,19 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **The LCD:** the highway fills the LCD canvas, below the status bar.
 - **Status bar:**
   - the song title, scrolling if it is too long;
-  - signal bars: recent hit quality during a song, otherwise the connection light for signed-in players (full: synced, climbing: sending, dropping: receiving, 1 bar: last sync failed, none: offline). Hovering shows what the bars mean right now;
-  - a battery, which shows the time left.
-- **HUD:** two rows at the top of the canvas.
+  - signal bars: full during a song, otherwise the connection light for signed-in players (full: synced, climbing: sending, dropping: receiving, 1 bar: last sync failed, none: offline). Hovering shows what the bars mean right now;
+  - a battery (always full; the HUD's progress bar shows the time).
+- **HUD:** two rows at the top of the canvas (on a wide LCD, with stat rails beside the highway).
   1. Score, then live grade + accuracy.
   2. A `FULL COMBO` / `ALL PERFECT` tag while the streak is alive (after at least 5 judged notes), or the active mod
      chips, plus the combo with its multiplier (`x1.2`).
+  - Wide LCDs (800 px and up) replace the combo on row 2 with rails: left, BPM and time left under note / clock icons;
+    right, the combo (centred over its label), the judgement counts and an *ACC* meter (ten segments, empty until the
+    first note is judged). The progress bar sits between the score and the accuracy on row 1.
+- **Pause:** a modal over the dimmed playfield (*Resume*, *Restart*, *Settings*, *Tones*).
 - **Feedback:** judgement chips appear per lane, and a milestone banner every 50 combo. With *Hit effects* on, you also
   get receptor punches, debris, combo chirps and an LCD edge blink.
-- **Soft keys** pause.
+- The right soft button pauses.
 - **Compact mode** (window under 600 px wide or 520 px tall, or forced by Settings › Compact view, which is only offered when the window is at least 600 × 520 px) has the same layout on a bare LCD, without the phone body.
 
 ### Results
@@ -187,15 +190,15 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - My songs;
   - highscores and stats.
 
-  Highscores and stats from every signed-in device are shown combined: pooled top 5, summed plays and counters, play
+  Highscores and stats from every signed-in device are shown combined: pooled top 10, summed plays and counters, play
   days counted once. Resetting scores & stats while signed in resets every device. Details:
   [CLOUD.md](CLOUD.md).
-- Every finished run that makes the local top 5 is also uploaded (song, chart, score, grade, accuracy, combo,
+- Every finished run that makes the local top 10 is also uploaded (song, chart, score, grade, accuracy, combo,
   FC/AP, mods, time, and the run's inputs as a replay) for the [world leaderboards](#world-leaderboards).
 
 ## Highscores
 
-- Stored locally (`ringbeat.scores.v1`) per song id and chart: the top 5 runs and a play count.
+- Stored locally (`ringbeat.scores.v1`) per song id and chart: the top 10 runs and a play count.
 - A run stores score, grade, accuracy, max combo, fc, ap and date, plus the `mods` tags and `mult` for modded runs.
   Runs are ranked by score; on a tie, the newer run ranks below the older one.
 - Custom songs are keyed by a hash of their RTTTL text, so scores follow the melody.
@@ -239,7 +242,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## Modifiers
 
-A sticky loadout (`settings.mods`) chosen with the picker's modifier chips or the Mods screen and applied to every run, except the tutorial. Most mods
+A sticky loadout (`settings.mods`) chosen with the picker's modifier chips and applied to every run, except the tutorial. Most mods
 are chart transforms (`src/mods.js`); the rest are `Game.start` options.
 
 | Mod | Values | Effect | Score |
@@ -255,7 +258,7 @@ are chart transforms (`src/mods.js`); the rest are `Game.start` options.
   into the stored score. Grade and accuracy stay raw.
 - Mod tags (e.g. `1.2x HD`) are stored with the run and shown in the HUD, in top runs and on results.
 - Stars are rated on the unmodded chart. The picker's modifier chips show the active loadout, and
-  the multiplier is shown on the Mods screen and on results.
+  the multiplier is shown next to the chips and on results.
 
 ## Tutorial
 

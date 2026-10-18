@@ -36,7 +36,7 @@ The data falls into two kinds, which avoids nearly all conflicts.
 - The other devices' slots are downloaded into `ringbeat.cloud.v1`.
 - The stores (`scores.js`, `stats.js`) show the slots combined (`setRemote`, `combineScores`, `combineStats`), but
   `record` / `recordRun` keep writing this device's data only. The combining works like this:
-  - **Scores:** the top runs of every slot are pooled (a run seen twice counts once) and cut to the top 5. Plays add
+  - **Scores:** the top runs of every slot are pooled (a run seen twice counts once) and cut to the top 10. Plays add
     up, and FC/AP are sticky. The rank on the results screen counts every device's runs.
   - **Stats:** counters add up. Best combo and best streak take the max, first played the min. Play days are pooled
     from each slot's `days` list, so a day played on two devices counts once and a streak can run across devices.

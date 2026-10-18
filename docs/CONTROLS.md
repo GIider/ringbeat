@@ -2,7 +2,7 @@
 
 # Controls
 
-Keyboard, the drawn phone keys, touch and gamepad all drive the same focus navigation (`src/nav.js`), so every screen
+Keyboard, the soft buttons (on the LCD and on the phone body), touch and gamepad all drive the same focus navigation (`src/nav.js`), so every screen
 works with every input. Lane keys are fixed; gamepad buttons are rebindable. What the screens do is described in
 [SPEC.md](SPEC.md).
 
@@ -61,12 +61,13 @@ lane (`Esc` cancels) and has a *Reset buttons* action. Song picker buttons are i
 
 ## Touch
 
-- **Play:** tap and hold the lane columns (multi-touch). The soft keys pause.
+- **Play:** tap and hold the lane columns (multi-touch). The right soft button pauses.
 - **Title:** tap anywhere.
 - **Main menu, Stats, Results, Messages, tutorial cards:** swipe left / right for the next / previous item or page (tap
   the arrows or tabs where shown). Tap a loading message to skip the animation.
 - **Song select:** on wide screens every navigation key is listed in a panel to the right of the phone. There is no hint line
-  on the LCD, so narrow screens show none. With a controller, the category arrows in the header also become
+  on the LCD, so narrow screens show none. On a narrow screen the details view (after the first Select) steps to the next /
+  previous song with a vertical swipe, ↑ ↓ or the d-pad. With a controller, the category arrows in the header also become
   LB / RB.
 - **Tutorial cards:** show the lane inputs for the device in use (keys, pad buttons or touch).
 - **Legend:** on wide screens, a legend beside the phone lists the menu and play keys.

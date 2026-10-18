@@ -9,7 +9,7 @@ Ringbeat is a browser rhythm game whose charts are generated automatically from 
 dressed up as a late-90s candybar phone: every menu lives on the phone's green LCD, and during a song the note highway
 runs inside that LCD.
 All sound is synthesized with the Web Audio API (default voice: a phone piezo buzzer). There are no dependencies and no
-build step, and the few assets (pixel font, phone artwork) are made in this repo; see [Assets](#assets).
+build step, and the few assets (pixel font, icons) are made in this repo; see [Assets](#assets).
 Everything works offline and signed out. An optional GitHub sign-in adds cloud save and server-verified world
 leaderboards; see [Online](#online-optional).
 
@@ -17,27 +17,26 @@ leaderboards; see [Online](#online-optional).
 
 The screenshots show a signed-in demo player ("Nova") with fixed scores and stats.
 
-| Title | Main menu | Song list |
+| Title | Main menu | Song picker |
 | --- | --- | --- |
-| ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song list](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
-| Title screen: "Press any key" (or "Tap" on touch screens) starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with each song's best grade and FC (full combo) / AP (all perfect) badges, and the cursor song's best score below. |
+| ![Title](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/title-desktop.png) | ![Main menu](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/menu-desktop.png) | ![Song picker](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/select-desktop.png) |
+| Title screen: the scene scales up with the LCD. "Press any key" (or "Tap") starts the game. | Main menu for a signed-in player: the profile name in the title bar, with Settings selected. | Song list with category tabs, sort and Find, and the details beside it: stars, favorite heart, modifier chips, the global / local top 10. |
 
-| Results | Playing | Playing (mobile) |
+| Results | Stats | Playing |
 | --- | --- | --- |
-| ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
-| Mods: 1.2x speed, mirror lanes, hidden notes, sudden death. | Playing on the phone. | Compact layout: on small windows the LCD fills the window. |
+| ![Results](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/results-desktop.png) | ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/stats-desktop.png) | ![Playing](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-desktop.png) |
+| Results: grade, stats, a score chart (note density, accuracy, misses and ghost taps) and one leaderboard, all on one screen. | Stats: every page at once when there is room. | Playing on a wide LCD: BPM and time on the left, combo, judgement counts and the accuracy meter on the right. |
+
+| Pause | Song details (mobile) | Playing (mobile) |
+| --- | --- | --- |
+| ![Pause](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/pause-desktop.png) | ![Song details (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/info-mobile.png) | ![Playing (mobile)](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/play-mobile.png) |
+| Pause is a modal over the playfield. | On small windows Select opens the details; swipe up or down for the next song. | Small windows drop the phone body and the LCD fills the window. |
 
 | Messages | Profile | Settings |
 | --- | --- | --- |
 | ![Messages](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/inbox-desktop.png) | ![Profile](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/profile-desktop.png) | ![Settings](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/settings-desktop.png) |
 | Messages: the changelog arrives as texts, unread ones in bold. | Profile of a signed-in player: name, play time, leaderboard visibility, sync status. | Settings, Sound tab: volume, tone, backing pulse and auto-play rolls. |
 
-| Stats |
-| --- |
-| ![Stats](https://raw.githubusercontent.com/GIider/ringbeat/screenshots/grades-desktop.png) |
-| Stats, Grades page: how many songs ended on each grade, from the saved best runs. |
-
-On small windows (under 600 px wide or 520 px tall) the phone body is dropped and the LCD fills the window.
 CI regenerates the screenshots on every push to `main` (see [docs/RELEASING.md](docs/RELEASING.md#screenshots)).
 
 ## Quick start
@@ -58,7 +57,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
   - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
 - **Scoring:**
-  - Local highscores (top 5 per song).
+  - Local highscores (top 10 per song).
   - Optional online profile with world leaderboards (see [Online](#online-optional)).
   - Full combo / all perfect indicators.
   - Timing histogram.
@@ -71,7 +70,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
   - First-run tutorial.
   - Idle cameos and a few easter eggs.
 - **Input and sound:**
-  - Keyboard, touch and gamepad (rebindable), with clickable phone keys.
+  - Keyboard, touch and gamepad (rebindable), with Select / Back soft buttons on every screen.
   - Latency calibration.
   - Ten instrument voices (buzzer, smooth, pulse, triangle, arpeggio, bell, organ, pluck, sawtooth, Game Boy).
 - **Languages:** English and German (follows the browser language, switchable in Settings).

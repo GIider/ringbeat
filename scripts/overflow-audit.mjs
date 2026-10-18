@@ -5,6 +5,7 @@ import { chromium, firefox, webkit } from 'playwright';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { API_BASE } from '../src/cloud.js';
+import { fixture } from './lib/screenshot-fixture.mjs';
 
 const port = 20000 + Math.floor(Math.random() * 10000);
 const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.mjs', import.meta.url)), String(port)], { stdio: 'ignore' });
@@ -41,13 +42,26 @@ function scan(BY_DESIGN) {
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
       const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
       if (!text) continue;
-      const clips = cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1 && !el.matches('.screen, .screens, .song-list, .hub-grid');
+      // text that sticks out past an ancestor that clips it (an overflow:hidden panel, a flex cell...) without being a marquee
+      let cut = false;
+      if (![...el.childNodes].every(n => n.nodeType !== 3 || !n.textContent.trim())) {
+        const rg = document.createRange();
+        rg.selectNodeContents(el);
+        const tr = rg.getBoundingClientRect();
+        for (let a = el.parentElement; a && !a.matches('.screen, .screens, .lcd, body'); a = a.parentElement) {
+          if (getComputedStyle(a).overflowX === 'visible') continue;
+          const ar = a.getBoundingClientRect();
+          if (tr.right > ar.right + 1 || tr.left < ar.left - 1) cut = true;
+          break;
+        }
+      }
+      const clips = cut || (cs.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + 1 && !el.matches('.screen, .screens, .song-list, .hub-grid'));
       const out = r.left < lcd.left - 1 || r.right > lcd.right + 1;
       if (!clips && !out) continue;
       // a clipped container whose own text is not what overflows (e.g. a flex row) is reported through its children
       if (clips && !out && el.children.length && !el.matches('.sel-sub, .sel-head')) continue;
       const id = el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '');
-      bad.push({ sel: id, why: clips ? `clipped ${el.scrollWidth}>${el.clientWidth}` : 'outside LCD', text: text.slice(0, 40) });
+      bad.push({ sel: id, why: cut ? 'cut by its container' : clips ? `clipped ${el.scrollWidth}>${el.clientWidth}` : 'outside LCD', text: text.slice(0, 40) });
     }
   }
   return bad;
@@ -74,8 +88,15 @@ async function auditCombo(browser, lang, w, h) {
     await page.evaluate(() => document.fonts.ready);
     return page;
   };
+  // the stats screen needs a played-in profile (the README player), or it only shows empty pages
+  const fxContext = await browser.newContext({ locale: LOCALES[lang] || lang, viewport: { width: w, height: h } });
+  await fxContext.route(url => url.href.startsWith(API_BASE + '/'), route => route.fulfill({ status: 401, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: '{"error":"sign in"}' }));
+  // ...with the long-named custom song and a few big play counts, so the Top list has rows to cut
+  const run = { score: 91250, grade: 'S', accuracy: 97.2, maxCombo: 74, fc: true, ap: false, date: 1 };
+  const fx = { ...fixture, 'ringbeat.songs.v1': SEED_SONG, 'ringbeat.scores.v1': { 'custom:audit1': { normal: { top: [run], plays: 1234567 } }, nokia: { normal: { top: [run], plays: 987654 } } } };
+  await fxContext.addInitScript(fx => { for (const [k, v] of Object.entries(fx)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); }, fx);
   for (const kind of DEMOS) {
-    const page = await open(`index.html?demo=${kind}`);
+    const page = kind === 'stats' ? await (async () => { const pg = await fxContext.newPage(); await pg.goto(`http://127.0.0.1:${port}/index.html?demo=stats`); await pg.waitForSelector('.statusbar'); await pg.evaluate(() => document.fonts.ready); return pg; })() : await open(`index.html?demo=${kind}`);
     await visit(page, ctx, kind);
     if (kind === 'settings') {
       for (const tab of await page.$$eval('#set-tabs [data-tab]', b => b.map(x => x.dataset.tab))) {
@@ -140,6 +161,7 @@ async function auditCombo(browser, lang, w, h) {
     await page.close();
   }
   await context.close();
+  await fxContext.close();
 }
 
 async function run() {

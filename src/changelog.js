@@ -5,6 +5,14 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '2.5', date: '2026-10-18', title: 'New look',
+    body: 'One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
+      'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +
+      'Playing: BPM, time, combo and a live accuracy meter on wide screens, and Pause is a pop-up.\n' +
+      'Results and Stats show everything on one screen when there is room. The new score chart plots your accuracy over the song with misses and ghost taps marked. Top runs go up to 10.\n' +
+      'Gone: the keypad and the Mods screen. Settings -> Compact view gives you the plain LCD. Try the Konami code or tap the version five times.',
+  },
+  {
     version: '2.4', date: '2026-10-17', title: 'Ring ring',
     body: 'New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
       'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +

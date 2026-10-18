@@ -167,10 +167,7 @@ export const de = {
   'HD': 'HD',
   'SD': 'SD',
   'Plays': 'Spiele',
-  'Your Best': 'Deine Bestleistung',
   'Duration': 'Dauer',
-  'Favorite added': 'Favorit hinzugefügt',
-  'Favorite removed': 'Favorit entfernt',
   'No songs match this filter.': 'Keine Songs für diesen Filter.',
   'New': 'Neu',
   '{n} notes': ['{n} Note', '{n} Noten'],
@@ -422,6 +419,17 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'New look': 'Neuer Look',
+  ['One new look for every screen. On a desktop the LCD sits in a Nokia body that runs off the window, on small screens it fills it. Every screen has Select and Back, also as buttons on the phone.\n' +
+    'Song picker: details beside the list with stars, a favorite heart, modifier chips (tap one to see what it does) and the global or local top 10. On a phone, Select opens the details and a swipe up or down picks the next song. Sort and Find turn into icons when space is short.\n' +
+    'Playing: BPM, time, combo and a live accuracy meter on wide screens, and Pause is a pop-up.\n' +
+    'Results and Stats show everything on one screen when there is room. The new score chart plots your accuracy over the song with misses and ghost taps marked. Top runs go up to 10.\n' +
+    'Gone: the keypad and the Mods screen. Settings -> Compact view gives you the plain LCD. Try the Konami code or tap the version five times.']:
+    'Ein neuer Look für alle Bildschirme. Am Desktop sitzt das LCD in einem Nokia-Gehäuse, das aus dem Fenster ragt, auf kleinen Bildschirmen füllt es das Fenster. Jeder Bildschirm hat Wählen und Zurück, auch als Tasten am Handy.\n' +
+    'Songauswahl: Details neben der Liste mit Sternen, Favoriten-Herz, Modifikatoren (tippen zeigt, was sie tun) und der globalen oder lokalen Top 10. Am Handy öffnet Wählen die Details, ein Wisch nach oben oder unten wählt den nächsten Song. Sortierung und Suche werden bei wenig Platz zu Symbolen.\n' +
+    'Beim Spielen: BPM, Zeit, Combo und eine Genauigkeitsanzeige auf breiten Bildschirmen, die Pause ist ein Pop-up.\n' +
+    'Ergebnis und Statistik zeigen bei genug Platz alles auf einem Bildschirm. Das neue Verlaufsdiagramm zeigt deine Genauigkeit über den Song, mit markierten Fehlern und Fehltipps. Bestenlisten gehen bis 10.\n' +
+    'Weg: das Tastenfeld und der Mods-Bildschirm. Einstellungen -> Kompaktansicht gibt dir das schlichte LCD. Probier den Konami-Code oder tippe fünfmal auf die Version.',
   'Ring ring': 'Ring ring',
   ['New title screen: a Nokia 3310 drops in and rings under the RINGBEAT logo. Signing in plays a short welcome, and your name shows in the menu.\n' +
     'Menu icons got a makeover: a tiny 3310 beside each symbol, smoother animations, sparkles on unread mail. Messages open straight away, and the SMS tone plays once per visit.\n' +

@@ -16,6 +16,10 @@ const SCREEN = { x: 5, y: 7, w: 14, h: 12 };              // the LCD window insi
 const LOGO_H = 7, GAP = 6;
 const RESERVE = 30; // default rows at the bottom the DOM text ("Press any key", version, build) covers; main.js measures it
 
+// Grid cells the whole scene (logo, gap, phone; sideways: the logo or the phone plus its sound waves) needs, so main.js can scale the
+// cell up on big LCDs.
+export const TITLE_EXTENT = { rows: LOGO_H + GAP + PH, cols: Math.max(PW + 24, [...NAME].reduce((n, ch) => n + boldGlyph(GLYPHS[ch]).w + 1, -1)) + 4 };
+
 // Where everything sits on a w x h grid. `phone` is false on grids too short for the whole stack: the logo alone, centred.
 export function layoutTitle(w, h, reserve = RESERVE) {
   const letters = [...NAME].map(ch => boldGlyph(GLYPHS[ch]));
