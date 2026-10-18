@@ -621,3 +621,8 @@ body.selkeys-on.in-select .sel-keys { opacity: .85; visibility: visible; }
 .stat-all .stat-page { overflow: hidden; }
 .stat-all .st-scroll { flex: 1 1 0; min-height: 0; overflow: hidden; }
 .stat-all .st-big { font-size: calc(var(--fs) * 1.5); }
+
+/* text screens on a wide LCD: one step bigger (the --u2 / --fs2 pair is set by layout() in whole device pixels) */
+@container (min-width: 800px) {
+  #inbox, #message, #settings, #profile, #admin { --u: var(--u2); --fs: var(--fs2); font-size: var(--fs); }
+}

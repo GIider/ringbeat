@@ -895,6 +895,8 @@ const still = matchMedia('(prefers-reduced-motion: reduce)');
 let menuIdx = 0, menuTick = 0, menuNext = 0;
 if (adminOn()) MENU.push(ADMIN_ITEM);
 let unit = 2; // CSS px per LCD pixel (set by layout)
+let unit2 = 3; // ...and the bigger step the text screens use on a wide LCD (see style.css, .big-text)
+const textUnit = () => (lcdWidth() >= SEL_WIDE_PX ? unit2 : unit);
 const unreadCount = () => unread(settings.msgSeen).length;
 // The icon is drawn at 2-4 LCD pixels per sprite pixel, as big as the screen comfortably allows.
 let iconPx = 0;
@@ -1223,7 +1225,7 @@ function openInbox(focusVersion = '') {
     b.dataset.i = i;
     b.className = 'msg-row' + (isNew ? ' new' : '');
     b.toggleAttribute('data-default', focusVersion ? m.version === focusVersion : i === 0);
-    b.innerHTML = spriteHTML(isNew ? envelope() : ENVELOPE_SMALL_OPEN, 2) +
+    b.innerHTML = spriteHTML(isNew ? envelope() : ENVELOPE_SMALL_OPEN, lcdWidth() >= SEL_WIDE_PX ? 3 : 2) +
       `<span class="t">${esc(tr(m.title))}</span><span class="v">v${esc(m.version)}</span>`;
     list.append(b);
   }
@@ -1271,7 +1273,7 @@ let pfMsg = '', pfDeleteArmed = 0;
 function openProfile() {
   pfMsg = '';
   $('pf-name-input').value = (cloud.profile() || {}).name || '';
-  setSprite($('pf-icon'), PERSON_ART, unit * 2);
+  setSprite($('pf-icon'), PERSON_ART, textUnit() * 2);
   renderProfile();
   setState('profile', 'profile');
 }
@@ -3251,11 +3253,15 @@ function layout(animate = false) {
   const dpr = window.devicePixelRatio || 1, u = Math.max(1, Math.round(fs / 10 * dpr)) / dpr; // whole device pixels per LCD pixel, even at DPR 1.25 / 2.625
   ph.style.setProperty('--fs', u * 10 + 'px');
   ph.style.setProperty('--u', u + 'px');
+  // Text screens (messages, settings, profile, admin) are drawn one step bigger on a wide LCD: 4/3 of the pixel unit, still whole device pixels
+  unit2 = Math.round(u * dpr * 4 / 3) / dpr;
+  ph.style.setProperty('--fs2', unit2 * 10 + 'px');
+  ph.style.setProperty('--u2', unit2 + 'px');
   renderer.setPixelScale(u);
   if (unit !== u) {
     unit = u;
-    if (state === 'profile') { $('pf-icon')._spr = ''; setSprite($('pf-icon'), PERSON_ART, unit * 2); }
   }
+  if (state === 'profile') { $('pf-icon')._spr = ''; setSprite($('pf-icon'), PERSON_ART, textUnit() * 2); }
   if (state === 'menu') paintMenuIcon();
   const lg = $('legend');
   body.classList.toggle('legend-on', framed && x >= 286);

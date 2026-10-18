@@ -18,7 +18,7 @@ const views = {
 // [demo state, view] pairs used by the README
 const shots = [
   ['select', 'desktop'], ['results', 'narrow'], ['stats', 'narrow'], ['pause', 'narrow'],
-  ['info', 'mobile'], ['play', 'mobile'], ['inbox', 'mobile'], ['profile', 'narrow'],
+  ['info', 'mobile'], ['play', 'mobile'], ['inbox', 'mobile'],
 ];
 // The LCD texture makes raw PNGs huge; a 128-colour palette (when ImageMagick is installed) cuts them ~15x.
 let magick = null;
