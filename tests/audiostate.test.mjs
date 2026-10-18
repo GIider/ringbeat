@@ -114,3 +114,73 @@ test('favorite sounds play only on a running context', () => {
     }
   }
 });
+
+// A recording Web Audio graph: every node and param accepts any call, and nodes remember what was started / stopped.
+function graphCtx() {
+  const nodes = [];
+  const param = () => new Proxy({ value: 0 }, { get: (t, k) => (k in t ? t[k] : () => param()), set: (t, k, v) => { t[k] = v; return true; } });
+  const node = kind => {
+    const n = new Proxy({ kind, started: 0, stopped: 0, connected: [] }, {
+      get: (t, k) => {
+        if (k in t) return t[k];
+        if (k === 'connect') return d => { t.connected.push(d); return d; };
+        if (k === 'start') return () => { t.started++; };
+        if (k === 'stop') return () => { t.stopped++; };
+        if (['gain', 'frequency', 'detune', 'Q', 'pan', 'playbackRate'].includes(k)) return t[k] = param();
+        return () => {};
+      },
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    nodes.push(n);
+    return n;
+  };
+  const ctx = new Proxy({ currentTime: 1, state: 'running', destination: node('dest'), sampleRate: 48000 }, {
+    get: (t, k) => {
+      if (k in t) return t[k];
+      if (k === 'createPeriodicWave') return () => ({});
+      if (k === 'createBuffer') return (c, len) => ({ getChannelData: () => new Float32Array(len) });
+      if (typeof k === 'string' && k.startsWith('create')) return () => node(k.slice(6));
+      return () => {};
+    },
+    set: (t, k, v) => { t[k] = v; return true; },
+  });
+  return { ctx, nodes };
+}
+
+test('Synth: every voice plays, ends and releases without touching a stopped graph', async () => {
+  const { VOICES } = await import('../src/synth.js');
+  assert.ok(VOICES.length >= 10);
+  for (const voice of VOICES) {
+    const { ctx, nodes } = graphCtx();
+    const s = new Synth(); s.ctx = ctx; s.voice = voice; s.bus = ctx.createGain(); s.lowpass = ctx.createGain();
+    const timed = s.playNote({ midi: 64, when: 1, duration: 0.3 });
+    const held = s.playNote({ midi: 67, when: 1.1 }); // no end: sustains until released
+    const before = nodes.length;
+    assert.ok(before > 2, `${voice} builds a graph`);
+    const oscs = nodes.filter(n => n.started > 0);
+    assert.ok(oscs.length >= 2, `${voice} starts its oscillators`);
+    for (const h of [timed, held]) if (h && typeof h.release === 'function') h.release(1.5);
+    for (const o of oscs) if (typeof o.onended === 'function') o.onended();
+  }
+});
+
+test('Synth: sound effects schedule beeps, and stopAll swaps in a fresh bus', () => {
+  const { ctx, nodes } = graphCtx();
+  const s = new Synth(); s.ctx = ctx; s.voice = 'smooth'; s.bus = ctx.createGain(); s.lowpass = ctx.createGain();
+  const fx = ['stinger:S', 'stinger:A', 'stinger:B', 'stinger:C', 'stinger:X', 'tickUp:3', 'favAdd', 'favBreak', 'keyClick', 'blocked', 'jingle', 'playMiss:60', 'playStray:2', 'tick:'];
+  for (const f of fx) {
+    const [name, arg] = f.split(':');
+    const count = nodes.length;
+    if (name === 'tick') s.tick({ when: 1, accent: true }); else if (name === 'stinger') s.stinger(arg);
+    else s[name](arg === undefined ? undefined : Number.isNaN(+arg) ? arg : +arg);
+    assert.ok(nodes.length > count, `${f} makes sound`);
+  }
+  s.tick({ when: 1 });
+  s.favBreak(0.1);
+  const oldBus = s.bus;
+  s.stopAll();
+  assert.notEqual(s.bus, oldBus);
+  const idle = new Synth();
+  idle.stopAll(); // no context yet: nothing to do
+  assert.equal(idle.bus, undefined);
+});

@@ -131,7 +131,7 @@ server/           the Ringbeat API, deployed separately (see CLOUD.md)
 
 tests/
   *.test.mjs      node unit tests: assets, audiostate, boardsview, calibration, cameo, cloud, cloudmerge, core, customrating, docs,
-                  game, i18n, mods, modules, netbench, netsignal, replay, rtttl, scorechart, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
+                  domshims, game, i18n, mods, modules, netbench, netsignal, replay, rtttl, scorechart, seed, settings, stats, worldlines (one line each in DEVELOPMENT.md)
   smoke.html      UI smoke test driving index.html in an iframe (run by scripts/smoke.mjs, or by hand)
   rtttl.test.html parser / chart tests in the browser, by hand (title shows PASS/FAIL)
 ```

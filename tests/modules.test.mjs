@@ -5,7 +5,7 @@ import { createMySongs, rtttlProblem, isValidRtttl, splitRtttl, MAX_RTTTL, MYSON
 import * as C from '../src/composer.js';
 import { planBot, runBot, measureProfile, LADDER, SPECIALISTS, mulberry32 } from '../src/bot.js';
 import { applyView, nextOf, prevOf, ratingOf, SORTS } from '../src/listview.js';
-import { formatLength, starsFor, hashString } from '../src/library.js';
+import { formatLength, starsFor, hashString, buildLibrary } from '../src/library.js';
 import { assignLanesQuantile, assignLanesContour } from '../src/chart.js';
 import * as M from '../src/mods.js';
 import { eventAudioTime } from '../src/input.js';
@@ -628,4 +628,11 @@ test('swipeDir: axis, threshold and dominance', () => {
   assert.equal(swipeDir(5, -50, 'y'), 'up');
   assert.equal(swipeDir(5, 50, 'both'), 'down');
   assert.equal(swipeDir(-35, 10, 'both', 30), 'left');
+});
+
+test('buildLibrary reuses parsed songs and charts on a rebuild', () => {
+  const a = buildLibrary();
+  const b = buildLibrary();
+  assert.equal(a.length, b.length);
+  assert.ok(a.every((e, i) => e.song === b[i].song), 'the derive memo must hold every built-in song');
 });

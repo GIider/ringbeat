@@ -49,7 +49,7 @@ Example: `npm run perf -- --filter chart --baseline scripts/perf-baseline.json`.
 
 How to read the columns:
 - Columns include p99 and max, because stutter is about the worst frame.
-- `alloc B/call` is the approximate heap growth per call. Steady-state `render.draw` should stay near zero.
+- `alloc B/call` is the approximate heap growth per call. Steady-state `render.draw` stays under about 1 KB per frame.
 - `canvas calls/frame` for `render.draw` is deterministic, so it is the best regression signal across machines.
 - `frames.*` cases replay a whole song at 60 Hz and report per-frame percentiles.
 
@@ -115,9 +115,16 @@ answers, which the Worker used to refuse, so browsers never got a 304; fixed by 
 
 Its "decoded" size is the text length, which is not what crosses the network: judge payload changes by the wire column.
 
+## Findings
+
+Measured 2026-10-18:
+- `library.build` had slipped from 0.016 ms to 8.4 ms: the parsed-song memo in `library.js` was cleared once it passed 256 entries, and the library grew past that (278 built-ins), so every rebuild started cold. The cap now sits above the built-in count (`tests/modules.test.mjs` guards it).
+- Song select re-laid-out every row on each sort / category change. Rows now use `content-visibility: auto` and the list is parsed from one HTML string: cycling the sort went from 19.5 to 10.7 ms of JS per press, opening the list from 9.7 to 5.1 ms.
+- Real play was never the problem: 60 fps, no long frames, `draw` p99 under 1 ms.
+
 ## Baselines
 
-`scripts/perf-baseline.json` and `scripts/perf-menus-baseline.json` were recorded on the maintainer's machine. They are
+`scripts/perf-baseline.json` and `scripts/perf-menus-baseline.json` were recorded on the maintainer's machine (last re-recorded 2026-10-18). They are
 starting points for `--baseline`, and CI does not use them. Re-record them on your own machine (`--json`) before
 relying on the Δ% columns.
 
