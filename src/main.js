@@ -233,7 +233,8 @@ if (DEV) {
 const konami = createSequenceMatcher(KONAMI);
 const imeiCode = createSequenceMatcher(IMEI_CODE);
 const wipe = createWipeGag();
-let gagTimer = 0, gagHold = 0, gagTick = 0, holdFired = false;
+let gagHold = 0, gagTick = 0, holdFired = false;
+let imeiOpen = false; // the IMEI panel stays until dismissed: Select opens the credit link, Back closes it
 // Hold gesture (C key, keyboard or phone): fires the wipe gag after HOLD_MS. It then runs on after the key is let go;
 // the next C press stops it.
 const HOLD_MS = 1200;
@@ -245,14 +246,17 @@ function beginHold(onFire) {
 function endHold() { clearTimeout(gagHold); gagHold = 0; return holdFired; }
 const gagStates = () => ['title', 'menu', 'select'].includes(state);
 function hideGag() {
-  clearTimeout(gagTimer); clearTimeout(gagHold); clearInterval(gagTick);
-  gagTimer = gagHold = gagTick = 0;
+  clearTimeout(gagHold); clearInterval(gagTick);
+  gagHold = gagTick = 0;
+  const wasImei = imeiOpen;
+  imeiOpen = false;
   if ($('gag')) $('gag').style.pointerEvents = '';
   wipe.cancel();
   if ($('gag')) $('gag').hidden = true;
   document.body.classList.remove('gag-on');
   if ($('gag-link')) $('gag-link').hidden = true;
   if ($('gag-art')) $('gag-art').hidden = true;
+  if (wasImei) refreshChrome(); // back to the screen's own soft-key labels
 }
 function showGag(title, text, bar = -1, segments = 0) {
   $('gag').hidden = false;
@@ -267,13 +271,17 @@ function showGag(title, text, bar = -1, segments = 0) {
 function showImei() {
   hideGag();
   showGag('IMEI', formatImei(fakeImei(VERSION)) + '\nSW v' + VERSION + '\n' + (BUILD.number ? 'Build ' + BUILD.number + '\n' : '') +
-    buildLine(BUILD, false));
+    buildLine(BUILD, false) + (BUILD.time ? '\nBuilt ' + BUILD.date + ' ' + BUILD.time + ' UTC' : ''));
   $('gag-link').hidden = false;
   setSprite($('gag-art'), SPRITES.avatar, lcdWidth() >= SEL_WIDE_PX ? 4 : 2);
   $('gag-art').hidden = false;
   $('gag').style.pointerEvents = 'auto'; // so the credit link is clickable
-  gagTimer = setTimeout(hideGag, 8000);
+  imeiOpen = true;
+  $('soft-left').textContent = tr('Select');
+  $('soft-right').textContent = tr('Back');
+  $('soft-left').parentElement.classList.remove('solo');
 }
+function imeiSelect() { synth.keyClick(); $('gag-link').click(); }
 function startWipe() {
   hideGag();
   wipe.start();
@@ -2659,6 +2667,7 @@ function back() {
 }
 
 function menuButton(index) {
+  if (imeiOpen) { if (index === BTN.A || index === BTN.START) imeiSelect(); else if (index === BTN.B) { synth.keyClick(); hideGag(); } return; }
   if (state === 'welcome') { skipWelcome(); return; }
   const root = activeScreen();
   switch (index) {
@@ -2783,7 +2792,7 @@ function softRightDown() {
 }
 // Soft keys (the two bottom buttons; keyboard Enter/Esc and the gamepad reach the same handlers).
 function phoneKey(key) {
-  if (!$('gag').hidden && gagTimer) hideGag();
+  if (imeiOpen) { if (key === 'softL') imeiSelect(); else if (key === 'softR') { synth.keyClick(); hideGag(); } return; }
   if (state === 'composer' && !csMenu) {
     if (key === 'softL') setCompMenu(true);
     else if (key === 'softR') compInput('del');
@@ -3347,7 +3356,12 @@ function onKey(e) {
   const tag = e.target.tagName;
   const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text');
   if (!typing && !e.repeat) {
-    if (!$('gag').hidden && gagTimer) hideGag(); // any key dismisses the IMEI panel
+    if (imeiOpen) { // the IMEI panel is a small menu of its own
+      e.preventDefault();
+      if (e.code === 'Enter' || e.code === 'Space') imeiSelect();
+      else if (e.code === 'Escape' || e.code === 'Backspace' || e.code === 'KeyC') { synth.keyClick(); hideGag(); }
+      return;
+    }
     eggToken(e.code);
     if (e.code === 'KeyC' && wipe.active) hideGag();
     else if (e.code === 'KeyC' && gagStates() && !gagHold) beginHold(startWipe);
