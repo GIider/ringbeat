@@ -39,6 +39,22 @@ test('Synth.ensure leaves a running context alone', () => {
   assert.equal(made[0].resumes, 0);
 });
 
+test('focus mute silences the master gain without touching the volume, and survives setVolume and a rebuild', () => {
+  const made = fakeAudio('running');
+  const s = new Synth(); s.ensure();
+  s.setVolume(0.5);
+  assert.equal(s.master.gain.value, 0.4);
+  s.setFocusMuted(true);
+  assert.equal(s.master.gain.value, 0);
+  assert.equal(s.volume, 0.5);
+  s.setVolume(1);
+  assert.equal(s.master.gain.value, 0);
+  made[0].state = 'closed'; s.ensure();
+  assert.equal(s.master.gain.value, 0);
+  s.setFocusMuted(false);
+  assert.equal(s.master.gain.value, 0.8);
+});
+
 test('statechange to interrupted triggers a resume while audio is wanted', () => {
   const made = fakeAudio('running');
   const s = new Synth(); s.ensure();
