@@ -662,6 +662,27 @@ test('game: chord partners are silent, so a perfect run sounds like the song', (
   assert.deepEqual(played, [60], 'only the melody note sounds');
 });
 
+test('game: a slide hits chord notes only, silently ignores everything else', () => {
+  const g = new Game(stubSynth());
+  const mk = (id, time, lane, extra) => ({ id, time, duration: 0.2, lane, midi: 60, isHold: false, hit: false, judged: false, ...extra });
+  const chart = { lanes: 4, length: 5, bpm: 120, beatLen: 0.5, firstBeat: 0, backing: [],
+    notes: [mk(0, 1, 0, { chordLanes: [1, 2] }), mk(1, 1, 1, { chordLanes: [0, 2] }), mk(2, 1, 2, { chordLanes: [0, 1] }), mk(3, 2, 3, {})] };
+  g.start(chart, { leadIn: 0, backing: false });
+  try {
+    g.press(0, g.songStart + 1);
+    g.slide(1, g.songStart + 1.02); g.slide(2, g.songStart + 1.04);
+    assert.deepEqual(chart.notes.slice(0, 3).map(n => n.judged), [true, true, true]);
+    g.update(1.5);
+    assert.deepEqual(g.chords.triples, { done: 1, total: 1 });
+    assert.equal(g.strays, 0);
+    g.slide(3, g.songStart + 2);                                            // plain note: ignored
+    g.slide(1, g.songStart + 3);                                            // nothing there: no stray
+    assert.equal(chart.notes[3].judged, false);
+    assert.equal(g.strays, 0);
+    assert.ok(g.log.some(([, l]) => l === 1), 'the slide is logged as a press');
+  } finally { g.stop(); }
+});
+
 test('game: chord counters count a chord only when all its notes were hit', () => {
   const g = new Game(stubSynth());
   const mk = (id, time, lane, chordLanes) => ({ id, time, duration: 0.2, lane, midi: 60, isHold: false, hit: false, judged: false, chordLanes });

@@ -174,6 +174,31 @@ export class Game {
       }
       return;
     }
+    this._hit(best, bestAbs, t, lane);
+  }
+
+  // A finger sweeping into `lane` (input.js onSlide) hits that lane's chord note, so one thumb can cover a double or
+  // triple. Anything else is ignored: a slide is never a stray and never touches holds or rolls.
+  slide(lane, audioTime) {
+    if (this.state !== 'running') return;
+    const t = audioTime - this.songStart - this.calibration;
+    this.now = t;
+    const list = this.byLane[lane];
+    let best = null, bestAbs = Infinity;
+    for (let i = this.lanePtr[lane]; i < list.length && list[i].time <= t + this.reach; i++) {
+      const n = list[i], d = Math.abs(t - n.time);
+      if (n.judged || !n.chordLanes || n.isRoll || n.isHold || d > this.win.good || d >= bestAbs) continue;
+      best = n; bestAbs = d;
+    }
+    if (!best) return;
+    this.fx.press(lane);
+    this._holdTicks(t);
+    this.log.push([t, lane]);
+    this._hit(best, bestAbs, t, lane);
+  }
+
+  // Judge `best` for a press at song time `t` (shared by press and slide).
+  _hit(best, bestAbs, t, lane) {
     const j = bestAbs <= this.win.perfect ? 'perfect' : bestAbs <= this.win.great ? 'great' : 'good';
     this._judge(best, j);
     this.deltas.push(t - best.time);

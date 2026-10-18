@@ -157,6 +157,8 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
   - **Triple notes**: a plain tap on a bar downbeat or ≥ 0.45 s long, with two other lanes free for 250 ms either
     side, gets two silent partner taps in the two nearest free lanes, at most one triple
     per 4 s. A bridge joins the three heads. All three notes are judged separately.
+  - **Sliding:** a finger or mouse drag that moves into another lane hits that lane's chord note (judged at the moment it
+    arrives, normal windows). A slide that matches no chord note is ignored: no stray, no combo reset.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.
 - **Score:** Perfect 300 / Great 200 / Good 100, times a combo multiplier of +0.1 per 10 combo, up to ×1.5 at 50 combo
   (a miss resets it). While a hold is held it scores 10 × the multiplier per beat

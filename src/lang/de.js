@@ -326,6 +326,7 @@ export const de = {
   'Keys: {keys}': 'Tasten: {keys}',
   'Pad: {pad}': 'Pad: {pad}',
   'Touch: tap the lanes': 'Touch: Bahnen antippen',
+  'Short on fingers? Press the first lane and slide across the others.': 'Zu wenige Finger? Drück die erste Spur und wisch über die anderen.',
   'Lesson {i} of {n}': 'Lektion {i} von {n}',
   'Start lesson': 'Lektion starten',
   "You're ready!": 'Du bist bereit!',
@@ -428,6 +429,13 @@ export const de = {
   'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...': 'Name:d=4,o=5,b=125:8e6,8d6,p,4c#.,...',
 
   // ---- inbox messages (changelog) ----
+  'Slide chords': 'Slide-Akkorde',
+  ['Play doubles and triples with one finger: press the first lane and slide across the others in time. A stray slide costs nothing.\n' +
+    'Holds now score every beat while held. One chart and one rating per song: Normal and Hard are gone.\n' +
+    'New main menu with big art and a carousel. Sound mutes when the game loses focus (Settings).']:
+    'Spiel Doppel- und Dreifachnoten mit einem Finger: Drück die erste Spur und wisch rechtzeitig über die anderen. Ein verirrter Wisch kostet nichts.\n' +
+    'Halten bringt jetzt bei jedem Beat Punkte. Ein Chart und eine Wertung pro Song: Normal und Hard gibt es nicht mehr.\n' +
+    'Neues Hauptmenü mit großer Grafik und Karussell. Der Ton wird stumm, wenn das Spiel den Fokus verliert (Einstellungen).',
   'Chords': 'Akkorde',
   ['Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
     'New: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +

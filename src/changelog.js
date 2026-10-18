@@ -5,6 +5,12 @@ export const SENDER = 'Ringbeat';
 
 export const MESSAGES = [
   {
+    version: '3.1', date: '2026-10-19', title: 'Slide chords',
+    body: 'Play doubles and triples with one finger: press the first lane and slide across the others in time. A stray slide costs nothing.\n' +
+      'Holds now score every beat while held. One chart and one rating per song: Normal and Hard are gone.\n' +
+      'New main menu with big art and a carousel. Sound mutes when the game loses focus (Settings).',
+  },
+  {
     version: '3.0', date: '2026-10-18', title: 'Chords',
     body: 'Slides are gone: those notes are plain notes now, and more songs have doubles.\n' +
       'New: triple notes. Three notes joined by a bridge fall together, so hit all three lanes at once. The extra notes of doubles and triples are silent, a perfect run sounds just like the song.\n' +

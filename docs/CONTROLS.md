@@ -61,7 +61,8 @@ lane (`Esc` cancels) and has a *Reset buttons* action. Song picker buttons are i
 
 ## Touch
 
-- **Play:** tap and hold the lane columns (multi-touch). The right soft button pauses.
+- **Play:** tap and hold the lane columns (multi-touch). To hit a double or triple with fewer fingers, press the first lane and slide the
+  same finger across the others in time: each slide hits that lane's chord note (nothing else, a stray slide is ignored). The right soft button pauses.
 - **Title:** tap anywhere.
 - **Main menu, Stats, Results, Messages, tutorial cards:** swipe left / right for the next / previous item or page (tap
   the arrows or tabs where shown). Tap a loading message to skip the animation.
