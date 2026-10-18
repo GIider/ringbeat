@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { SONGS } from '../src/songs.js';
 import { parseRTTTL } from '../src/rtttl.js';
 import { generateChart } from '../src/chart.js';
-import { DIFFICULTIES } from '../src/library.js';
 import { measureChart } from '../src/bot.js';
 
 const ri = process.argv.indexOf('--runs');
@@ -15,12 +14,10 @@ const out = {};
 const rows = [];
 for (const s of SONGS) {
   const song = parseRTTTL(s.rtttl);
-  for (const d of DIFFICULTIES) {
-    const chart = generateChart(song, { difficulty: d });
-    const m = measureChart(chart, { runs, seed: 1 });
-    (out[s.id] ||= {})[d] = m;
-    rows.push({ song: s.id, diff: d, notes: chart.notes.length, rating: m.rating, ...m.fc, tags: m.tags.join(',') });
-  }
+  const chart = generateChart(song);
+  const m = measureChart(chart, { runs, seed: 1 });
+  out[s.id] = m;
+  rows.push({ song: s.id, notes: chart.notes.length, rating: m.rating, ...m.fc, tags: m.tags.join(',') });
 }
 console.table(rows);
 const file = fileURLToPath(new URL('../src/difficulty.json', import.meta.url));

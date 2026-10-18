@@ -15,8 +15,8 @@ function stubSynth() {
 }
 const SONG = 't:d=8,o=5,b=120:c,d,e,f,g,a,b,c6';
 const SLOW = 't:d=4,o=5,b=60:c,d,e,f,g,a,b,c6'; // 1 s between notes: a late press can only match its own note
-const chartOf = (diff = 'normal') => generateChart(parseRTTTL(SONG), { difficulty: diff });
-const slowChart = () => generateChart(parseRTTTL(SLOW), { difficulty: 'normal' });
+const chartOf = () => generateChart(parseRTTTL(SONG));
+const slowChart = () => generateChart(parseRTTTL(SLOW));
 function run(chart, opts, play) {
   const g = new Game(stubSynth());
   g.start(chart, { leadIn: 1, backing: false, ...opts });
@@ -48,7 +48,7 @@ test('mods: multiplier is the clamped product; tags are stable', () => {
 });
 
 test('mods: mirror is an involution, keeps doubles paired, and does not mutate', () => {
-  const c = generateChart(parseRTTTL('t:d=8,o=5,b=140:c,g,c,g,c6,c,g,e,c,g,c6,c'), { difficulty: 'hard' });
+  const c = generateChart(parseRTTTL('t:d=8,o=5,b=140:c,g,c,g,c6,c,g,e,c,g,c6,c'));
   const before = JSON.stringify(c.notes);
   const m = M.applyChart(c, { mirror: true });
   assert.equal(JSON.stringify(c.notes), before);
@@ -112,19 +112,19 @@ test('game: default run is unchanged (no windowScale / suddenDeath)', () => {
   assert.equal(r.ap, true);
 });
 
-test('scores: legacy runs load; mods and mult are kept and ranked by score', () => {
+test('scores: runs load; mods and mult are kept and ranked by score', () => {
   const storage = mem();
-  storage.setItem('ringbeat.scores.v1', JSON.stringify({ s: { normal: { top: [{ score: 100, grade: 'B', accuracy: 80, maxCombo: 3, fc: false, ap: false, date: 1 }] } } }));
+  storage.setItem('ringbeat.scores.v1', JSON.stringify({ s: { top: [{ score: 100, grade: 'B', accuracy: 80, maxCombo: 3, fc: false, ap: false, date: 1 }] } }));
   const sc = createScores(storage);
-  assert.equal(sc.get('s', 'normal').best.mods, undefined);
-  sc.record('s', 'normal', { score: 500, grade: 'A', accuracy: 92, maxCombo: 9, mods: ['1.2x', 'HD'], mult: 1.32 });
-  const rec = sc.get('s', 'normal');
+  assert.equal(sc.get('s').best.mods, undefined);
+  sc.record('s', { score: 500, grade: 'A', accuracy: 92, maxCombo: 9, mods: ['1.2x', 'HD'], mult: 1.32 });
+  const rec = sc.get('s');
   assert.equal(rec.best.score, 500);
   assert.deepEqual(rec.best.mods, ['1.2x', 'HD']);
   assert.equal(rec.best.mult, 1.32);
   assert.equal(rec.top[1].mult, undefined);
   // persists through a reload
-  assert.deepEqual(createScores(storage).get('s', 'normal').best.mods, ['1.2x', 'HD']);
+  assert.deepEqual(createScores(storage).get('s').best.mods, ['1.2x', 'HD']);
 });
 
 test('demo mod: x0 multiplier, DEMO tag, active, in game options', () => {

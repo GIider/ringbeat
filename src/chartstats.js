@@ -13,7 +13,7 @@ export function peakPerSecond(times) {
 
 // Stats of the song's chart.
 export function chartStats(e) {
-  const c = generateChart(e.song, { difficulty: e.chart });
+  const c = generateChart(e.song);
   const rolls = c.notes.filter(n => n.isRoll);
   const holds = c.notes.filter(n => n.isHold);
   const chords = k => new Set(c.notes.filter(n => n.chordLanes?.length === k).map(n => n.time)).size; // 1 = doubles, 2 = triples
@@ -25,7 +25,7 @@ export function chartStats(e) {
     rolls: rolls.length, rollTicks: rolls.reduce((s, n) => s + n.ticks.length, 0),
     doubles: chords(1), triples: chords(2),
     nps: Math.round(10 * c.notes.length / Math.max(1, c.length)) / 10, peak: peakPerSecond(c.notes.map(n => n.time)),
-    rating: e.rating?.[e.chart] ?? null, stars: e.stars?.[e.chart] ?? 0, tags: e.tags?.[e.chart] ?? [], estimated: !!e.estimated,
+    rating: e.rating ?? null, stars: e.stars ?? 0, tags: e.tags ?? [], estimated: !!e.estimated,
     lanes: Array.from({ length: c.lanes }, (_, l) => c.notes.filter(n => n.lane === l).length),
   };
 }

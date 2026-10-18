@@ -52,7 +52,7 @@ are covered in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - **Songs:**
   - 249 built-in songs (10 of them full-length) in 7 categories.
   - Custom songs: a Nokia-style composer or pasted RTTTL, import/export, share links.
-  - One chart per song (Hard, or Normal for songs where the two barely differ) with bot-measured ratings.
+  - One chart per song, with bot-measured ratings.
   - A public **chart explorer** ([`charts.html`](https://giider.github.io/ringbeat/charts.html)) lists every song's chart with its note counts by kind (taps, holds, rolls,
     doubles, triples), density and rating, with filters and sortable columns. It builds everything in the browser from
     the game's own code, so it is always current. `npm start` serves it at <http://localhost:8000/charts.html>.

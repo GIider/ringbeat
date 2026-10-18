@@ -29,6 +29,7 @@ export const de = {
   'Pause': 'Pause',
   'COMBO': 'COMBO',
   'ACC': 'GEN.',
+  'NOTES': 'NOTEN',
   'DBL': 'DPL',
   'TRI': 'TRP',
   'Menu': 'Menü',
@@ -181,7 +182,6 @@ export const de = {
   '{n} notes': ['{n} Note', '{n} Noten'],
   '{v} of 5 stars': '{v} von 5 Sternen',
   'Normal': 'Normal',
-  'Hard': 'Schwer',
   'No plays yet': 'Noch nicht gespielt',
   'Playfield': 'Spielfeld',
 

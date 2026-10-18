@@ -33,7 +33,7 @@ If you sign in on the **Profile** screen (with GitHub), the Ringbeat API stores:
 | Your GitHub **user number** | To recognise you the next time you sign in. Your email and other GitHub details are not stored; your GitHub name only becomes the starting player name (below) | Art. 6(1)(b): providing the profile you asked for |
 | A **player name** | Shown on your profile, and **publicly on leaderboards** next to your best runs. It starts as your GitHub display name (or username), shortened to what the game can show, or `Player-XXXX` if neither fits. You can change it | Art. 6(1)(b) for the profile, Art. 6(1)(f) for the public leaderboard (see [Leaderboards](#leaderboards)) |
 | Your **game data** | So it can be the same on every device: synced settings, favourites, my songs, and scores and stats per device | Art. 6(1)(b) |
-| Your **best runs**: a new best on a song and difficulty, with a **replay** (the key presses) | To rank you on leaderboards. The server computes the score itself from the replay to catch cheating. For your own songs, the melody goes with the run | Art. 6(1)(f): fair leaderboards |
+| Your **best runs**: a new best on a song, with a **replay** (the key presses) | To rank you on leaderboards. The server computes the score itself from the replay to catch cheating. For your own songs, the melody goes with the run | Art. 6(1)(f): fair leaderboards |
 | A random **device id** and **sign-in tokens** | To tell your devices apart and keep you signed in. Tokens are stored only as hashes | Art. 6(1)(b) |
 
 Signing in is your choice. You can withdraw at any time by signing out or deleting the profile ([below](#your-rights)).

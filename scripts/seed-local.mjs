@@ -47,7 +47,7 @@ if (!RESET) {
   const songs = SONGS.filter((_, i) => i % step === 0).slice(0, SONG_COUNT);
   let n = 0, retried = 0;
   const tiers = {};
-  for (const song of songs) for (const diff of ['normal', 'hard']) {
+  for (const song of songs) {
     // A tier caps how good the bots on this board may be, so most boards stay winnable for a human (seedplan.mjs).
     const tier = pickTier(rnd);
     tiers[tier.name] = (tiers[tier.name] || 0) + 1;
@@ -58,14 +58,14 @@ if (!RESET) {
       const tries = loadout ? [loadout, { ...loadout, sudden: false }, null] : [null];
       let run, v;
       for (const t of tries) {
-        ({ run } = played(song.id, diff, LADDER[level - 1], t, seed, undefined, at));
-        v = verifyRun({ songId: song.id, diff, replay: run.replay, loadout: JSON.stringify(run.loadout), rtttl: null });
+        ({ run } = played(song.id, LADDER[level - 1], t, seed, undefined, at));
+        v = verifyRun({ songId: song.id, replay: run.replay, loadout: JSON.stringify(run.loadout), rtttl: null });
         if (v.verified === 1) break;
         retried++;
       }
       if (v.verified !== 1) continue;
-      sql.push(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version,
-        played_at, received_at, replay, verified, rules, loadout, rtttl, flags, hidden) VALUES (${[b.id, `seed-${seed}`, song.id, diff, v.score, v.grade,
+      sql.push(`INSERT INTO runs (user_id, client_run_id, song_id, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version,
+        played_at, received_at, replay, verified, rules, loadout, rtttl, flags, hidden) VALUES (${[b.id, `seed-${seed}`, song.id, v.score, v.grade,
         v.accuracy, v.maxCombo, v.fc, v.ap, v.mods, v.mult, 'seed', at, at, run.replay, 1, String(RULES), JSON.stringify(run.loadout), null, v.flags, 0].map(q).join(', ')});`);
       n++;
     }

@@ -68,23 +68,21 @@ const throws = f => { try { f(); return false; } catch { return true; } };
 for (const s of SONGS) {
   const song = parseRTTTL(s.rtttl);
   check(`${song.name}: zero warnings`, song.warnings.length === 0, JSON.stringify(song.warnings));
-  for (const difficulty of ['normal', 'hard']) {
-    const c = generateChart(song, { difficulty });
-    let ok = c.notes.length > 0 && c.notes.every(n => n.lane >= 0 && n.lane < c.lanes);
-    for (let i = 1; i < c.notes.length; i++) if (c.notes[i].time - c.notes[i - 1].time < 0.09 - 1e-9) ok = false;
-    // no hold may reach into the next note of its lane
-    const last = {};
-    for (const n of c.notes) {
-      if (last[n.lane] && last[n.lane].isHold && last[n.lane].time + last[n.lane].duration > n.time) ok = false;
-      last[n.lane] = n;
-    }
-    const used = new Set(c.notes.map(n => n.lane)).size;
-    check(`${song.name}/${difficulty}: playable (${c.notes.length} notes, ${used}/${c.lanes} lanes, ${c.notes.filter(n => n.isHold).length} holds)`, ok);
+  const c = generateChart(song);
+  let ok = c.notes.length > 0 && c.notes.every(n => n.lane >= 0 && n.lane < c.lanes);
+  for (let i = 1; i < c.notes.length; i++) if (c.notes[i].time - c.notes[i - 1].time < 0.09 - 1e-9) ok = false;
+  // no hold may reach into the next note of its lane
+  const last = {};
+  for (const n of c.notes) {
+    if (last[n.lane] && last[n.lane].isHold && last[n.lane].time + last[n.lane].duration > n.time) ok = false;
+    last[n.lane] = n;
   }
+  const used = new Set(c.notes.map(n => n.lane)).size;
+  check(`${song.name}: playable (${c.notes.length} notes, ${used}/${c.lanes} lanes, ${c.notes.filter(n => n.isHold).length} holds)`, ok);
 }
 {
   // quantile balance on a skewed melody: 8 low, 1 each of 3 higher pitches
-  const c = generateChart(parseRTTTL('q:d=8,o=5,b=60:c,c,c,c,c,c,c,c,d,e,f,g'), { difficulty: 'hard' });
+  const c = generateChart(parseRTTTL('q:d=8,o=5,b=60:c,c,c,c,c,c,c,c,d,e,f,g'));
   const lanes = new Set(c.notes.map(n => n.lane));
   check('quantile uses several lanes on skewed melody', lanes.size >= 3, [...lanes].join());
 }

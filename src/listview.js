@@ -9,7 +9,7 @@ export const SORTS = [
 ];
 
 // Bot-measured rating (1..10, internal; players see it as rating/2 stars) when available, else the star heuristic scaled to the same range.
-export const ratingOf = e => (e.rating && e.rating[e.chart] != null ? e.rating[e.chart] : (e.stars[e.chart] || 0) * 1.4);
+export const ratingOf = e => (e.rating != null ? e.rating : (e.stars || 0) * 1.4);
 
 // `search` filters by title / tag substring; `recent` is the played-song ids, newest first (the Recent view keeps that order); `keep` are ids the Unplayed view still lists after being played.
 // `sortFavorites` (default: `favorites`) is who counts as a favorite for the Favorites sort, so the order can stay put while the player toggles hearts.
@@ -19,7 +19,7 @@ export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scor
   else if (category === 'recent') {
     list = list.filter(x => recent.includes(x.e.id));
     return list.sort((a, b) => recent.indexOf(a.e.id) - recent.indexOf(b.e.id)).map(x => x.e).filter(matches(search));
-  } else if (category === 'unplayed') list = list.filter(x => !scores.get(x.e.id, x.e.chart) || keep.includes(x.e.id));
+  } else if (category === 'unplayed') list = list.filter(x => !scores.get(x.e.id) || keep.includes(x.e.id));
   else if (category !== 'all') list = list.filter(x => x.e.category === category);
   const isFav = x => sortFavorites.includes(x.e.id);
   const cmp = {

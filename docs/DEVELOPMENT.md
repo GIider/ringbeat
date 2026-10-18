@@ -73,7 +73,7 @@ audio/canvas:
 | `netbench.test.mjs` | The `bench:net` helpers: percentiles, the synthetic snapshot, slim/top-N variants round-trip |
 | `netsignal.test.mjs` | The status-bar signal icon as a connection light: bar order, minimum busy time, reduced motion, blocked while playing |
 | `cameo.test.mjs` | Idle cameos (snake, Space Impact, parade), scheduler, Konami / IMEI / wipe easter eggs |
-| `core.test.mjs` | Library and the single-difficulty collapse, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
+| `core.test.mjs` | Library, built-in songs parse and chart, scores, game FC/AP, gamepad, tutorial, bots, `difficulty.json` completeness, list view, composer, My songs, versioning, changelog, chart rules |
 | `customrating.test.mjs` | Custom-song ratings: async measurement matches `difficulty.json`, cleaning, share encoding, storage |
 | `game.test.mjs` | Grades, combo multiplier, holds, pause/resume, judgement windows, rolls, the stray error tone |
 | `i18n.test.mjs` | Language detection, `t`/`tn`/`tm`/`fmt`; for every language: no gaps (except English, the source), no stale entries, matching placeholders and plural shapes, glyphs for every character; glyphs for every English source string |

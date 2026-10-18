@@ -261,10 +261,10 @@ test('worker: POST /sync merges the shared document under its revision; runs are
   assert.equal((await sync({ device: { v: 1 }, deviceId: 'BAD' })).status, 400);
 
   const runs = [
-    { clientRunId: 'r1', songId: 's', diff: 'normal', score: 10 },
-    { clientRunId: 'r1', songId: 's', diff: 'normal', score: 10 },
-    { clientRunId: 'r2', songId: 's', diff: 'insane', score: 10 },
-    { clientRunId: 'r3', songId: 's', diff: 'hard', score: -5 },
+    { clientRunId: 'r1', songId: 's', diff: 'normal', score: 10 }, // an old client still sends `diff`: ignored
+    { clientRunId: 'r1', songId: 's', score: 10 },
+    { clientRunId: 'r2', songId: '', score: 10 },
+    { clientRunId: 'r3', songId: 's', score: -5 },
   ];
   assert.equal((await sync({ runs })).body.runs.length, 2);
   assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) AS n FROM runs').get().n, 1);
@@ -279,8 +279,8 @@ test('two devices: scores, stats, settings and songs meet; only runs played whil
   const srv = server();
   const a = device(srv), b = device(srv);
   // Device A played before signing in.
-  a.scores.record('s1', 'normal', result(500, 10));
-  a.stats.recordRun({ diff: 'normal', result: { score: 500 } });
+  a.scores.record('s1', result(500, 10));
+  a.stats.recordRun({ result: { score: 500 } });
   a.mysongs.add('Mine', SONG_A, 900);
   a.prefs.set('voice', 'smooth');
 
@@ -288,19 +288,19 @@ test('two devices: scores, stats, settings and songs meet; only runs played whil
   assert.equal((await a.cloud.sync()).ok, true);
   assert.equal(await b.cloud.takeLoginHash(await githubSignIn(srv)), true);
   b.t.now = 2000;
-  b.scores.record('s1', 'normal', result(700, 20));
-  b.cloud.queueRun('s1', 'normal', result(700, 20), ['x1.2']);
+  b.scores.record('s1', result(700, 20));
+  b.cloud.queueRun('s1', result(700, 20), ['x1.2']);
   const rb = await b.cloud.sync();
   assert.ok(rb.ok && rb.changed.has('settings') && rb.changed.has('songs') && rb.changed.has('progress'));
   assert.equal(b.prefs.values.voice, 'smooth');
   assert.deepEqual(b.mysongs.list().map(s => s.name), ['Mine']);
-  assert.equal(b.scores.get('s1', 'normal').best.score, 700);
-  assert.equal(b.scores.get('s1', 'normal').plays, 2);
+  assert.equal(b.scores.get('s1').best.score, 700);
+  assert.equal(b.scores.get('s1').plays, 2);
   assert.equal(b.stats.get().runs, 1);
 
   await a.cloud.sync();
-  assert.deepEqual(a.scores.get('s1', 'normal').top.map(r => r.score), [700, 500]);
-  assert.deepEqual(a.scores.own().s1.normal.top.map(r => r.score), [500], 'own data stays own');
+  assert.deepEqual(a.scores.get('s1').top.map(r => r.score), [700, 500]);
+  assert.deepEqual(a.scores.own().s1.top.map(r => r.score), [500], 'own data stays own');
   const runs = srv.env.DB.db.prepare('SELECT score, mods, game_version FROM runs ORDER BY score').all().map(r => ({ ...r }));
   assert.deepEqual(runs, [{ score: 700, mods: '["x1.2"]', game_version: '1.6.0' }], 'A\'s score from before signing in is not uploaded');
   assert.equal(a.cloud.pendingRuns(), 0);
@@ -339,18 +339,18 @@ test('two devices: concurrent edits merge through a 409; deletes travel; a reset
   await a.cloud.sync();
   assert.equal(a.prefs.values.juice, false);
 
-  b.scores.record('s9', 'hard', result(100, 4500));
+  b.scores.record('s9', result(100, 4500));
   await b.cloud.sync();
   await a.cloud.sync();
-  assert.ok(a.scores.get('s9', 'hard'));
+  assert.ok(a.scores.get('s9'));
   a.t.now = 6000;
   a.scores.clear(); a.stats.clear(); a.cloud.markReset();
-  assert.equal(a.scores.get('s9', 'hard'), null, 'other devices drop out of the view at once');
+  assert.equal(a.scores.get('s9'), null, 'other devices drop out of the view at once');
   await a.cloud.sync();
   b.t.now = 7000;
   const r = await b.cloud.sync();
   assert.ok(r.changed.has('progress'));
-  assert.equal(b.scores.get('s9', 'hard'), null);
+  assert.equal(b.scores.get('s9'), null);
   assert.deepEqual(b.scores.own(), {});
 });
 
@@ -361,13 +361,13 @@ test('cloud: signed out makes no requests; a 401 signs out and keeps local data;
   const prefs = { sharedSettings: () => ({ settings: {}, settingsT: {}, favorites: {} }), applyShared: () => false };
   const cloud = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch: (u, i) => { calls++; return srv.call(u.slice(API.length), i); } });
   assert.equal((await cloud.sync()).ok, false);
-  cloud.queueRun('s', 'normal', result(1, 1));
+  cloud.queueRun('s', result(1, 1));
   cloud.schedule(); cloud.flush();
   assert.equal(calls, 0);
   assert.equal(await cloud.takeLoginHash('#s=abc'), false);
 
   await cloud.takeLoginHash(await githubSignIn(srv));
-  scores.record('s', 'normal', result(5, 5));
+  scores.record('s', result(5, 5));
   assert.equal((await cloud.sync()).ok, true);
   const events = [];
   cloud.onChange(e => events.push(e));
@@ -375,7 +375,7 @@ test('cloud: signed out makes no requests; a 401 signs out and keeps local data;
   assert.equal((await cloud.sync()).ok, false);
   assert.equal(cloud.signedIn(), false);
   assert.deepEqual(events.filter(e => !e.net), ['signedout']);
-  assert.equal(scores.get('s', 'normal').best.score, 5);
+  assert.equal(scores.get('s').best.score, 5);
 
   const again = createCloud({ scores, stats, mysongs, prefs, apiBase: API, storage, fetch: (u, i) => srv.call(u.slice(API.length), i) });
   assert.equal(again.signedIn(), false, 'the sign-out was stored');
@@ -402,21 +402,21 @@ function cached({ ranks, boards, rules = 5 }) {
 
 test('cloud: ranks cached before rows carried fc/ap/dev drop their rows but keep rank and total', () => {
   const old = { rank: 1, total: 1, at: 10, near: [{ rank: 1, name: 'Me', score: 6184, grade: 'A', me: true }] };
-  const cloud = cached({ ranks: { 'bella|normal': old, 'ode|hard': { rank: 2, total: 5, at: 10,
+  const cloud = cached({ ranks: { 'bella': old, 'ode': { rank: 2, total: 5, at: 10,
     near: [{ rank: 2, name: 'Me', score: 1, grade: 'B', fc: false, ap: false, mods: [], me: true }] } } });
-  assert.equal(cloud.rankNear('bella', 'normal'), null);
-  assert.equal(cloud.rank('bella', 'normal').total, 1);
-  assert.equal(cloud.rankNear('ode', 'hard').length, 1, 'rows in the current format stay');
+  assert.equal(cloud.rankNear('bella'), null);
+  assert.equal(cloud.rank('bella').total, 1);
+  assert.equal(cloud.rankNear('ode').length, 1, 'rows in the current format stay');
 });
 
 test('cloud: a newer snapshot with the player in it overrides the rank and total last seen', () => {
   const near = [{ rank: 1, name: 'Me', score: 6184, grade: 'A', fc: true, ap: false, mods: [], me: true }];
-  const boards = { at: 500, value: { rules: 5, boards: { 'bella|normal': [
+  const boards = { at: 500, value: { rules: 5, boards: { 'bella': [
     { rank: 1, total: 2, name: 'Me', score: 6184 }, { rank: 2, total: 2, name: 'Tester', score: 5223 }] } } };
-  const newer = cached({ ranks: { 'bella|normal': { rank: 1, total: 1, at: 100, near } }, boards });
-  assert.deepEqual([newer.rank('bella', 'normal').rank, newer.rank('bella', 'normal').total], [1, 2]);
-  const older = cached({ ranks: { 'bella|normal': { rank: 1, total: 1, at: 900, near } }, boards });
-  assert.equal(older.rank('bella', 'normal').total, 1, 'an older snapshot does not');
+  const newer = cached({ ranks: { 'bella': { rank: 1, total: 1, at: 100, near } }, boards });
+  assert.deepEqual([newer.rank('bella').rank, newer.rank('bella').total], [1, 2]);
+  const older = cached({ ranks: { 'bella': { rank: 1, total: 1, at: 900, near } }, boards });
+  assert.equal(older.rank('bella').total, 1, 'an older snapshot does not');
 });
 
 // ---- leaderboards: the Worker re-plays each run's input log and ranks its own score ----
@@ -428,13 +428,13 @@ async function signedIn(srv, githubId, name) {
   const post = async runs => (await srv.call('/sync', { method: 'POST', headers: h, body: JSON.stringify({ deviceId: 'device0001', runs }) })).json();
   return { h, post, id: profile.id };
 }
-const boardOf = async (srv, song, diff, h) => (await srv.call(`/board/${encodeURIComponent(song)}/${diff}${h ? '/me' : ''}`, h ? { headers: h } : {})).json();
+const boardOf = async (srv, song, h) => (await srv.call(`/board/${encodeURIComponent(song)}${h ? '/me' : ''}`, h ? { headers: h } : {})).json();
 const rowOf = (srv, id) => ({ ...srv.env.DB.db.prepare('SELECT * FROM runs WHERE client_run_id = ?').get(id) });
 
 test('leaderboards: the server re-plays a run and keeps its own numbers; bad runs never rank', async () => {
   const srv = server();
   const u = await signedIn(srv, 1, 'Alice');
-  const { run, result } = played('ode', 'normal', LADDER[3]);
+  const { run, result } = played('ode', LADDER[3]);
   assert.ok(result.counts.great + result.counts.good + result.counts.miss > 0, 'an imperfect run');
   const loud = { ...run, clientRunId: 'a1', score: 9_999_999, grade: 'S', accuracy: 100, fc: true, ap: true };
   const r = await u.post([loud]);
@@ -446,7 +446,7 @@ test('leaderboards: the server re-plays a run and keeps its own numbers; bad run
   assert.equal(row.rules, String(RULES));
 
   // Mods: the multiplier folds in as the game does; the stored tags are the server's.
-  const modded = played('ode', 'normal', LADDER[3], { speed: 1.2, hidden: true });
+  const modded = played('ode', LADDER[3], { speed: 1.2, hidden: true });
   await u.post([{ ...modded.run, clientRunId: 'a2', mods: ['fake'] }]);
   assert.equal(rowOf(srv, 'a2').score, modded.result.score);
   assert.equal(rowOf(srv, 'a2').mods, '["1.2x","HD"]');
@@ -463,7 +463,7 @@ test('leaderboards: the server re-plays a run and keeps its own numbers; bad run
   assert.deepEqual(later.runs.map(x => x.verified), [0, 0]);
   assert.equal(rowOf(srv, 'c2').replay, null);
 
-  const b = await boardOf(srv, 'ode', 'normal');
+  const b = await boardOf(srv, 'ode');
   assert.equal(b.rules, RULES);
   assert.deepEqual(b.runs.map(x => [x.rank, x.name, x.score]), [[1, 'Alice', Math.max(result.score, modded.result.score)]]);
 });
@@ -472,7 +472,7 @@ test('leaderboards: custom songs re-play from the melody the run brings', async 
   const srv = server();
   const u = await signedIn(srv, 1, 'Alice');
   const id = 'custom:' + hashString(SONG_A);
-  const { run, result } = played(id, 'normal', LADDER[5], null, 1, SONG_A);
+  const { run, result } = played(id, LADDER[5], null, 1, SONG_A);
   const r = await u.post([{ ...run, clientRunId: 'x', rtttl: '  ' + SONG_A + '\n' }]);
   assert.deepEqual(r.runs, [{ clientRunId: 'x', verified: 1, score: result.score }]);
 });
@@ -485,33 +485,33 @@ test('leaderboards: best run per player, opt-out, the player\'s own neighbourhoo
   const scoreOf = {};
   for (const [i, p] of players.entries()) {
     // Better ladder rungs score higher; each player also posts a worse run, which must not show.
-    const good = played('ode', 'normal', LADDER[2 + i], null, 1), worse = played('ode', 'normal', LADDER[0], null, 2);
+    const good = played('ode', LADDER[2 + i], null, 1), worse = played('ode', LADDER[0], null, 2);
     await p.post([{ ...good.run, clientRunId: p.name + 1 }, { ...worse.run, clientRunId: p.name + 2, playedAt: 2 }]);
     scoreOf[p.name] = Math.max(good.result.score, worse.result.score);
   }
-  let b = await boardOf(srv, 'ode', 'normal');
+  let b = await boardOf(srv, 'ode');
   const order = b.runs.map(x => x.name); // equal scores rank in either order
   assert.deepEqual([...order].sort(), Object.keys(scoreOf).sort());
   assert.deepEqual(b.runs.map(x => x.score), b.runs.map(x => scoreOf[x.name]), 'each player\'s best run');
   assert.deepEqual(b.runs.map(x => x.score), Object.values(scoreOf).sort((x, y) => y - x));
   assert.deepEqual(b.runs.map(x => x.rank), [1, 2, 3, 4, 5, 6]);
   assert.ok(b.runs.every(x => x.total === 6 && !('me' in x) && !('user_id' in x)));
-  assert.equal((await srv.call('/board/ode/normal')).headers.get('Cache-Control'), 'public, max-age=30');
-  assert.equal((await srv.call('/board/ode/insane')).status, 400);
-  assert.equal((await srv.call('/board/ode/normal/me')).status, 401);
+  assert.equal((await srv.call('/board/ode')).headers.get('Cache-Control'), 'public, max-age=30');
+  assert.equal((await srv.call('/board/ode/insane')).status, 200, 'an old client\'s difficulty segment is ignored');
+  assert.equal((await srv.call('/board/ode/me')).status, 401);
 
   // The last-placed player: themselves and the two above.
   const last = players.find(p => p.name === order[5]);
-  const around = await boardOf(srv, 'ode', 'normal', last.h);
+  const around = await boardOf(srv, 'ode', last.h);
   assert.deepEqual(around.runs.map(x => [x.rank, x.name, !!x.me]), [[4, order[3], false], [5, order[4], false], [6, order[5], true]]);
 
   // Opting out leaves the public board but keeps the player's own rank.
   const top = players.find(p => p.name === order[0]);
   const pr = await (await srv.call('/sync', { method: 'POST', headers: top.h, body: JSON.stringify({ profile: { public: false } }) })).json();
   assert.equal(pr.profile.public, false);
-  b = await boardOf(srv, 'ode', 'normal');
+  b = await boardOf(srv, 'ode');
   assert.deepEqual(b.runs.map(x => x.name), order.slice(1));
-  assert.deepEqual((await boardOf(srv, 'ode', 'normal', top.h)).runs.map(x => [x.rank, !!x.me]), [[1, true], [2, false], [3, false]]);
+  assert.deepEqual((await boardOf(srv, 'ode', top.h)).runs.map(x => [x.rank, !!x.me]), [[1, true], [2, false], [3, false]]);
 
   // Moderation: nothing without the token; hiding a user or a run takes it off the board.
   const admin = { Authorization: 'Bearer admin-secret' };
@@ -521,7 +521,7 @@ test('leaderboards: best run per player, opt-out, the player\'s own neighbourhoo
   assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ userId: second.id }) })).status, 204);
   const runId = srv.env.DB.db.prepare('SELECT id FROM runs WHERE client_run_id = ?').get(order[2] + 1).id;
   assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ runId }) })).status, 204);
-  b = await boardOf(srv, 'ode', 'normal');
+  b = await boardOf(srv, 'ode');
   assert.ok(!b.runs.some(x => x.name === order[1]));
   assert.ok(!b.runs.some(x => x.name === order[2] && x.score === scoreOf[order[2]]), 'the hidden run is gone');
   assert.equal((await srv.call('/admin/hide', { method: 'POST', headers: admin, body: JSON.stringify({ runId: 99999 }) })).status, 404);
@@ -531,7 +531,8 @@ test('leaderboards: runs over a request\'s budget are verified later; automated-
   const srv = server();
   srv.env.ADMIN_TOKEN = 'admin-secret';
   const u = await signedIn(srv, 1, 'Alice');
-  const runs = Array.from({ length: 6 }, (_, i) => ({ ...played('ode', 'normal', LADDER[4], null, i + 1).run, clientRunId: 'r' + i }));
+  const seeds = [1, 2, 3, 5, 6, 4]; // the last two wait; the last one scores highest
+  const runs = seeds.map((seed, i) => ({ ...played('ode', LADDER[4], null, seed).run, clientRunId: 'r' + i }));
   const r = await u.post(runs);
   assert.deepEqual(r.runs.map(x => x.verified), [1, 1, 1, 1, 0, 0]);
   const admin = { Authorization: 'Bearer admin-secret' };
@@ -540,10 +541,10 @@ test('leaderboards: runs over a request\'s budget are verified later; automated-
   assert.equal(await verifyPending(srv.env), 0);
 
   // The demo mod's perfect timing, shifted by a constant: still flagged.
-  const bot = played('ode', 'normal', { bias: 7 });
+  const bot = played('ode', { bias: 7 });
   await u.post([{ ...bot.run, clientRunId: 'bot' }]);
   assert.equal(rowOf(srv, 'bot').flags, 'flat');
-  const exact = played('ode', 'normal', {});
+  const exact = played('ode', {});
   await u.post([{ ...exact.run, clientRunId: 'exact' }]);
   assert.equal(rowOf(srv, 'exact').flags, 'flat,bot');
   assert.equal(rowOf(srv, 'r0').flags, '', 'a human-like run is not flagged');
@@ -555,24 +556,24 @@ test('leaderboards: the client uploads replays, gets the verdict and reads board
   const srv = server();
   const a = device(srv);
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
-  const { run, result } = played('ode', 'normal', LADDER[4]);
-  const id = a.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+  const { run, result } = played('ode', LADDER[4]);
+  const id = a.cloud.queueRun('ode', { ...result, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
   const verdicts = await a.cloud.submit();
   assert.deepEqual(verdicts[id], { clientRunId: id, verified: 1, score: result.score });
   assert.equal(a.cloud.pendingRuns(), 0);
-  assert.equal(a.cloud.rank('ode', 'normal').rank, 1);
+  assert.equal(a.cloud.rank('ode').rank, 1);
 
   const anon = device(srv);
-  assert.equal(anon.cloud.queueRun('ode', 'normal', result), null, 'signed out: nothing queued');
-  assert.equal(await anon.cloud.board('ode', 'normal'), null, 'signed out: no board, no request');
+  assert.equal(anon.cloud.queueRun('ode', result), null, 'signed out: nothing queued');
+  assert.equal(await anon.cloud.board('ode'), null, 'signed out: no board, no request');
   assert.equal(anon.calls.length, 0);
   const viewer = device(srv);
   await viewer.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
-  const b = await viewer.cloud.board('ode', 'normal');
+  const b = await viewer.cloud.board('ode');
   assert.deepEqual(b.runs.map(x => [x.name, x.score]), [['Alice', result.score]]);
 
   // A big outbox goes up in several requests below the API's body limit; old replays give way first.
-  for (let i = 0; i < 40; i++) a.cloud.queueRun('ode' + i, 'normal', { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
+  for (let i = 0; i < 40; i++) a.cloud.queueRun('ode' + i, { ...result, date: 100 + i }, [], { replay: 'A'.repeat(30_000), rules: RULES });
   const stored = JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox;
   assert.ok(stored.reduce((n, r) => n + (r.replay || '').length, 0) <= 1_000_000);
   assert.ok(!stored[0].replay && stored[39].replay);
@@ -587,16 +588,16 @@ test('leaderboards: a reset deletes the player\'s runs up to then; newer and oth
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   await b.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   await bob.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
-  const { run, result } = played('ode', 'normal', LADDER[4]);
+  const { run, result } = played('ode', LADDER[4]);
   const opts = { replay: run.replay, rules: RULES, loadout: null };
-  a.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], opts);
-  bob.cloud.queueRun('ode', 'normal', { ...result, date: 50 }, [], opts);
+  a.cloud.queueRun('ode', { ...result, date: 50 }, [], opts);
+  bob.cloud.queueRun('ode', { ...result, date: 50 }, [], opts);
   await a.cloud.submit(); await bob.cloud.submit();
-  const names = async () => (await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name).sort();
+  const names = async () => (await boardOf(srv, 'ode')).runs.map(x => x.name).sort();
   assert.deepEqual(await names(), ['Alice', 'Bob']);
 
   // A queues a run, then resets before it goes up: the queue is emptied too.
-  a.cloud.queueRun('ode', 'hard', { ...result, date: 55 }, [], opts);
+  a.cloud.queueRun('ode', { ...result, date: 55 }, [], opts);
   a.t.now = 60;
   a.scores.clear(); a.stats.clear(); a.cloud.markReset();
   assert.equal(a.cloud.pendingRuns(), 0);
@@ -607,10 +608,10 @@ test('leaderboards: a reset deletes the player\'s runs up to then; newer and oth
   assert.equal(srv.env.DB.db.prepare('SELECT COUNT(*) n FROM runs').get().n, 1);
 
   // B was offline with a run from before the reset: the server refuses it. A newer run is stored.
-  b.cloud.queueRun('ode', 'normal', { ...result, date: 40 }, [], opts);
-  b.cloud.queueRun('ode', 'hard', { ...result, date: 70 }, [], opts);
+  b.cloud.queueRun('ode', { ...result, date: 40 }, [], opts);
+  b.cloud.queueRun('ode', { ...result, date: 70 }, [], opts);
   await b.cloud.submit();
-  const rows = srv.env.DB.db.prepare('SELECT song_id, diff, played_at FROM runs ORDER BY played_at').all();
+  const rows = srv.env.DB.db.prepare('SELECT song_id, played_at FROM runs ORDER BY played_at').all();
   assert.ok(!rows.some(r => r.played_at === 40), 'a run played before the reset is not stored');
   assert.ok(rows.some(r => r.played_at === 70));
 });
@@ -648,10 +649,10 @@ test('requests: a 20-song session with 5 new bests costs one request per best, p
   for (const [i, score] of scoresPlayed.entries()) {
     a.t.now = 10_000 + i * 60_000;
     const r = result(score, a.t.now);
-    const rec = a.scores.record('s1', 'normal', r);
-    a.stats.recordRun({ diff: 'normal', result: r });
+    const rec = a.scores.record('s1', r);
+    a.stats.recordRun({ result: r });
     a.cloud.schedule();
-    const id = rec.isNewBest ? a.cloud.queueRun('s1', 'normal', r) : null;
+    const id = rec.isNewBest ? a.cloud.queueRun('s1', r) : null;
     if (id) queued++;
     if (rec.isNewBest) { bests++; assert.ok((await a.cloud.submit())[id]); }
   }
@@ -721,7 +722,7 @@ test('requests: a hung request times out and does not block the next; keepalive 
   await cloud.takeLoginHash(await githubSignIn(srv));
   await cloud.sync();
   hang = true;
-  cloud.queueRun('s', 'normal', result(1, 5));
+  cloud.queueRun('s', result(1, 5));
   assert.deepEqual(await cloud.submit(), {});
   assert.equal(cloud.pendingRuns(), 1, 'kept for later');
   // Backing off: the automatic flush waits, the Sync button doesn't.
@@ -732,11 +733,11 @@ test('requests: a hung request times out and does not block the next; keepalive 
   assert.equal((await cloud.sync()).ok, true);
   assert.equal(cloud.pendingRuns(), 0);
 
-  cloud.queueRun('s', 'normal', result(2, 6), [], { replay: 'A'.repeat(70_000), rules: RULES });
+  cloud.queueRun('s', result(2, 6), [], { replay: 'A'.repeat(70_000), rules: RULES });
   clock += 1;
   cloud.flush(); await settle(); await settle();
   assert.equal(calls.at(-1).keepalive, false, 'over 64 KB: a normal request');
-  cloud.queueRun('s', 'normal', result(3, 7));
+  cloud.queueRun('s', result(3, 7));
   cloud.flush(); await settle(); await settle();
   assert.equal(calls.at(-1).keepalive, true);
   assert.equal(cloud.pendingRuns(), 0);
@@ -747,19 +748,19 @@ test('requests: signed out sends nothing; signed in, the leaderboard snapshot go
   const anon = device(srv);
   anon.cloud.schedule(); anon.cloud.flush(); anon.cloud.wake();
   await anon.cloud.sync();
-  assert.equal(await anon.cloud.board('ode', 'normal'), null);
+  assert.equal(await anon.cloud.board('ode'), null);
   assert.deepEqual(anon.calls, []);
   await anon.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   anon.calls.length = 0;
-  assert.equal(await anon.cloud.board('ode', 'normal').then(b => b.runs.length), 0);
-  await anon.cloud.board('ode', 'hard');
-  await anon.cloud.board('jingle', 'normal');
+  assert.equal(await anon.cloud.board('ode').then(b => b.runs.length), 0);
+  await anon.cloud.board('ode');
+  await anon.cloud.board('jingle');
   assert.deepEqual(anon.calls.map(c => c.path), ['/boards']);
   assert.deepEqual(anon.calls[0].init.headers, {}, 'a simple request: no preflight');
   // A reload keeps the snapshot.
   const again = createCloud({ scores: anon.scores, stats: anon.stats, mysongs: anon.mysongs, prefs: anon.prefs, apiBase: API,
     storage: anon.storage, now: () => anon.t.now, fetch: () => { throw new Error('no request expected'); } });
-  assert.ok(await again.board('ode', 'normal'));
+  assert.ok(await again.board('ode'));
 });
 
 test('POST /sync: ranks come back with a ranked run; the board snapshot is rebuilt only when something changed', async () => {
@@ -767,21 +768,21 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   const a = device(srv);
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   await a.cloud.sync();
-  assert.equal(a.cloud.rank('ode', 'normal'), null);
-  const { run, result: res } = played('ode', 'normal', LADDER[4]);
-  const id = a.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+  assert.equal(a.cloud.rank('ode'), null);
+  const { run, result: res } = played('ode', LADDER[4]);
+  const id = a.cloud.queueRun('ode', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
   a.calls.length = 0;
   assert.equal((await a.cloud.submit())[id].verified, 1);
   assert.equal(a.calls.length, 1, 'upload and rank in one request');
-  const mine = a.cloud.rank('ode', 'normal');
+  const mine = a.cloud.rank('ode');
   assert.deepEqual({ ...mine, top: undefined, at: 0 }, { rank: 1, total: 1, near: [{ rank: 1, name: 'Alice', score: res.score, grade: res.grade, accuracy: mine.near[0].accuracy, maxCombo: mine.near[0].maxCombo, fc: true, ap: false, mods: [], me: true }], top: undefined, at: 0 });
   assert.deepEqual(mine.top.map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]], 'the world top comes back in the same answer');
-  assert.deepEqual(a.cloud.rankTop('ode', 'normal').map(r => r.name), ['Alice']);
+  assert.deepEqual(a.cloud.rankTop('ode').map(r => r.name), ['Alice']);
   assert.equal(a.cloud.serverRules(), RULES);
 
   const boards = async () => (await srv.call('/boards')).json();
   const first = await boards();
-  assert.deepEqual(first.boards['ode|normal'].map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]]);
+  assert.deepEqual(first.boards['ode'].map(r => [r.rank, r.name, r.score]), [[1, 'Alice', res.score]]);
   assert.equal((await srv.call('/boards')).headers.get('Cache-Control'), 'public, max-age=10, stale-while-revalidate=30');
   srv.tick(1000);
   await rebuildBoards(srv.env, 2_000_000);
@@ -791,7 +792,7 @@ test('POST /sync: ranks come back with a ranked run; the board snapshot is rebui
   await rebuildBoards(srv.env, 3_000_000);
   const later = await boards();
   assert.equal(later.built, 3_000_000);
-  assert.equal(later.boards['ode|normal'], undefined, 'opted out');
+  assert.equal(later.boards['ode'], undefined, 'opted out');
 });
 
 test('POST /sync: a run in the top 3 is in the GET /boards snapshot at once, without the cron', async () => {
@@ -802,14 +803,14 @@ test('POST /sync: a run in the top 3 is in the GET /boards snapshot at once, wit
   const boards = async () => (await srv.call('/boards')).json();
   assert.deepEqual((await boards()).boards, {}, 'the snapshot exists and is empty');
   for (const [d, skill] of [[a, LADDER[2]], [b, LADDER[4]]]) {
-    const { run, result: res } = played('ode', 'normal', skill);
-    d.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    const { run, result: res } = played('ode', skill);
+    d.cloud.queueRun('ode', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
     await d.cloud.submit();
     srv.tick(1000);
   }
-  const top = (await boards()).boards['ode|normal'];
+  const top = (await boards()).boards['ode'];
   assert.deepEqual(top.map(r => [r.rank, r.name]), [[1, 'Bob'], [2, 'Alice']]);
-  assert.deepEqual(b.cloud.rankTop('ode', 'normal').map(r => r.name), ['Bob', 'Alice'], 'the answer carries the top too');
+  assert.deepEqual(b.cloud.rankTop('ode').map(r => r.name), ['Bob', 'Alice'], 'the answer carries the top too');
 });
 
 test('POST /sync: a run ranking 4th-10th returns the world top 10 and is in the snapshot at once', async () => {
@@ -822,15 +823,15 @@ test('POST /sync: a run ranking 4th-10th returns the world top 10 and is in the 
   }
   const scores = [];
   for (const [i, d] of devs.entries()) {
-    const { run, result: res } = played('ode', 'normal', LADDER[i % 8], null, i + 1);
-    const id = d.cloud.queueRun('ode', 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    const { run, result: res } = played('ode', LADDER[i % 8], null, i + 1);
+    const id = d.cloud.queueRun('ode', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
     d.calls.length = 0;
     assert.equal((await d.cloud.submit())[id].verified, 1);
     assert.equal(d.calls.length, 1, 'upload, rank and top in one request');
     scores.push(res.score);
     srv.tick(1000);
   }
-  const last = devs[11], k = last.cloud.rank('ode', 'normal'), top = last.cloud.rankTop('ode', 'normal');
+  const last = devs[11], k = last.cloud.rank('ode'), top = last.cloud.rankTop('ode');
   assert.equal(k.total, 12);
   assert.ok(k.rank >= 4 && k.rank <= 10, 'the last player lands between 4th and 10th, got ' + k.rank);
   assert.equal(top.length, 10, 'ten rows even though twelve players are on the board');
@@ -838,7 +839,7 @@ test('POST /sync: a run ranking 4th-10th returns the world top 10 and is in the 
   assert.deepEqual(top.map(r => r.score), want, 'the top is the ten best, in order');
   assert.deepEqual(top.map(r => r.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.ok(top.some(r => r.name === 'Player11'), 'the player is in the top 10');
-  const snap = (await (await srv.call('/boards')).json()).boards['ode|normal'];
+  const snap = (await (await srv.call('/boards')).json()).boards['ode'];
   assert.deepEqual(snap.map(r => [r.rank, r.name, r.score]), top.map(r => [r.rank, r.name, r.score]), 'the snapshot already shows it');
   assert.ok(k.near.some(r => r.me), 'near still comes along');
 });
@@ -849,12 +850,12 @@ test('POST /sync: the players around a new rank come back; the ranks overview is
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   await b.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
   for (const [d, skill, song] of [[b, LADDER[4], 'ode'], [a, LADDER[2], 'ode'], [a, LADDER[2], 'jingle']]) {
-    const { run, result: res } = played(song, 'normal', skill);
-    d.cloud.queueRun(song, 'normal', { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
+    const { run, result: res } = played(song, skill);
+    d.cloud.queueRun(song, { ...res, date: 50 }, [], { replay: run.replay, rules: RULES, loadout: null });
     await d.cloud.submit();
     srv.tick(1000);
   }
-  const near = a.cloud.rankNear('ode', 'normal');
+  const near = a.cloud.rankNear('ode');
   assert.deepEqual(near.map(r => [r.rank, r.name, !!r.me]), [[1, 'Bob', false], [2, 'Alice', true]]);
 
   a.calls.length = 0;
@@ -873,11 +874,11 @@ test('POST /sync: the players around a new rank come back; the ranks overview is
 test('POST /sync: wantRanks lists only the caller\'s boards; an opted-out player still sees their own', async () => {
   const srv = server();
   const a = await signedIn(srv, 1, 'Alice'), b = await signedIn(srv, 2, 'Bob');
-  const { run } = played('ode', 'normal', LADDER[3]);
+  const { run } = played('ode', LADDER[3]);
   const post = (who, body) => srv.call('/sync', { method: 'POST', headers: who.h, body: JSON.stringify({ deviceId: 'device0001', ...body }) }).then(r => r.json());
   const runBody = id => ({ runs: [{ ...run, clientRunId: id }] });
   await post(a, runBody('a:1'));
-  await post(b, { runs: [{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'b:1' }], profile: { public: false } });
+  await post(b, { runs: [{ ...played('ode', LADDER[4]).run, clientRunId: 'b:1' }], profile: { public: false } });
   const mineA = await post(a, { wantRanks: true });
   assert.deepEqual(mineA.myRanks.map(r => [r.songId, r.rank, r.total]), [['ode', 1, 1]], 'Bob is off the board');
   const mineB = await post(b, { wantRanks: true });
@@ -901,13 +902,13 @@ test('POST /sync: only changed device slots come down; the shared document only 
   assert.deepEqual(quiet.devices, {}, 'no slot changed');
   assert.equal(quiet.deviceIds.length, 2);
   assert.ok(!('shared' in quiet), 'shared document unchanged');
-  b.scores.record('s1', 'normal', result(9, 99));
+  b.scores.record('s1', result(9, 99));
   srv.tick(1000);
   await b.cloud.sync();
   srv.tick(10 * 60e3);
   await a.cloud.sync();
   assert.deepEqual(Object.keys(answers.at(-1).devices), [b.cloud.deviceId]);
-  assert.equal(a.scores.get('s1', 'normal').best.score, 9);
+  assert.equal(a.scores.get('s1').best.score, 9);
 });
 
 test('dev request log: every request with why, what and sizes; held-back syncs; nothing measured without it', async () => {
@@ -925,8 +926,8 @@ test('dev request log: every request with why, what and sizes; held-back syncs; 
   assert.ok(start.sent > 0 && start.received > 0 && start.body.devicesSince === 0 && start.response.at);
   assert.match(describe(start), /pull/);
 
-  a.scores.record('s1', 'normal', result(100, 50));
-  const id = a.cloud.queueRun('s1', 'normal', result(100, 50), [], { replay: 'A'.repeat(2048), rules: RULES });
+  a.scores.record('s1', result(100, 50));
+  const id = a.cloud.queueRun('s1', result(100, 50), [], { replay: 'A'.repeat(2048), rules: RULES });
   await a.cloud.submit();
   const best = entries.at(-1);
   assert.equal(best.why, 'new best');
@@ -1062,7 +1063,7 @@ test('netState: send for a round with something to upload, recv for a pull only,
   await a.cloud.sync('again'); // nothing changed: asks only
   assert.deepEqual(nets, ['send', 'idle', 'recv', 'idle']);
   nets.length = 0;
-  a.cloud.queueRun('s', 'normal', result(1, 5));
+  a.cloud.queueRun('s', result(1, 5));
   await a.cloud.submit();
   assert.deepEqual(nets.slice(0, 2), ['send', 'idle']);
 });
@@ -1074,8 +1075,8 @@ test('admin: players, runs, ban/unban, deletes, unflag, stats, purge and the aud
   const get = async path => (await srv.call(path, { headers: admin })).json();
   const post = (path, body) => srv.call(path, { method: 'POST', headers: admin, body: JSON.stringify(body) });
   const ann = await signedIn(srv, 1, 'Ann'), bob = await signedIn(srv, 2, 'Bob');
-  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'a1' }]);
-  await bob.post([{ ...played('ode', 'normal', LADDER[2]).run, clientRunId: 'b1' }]);
+  await ann.post([{ ...played('ode', LADDER[4]).run, clientRunId: 'a1' }]);
+  await bob.post([{ ...played('ode', LADDER[2]).run, clientRunId: 'b1' }]);
 
   // Every new route needs the token.
   for (const p of ['/admin/players', '/admin/runs', '/admin/stats', '/admin/log']) assert.equal((await srv.call(p)).status, 404, p);
@@ -1091,14 +1092,14 @@ test('admin: players, runs, ban/unban, deletes, unflag, stats, purge and the aud
   // Ban: off the boards, sessions gone, sync and sign-in refused; unban lifts it.
   assert.equal((await post('/admin/ban', { userId: 'nobody' })).status, 404);
   assert.equal((await post('/admin/ban', { userId: ann.id })).status, 204);
-  assert.deepEqual((await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name), ['Bob']);
+  assert.deepEqual((await boardOf(srv, 'ode')).runs.map(x => x.name), ['Bob']);
   assert.equal((await srv.call('/me', { headers: ann.h })).status, 401, 'session dropped');
   const code = (await githubSignIn(srv, 1, { login: 'Ann', name: 'Ann' })).slice('#login='.length);
   assert.equal((await srv.call('/auth/exchange', { method: 'POST', body: JSON.stringify({ code }) })).status, 403);
   assert.equal((await post('/admin/ban', { userId: ann.id, banned: false })).status, 204);
   const again = await signedIn(srv, 1, 'Ann');
   assert.equal((await srv.call('/me', { headers: again.h })).status, 200);
-  assert.equal((await boardOf(srv, 'ode', 'normal')).runs.length, 2);
+  assert.equal((await boardOf(srv, 'ode')).runs.length, 2);
   // A session that outlives the ban (made before it) is refused with 403 too.
   srv.env.DB.db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(bob.id);
   assert.equal((await srv.call('/me', { headers: bob.h })).status, 403);
@@ -1114,7 +1115,7 @@ test('admin: players, runs, ban/unban, deletes, unflag, stats, purge and the aud
   assert.equal((await post('/admin/run/delete', { runId: 'x' })).status, 400);
   assert.equal((await post('/admin/run/delete', { runId: bobRun })).status, 204);
   assert.equal((await post('/admin/run/delete', { runId: bobRun })).status, 404);
-  assert.deepEqual((await boardOf(srv, 'ode', 'normal')).runs.map(x => x.name), ['Ann']);
+  assert.deepEqual((await boardOf(srv, 'ode')).runs.map(x => x.name), ['Ann']);
 
   // Stats and purge.
   let st = await get('/admin/stats');
@@ -1148,11 +1149,11 @@ test('admin client: a wrong token is refused and forgotten, the right one works 
   assert.equal((await admin.stats()).counts.users, 0);
   assert.ok(admin.unlocked());
   const ann = await signedIn(srv, 1, 'Ann');
-  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'a1' }]);
+  await ann.post([{ ...played('ode', LADDER[4]).run, clientRunId: 'a1' }]);
   const [p] = await admin.players('ann');
   assert.equal(playerLine(p), 'Ann · 1');
   const [r] = await admin.runs(p.id);
-  assert.match(runLine({ ...r, name: 'Ann' }), /^Ann · ode N · \d+/);
+  assert.match(runLine({ ...r, name: 'Ann' }), /^Ann · ode · \d+/);
   await admin.ban(p.id, true);
   assert.equal(playerLine((await admin.players('ann'))[0]), 'Ann [banned] · 1');
   assert.match(logLine((await admin.log())[0]), /^\d{4}-\d\d-\d\d \d\d:\d\d ban user /);
@@ -1173,11 +1174,11 @@ test('admin: pending counts only re-playable runs; stuck ones (no replay / other
   const admin = createAdmin({ apiBase: API, fetch: (url, init) => srv.call(url.slice(API.length), init), debug: e => seen.push(e) });
   await admin.unlock('admin-secret');
   const ann = await signedIn(srv, 1, 'Ann');
-  await ann.post([{ ...played('ode', 'normal', LADDER[4]).run, clientRunId: 'ok' }]);
+  await ann.post([{ ...played('ode', LADDER[4]).run, clientRunId: 'ok' }]);
   const db = srv.env.DB.db;
-  const copy = (id, set) => db.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult,
+  const copy = (id, set) => db.prepare(`INSERT INTO runs (user_id, client_run_id, song_id, score, grade, accuracy, max_combo, fc, ap, mods, mult,
     game_version, played_at, received_at, replay, verified, rules, loadout, rtttl, flags)
-    SELECT user_id, ?, song_id, diff, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at,
+    SELECT user_id, ?, song_id, score, grade, accuracy, max_combo, fc, ap, mods, mult, game_version, played_at, received_at,
     replay, verified, rules, loadout, rtttl, flags FROM runs WHERE client_run_id = 'ok'`).run(id) && db.prepare(`UPDATE runs SET ${set} WHERE client_run_id = ?`).run(id);
   copy('wait', "verified = 0");
   copy('hist', 'verified = 0, replay = NULL, rules = NULL');
@@ -1214,29 +1215,29 @@ test('guessRank: from the snapshot alone; the sync answer patches the overview a
   await a.cloud.takeLoginHash(await githubSignIn(srv, 1, { login: 'alice', name: 'Alice' }));
   await b.cloud.takeLoginHash(await githubSignIn(srv, 2, { login: 'bob', name: 'Bob' }));
   await a.cloud.sync();
-  await a.cloud.board('ode', 'normal'); // empty snapshot
-  assert.deepEqual(a.cloud.guessRank('ode', 'normal', 5), { rank: 1, total: 1 }, 'nobody on the board: #1 without asking');
-  const bob = played('ode', 'normal', LADDER[4]);
-  b.cloud.queueRun('ode', 'normal', { ...bob.result, date: 50 }, [], { replay: bob.run.replay, rules: RULES, loadout: null });
+  await a.cloud.board('ode'); // empty snapshot
+  assert.deepEqual(a.cloud.guessRank('ode', 5), { rank: 1, total: 1 }, 'nobody on the board: #1 without asking');
+  const bob = played('ode', LADDER[4]);
+  b.cloud.queueRun('ode', { ...bob.result, date: 50 }, [], { replay: bob.run.replay, rules: RULES, loadout: null });
   await b.cloud.submit();
   srv.tick(20 * 60e3);
   await rebuildBoards(srv.env, 5_000_000);
   a.t.now += 20 * 60e3;
-  await a.cloud.board('ode', 'normal'); await settle(); await settle(); // the old snapshot shows while a fresh one loads: Bob is #1
-  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score + 1).rank, 1);
-  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score - 1).rank, 2);
-  assert.equal(a.cloud.guessRank('ode', 'normal', bob.result.score - 1).total, 2);
+  await a.cloud.board('ode'); await settle(); await settle(); // the old snapshot shows while a fresh one loads: Bob is #1
+  assert.equal(a.cloud.guessRank('ode', bob.result.score + 1).rank, 1);
+  assert.equal(a.cloud.guessRank('ode', bob.result.score - 1).rank, 2);
+  assert.equal(a.cloud.guessRank('ode', bob.result.score - 1).total, 2);
 
   a.cloud.myRanks(); await settle(); await settle(); // the overview is cached
-  const mine = played('ode', 'normal', LADDER[2]);
-  a.cloud.queueRun('ode', 'normal', { ...mine.result, date: 60 }, [], { replay: mine.run.replay, rules: RULES, loadout: null });
+  const mine = played('ode', LADDER[2]);
+  a.cloud.queueRun('ode', { ...mine.result, date: 60 }, [], { replay: mine.run.replay, rules: RULES, loadout: null });
   await a.cloud.submit();
   a.calls.length = 0;
   const rows = a.cloud.myRanks().rows;
   await settle();
   assert.equal(a.calls.length, 0, 'the overview was patched, not refetched');
   assert.deepEqual(rows.map(r => [r.songId, r.rank, r.total]), [['ode', 2, 2]]);
-  const snap = await a.cloud.board('ode', 'normal');
+  const snap = await a.cloud.board('ode');
   assert.deepEqual(snap.runs.map(r => r.name), ['Bob', 'Alice'], 'the snapshot shows the new score');
 });
 
@@ -1244,9 +1245,9 @@ test('queue: a better run replaces waiting ones on the same board', async () => 
   const srv = server();
   const a = device(srv);
   await a.cloud.takeLoginHash(await githubSignIn(srv));
-  a.cloud.queueRun('s1', 'normal', result(100, 1));
-  a.cloud.queueRun('s1', 'normal', result(300, 2));
-  a.cloud.queueRun('s1', 'hard', result(50, 3));
+  a.cloud.queueRun('s1', result(100, 1));
+  a.cloud.queueRun('s1', result(300, 2));
+  a.cloud.queueRun('s2', result(50, 3));
   assert.equal(a.cloud.pendingRuns(), 2, 'one per board, the best');
 });
 
@@ -1258,14 +1259,14 @@ test('outbox: an over-long replay goes up as unranked history; a big body is spl
   await a.cloud.takeLoginHash(await githubSignIn(srv));
   await a.cloud.sync();
 
-  const long = a.cloud.queueRun('s1', 'normal', result(100, 1), [], { replay: 'A'.repeat(300_000), rules: RULES });
+  const long = a.cloud.queueRun('s1', result(100, 1), [], { replay: 'A'.repeat(300_000), rules: RULES });
   assert.equal(JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox[0].replay, undefined, 'the API would drop it: not sent');
   assert.equal((await a.cloud.submit())[long].verified, 0);
   assert.equal(a.cloud.pendingRuns(), 0);
 
   // A big shared document next to a big replay would pass the API's body limit: they go in two requests.
   for (let i = 0; i < 3500; i++) a.prefs.favs['song-number-' + i] = { on: true, t: 1000 + i };
-  a.cloud.queueRun('s2', 'normal', result(100, 2), [], { replay: 'A'.repeat(240_000), rules: RULES });
+  a.cloud.queueRun('s2', result(100, 2), [], { replay: 'A'.repeat(240_000), rules: RULES });
   a.calls.length = 0;
   const r = await a.cloud.submit();
   assert.equal(Object.keys(r).length, 1);
@@ -1283,13 +1284,13 @@ test('outbox: a batch the API refuses (400) loses its replays, then itself, inst
   await a.cloud.takeLoginHash(await githubSignIn(srv));
   await a.cloud.sync();
   refuse = 2;
-  const id = a.cloud.queueRun('s1', 'normal', result(100, 1), [], { replay: 'AAAA', rules: RULES });
+  const id = a.cloud.queueRun('s1', result(100, 1), [], { replay: 'AAAA', rules: RULES });
   assert.deepEqual(await a.cloud.submit(), {});
   assert.equal(JSON.parse(a.storage.getItem('ringbeat.cloud.v1')).outbox[0].replay, undefined, 'replay stripped');
   a.t.now += 3 * 60e3; // past the backoff
   assert.deepEqual(await a.cloud.submit(), {});
   assert.equal(a.cloud.pendingRuns(), 0, 'nothing left to strip: the run is dropped');
-  const next = a.cloud.queueRun('s1', 'normal', result(200, 2));
+  const next = a.cloud.queueRun('s1', result(200, 2));
   assert.ok((await a.cloud.submit())[next], 'the queue moves again');
   assert.ok(id);
 });
@@ -1300,8 +1301,8 @@ test('admin: a player\'s runs come newest played first; the players list counts 
   const admin = { Authorization: 'Bearer admin-secret' };
   const get = async path => (await srv.call(path, { headers: admin })).json();
   const ann = await signedIn(srv, 1, 'Ann'), bob = await signedIn(srv, 2, 'Bob');
-  await ann.post(['a1', 'a2', 'a3'].map(id => ({ ...played('ode', 'normal', LADDER[4]).run, clientRunId: id })));
-  await bob.post([{ ...played('ode', 'normal', LADDER[2]).run, clientRunId: 'b1' }]);
+  await ann.post(['a1', 'a2', 'a3'].map(id => ({ ...played('ode', LADDER[4]).run, clientRunId: id })));
+  await bob.post([{ ...played('ode', LADDER[2]).run, clientRunId: 'b1' }]);
   // Stored order (id) and played order disagree: a2 was played last, a1 first.
   const at = { a1: 1000, a2: 3000, a3: 2000 };
   for (const [id, t] of Object.entries(at)) srv.env.DB.db.prepare('UPDATE runs SET played_at = ? WHERE client_run_id = ?').run(t, id);

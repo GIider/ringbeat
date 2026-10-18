@@ -136,16 +136,12 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 
 ## Gameplay
 
-- **Charts:** every song has one chart with 4 lanes, generated at Hard or Normal settings (the `difficulty` option of `generateChart`). There is no difficulty choice.
-  - Hard keeps every note except ones closer than 90 ms to the previous one; those go to the auto-played backing.
-  - A song whose Normal and Hard charts differ by at most 2 notes (`COLLAPSE_MAX`, `src/library.js`) plays
-    one chart (`entry.only`): Hard if its Hard rating is at least 5.0 (2.5 stars), else Normal. Every other song plays
-    Hard. Triple notes don't count towards that difference, since every Hard chart has some. The result is
-    `entry.chart`, which scores, runs and boards are keyed by. This applies to custom songs too; their rating,
-    calculated or estimated, decides.
+- **Charts:** every song has exactly one chart with 4 lanes (`generateChart`). There is no difficulty choice, and
+  scores, runs and boards are keyed by the song alone.
+  - It keeps every note except ones closer than 90 ms to the previous one; those go to the auto-played backing.
 - **Notes:** taps, and holds for notes ≥ 0.45 s (hold until the tail; releasing in the last 150 ms is fine).
   The following are also derived from the RTTTL text, with no authoring needed:
-  - **Short holds** (Normal/Hard): a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
+  - **Short holds**: a dotted note followed by a note ≤ ⅓ of its length (dotted quarter → eighth) and
     lasting ≥ 0.2 s is a short hold.
   - **Rolls:** a legato run (gaps under 0.03 s) of ≥ 4 same-pitch notes, each starting within 0.26 s of the last,
     becomes one roll in a single lane: a dotted rail with a bar per tick.
@@ -155,9 +151,9 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
     - There is one judgement at the end, by presses ÷ goal, where goal = `max(3, min(ticks, round((span + 0.1 s) × 9)))`:
       ≥ 80 % is Perfect, ≥ 60 % Great, ≥ 40 % Good, else Miss.
     - Presses inside a roll are never strays. With *Auto-play rolls* on, the first press plays the written notes.
-  - **Double notes** (Hard): a legato leap of ≥ 7 semitones adds a silent partner tap in the neighbouring lane at
+  - **Double notes**: a legato leap of ≥ 7 semitones adds a silent partner tap in the neighbouring lane at
     the same time (a bridge joins the two heads). Both notes are judged separately.
-  - **Triple notes** (Hard): a plain tap on a bar downbeat or ≥ 0.45 s long, with two other lanes free for 250 ms either
+  - **Triple notes**: a plain tap on a bar downbeat or ≥ 0.45 s long, with two other lanes free for 250 ms either
     side, gets two silent partner taps in the two nearest free lanes, at most one triple
     per 4 s. A bridge joins the three heads. All three notes are judged separately.
 - **Judgement windows** (|Δ| from the note time): Perfect ≤ 45 ms, Great ≤ 90 ms, Good ≤ 135 ms, otherwise miss.

@@ -151,7 +151,7 @@ export function measureProfile(chart, profile, runs = 30, seed = 1) {
 const RATING_STRETCH = 1.8;
 
 // Bumped whenever a change to chart.js / bot.js moves ratings; stored ratings of custom songs from an older version are ignored.
-export const CALC_VERSION = 1;
+export const CALC_VERSION = 2;
 
 // Full difficulty measurement for a chart, as a generator: yields the progress (0..1) after each simulated profile and
 // returns the result. measureChart runs it to the end synchronously, measureChartAsync yields to the UI in between.

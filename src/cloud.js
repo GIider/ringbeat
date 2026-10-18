@@ -86,7 +86,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     sharedRev: Number.isInteger(st.sharedRev) ? st.sharedRev : 0, // the shared document's revision last seen
     sharedHash: typeof st.sharedHash === 'string' ? st.sharedHash : '', // fingerprint of it as last synced
     deviceHash: typeof st.deviceHash === 'string' ? st.deviceHash : '', // ...of this device's slot as last uploaded
-    ranks: freshRanks(obj(st.ranks)),                  // 'songId|diff' -> { rank, total, near?, top?, at }: the world rank last seen
+    ranks: freshRanks(obj(st.ranks)),                  // songId -> { rank, total, near?, top?, at }: the world rank last seen
     myRanks: st.myRanks && Array.isArray(st.myRanks.rows) && isNum(st.myRanks.at) ? st.myRanks : { at: 0, rows: [] }, // every board the player is on
     rules: isNum(st.rules) ? st.rules : 0,             // the API's RULES at the last answer
     pendingProfile: obj(st.pendingProfile),            // { displayName?, public? } waiting for the next push
@@ -173,7 +173,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   }
 
   // A run's id is stable, so the API stores a re-sent run once.
-  const runId = (songId, diff, playedAt) => `${deviceId}:${songId}:${diff}:${playedAt}`;
+  const runId = (songId, playedAt) => `${deviceId}:${songId}:${playedAt}`;
 
   // Runs from the outbox's first `sending` entries are in a request right now: they stay.
   let sending = 0;
@@ -181,7 +181,7 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     const { date, ...rest } = run;
     if (rest.replay && rest.replay.length > MAX_REPLAY) delete rest.replay; // the API would drop it anyway
     // A better run on the same board replaces the ones still waiting: only the best can rank.
-    st.outbox = st.outbox.filter((r, i) => i < sending || r.songId !== rest.songId || r.diff !== rest.diff || r.score > rest.score);
+    st.outbox = st.outbox.filter((r, i) => i < sending || r.songId !== rest.songId || r.score > rest.score);
     st.outbox.push(rest);
     if (st.outbox.length > MAX_OUTBOX) st.outbox.splice(0, st.outbox.length - MAX_OUTBOX);
     let chars = st.outbox.reduce((n, r) => n + (r.replay ? r.replay.length : 0), 0);
@@ -310,10 +310,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
   function patchRanked(key, v) {
     const me = (v.near || []).find(n => n.me);
     if (!me) { st.myRanks.at = 0; return; } // no score to patch with: ask again
-    const cut = key.lastIndexOf('|'), songId = key.slice(0, cut), diff = key.slice(cut + 1);
+    const songId = key;
     if (st.myRanks.at) { // never fetched: a partial list would pass for the whole one
-      const rows = st.myRanks.rows.filter(r => r.songId !== songId || r.diff !== diff);
-      rows.push({ songId, diff, score: me.score, rank: v.rank, total: v.total });
+      const rows = st.myRanks.rows.filter(r => r.songId !== songId);
+      rows.push({ songId, score: me.score, rank: v.rank, total: v.total });
       rows.sort((a, b) => a.rank / a.total - b.rank / b.total || (a.songId < b.songId ? -1 : 1));
       st.myRanks.rows = rows.slice(0, 500);
     }
@@ -455,12 +455,12 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     // A finished run, for the leaderboards. Pass the result with the `date` the scores store recorded it under. `play`
     // makes it rankable: { replay (replay.js encodeLog), rules, loadout (the mods as played), rtttl (custom songs) };
     // the API re-plays it and ranks its own score. It goes up with the next push, or now with submit(). -> its id.
-    queueRun(songId, diff, result, mods = [], play = {}) {
+    queueRun(songId, result, mods = [], play = {}) {
       if (!st.token) return null;
       const playedAt = isNum(result.date) ? result.date : now();
-      const id = runId(songId, diff, playedAt);
+      const id = runId(songId, playedAt);
       queue({
-        clientRunId: id, songId, diff,
+        clientRunId: id, songId,
         score: result.score, grade: result.grade, accuracy: result.accuracy, maxCombo: result.maxCombo,
         fc: !!result.fc, ap: !!result.ap, mods, mult: isNum(result.mult) ? result.mult : 1, playedAt, gameVersion,
         ...(play.replay && { replay: play.replay, rules: play.rules, loadout: play.loadout || null,
@@ -478,10 +478,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
       if (!r.ok) cloud.schedule(PUSH_EVERY);
       return r.verdicts;
     },
-    // The world rank last seen for a song and difficulty: { rank, total, at } or null. No request.
+    // The world rank last seen for a song: { rank, total, at } or null. No request.
     // A newer snapshot that has the player in its top overrides the rank and total last seen.
-    rank(songId, diff) {
-      const key = songId + '|' + diff, k = st.ranks[key];
+    rank(songId) {
+      const key = songId, k = st.ranks[key];
       if (!k) return null;
       const v = boards.value, me = (k.near || []).find(n => n.me);
       const row = me && v && v.boards && v.rules === st.rules && boards.at > k.at && (v.boards[key] || []).find(r => r.name === me.name);
@@ -491,12 +491,12 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     // me? }] or null. No request.
     // The world top runs as the sync that ranked the player's run saw them, or null.
     // Only while fresh; after that the snapshot is as good.
-    rankTop(songId, diff) {
-      const k = st.ranks[songId + '|' + diff];
+    rankTop(songId) {
+      const k = st.ranks[songId];
       return k && k.top && now() - k.at < BOARDS_TTL ? k.top : null;
     },
-    rankNear: (songId, diff) => (st.ranks[songId + '|' + diff] || {}).near || null,
-    // The player's rank on every board they are on, for the stats screen: { rows: [{ songId, diff, score, rank, total }],
+    rankNear: songId => (st.ranks[songId] || {}).near || null,
+    // The player's rank on every board they are on, for the stats screen: { rows: [{ songId, score, rank, total }],
     // at, loading }. Served from the last answer; asks (one sync, with whatever else is waiting) only when it is older
     // than `max` and nothing is on its way. `onChange({ranks:true})` fires when it arrives.
     myRanks({ max = RANKS_TTL } = {}) {
@@ -510,10 +510,10 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
     // The API's RULES at its last answer (0 = no answer yet).
     serverRules: () => st.rules,
 
-    // The world top runs of one song and difficulty, from the leaderboard snapshot (one request for every song, kept
+    // The world top runs of one song, from the leaderboard snapshot (one request for every song, kept
     // for BOARDS_TTL; `onFresh(view)` is called again if a newer snapshot arrives). Needs a sign-in: signed out sends no request. -> { rules, runs: [{ rank, total, name, score, grade, accuracy, maxCombo, fc,
     // ap, mods, playedAt }] } or null.
-    async board(songId, diff, onFresh) {
+    async board(songId, onFresh) {
       if (!apiBase || !st.token) return null;
       const t = now();
       if (t - boards.at >= BOARDS_TTL && t - boards.failedAt >= 60e3 && !boards.loading) {
@@ -524,15 +524,15 @@ export function createCloud({ scores, stats, mysongs, prefs, apiBase = API_BASE,
         }).catch(() => { boards.failedAt = now(); }).finally(() => { boards.loading = null; });
       }
       if (boards.loading && !boards.value) await boards.loading; // an old snapshot shows while a new one loads
-      const view = () => boards.value ? { rules: boards.value.rules, runs: boards.value.boards[songId + '|' + diff] || [] } : null;
+      const view = () => boards.value ? { rules: boards.value.rules, runs: boards.value.boards[songId] || [] } : null;
       // An old snapshot is answered at once; `onFresh` gets the view again when the load in flight lands.
       if (onFresh && boards.loading && boards.value) boards.loading.then(() => { if (boards.value) onFresh(view()); });
       return view();
     },
     // Where a score would land, from the snapshot alone (no request): { rank, total } for the top 10, else null. A guess:
     // the snapshot is up to 25 minutes old, so the answer to submit() has the last word.
-    guessRank(songId, diff, score) {
-      const v = boards.value, key = songId + '|' + diff;
+    guessRank(songId, score) {
+      const v = boards.value, key = songId;
       if (!st.token || !v || v.rules !== st.rules || !v.boards) return null;
       const rows = v.boards[key] || [], known = st.ranks[key];
       const rank = rows.filter(r => r.score >= score).length + 1; // a tie goes to the earlier run

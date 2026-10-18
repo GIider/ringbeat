@@ -85,7 +85,7 @@ async function scenarios({ customs }) {
       const { buildLibrary, customEntry } = await import('/src/library.js');
       const ids = buildLibrary().map(e => e.id);
       for (const s of JSON.parse(localStorage.getItem('ringbeat.songs.v1') || '[]')) ids.push(customEntry(s.rtttl).id);
-      ids.forEach((id, i) => { for (const d of ['normal', 'hard']) rb.scores.record(id, d, { score: 1000 + i, grade: 'B', accuracy: 90, maxCombo: 10 }); });
+      ids.forEach((id, i) => { rb.scores.record(id, { score: 1000 + i, grade: 'B', accuracy: 90, maxCombo: 10 }); });
       await toMenu(); key('Digit3', '3'); await sleep(200);
     }, warm: 0 });
   await run('inbox: open + back', [['Enter'], ['ArrowDown'], ['ArrowUp'], ['Escape']],

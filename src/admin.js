@@ -65,6 +65,6 @@ export function createAdmin({ apiBase, fetch = globalThis.fetch.bind(globalThis)
 
 // ---- one-line summaries for the list rows (pure) ----
 export const playerLine = p => `${p.name}${p.banned ? ' [banned]' : p.hidden ? ' [hidden]' : ''} · ${p.runs}`;
-export const runLine = r => `${r.name ? r.name + ' · ' : ''}${r.song_id} ${r.diff === 'hard' ? 'H' : 'N'} · ${r.score}` +
+export const runLine = r => `${r.name ? r.name + ' · ' : ''}${r.song_id} · ${r.score}` +
   `${r.flags ? ' · ' + r.flags : ''}${r.hidden ? ' · hidden' : ''}${r.verified === 0 ? ' · pending' : ''}`;
 export const logLine = l => `${new Date(l.at).toISOString().slice(0, 16).replace('T', ' ')} ${l.action} ${l.target}${l.detail ? ' ' + l.detail : ''}`;

@@ -22,11 +22,10 @@ const view = loadView(store);
 let snap = null, loadError = false;
 let cur = '';                    // the song under the cursor
 let open = false;                // narrow screens: the board is open instead of the list
-const deep = new Map();          // 'id|diff' -> rows | 'loading' | 'failed'
+const deep = new Map();          // id -> rows | 'loading' | 'failed'
 let timer = 0;
 const wide = () => matchMedia('(min-width: 720px)').matches;
-const chartOf = id => (entries.find(e => e.id === id) || {}).chart;
-const key = (id = cur) => id + '|' + chartOf(id);
+const key = (id = cur) => id;
 const rows = () => songRows(snap, entries, view);
 const starsOf = e => { const r = ratingOf(e); return starsBar(r, tr('{v} of 5 stars', { v: fmt(r / 2, 1) })); };
 const date = ms => ms ? new Date(ms).toLocaleDateString(getLang()) : '';
@@ -87,12 +86,12 @@ const paint = () => { paintBar(); paintList(); paintDetail(); paintSoft(); };
 function wantDeep() {
   clearTimeout(timer);
   if (!cur || !snap) return;
-  const k = key(), id = cur, diff = chartOf(id);
+  const k = key(), id = cur;
   if (Array.isArray(deep.get(k)) || deep.get(k) === 'loading') return;
   if (!open && !wide()) return;
   timer = setTimeout(() => {
     deep.set(k, 'loading'); paintDetail();
-    loadBoard(fetch, apiBase, id, diff).then(r => deep.set(k, r), () => deep.set(k, 'failed')).finally(() => { if (key() === k) paintDetail(); });
+    loadBoard(fetch, apiBase, id).then(r => deep.set(k, r), () => deep.set(k, 'failed')).finally(() => { if (key() === k) paintDetail(); });
   }, open ? 0 : DEBOUNCE);
 }
 

@@ -137,7 +137,7 @@ async function boardsSmoke(context, name) {
   const json = (route, body) => route.fulfill({ status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   await context.route(url => url.href.startsWith(API_BASE + '/board'), route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/boards') return json(route, { rules: RULES, built: Date.now() - 5000, boards: { [first + '|normal']: [run(1, 'Ann', 900, { fc: true })], [first + '|hard']: [run(1, 'Ann', 900, { fc: true })] } });
+    if (path === '/boards') return json(route, { rules: RULES, built: Date.now() - 5000, boards: { [first]: [run(1, 'Ann', 900, { fc: true })] } });
     return json(route, { rules: RULES, runs: [run(1, 'Ann', 900, { fc: true }), run(2, 'Bo', 800)] });
   });
   const page = await context.newPage();

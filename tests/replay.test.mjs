@@ -9,8 +9,8 @@ import { parseRTTTL } from '../src/rtttl.js';
 import { SONGS } from '../src/songs.js';
 import * as mods from '../src/mods.js';
 
-const chartFor = (id, diff = 'hard', m = null) => {
-  const c = generateChart(parseRTTTL(SONGS.find(s => s.id === id).rtttl), { difficulty: diff });
+const chartFor = (id, m = null) => {
+  const c = generateChart(parseRTTTL(SONGS.find(s => s.id === id).rtttl));
   return m ? mods.applyChart(c, m) : c;
 };
 
@@ -40,13 +40,13 @@ function playLive(chart, events, opts = {}, seed = 7) {
 }
 
 test('replay: a recorded run re-plays to identical results, through encode/decode', () => {
-  for (const [id, diff, skill, m] of [
-    ['ode-full', 'hard', LADDER[3], null],
-    ['canon-full', 'normal', LADDER[1], null],
-    ['elise-full', 'hard', LADDER[5], { ...mods.DEFAULT_MODS, speed: 1.2, mirror: true, judge: 'strict' }],
-    ['turkish-full', 'hard', LADDER[0], { ...mods.DEFAULT_MODS, speed: 0.8, judge: 'lenient', hidden: true }],
+  for (const [id, skill, m] of [
+    ['ode-full', LADDER[3], null],
+    ['canon-full', LADDER[1], null],
+    ['elise-full', LADDER[5], { ...mods.DEFAULT_MODS, speed: 1.2, mirror: true, judge: 'strict' }],
+    ['turkish-full', LADDER[0], { ...mods.DEFAULT_MODS, speed: 0.8, judge: 'lenient', hidden: true }],
   ]) {
-    const chart = chartFor(id, diff, m);
+    const chart = chartFor(id, m);
     const { result, log } = playLive(chart, planBot(chart, skill, 3), m ? mods.gameOptions(m) : {});
     assert.ok(result && !result.failed, id);
     assert.ok(result.counts.miss > 0 || result.counts.great > 0, `${id}: a sloppy run, not a trivial one`);
@@ -80,7 +80,7 @@ test('replay: the log has the inputs plus only the updates that counted', () => 
 
 // Scoring inputs: a change to any of these files might change what a stored replay scores. When this fails, decide:
 // did scoring or charting change? Then bump RULES in src/replay.js. Either way, paste the new hash below.
-const RULES_HASH = '2:487a1f9b2c7a8f7b';
+const RULES_HASH = '3:de422fe15b218a1a';
 test('replay: RULES is bumped when the scoring files change', () => {
   const h = createHash('sha256');
   for (const f of ['game.js', 'chart.js', 'rtttl.js', 'mods.js', 'songs.js']) {

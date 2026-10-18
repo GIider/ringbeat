@@ -6,7 +6,7 @@ export const LANE_MODE = 'quantile'; // 'quantile' | 'contour' (no UI yet)
 const HOLD_TAIL_GAP = 0.05;         // keep a hold's tail this far from the next note in its lane
 const MIN_HOLD_SEC = 0.15;          // a hold shortened below this becomes a tap
 export const SHORT_HOLD_SEC = 0.2;  // dotted-then-short notes at least this long become short holds
-const LEAP_SEMITONES = 7;           // double notes: a leap at least this big (Hard only)
+const LEAP_SEMITONES = 7;           // double notes: a leap at least this big
 const TRIPLE_GAP_SEC = 0.25;        // the other lanes must be free this long around a triple
 const TRIPLE_SPACING_SEC = 4;       // at most one triple per this many seconds
 const DOUBLE_GAP_SEC = 0.1;         // keep the partner lane free this long around a double
@@ -18,10 +18,8 @@ export const ROLL_MAX_HZ = 9;       // the press rate a roll can ask for (goal =
 const MIN_KEPT = 30;                // below this many playable notes, thin by spacing instead
 const MIN_KEPT_FRAC = 0.25;         // ...or below this share of the song's pitched notes
 
-const DIFFICULTY = {
-  normal: { lanes: 4, minDur: 0.12, minGap: 0.20, shortHolds: true },
-  hard:   { lanes: 4, minDur: 0, minGap: 0.11, shortHolds: true, doubles: true },
-};
+const LANES = 4;
+const MIN_GAP_THIN_SEC = 0.11;      // fast songs are thinned to this spacing (and same-pitch repeats collapsed)
 
 // Equal-count quantile split of pitches. Same pitch always maps to the same lane.
 export function assignLanesQuantile(midis, lanes) {
@@ -55,20 +53,8 @@ export function assignLanesContour(midis, lanes) {
   });
 }
 
-// How many notes the two charts do not share (time, lane, type and duration all equal counts as shared). Triples
-// are left out: every Hard chart has some, and they alone should not make a song play at two difficulties.
-export function chartDistance(a, b) {
-  const key = n => `${n.time.toFixed(3)}|${n.lane}|${n.type || ''}|${n.duration.toFixed(3)}`;
-  const keys = c => new Set(c.notes.filter(n => n.chordLanes?.length !== 2).map(key));
-  const A = keys(a), B = keys(b);
-  let common = 0;
-  for (const k of A) if (B.has(k)) common++;
-  return (A.size - common) + (B.size - common);
-}
-
 export function generateChart(song, opts = {}) {
-  const diff = DIFFICULTY[opts.difficulty] || DIFFICULTY.normal;
-  const lanes = opts.lanes || diff.lanes;
+  const lanes = opts.lanes || LANES;
   const beatLen = 60 / song.bpm;
   const pitched = song.notes.filter(n => !n.isRest);
   const firstBeat = pitched[0].startBeat; // chart time 0 == first sounding note
@@ -108,7 +94,6 @@ export function generateChart(song, opts = {}) {
     notes = merged;
   }
 
-  // Difficulty filter
   // Rejected notes are not playable but still sound: the game auto-plays them as backing notes.
   const backing = [];
   const addBacking = n => {
@@ -116,20 +101,14 @@ export function generateChart(song, opts = {}) {
     else backing.push({ time: n.time, duration: n.duration, midi: n.midi });
   };
   const all = notes;
-  notes = notes.filter(n => {
-    const ok = n.ticks || (n.duration >= diff.minDur);
-    if (!ok) addBacking(n);
-    return ok;
-  });
-  // Fast songs (mostly 16ths) would lose nearly everything to the duration cutoff.
-  // Fall back to thinning by spacing, and collapse immediate same-pitch repeats.
-  if (diff.minGap && notes.length < Math.max(MIN_KEPT, all.length * MIN_KEPT_FRAC)) {
+  // Songs with few notes (or mostly 16ths) are thinned by spacing, collapsing immediate same-pitch repeats.
+  if (notes.length < Math.max(MIN_KEPT, all.length * MIN_KEPT_FRAC)) {
     backing.length = 0;
     notes = [];
     for (const n of all) {
       const last = notes[notes.length - 1];
-      const dup = last && last.midi === n.midi && n.time - last.time < diff.minGap;
-      if (last && !n.ticks && (n.time - last.time < diff.minGap || dup)) addBacking(n);
+      const dup = last && last.midi === n.midi && n.time - last.time < MIN_GAP_THIN_SEC;
+      if (last && !n.ticks && (n.time - last.time < MIN_GAP_THIN_SEC || dup)) addBacking(n);
       else notes.push(n);
     }
   }
@@ -143,7 +122,7 @@ export function generateChart(song, opts = {}) {
     kept.push(n);
   }
   backing.sort((a, b) => a.time - b.time);
-  if (!kept.length) throw new Error('No playable notes at this difficulty');
+  if (!kept.length) throw new Error('No playable notes');
 
   // Lanes are computed from the *remaining* notes so they stay balanced.
   const midis = kept.map(n => n.midi);
@@ -155,7 +134,7 @@ export function generateChart(song, opts = {}) {
     const n = kept[i], lane = laneList[i];
     let duration = n.duration;
     const long = !n.ticks && duration >= HOLD_MIN_SEC;
-    let isHold = !n.ticks && (long || (diff.shortHolds && n.dottedShort && duration >= SHORT_HOLD_SEC));
+    let isHold = !n.ticks && (long || (n.dottedShort && duration >= SHORT_HOLD_SEC));
     if (isHold && nextInLane[lane] !== null) {
       duration = Math.min(duration, nextInLane[lane] - n.time - HOLD_TAIL_GAP);
       if (duration < (long ? MIN_HOLD_SEC : SHORT_HOLD_SEC)) { isHold = false; duration = n.duration; }
@@ -165,8 +144,8 @@ export function generateChart(song, opts = {}) {
     if (n.ticks) Object.assign(out[i], { isRoll: true, ticks: n.ticks, goal: n.goal, rollHits: 0 });
   }
 
-  // Double notes (Hard): after a leap, the landing note gets a silent partner in the neighbouring lane.
-  if (diff.doubles) {
+  // Double notes: after a leap, the landing note gets a silent partner in the neighbouring lane.
+  {
     const byLane = Array.from({ length: lanes }, () => []);
     out.forEach(n => byLane[n.lane].push(n));
     const extra = [];

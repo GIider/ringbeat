@@ -72,26 +72,26 @@ test('cleanShared: garbage becomes a blank document', () => {
 const run = (score, date, extra = {}) => ({ score, date, grade: 'A', accuracy: 0.9, maxCombo: 10, fc: false, ap: false, ...extra });
 
 test('combineScores: top runs pooled once, plays summed, FC/AP sticky', () => {
-  const a = { s1: { normal: { top: [run(500, 1), run(300, 2)], plays: 4, fc: true, ap: false } } };
-  const b = { s1: { normal: { top: [run(400, 3), run(500, 1)], plays: 2, fc: false, ap: true } }, s2: { hard: { top: [run(9, 4)], plays: 1, fc: false, ap: false } } };
+  const a = { s1: { top: [run(500, 1), run(300, 2)], plays: 4, fc: true, ap: false } };
+  const b = { s1: { top: [run(400, 3), run(500, 1)], plays: 2, fc: false, ap: true }, s2: { top: [run(9, 4)], plays: 1, fc: false, ap: false } };
   const c = combineScores([a, b]);
-  assert.deepEqual(c.s1.normal.top.map(r => r.score), [500, 400, 300]);
-  assert.equal(c.s1.normal.plays, 6);
-  assert.ok(c.s1.normal.fc && c.s1.normal.ap);
-  assert.equal(c.s2.hard.plays, 1);
+  assert.deepEqual(c.s1.top.map(r => r.score), [500, 400, 300]);
+  assert.equal(c.s1.plays, 6);
+  assert.ok(c.s1.fc && c.s1.ap);
+  assert.equal(c.s2.plays, 1);
 });
 
 test('scores store: remote devices show in get/all; record ranks against everything; own() is this device only', () => {
   const s = createScores(mem());
-  s.record('s1', 'normal', run(300, 10));
-  s.setRemote([{ s1: { normal: { top: [run(900, 5), run(800, 6)], plays: 7 } } }]);
-  assert.equal(s.get('s1', 'normal').best.score, 900);
-  assert.equal(s.get('s1', 'normal').plays, 8);
-  const r = s.record('s1', 'normal', run(850, 20));
+  s.record('s1', run(300, 10));
+  s.setRemote([{ s1: { top: [run(900, 5), run(800, 6)], plays: 7 } }]);
+  assert.equal(s.get('s1').best.score, 900);
+  assert.equal(s.get('s1').plays, 8);
+  const r = s.record('s1', run(850, 20));
   assert.deepEqual(r, { rank: 2, isNewBest: false });
-  assert.deepEqual(s.own().s1.normal.top.map(x => x.score), [850, 300]);
+  assert.deepEqual(s.own().s1.top.map(x => x.score), [850, 300]);
   s.setRemote([]);
-  assert.equal(s.get('s1', 'normal').best.score, 850);
+  assert.equal(s.get('s1').best.score, 850);
 });
 
 test('stats: play days are kept as a list; old records keep their count as a base', () => {
@@ -102,7 +102,7 @@ test('stats: play days are kept as a list; old records keep their count as a bas
   assert.equal(s.daysBase, 4);
   let t = T0;
   const stats = createStats(st, () => t);
-  stats.recordRun({ diff: 'normal', result: { score: 1 } });
+  stats.recordRun({ result: { score: 1 } });
   const o = stats.own();
   assert.deepEqual(o.days, ['2026-09-30', dayKey(T0)]);
   assert.equal(o.daysPlayed, 6);
@@ -131,7 +131,7 @@ test('combineStats: counters add up, a day played on two devices counts once, st
 
 test('stats store: get() combines with remote devices, own() does not', () => {
   const stats = createStats(mem(), () => T0);
-  stats.recordRun({ diff: 'hard', result: { score: 100 } });
+  stats.recordRun({ result: { score: 100 } });
   stats.setRemote([{ runs: 4, score: 50, days: [dayKey(T0)], daysPlayed: 1, lastDay: dayKey(T0), streak: 1 }]);
   assert.equal(stats.get().runs, 5);
   assert.equal(stats.get().score, 150);
