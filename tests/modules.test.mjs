@@ -261,7 +261,15 @@ test('listview: bpm and length sorts, stable ties, custom last', () => {
   assert.deepEqual(applyView(es, { sort: 'bpm' }, null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'length' }, null).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
   assert.deepEqual(applyView(es, { sort: 'nonsense' }, null).map(e => e.id), ['a', 'b', 'c', 'custom:x']);
-  assert.equal(SORTS.length, 5);
+  assert.equal(SORTS.length, 6);
+});
+
+test('listview: plays sort puts most played first, ties by rating, custom last, null-safe', () => {
+  const es = [E('a', 'A', 1, 1, 3), E('b', 'B', 1, 1, 1), E('c', 'C', 1, 1, 2), E('custom:x', 'Z', 1, 1, 1)];
+  const plays = { a: 5, c: 5, custom: 99 };
+  const scores = { get: id => (plays[id] ? { plays: plays[id] } : null) };
+  assert.deepEqual(applyView(es, { sort: 'plays' }, scores).map(e => e.id), ['c', 'a', 'b', 'custom:x']);
+  assert.deepEqual(applyView(es, { sort: 'plays' }, null).map(e => e.id), ['b', 'c', 'a', 'custom:x']);
 });
 
 test('listview: favorites sort puts favorites first by difficulty, custom still last', () => {

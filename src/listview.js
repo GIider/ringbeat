@@ -6,7 +6,11 @@ export const SORTS = [
   { id: 'bpm', label: 'BPM' },
   { id: 'length', label: 'Duration' },
   { id: 'fav', label: 'Favorites' },
+  { id: 'plays', label: 'Plays' },
 ];
+
+// Lower bounds of the play-count bands the Plays sort groups by.
+const PLAY_BANDS = [0, 1, 3, 5, 10, 25, 50, 100];
 
 // Bot-measured rating (1..10, internal; players see it as rating/2 stars) when available, else the star heuristic scaled to the same range.
 export const ratingOf = e => (e.rating != null ? e.rating : (e.stars || 0) * 1.4);
@@ -21,6 +25,7 @@ export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scor
     return list.sort((a, b) => recent.indexOf(a.e.id) - recent.indexOf(b.e.id)).map(x => x.e).filter(matches(search));
   } else if (category === 'unplayed') list = list.filter(x => !scores.get(x.e.id) || keep.includes(x.e.id));
   else if (category !== 'all') list = list.filter(x => x.e.category === category);
+  const playsOf = x => (scores && scores.get(x.e.id) && scores.get(x.e.id).plays) || 0;
   const isFav = x => sortFavorites.includes(x.e.id);
   const cmp = {
     'diff-asc': (a, b) => ratingOf(a.e) - ratingOf(b.e),
@@ -28,6 +33,7 @@ export function applyView(entries, { sort = 'diff-asc', category = 'all' }, scor
     bpm: (a, b) => a.e.bpm - b.e.bpm,
     length: (a, b) => a.e.length - b.e.length,
     fav: (a, b) => (isFav(b) - isFav(a)) || ratingOf(a.e) - ratingOf(b.e),
+    plays: (a, b) => (playsOf(b) - playsOf(a)) || ratingOf(a.e) - ratingOf(b.e), // most played first
   }[sort] || (() => 0);
   // Custom songs always stay at the end of the list.
   const isCustom = x => String(x.e.id).startsWith('custom:');
@@ -47,12 +53,13 @@ export function randomOf(list, currentId, rnd = Math.random) {
 }
 
 // Section a row belongs to under the current sort (first letter, star band, BPM / length band); '' when the sort has none.
-export function sectionOf(e, sort) {
+export function sectionOf(e, sort, scores) {
   if (String(e.id).startsWith('custom:')) return '*';
   if (sort === 'title') { const c = e.title.trim()[0] || '#'; return /[a-z]/i.test(c) ? c.toUpperCase() : '#'; }
   if (sort === 'diff-asc') return String(Math.min(10, Math.max(1, Math.ceil(ratingOf(e)))) / 2); // half-star steps
   if (sort === 'bpm') return String(Math.floor(e.bpm / 20) * 20);
   if (sort === 'length') { const s = Math.floor(e.length / 10) * 10; return s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}+` : '<0:10'; }
+  if (sort === 'plays') { const n = (scores && scores.get(e.id) && scores.get(e.id).plays) || 0; return String(PLAY_BANDS.filter(b => b <= n).pop()); }
   return '';
 }
 
@@ -61,6 +68,7 @@ export function sectionRange(sec, sort, fmtStars = String) {
   if (!sec) return sec;
   if (sort === 'diff-asc' && !isNaN(sec)) return `${fmtStars(+sec - 0.5)} - ${fmtStars(+sec)}`;
   if (sort === 'bpm' && !isNaN(sec)) return `${sec} - ${+sec + 19}`;
+  if (sort === 'plays' && !isNaN(sec)) { const i = PLAY_BANDS.indexOf(+sec); return i === PLAY_BANDS.length - 1 ? `${sec}+` : PLAY_BANDS[i + 1] - 1 === +sec ? sec : `${sec} - ${PLAY_BANDS[i + 1] - 1}`; }
   if (sort === 'length') {
     const m = /^(\d+):(\d\d)\+$/.exec(sec), lo = m ? +m[1] * 60 + +m[2] : 0, hi = lo + 9, t = n => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
     if (m || sec === '<0:10') return `${t(lo)} - ${t(hi)}`;
@@ -69,9 +77,9 @@ export function sectionRange(sec, sort, fmtStars = String) {
 }
 
 // Index to jump to for the previous (-1) / next (+1) section; the previous step first returns to the start of the current section.
-export function jumpSection(list, idx, step, sort) {
+export function jumpSection(list, idx, step, sort, scores) {
   if (!list.length) return -1;
-  const sec = i => sectionOf(list[i], sort);
+  const sec = i => sectionOf(list[i], sort, scores);
   if (step > 0) {
     for (let i = idx + 1; i < list.length; i++) if (sec(i) !== sec(idx)) return i;
     return list.length - 1;

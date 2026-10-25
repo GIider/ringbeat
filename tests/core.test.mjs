@@ -738,3 +738,15 @@ test('applyView: the Favorites sort can use its own favorite list, so toggling a
   assert.deepEqual(ids(['c', 'a'], ['c']), ['c', 'a', 'b']); // 'a' was just favorited: it stays put
   assert.deepEqual(ids(['c', 'a']), ['a', 'c', 'b']);        // a fresh snapshot moves it up
 });
+
+test('listview: plays sections and ranges', () => {
+  const n = { get: id => ({ plays: +id }) };
+  const sec = p => sectionOf({ id: String(p) }, 'plays', n);
+  const got = [0, 1, 2, 3, 4, 5, 9, 10, 24, 25, 99, 100, 500].map(sec);
+  assert.deepEqual(got, ['0', '1', '1', '3', '3', '5', '5', '10', '10', '25', '50', '100', '100']);
+  assert.deepEqual(['0', '1', '3', '5', '10', '25', '50', '100'].map(s => sectionRange(s, 'plays')),
+    ['0', '1 - 2', '3 - 4', '5 - 9', '10 - 24', '25 - 49', '50 - 99', '100+']);
+  assert.equal(sectionOf({ id: '7' }, 'plays', null), '0');
+  const list = [{ id: '30' }, { id: '26' }, { id: '4' }, { id: '3' }, { id: '0' }];
+  assert.equal(jumpSection(list, 0, 1, 'plays', n), 2);
+});
