@@ -522,7 +522,7 @@ let viewList = [], viewTab = null;
 function renderPosition() {
   const t = viewTab, list = viewList, at = list.findIndex(e => e.id === selectedId);
   if (!t) return;
-  let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort);
+  let sec = at < 0 ? '' : sectionOf(list[at], settings.view.sort, scores);
   sec = sectionRange(sec, settings.view.sort, r => fmt(r, 1)); // the band as a range, stars in the same format as the stars value
     const cat = $('sel-cat'), pos = `${at < 0 ? '' : at + 1 + '/'}${searchQuery ? list.length : t.count}${sec ? ' · ' + sec : ''}`;
   cat.textContent = pos;
@@ -707,7 +707,7 @@ for (const id of ['sel-cat', 'st-title']) $(id).addEventListener('click', () => 
 
 function jumpSectionStep(step) {
   const list = visible();
-  jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort));
+  jumpTo(jumpSection(list, list.findIndex(e => e.id === selectedId), step, settings.view.sort, scores));
 }
 function setCategory(id) {
   sortFavs = null;

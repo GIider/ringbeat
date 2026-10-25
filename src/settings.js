@@ -38,7 +38,7 @@ function fromRaw(raw) {
   comboPopup: raw.comboPopup !== false, // 50-combo milestones: "N COMBO" banner, frame flash and shake (the chirp always plays)
   calibration: num(raw.calibration, -0.5, 0.5, 0),
   view: {
-    sort: ['diff-asc', 'title', 'bpm', 'length', 'fav'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
+    sort: ['diff-asc', 'title', 'bpm', 'length', 'fav', 'plays'].includes(raw.view && raw.view.sort) ? raw.view.sort : 'diff-asc',
     category: ['all', 'classical', 'pop', 'dance', 'ndw', 'screen', 'videogame', 'folk', 'custom', 'favorites', 'recent', 'unplayed'].includes(raw.view && raw.view.category) ? raw.view.category : 'all',
   },
   favorites: Array.isArray(raw.favorites) ? [...new Set(raw.favorites.filter(v => typeof v === 'string' && v && v.length <= 200))].slice(0, 500) : [],

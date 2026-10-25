@@ -49,7 +49,7 @@ title ─▶ menu ─┬─ 1 Tones ─▶ (first visit: tutorial prompt) ─▶
 - **Changing the view:**
   - Category: ←→, `[` `]`, LB/RB, a swipe, or the ◄► arrows in the header.
   - Sort: `D` / `F`, gamepad LT, or tapping the sort chip. The options are *Rating* (easiest first, the default),
-    *Title*, *BPM*, *Duration* (grouped in 10 s steps) and *Favorites* (favorites first).
+    *Title*, *BPM*, *Duration* (grouped in 10 s steps) and *Favorites* (favorites first) and *Plays* (most played first, grouped in bands: 0, 1-2, 3-4, 5-9, 10-24, 25-49, 50-99, 100+).
 - **Favorites:** a *Favorites* category chip (after the others) appears once a song is favorited. `V`, or clicking / tapping the icon of the selected row (or the space beside it, so a fingertip does not start the song), toggles a song's favorite (saved in the settings; custom
   songs too). Favorites show their category icon with a star badge (`ICONS_FAV`).
 - **Rows:** category icon, title, best grade, and an FC/AP badge if that was ever achieved (not

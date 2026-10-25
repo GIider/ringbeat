@@ -150,6 +150,8 @@ test('settings: favorites keep unique non-empty strings, capped; sort fav is all
   let { settings: s } = await load({ favorites: ['a', 'a', 3, '', null, 'b'], view: { sort: 'fav' } });
   assert.deepEqual(s.favorites, ['a', 'b']);
   assert.equal(s.view.sort, 'fav');
+  ({ settings: s } = await load({ view: { sort: 'plays' } }));
+  assert.equal(s.view.sort, 'plays');
   ({ settings: s } = await load({ favorites: Array.from({ length: 800 }, (_, i) => 's' + i) }));
   assert.equal(s.favorites.length, 500);
   ({ settings: s } = await load({ favorites: 'x' }));
