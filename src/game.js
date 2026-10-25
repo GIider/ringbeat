@@ -345,6 +345,7 @@ export class Game {
     n.holding = false; n.done = true;
     this.holds[n.lane] = null;
     this.score += Math.round(HOLD_BONUS[tier] * this.multiplier);
+    this.fx.judge(n.lane, tier);
   }
 
   _breakHold(n) {

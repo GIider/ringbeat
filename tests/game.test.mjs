@@ -102,6 +102,35 @@ test('game: release bonus is graded by distance to the tail', () => {
   }
 });
 
+test('game: releasing a hold shows a quality indicator for the release tier', () => {
+  const cases = [[0, 'perfect'], [-0.08, 'great'], [-0.14, 'good']];
+  for (const [off, tier] of cases) {
+    const { g } = run([note(0, 0, 1, { isHold: true, duration: 1 })]);
+    try {
+      g.press(0, g.songStart + 1);
+      const shown = [];
+      g.fx.judge = (lane, j) => shown.push([lane, j]);
+      g.release(0, g.songStart + 2 + off);
+      assert.deepEqual(shown, [[0, tier]], tier);
+    } finally { g.stop(); }
+  }
+});
+
+test('game: a hold held to its end shows a perfect indicator; an early drop only shows a miss', () => {
+  const a = run([note(0, 0, 1, { isHold: true, duration: 1 })]);
+  const b = run([note(0, 0, 1, { isHold: true, duration: 1 })]);
+  try {
+    a.g.press(0, a.g.songStart + 1); b.g.press(0, b.g.songStart + 1);
+    const sa = [], sb = [];
+    a.g.fx.judge = (lane, j) => sa.push([lane, j]);
+    b.g.fx.judge = (lane, j) => sb.push([lane, j]);
+    a.g.update(2.01);
+    b.g.release(0, b.g.songStart + 1.3);
+    assert.deepEqual(sa, [[0, 'perfect']]);
+    assert.deepEqual(sb, [[0, 'miss']]);
+  } finally { a.g.stop(); b.g.stop(); }
+});
+
 test('game: hold ticks are paid once per beat regardless of update spacing and survive a drop', () => {
   const a = run([note(0, 0, 1, { isHold: true, duration: 2 })]), b = run([note(0, 0, 1, { isHold: true, duration: 2 })]);
   try {
